@@ -1,0 +1,102 @@
+@page
+@model IndexModel
+@{
+    ViewData["Title"] = "مخارج";
+    var fromValue = FormValueHelper.RawOrPersianDate(ViewData, "From", Model.From);
+    var toValue = FormValueHelper.RawOrPersianDate(ViewData, "To", Model.To);
+}
+<div class="mb-6 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+    <div><h2 class="text-2xl font-black">فهرست مخارج</h2><p class="mt-1 text-sm text-slate-500">جست‌وجو، فیلتر و مدیریت خرج‌های فضای فعال</p></div>
+    <a asp-page="Create" class="btn-primary">＋ ثبت خرج جدید</a>
+</div>
+
+<section class="card mb-5">
+    <form method="get" class="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+        <div class="xl:col-span-2">
+            <label asp-for="Q" class="label">جست‌وجوی دلیل خرج</label>
+            <input asp-for="Q" class="input" placeholder="مثلاً خرید هفتگی" />
+        </div>
+        <div>
+            <label asp-for="CategoryId" class="label">دسته‌بندی</label>
+            <select asp-for="CategoryId" class="input">
+                <option value="">همه دسته‌ها</option>
+                @foreach (var category in Model.Categories)
+                {
+                    <option value="@category.Id">@category.Icon @category.Name</option>
+                }
+            </select>
+        </div>
+        <div>
+            <label asp-for="From" class="label">از تاریخ</label>
+            <input id="From" name="From" value="@fromValue" type="text" inputmode="numeric" autocomplete="off" data-persian-date class="input ltr-input" placeholder="۱۴۰۵/۰۵/۰۱" />
+        </div>
+        <div>
+            <label asp-for="To" class="label">تا تاریخ</label>
+            <input id="To" name="To" value="@toValue" type="text" inputmode="numeric" autocomplete="off" data-persian-date class="input ltr-input" placeholder="۱۴۰۵/۰۵/۳۱" />
+        </div>
+        <div class="flex gap-2 md:col-span-2 xl:col-span-5">
+            <button class="btn-primary" type="submit">اعمال فیلتر</button>
+            <a asp-page="Index" class="btn-secondary">پاک‌کردن فیلتر</a>
+        </div>
+    </form>
+</section>
+
+<div class="mb-4 flex items-center justify-between rounded-2xl bg-slate-900 px-5 py-4 text-white">
+    <span class="text-sm text-slate-300">مجموع نتایج (@Model.Items.Count مورد)</span>
+    <strong class="text-lg">@Formatters.Money(Model.Total)</strong>
+</div>
+
+@if (Model.Items.Count == 0)
+{
+    <div class="empty"><div class="text-5xl">🧾</div><h3 class="mt-4 text-lg font-bold">خرجی پیدا نشد</h3><p class="mt-1 text-sm text-slate-500">فیلترها را تغییر دهید یا یک خرج جدید ثبت کنید.</p><a asp-page="Create" class="btn-primary mt-5">ثبت خرج</a></div>
+}
+else
+{
+    <div class="hidden md:block table-wrap">
+        <table class="table">
+            <thead><tr><th>شرح</th><th>دسته</th><th>تاریخ</th><th>ثبت‌کننده</th><th>مبلغ</th><th class="w-32">عملیات</th></tr></thead>
+            <tbody>
+            @foreach (var item in Model.Items)
+            {
+                <tr>
+                    <td class="font-bold">@item.Reason</td>
+                    <td><span class="inline-flex items-center gap-2"><span class="text-lg">@item.Category.Icon</span>@item.Category.Name</span></td>
+                    <td class="text-slate-500">@Formatters.PersianDate(item.ExpenseDate)</td>
+                    <td class="text-slate-500">@item.CreatedByUser.DisplayName</td>
+                    <td class="font-black text-rose-600">@Formatters.Money(item.Amount)</td>
+                    <td>
+                        <div class="flex gap-1">
+                            <a asp-page="Edit" asp-route-id="@item.Id" class="btn-secondary px-3 py-2">ویرایش</a>
+                            <form method="post" asp-page-handler="Delete" asp-route-id="@item.Id">
+                                <button class="btn-secondary px-3 py-2 text-rose-600" data-confirm="این خرج حذف شود؟" type="submit">حذف</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="space-y-3 md:hidden">
+        @foreach (var item in Model.Items)
+        {
+            <article class="card p-4">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="flex min-w-0 items-center gap-3">
+                        <span class="grid size-11 shrink-0 place-items-center rounded-2xl bg-slate-100 text-xl">@item.Category.Icon</span>
+                        <div class="min-w-0"><h3 class="truncate font-bold">@item.Reason</h3><p class="mt-1 text-xs text-slate-500">@item.Category.Name · @Formatters.PersianDate(item.ExpenseDate)</p></div>
+                    </div>
+                    <strong class="shrink-0 text-sm text-rose-600">@Formatters.Money(item.Amount)</strong>
+                </div>
+                <div class="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
+                    <span class="text-xs text-slate-500">ثبت توسط @item.CreatedByUser.DisplayName</span>
+                    <div class="flex gap-2">
+                        <a asp-page="Edit" asp-route-id="@item.Id" class="text-xs font-bold text-indigo-700">ویرایش</a>
+                        <form method="post" asp-page-handler="Delete" asp-route-id="@item.Id"><button type="submit" class="text-xs font-bold text-rose-600" data-confirm="این خرج حذف شود؟">حذف</button></form>
+                    </div>
+                </div>
+            </article>
+        }
+    </div>
+}

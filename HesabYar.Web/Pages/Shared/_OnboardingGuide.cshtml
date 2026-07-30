@@ -1,0 +1,60 @@
+<div id="onboarding-guide"
+     class="guide-overlay hidden"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="guide-title"
+     data-onboarding-user="@User.Identity?.Name">
+    <div class="guide-dialog">
+        <div class="flex items-start justify-between gap-4 border-b border-slate-100 p-5 sm:p-6">
+            <div>
+                <span class="badge">راهنمای شروع سریع</span>
+                <h2 id="guide-title" class="mt-3 text-xl font-black">به حساب‌یار خوش آمدید 👋</h2>
+                <p class="mt-1 text-sm text-slate-500">در چند قدم کوتاه با بخش‌های اصلی سامانه آشنا شوید.</p>
+            </div>
+            <button type="button" class="guide-close" data-guide-close aria-label="بستن راهنما">✕</button>
+        </div>
+
+        <div class="p-5 sm:p-6">
+            <div class="guide-step" data-guide-step="0">
+                <div class="guide-icon">۱</div>
+                <h3 class="mt-4 text-lg font-black">فضای مالی را انتخاب کنید</h3>
+                <p class="mt-2 text-sm leading-7 text-slate-600">هر کاربر یک فضای شخصی دارد. برای مدیریت مالی دونفره یا خانوادگی، از «فضاهای مالی» یک فضای مشترک بسازید و عضو دیگر را دعوت کنید.</p>
+            </div>
+            <div class="guide-step hidden" data-guide-step="1">
+                <div class="guide-icon">۲</div>
+                <h3 class="mt-4 text-lg font-black">دسته‌بندی‌ها را تنظیم کنید</h3>
+                <p class="mt-2 text-sm leading-7 text-slate-600">دسته‌های پیش‌فرض آماده‌اند؛ می‌توانید دسته‌های دلخواه مثل خانه، تفریح، درمان یا حمل‌ونقل را بسازید و مدیریت کنید.</p>
+            </div>
+            <div class="guide-step hidden" data-guide-step="2">
+                <div class="guide-icon">۳</div>
+                <h3 class="mt-4 text-lg font-black">خرج‌ها را ثبت کنید</h3>
+                <p class="mt-2 text-sm leading-7 text-slate-600">مبلغ، دلیل، دسته و تاریخ شمسی را وارد کنید. مبلغ‌ها هنگام تایپ سه‌رقمی جدا می‌شوند و گزارش‌ها بلافاصله به‌روز می‌شوند.</p>
+            </div>
+            <div class="guide-step hidden" data-guide-step="3">
+                <div class="guide-icon">۴</div>
+                <h3 class="mt-4 text-lg font-black">بودجه و پس‌انداز بسازید</h3>
+                <p class="mt-2 text-sm leading-7 text-slate-600">برای هر ماه یا دسته سقف هزینه تعیین کنید و برای هدف‌های پس‌انداز، مبلغ نهایی و سهم ماهانه ثبت کنید.</p>
+            </div>
+            <div class="guide-step hidden" data-guide-step="4">
+                <div class="guide-icon">۵</div>
+                <h3 class="mt-4 text-lg font-black">گزارش‌ها را بررسی کنید</h3>
+                <p class="mt-2 text-sm leading-7 text-slate-600">گزارش‌های روزانه، هفتگی، ماهانه و سالانه به شما نشان می‌دهند پول در چه دسته‌هایی خرج شده و روند مالی چگونه است.</p>
+            </div>
+
+            <div class="mt-6 flex items-center justify-center gap-2" aria-label="مراحل راهنما">
+                @for (var i = 0; i < 5; i++)
+                {
+                    <span class="guide-dot @(i == 0 ? "guide-dot-active" : "")" data-guide-dot="@i"></span>
+                }
+            </div>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 p-5 sm:px-6">
+            <button type="button" class="text-sm font-bold text-slate-500 hover:text-slate-800" data-guide-skip>فعلاً رد کردن</button>
+            <div class="flex gap-2">
+                <button type="button" class="btn-secondary hidden" data-guide-prev>مرحله قبل</button>
+                <button type="button" class="btn-primary" data-guide-next>مرحله بعد</button>
+            </div>
+        </div>
+    </div>
+</div>

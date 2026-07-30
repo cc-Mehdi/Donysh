@@ -1,0 +1,79 @@
+@page
+@model IndexModel
+@{
+    ViewData["Title"] = "دسته‌بندی‌ها";
+    var icons = new[] { "🍽️", "🚕", "🎮", "🛍️", "🧾", "💊", "🏠", "🎓", "🎁", "📦", "☕", "✈️" };
+}
+<div class="mb-6">
+    <h2 class="text-2xl font-black">دسته‌بندی مخارج</h2>
+    <p class="mt-1 text-sm text-slate-500">دسته‌ها مخصوص فضای مالی فعال هستند و در گزارش‌ها و بودجه‌ها استفاده می‌شوند.</p>
+</div>
+
+<div class="grid gap-6 xl:grid-cols-[22rem_1fr]">
+    <section class="card h-fit">
+        <h3 class="card-title">دسته جدید</h3>
+        <form method="post" asp-page-handler="Save" class="mt-5 space-y-4">
+            <div asp-validation-summary="ModelOnly"></div>
+            <div>
+                <label asp-for="Input.Name" class="label">نام دسته</label>
+                <input asp-for="Input.Name" class="input" placeholder="مثلاً آموزش" />
+                <span asp-validation-for="Input.Name" class="field-error"></span>
+            </div>
+            <div>
+                <label asp-for="Input.Icon" class="label">آیکن</label>
+                <select asp-for="Input.Icon" class="input">
+                    @foreach (var icon in icons) { <option value="@icon">@icon</option> }
+                </select>
+            </div>
+            <button class="btn-primary w-full" type="submit">افزودن دسته</button>
+        </form>
+    </section>
+
+    <section>
+        @if (Model.Items.Count == 0)
+        {
+            <div class="empty"><div class="text-5xl">◫</div><h3 class="mt-4 font-bold">دسته‌ای وجود ندارد</h3></div>
+        }
+        else
+        {
+            <div class="grid gap-4 md:grid-cols-2">
+                @foreach (var row in Model.Items)
+                {
+                    <article class="card @(row.Category.IsArchived ? "opacity-60" : "")">
+                        <div class="mb-4 flex items-start justify-between gap-3">
+                            <div class="flex items-center gap-3">
+                                <span class="grid size-12 place-items-center rounded-2xl bg-slate-100 text-2xl">@row.Category.Icon</span>
+                                <div><h3 class="font-black">@row.Category.Name</h3><p class="mt-1 text-xs text-slate-500">@row.ExpenseCount خرج · @Formatters.Money(row.TotalSpent)</p></div>
+                            </div>
+                            @if (row.Category.IsArchived) { <span class="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-bold text-slate-600">بایگانی</span> }
+                        </div>
+
+                        @if (!row.Category.IsArchived)
+                        {
+                            <details class="group">
+                                <summary class="cursor-pointer text-sm font-bold text-indigo-700">ویرایش دسته</summary>
+                                <form method="post" asp-page-handler="Save" class="mt-4 grid grid-cols-[1fr_6rem] gap-2">
+                                    <input type="hidden" name="Input.Id" value="@row.Category.Id" />
+                                    <input name="Input.Name" value="@row.Category.Name" class="input" aria-label="نام دسته" />
+                                    <select name="Input.Icon" class="input" aria-label="آیکن">
+                                        @foreach (var icon in icons) { <option value="@icon" selected="@(icon == row.Category.Icon)">@icon</option> }
+                                    </select>
+                                    <button type="submit" class="btn-soft col-span-2">ذخیره تغییرات</button>
+                                </form>
+                            </details>
+                            <form method="post" asp-page-handler="Archive" asp-route-id="@row.Category.Id" class="mt-3">
+                                <button type="submit" class="text-xs font-bold text-rose-600" data-confirm="این دسته بایگانی شود؟ مخارج قبلی حذف نمی‌شوند.">بایگانی دسته</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <form method="post" asp-page-handler="Restore" asp-route-id="@row.Category.Id">
+                                <button type="submit" class="btn-secondary w-full">فعال‌سازی دوباره</button>
+                            </form>
+                        }
+                    </article>
+                }
+            </div>
+        }
+    </section>
+</div>

@@ -1,0 +1,54 @@
+@page
+@model CreateModel
+@{
+    ViewData["Title"] = "ثبت خرج";
+    var expenseDateValue = FormValueHelper.RawOrPersianDate(ViewData, "Input.ExpenseDate", Model.Input.ExpenseDate);
+}
+<div class="mx-auto max-w-2xl">
+    <div class="mb-6">
+        <a asp-page="Index" class="text-sm font-bold text-indigo-700">→ بازگشت به مخارج</a>
+        <h2 class="mt-3 text-2xl font-black">ثبت خرج جدید</h2>
+        <p class="mt-1 text-sm text-slate-500">اطلاعات خرج را وارد کنید؛ بودجه مرتبط خودکار به‌روزرسانی می‌شود.</p>
+    </div>
+    <form method="post" class="card space-y-5">
+        <div asp-validation-summary="ModelOnly"></div>
+        <div>
+            <label asp-for="Input.Reason" class="label"></label>
+            <input asp-for="Input.Reason" class="input" placeholder="مثلاً شام با دوستان" autofocus />
+            <span asp-validation-for="Input.Reason" class="field-error"></span>
+        </div>
+        <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+                <label asp-for="Input.Amount" class="label"></label>
+                <input asp-for="Input.Amount" type="text" inputmode="numeric" autocomplete="off" data-money class="input ltr-input" placeholder="۵۰۰,۰۰۰" />
+                <span asp-validation-for="Input.Amount" class="field-error"></span>
+                <p class="mt-1 text-xs text-slate-500">مبلغ هنگام تایپ، سه‌رقمی جدا می‌شود.</p>
+            </div>
+            <div>
+                <label for="Input_ExpenseDate" class="label">تاریخ خرج</label>
+                <input id="Input_ExpenseDate" name="Input.ExpenseDate" value="@expenseDateValue" type="text" inputmode="numeric" autocomplete="off" data-persian-date class="input ltr-input" placeholder="۱۴۰۵/۰۵/۰۸" />
+                <span asp-validation-for="Input.ExpenseDate" class="field-error"></span>
+                <p class="mt-1 text-xs text-slate-500">تاریخ را به‌صورت شمسی وارد کنید.</p>
+            </div>
+        </div>
+        <div>
+            <label asp-for="Input.CategoryId" class="label"></label>
+            <select asp-for="Input.CategoryId" class="input">
+                <option value="">انتخاب کنید</option>
+                @foreach (var category in Model.Categories)
+                {
+                    <option value="@category.Id">@category.Icon @category.Name</option>
+                }
+            </select>
+            <span asp-validation-for="Input.CategoryId" class="field-error"></span>
+            @if (Model.Categories.Count == 0)
+            {
+                <p class="mt-2 text-sm text-amber-700">ابتدا از بخش دسته‌بندی‌ها یک دسته بسازید.</p>
+            }
+        </div>
+        <div class="flex gap-3 border-t border-slate-100 pt-5">
+            <button type="submit" class="btn-primary" disabled="@(Model.Categories.Count == 0)">ثبت خرج</button>
+            <a asp-page="Index" class="btn-secondary">انصراف</a>
+        </div>
+    </form>
+</div>

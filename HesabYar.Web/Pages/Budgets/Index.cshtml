@@ -1,0 +1,87 @@
+@page
+@model IndexModel
+@{
+    ViewData["Title"] = "بودجه‌ها";
+}
+<div class="mb-6 flex flex-col justify-between gap-3 md:flex-row md:items-end">
+    <div><h2 class="text-2xl font-black">بودجه‌بندی ماهانه</h2><p class="mt-1 text-sm text-slate-500">برای کل مخارج یا یک دسته مشخص سقف تعیین کنید.</p></div>
+    <div class="flex items-center gap-2">
+        <a asp-page="Index" asp-route-year="@Model.PreviousPeriod.Year" asp-route-month="@Model.PreviousPeriod.Month" class="btn-secondary px-3">→</a>
+        <span class="min-w-36 text-center font-black">@Model.PeriodTitle</span>
+        <a asp-page="Index" asp-route-year="@Model.NextPeriod.Year" asp-route-month="@Model.NextPeriod.Month" class="btn-secondary px-3">←</a>
+    </div>
+</div>
+
+<div class="grid gap-6 xl:grid-cols-[23rem_1fr]">
+    <section class="card h-fit">
+        <h3 class="card-title">تعریف بودجه</h3>
+        <p class="muted mt-1">اگر برای این دسته بودجه وجود داشته باشد، مقدار آن به‌روزرسانی می‌شود.</p>
+        <form method="post" asp-page-handler="Save" class="mt-5 space-y-4">
+            <input asp-for="Input.Year" type="hidden" />
+            <input asp-for="Input.Month" type="hidden" />
+            <div asp-validation-summary="ModelOnly"></div>
+            <div>
+                <label asp-for="Input.CategoryId" class="label">دامنه بودجه</label>
+                <select asp-for="Input.CategoryId" class="input">
+                    <option value="">💳 کل مخارج ماه</option>
+                    @foreach (var category in Model.Categories) { <option value="@category.Id">@category.Icon @category.Name</option> }
+                </select>
+                <span asp-validation-for="Input.CategoryId" class="field-error"></span>
+            </div>
+            <div>
+                <label asp-for="Input.Amount" class="label">سقف بودجه (تومان)</label>
+                <input asp-for="Input.Amount" type="text" inputmode="numeric" autocomplete="off" data-money class="input ltr-input" placeholder="۵,۰۰۰,۰۰۰" />
+                <span asp-validation-for="Input.Amount" class="field-error"></span>
+            </div>
+            <div>
+                <label asp-for="Input.WarningPercent" class="label">هشدار از چند درصد؟</label>
+                <input asp-for="Input.WarningPercent" type="number" min="1" max="100" class="input" />
+                <span asp-validation-for="Input.WarningPercent" class="field-error"></span>
+                <p class="mt-1 text-xs text-slate-500">پیشنهاد: ۸۰٪</p>
+            </div>
+            <button type="submit" class="btn-primary w-full">ذخیره بودجه</button>
+        </form>
+    </section>
+
+    <section>
+        @if (Model.Items.Count == 0)
+        {
+            <div class="empty"><div class="text-5xl">◎</div><h3 class="mt-4 text-lg font-bold">برای این ماه بودجه‌ای ندارید</h3><p class="mt-1 text-sm text-slate-500">از فرم کناری اولین سقف هزینه را تعیین کنید.</p></div>
+        }
+        else
+        {
+            <div class="grid gap-4 md:grid-cols-2">
+                @foreach (var row in Model.Items)
+                {
+                    var width = Math.Min(row.Percent, 100);
+                    <article class="card">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="flex items-center gap-3"><span class="grid size-12 place-items-center rounded-2xl bg-slate-100 text-2xl">@(row.Budget.Category?.Icon ?? "💳")</span><div><h3 class="font-black">@(row.Budget.Category?.Name ?? "کل مخارج ماه")</h3><p class="mt-1 text-xs text-slate-500">هشدار از @row.Budget.WarningPercent٪</p></div></div>
+                            <span class="rounded-full px-2 py-1 text-xs font-black @(row.IsExceeded ? "bg-rose-100 text-rose-700" : row.IsWarning ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700")">@Formatters.Percent(row.Percent)</span>
+                        </div>
+                        <div class="progress mt-5"><div class="progress-bar @(row.IsExceeded ? "bg-rose-600" : row.IsWarning ? "bg-amber-500" : "bg-indigo-600")" style="width: @(width)%"></div></div>
+                        <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
+                            <div class="rounded-xl bg-slate-50 p-3"><span class="block text-xs text-slate-500">مصرف‌شده</span><strong class="mt-1 block">@Formatters.Money(row.Spent)</strong></div>
+                            <div class="rounded-xl bg-slate-50 p-3"><span class="block text-xs text-slate-500">@(row.Remaining >= 0 ? "باقی‌مانده" : "عبور از سقف")</span><strong class="mt-1 block @(row.Remaining < 0 ? "text-rose-600" : "")">@Formatters.Money(Math.Abs(row.Remaining))</strong></div>
+                        </div>
+                        <details class="mt-4 border-t border-slate-100 pt-4">
+                            <summary class="cursor-pointer text-sm font-bold text-indigo-700">ویرایش بودجه</summary>
+                            <form method="post" asp-page-handler="Save" class="mt-4 grid gap-3 sm:grid-cols-2">
+                                <input type="hidden" name="Input.Id" value="@row.Budget.Id" />
+                                <input type="hidden" name="Input.CategoryId" value="@row.Budget.CategoryId" />
+                                <input type="hidden" name="Input.Year" value="@row.Budget.Year" />
+                                <input type="hidden" name="Input.Month" value="@row.Budget.Month" />
+                                <div><label class="label">مبلغ</label><input name="Input.Amount" value="@row.Budget.Amount.ToString("0")" type="text" inputmode="numeric" autocomplete="off" data-money class="input ltr-input" /></div>
+                                <div><label class="label">درصد هشدار</label><input name="Input.WarningPercent" value="@row.Budget.WarningPercent" type="number" min="1" max="100" class="input" /></div>
+                                <button class="btn-soft sm:col-span-2" type="submit">ذخیره</button>
+                            </form>
+                        </details>
+                        <form method="post" asp-page-handler="Delete" asp-route-id="@row.Budget.Id" asp-route-year="@Model.Year" asp-route-month="@Model.Month" class="mt-3">
+                            <button class="text-xs font-bold text-rose-600" type="submit" data-confirm="این بودجه حذف شود؟">حذف بودجه</button>
+                        </form>
+                    </article>
+                }
+            </div>
+        }
+    </section>
+</div>

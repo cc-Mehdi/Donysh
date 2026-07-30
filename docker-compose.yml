@@ -1,0 +1,62 @@
+name: hesabyar
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-hesabyar}
+      POSTGRES_USER: ${POSTGRES_USER:-hesabyar}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required. Run deploy.ps1 or deploy.sh first.}
+      TZ: ${TZ:-Asia/Tehran}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hesabyar} -d ${POSTGRES_DB:-hesabyar}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  web:
+    build:
+      context: .
+      dockerfile: HesabYar.Web/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      AllowedHosts: "*"
+      ReverseProxy__Enabled: "false"
+      DataProtection__KeysPath: /keys
+      TZ: ${TZ:-Asia/Tehran}
+      ConnectionStrings__DefaultConnection: >-
+        Host=db;Port=5432;Database=${POSTGRES_DB:-hesabyar};Username=${POSTGRES_USER:-hesabyar};Password=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required};Pooling=true;Maximum Pool Size=100;Timeout=15;Command Timeout=30;Include Error Detail=false
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    volumes:
+      - dataprotection_keys:/keys
+    networks:
+      - backend
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+volumes:
+  postgres_data:
+  dataprotection_keys:
+
+networks:
+  backend:

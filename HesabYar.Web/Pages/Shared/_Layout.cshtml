@@ -1,0 +1,129 @@
+@inject IWorkspaceContext WorkspaceContext
+@{
+    var authenticated = User.Identity?.IsAuthenticated == true;
+    var currentWorkspace = authenticated ? await WorkspaceContext.GetCurrentAsync() : null;
+    IReadOnlyList<Workspace> workspaces = authenticated ? await WorkspaceContext.GetAccessibleAsync() : Array.Empty<Workspace>();
+    var page = ViewContext.RouteData.Values["page"]?.ToString() ?? string.Empty;
+
+    string NavClass(string prefix) => page.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+        ? "nav-link nav-link-active"
+        : "nav-link";
+}
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#4f46e5" />
+    <link rel="icon" type="image/svg+xml" href="~/images/favicon.svg" />
+    <title>@ViewData["Title"] - حساب‌یار</title>
+    <link rel="stylesheet" href="~/css/app.css" asp-append-version="true" />
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-900 antialiased">
+@if (authenticated)
+{
+    <div class="min-h-screen lg:grid lg:grid-cols-[17rem_1fr]">
+        <aside id="sidebar" class="fixed inset-y-0 right-0 z-40 hidden w-72 border-l border-slate-200 bg-white p-5 lg:static lg:block lg:w-auto">
+            <div class="mb-7 flex items-center justify-between">
+                <a asp-page="/Index" aria-label="حساب‌یار">
+                    <partial name="_Brand" />
+                </a>
+                <button type="button" class="rounded-xl p-2 text-slate-500 lg:hidden" data-close-sidebar aria-label="بستن">✕</button>
+            </div>
+
+            @if (currentWorkspace is not null)
+            {
+                <div class="mb-6 rounded-2xl border border-indigo-100 bg-indigo-50 p-3">
+                    <div class="mb-2 flex items-center justify-between gap-2">
+                        <span class="text-xs font-semibold text-indigo-700">فضای فعال</span>
+                        <span class="badge">@(currentWorkspace.Type == WorkspaceType.Shared ? "مشترک" : "شخصی")</span>
+                    </div>
+                    <form method="post" asp-page="/Workspaces/Switch">
+                        <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+                        <select name="workspaceId" class="input py-2 text-sm" onchange="this.form.submit()" aria-label="انتخاب فضای مالی">
+                            @foreach (var workspace in workspaces)
+                            {
+                                <option value="@workspace.Id" selected="@(workspace.Id == currentWorkspace.Id)">@workspace.Name</option>
+                            }
+                        </select>
+                    </form>
+                </div>
+            }
+
+            <nav class="space-y-1">
+                <a asp-page="/Index" class="@NavClass("/Index")"><span>⌂</span><span>داشبورد</span></a>
+                <a asp-page="/Expenses/Index" class="@NavClass("/Expenses")"><span>↗</span><span>مخارج</span></a>
+                <a asp-page="/Categories/Index" class="@NavClass("/Categories")"><span>◫</span><span>دسته‌بندی‌ها</span></a>
+                <a asp-page="/Budgets/Index" class="@NavClass("/Budgets")"><span>◎</span><span>بودجه‌ها</span></a>
+                <a asp-page="/Savings/Index" class="@NavClass("/Savings")"><span>◇</span><span>پس‌انداز</span></a>
+                <a asp-page="/Reports/Index" class="@NavClass("/Reports")"><span>▥</span><span>گزارش‌ها</span></a>
+                <a asp-page="/Workspaces/Index" class="@NavClass("/Workspaces")"><span>♧</span><span>فضاهای مالی</span></a>
+            </nav>
+
+            <div class="absolute inset-x-5 bottom-5 lg:static lg:mt-10">
+                <div class="rounded-2xl border border-slate-200 p-3">
+                    <div class="mb-3 min-w-0">
+                        <div class="truncate text-sm font-semibold">@User.Identity?.Name</div>
+                        <div class="text-xs text-slate-500">حساب کاربری</div>
+                    </div>
+                    <form method="post" asp-page="/Account/Logout">
+                        <button class="btn-secondary w-full" type="submit">خروج</button>
+                    </form>
+                </div>
+            </div>
+        </aside>
+
+        <div class="min-w-0">
+            <header class="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 backdrop-blur">
+                <div class="flex h-16 items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
+                    <div class="flex min-w-0 items-center gap-3">
+                        <button type="button" class="grid size-10 place-items-center rounded-xl border border-slate-200 bg-white lg:hidden" data-open-sidebar aria-label="بازکردن منو">☰</button>
+                        <div class="min-w-0">
+                            <h1 class="truncate font-bold">@ViewData["Title"]</h1>
+                            @if (currentWorkspace is not null)
+                            {
+                                <p class="truncate text-xs text-slate-500">@currentWorkspace.Name</p>
+                            }
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="button" class="btn-secondary px-3" data-guide-open aria-label="بازکردن راهنما">؟ <span class="hidden sm:inline">راهنما</span></button>
+                        <a asp-page="/Expenses/Create" class="btn-primary"><span class="text-lg">＋</span><span class="hidden sm:inline">ثبت خرج</span></a>
+                    </div>
+                </div>
+            </header>
+
+            <main class="mx-auto max-w-7xl p-4 pb-24 sm:p-6 lg:p-8 lg:pb-8">
+                @if (TempData["Success"] is string success)
+                {
+                    <div class="toast toast-success" data-toast>@success</div>
+                }
+                @if (TempData["Error"] is string error)
+                {
+                    <div class="toast toast-error" data-toast>@error</div>
+                }
+                @RenderBody()
+            </main>
+        </div>
+    </div>
+
+    <partial name="_OnboardingGuide" />
+
+    <nav class="fixed inset-x-3 bottom-3 z-30 grid grid-cols-5 rounded-2xl border border-slate-200 bg-white/95 p-2 shadow-2xl backdrop-blur lg:hidden">
+        <a asp-page="/Index" class="mobile-nav"><span>⌂</span><small>خانه</small></a>
+        <a asp-page="/Expenses/Index" class="mobile-nav"><span>↗</span><small>مخارج</small></a>
+        <a asp-page="/Budgets/Index" class="mobile-nav"><span>◎</span><small>بودجه</small></a>
+        <a asp-page="/Savings/Index" class="mobile-nav"><span>◇</span><small>پس‌انداز</small></a>
+        <a asp-page="/Reports/Index" class="mobile-nav"><span>▥</span><small>گزارش</small></a>
+    </nav>
+}
+else
+{
+    <main class="min-h-screen">
+        @RenderBody()
+    </main>
+}
+<script src="~/js/site.js" asp-append-version="true"></script>
+@await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

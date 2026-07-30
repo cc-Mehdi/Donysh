@@ -1,0 +1,97 @@
+@page
+@model IndexModel
+@{
+    ViewData["Title"] = "پس‌انداز";
+    var targetDateValue = FormValueHelper.RawOrPersianDate(ViewData, "NewGoal.TargetDate", Model.NewGoal.TargetDate);
+    var contributionDateValue = PersianCalendarHelper.ToInput(DateOnly.FromDateTime(DateTime.Now));
+}
+<div class="mb-6">
+    <h2 class="text-2xl font-black">هدف‌های پس‌انداز</h2>
+    <p class="mt-1 text-sm text-slate-500">هدف کلی و میزان پس‌انداز ماهانه را تعیین کنید؛ اعضای فضای مشترک می‌توانند با هم مشارکت کنند.</p>
+</div>
+
+<div class="grid gap-6 xl:grid-cols-[23rem_1fr]">
+    <section class="card h-fit">
+        <h3 class="card-title">هدف جدید</h3>
+        <form method="post" asp-page-handler="Create" class="mt-5 space-y-4">
+            <div asp-validation-summary="ModelOnly"></div>
+            <div><label asp-for="NewGoal.Name" class="label">نام هدف</label><input asp-for="NewGoal.Name" class="input" placeholder="مثلاً صندوق اضطراری" /><span asp-validation-for="NewGoal.Name" class="field-error"></span></div>
+            <div><label asp-for="NewGoal.TargetAmount" class="label">مبلغ نهایی هدف (تومان)</label><input asp-for="NewGoal.TargetAmount" type="text" inputmode="numeric" autocomplete="off" data-money class="input ltr-input" placeholder="۵۰,۰۰۰,۰۰۰" /><span asp-validation-for="NewGoal.TargetAmount" class="field-error"></span></div>
+            <div><label asp-for="NewGoal.MonthlyTargetAmount" class="label">هدف ماهانه (تومان)</label><input asp-for="NewGoal.MonthlyTargetAmount" type="text" inputmode="numeric" autocomplete="off" data-money data-allow-zero="true" class="input ltr-input" placeholder="۳,۰۰۰,۰۰۰" /><span asp-validation-for="NewGoal.MonthlyTargetAmount" class="field-error"></span></div>
+            <div><label for="NewGoal_TargetDate" class="label">تاریخ هدف (اختیاری)</label><input id="NewGoal_TargetDate" name="NewGoal.TargetDate" value="@targetDateValue" type="text" inputmode="numeric" autocomplete="off" data-persian-date class="input ltr-input" placeholder="۱۴۰۵/۱۲/۲۹" /><span asp-validation-for="NewGoal.TargetDate" class="field-error"></span></div>
+            <button type="submit" class="btn-primary w-full">ساخت هدف</button>
+        </form>
+    </section>
+
+    <section>
+        @if (Model.Goals.Count == 0)
+        {
+            <div class="empty"><div class="text-5xl">◇</div><h3 class="mt-4 text-lg font-bold">هدف پس‌اندازی ندارید</h3><p class="mt-1 text-sm text-slate-500">یک هدف قابل‌اندازه‌گیری بسازید و واریزی‌ها را ثبت کنید.</p></div>
+        }
+        else
+        {
+            <div class="space-y-5">
+                @foreach (var card in Model.Goals)
+                {
+                    var totalWidth = Math.Min(card.TotalPercent, 100);
+                    var monthlyWidth = Math.Min(card.MonthlyPercent, 100);
+                    <article class="card @(card.Goal.IsCompleted ? "opacity-60" : "")">
+                        <div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+                            <div>
+                                <div class="flex items-center gap-2"><span class="text-2xl">🎯</span><h3 class="text-lg font-black">@card.Goal.Name</h3>@if (card.Goal.IsCompleted){<span class="rounded-full bg-emerald-100 px-2 py-1 text-xs font-bold text-emerald-700">تکمیل‌شده</span>}</div>
+                                <p class="mt-2 text-sm text-slate-500">هدف: @Formatters.Money(card.Goal.TargetAmount) @if(card.Goal.TargetDate.HasValue){<span>· تا @Formatters.PersianDate(card.Goal.TargetDate.Value)</span>}</p>
+                            </div>
+                            <div class="flex gap-2">
+                                <form method="post" asp-page-handler="ToggleComplete" asp-route-id="@card.Goal.Id"><button class="btn-secondary px-3 py-2" type="submit">@(card.Goal.IsCompleted ? "فعال‌سازی" : "تکمیل هدف")</button></form>
+                            </div>
+                        </div>
+
+                        <div class="mt-5">
+                            <div class="mb-2 flex justify-between text-sm"><strong>پیشرفت کل</strong><span class="font-bold text-indigo-700">@Formatters.Percent(card.TotalPercent)</span></div>
+                            <div class="progress"><div class="progress-bar bg-emerald-500" style="width: @(totalWidth)%"></div></div>
+                            <div class="mt-2 flex justify-between text-xs text-slate-500"><span>ذخیره‌شده: @Formatters.Money(card.TotalSaved)</span><span>مانده: @Formatters.Money(card.Remaining)</span></div>
+                        </div>
+
+                        @if (card.Goal.MonthlyTargetAmount > 0)
+                        {
+                            <div class="mt-5 rounded-2xl bg-slate-50 p-4">
+                                <div class="mb-2 flex justify-between text-sm"><strong>هدف این ماه</strong><span>@Formatters.Money(card.MonthSaved) از @Formatters.Money(card.Goal.MonthlyTargetAmount)</span></div>
+                                <div class="progress bg-white"><div class="progress-bar" style="width: @(monthlyWidth)%"></div></div>
+                            </div>
+                        }
+
+                        @if (!card.Goal.IsCompleted)
+                        {
+                            <details class="mt-5 rounded-2xl border border-indigo-100 bg-indigo-50 p-4">
+                                <summary class="cursor-pointer font-bold text-indigo-800">＋ ثبت واریزی جدید</summary>
+                                <form method="post" asp-page-handler="Contribute" class="mt-4 grid gap-3 md:grid-cols-4">
+                                    <input type="hidden" name="Contribution.GoalId" value="@card.Goal.Id" />
+                                    <div><label class="label">مبلغ (تومان)</label><input name="Contribution.Amount" type="text" inputmode="numeric" autocomplete="off" data-money class="input ltr-input" required /></div>
+                                    <div><label class="label">تاریخ</label><input name="Contribution.Date" type="text" inputmode="numeric" autocomplete="off" data-persian-date value="@contributionDateValue" class="input ltr-input" placeholder="۱۴۰۵/۰۵/۰۸" required /></div>
+                                    <div><label class="label">یادداشت</label><input name="Contribution.Note" class="input" placeholder="اختیاری" /></div>
+                                    <div class="flex items-end"><button class="btn-primary w-full" type="submit">ثبت واریزی</button></div>
+                                </form>
+                            </details>
+                        }
+
+                        @if (card.RecentContributions.Count > 0)
+                        {
+                            <div class="mt-5 border-t border-slate-100 pt-4">
+                                <h4 class="text-sm font-bold">آخرین واریزی‌ها</h4>
+                                <div class="mt-3 divide-y divide-slate-100">
+                                    @foreach (var item in card.RecentContributions)
+                                    {
+                                        <div class="flex items-center justify-between gap-3 py-2.5">
+                                            <div><p class="text-sm font-bold text-emerald-700">+ @Formatters.Money(item.Amount)</p><p class="text-xs text-slate-500">@Formatters.PersianDate(item.ContributionDate) · @item.CreatedByUser.DisplayName @if(!string.IsNullOrWhiteSpace(item.Note)){<span>· @item.Note</span>}</p></div>
+                                            <form method="post" asp-page-handler="DeleteContribution" asp-route-id="@item.Id"><button type="submit" class="text-xs font-bold text-rose-600" data-confirm="این واریزی حذف شود؟">حذف</button></form>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </article>
+                }
+            </div>
+        }
+    </section>
+</div>

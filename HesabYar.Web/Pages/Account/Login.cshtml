@@ -1,0 +1,51 @@
+@page
+@model LoginModel
+@{
+    ViewData["Title"] = "ورود";
+}
+<div class="grid min-h-screen lg:grid-cols-2">
+    <section class="hidden bg-gradient-to-br from-indigo-700 via-indigo-600 to-violet-600 p-12 text-white lg:flex lg:flex-col lg:justify-between">
+        <div>
+            @{ ViewData["BrandLight"] = true; }
+            <partial name="_Brand" />
+            @{ ViewData.Remove("BrandLight"); }
+        </div>
+        <div class="max-w-xl">
+            <h1 class="text-4xl font-black leading-relaxed">خرج‌ها، بودجه‌ها و پس‌اندازتان را یک‌جا مدیریت کنید.</h1>
+            <p class="mt-4 text-lg leading-8 text-indigo-100">فضای شخصی یا مشترک بسازید و همیشه بدانید پولتان کجا می‌رود.</p>
+        </div>
+        <p class="text-sm text-indigo-200">امن، ساده و مناسب استفاده روزمره</p>
+    </section>
+
+    <section class="flex items-center justify-center p-5 sm:p-10">
+        <div class="w-full max-w-md">
+            <a asp-page="/Index" class="mb-8 inline-flex lg:hidden" aria-label="حساب‌یار">
+                <partial name="_Brand" />
+            </a>
+            <h2 class="text-3xl font-black">خوش آمدید</h2>
+            <p class="mt-2 text-slate-500">برای ورود، اطلاعات حساب خود را وارد کنید.</p>
+
+            <form method="post" class="mt-8 space-y-5">
+                <input type="hidden" asp-for="ReturnUrl" />
+                <div asp-validation-summary="ModelOnly"></div>
+                <div>
+                    <label asp-for="Input.Email" class="label"></label>
+                    <input asp-for="Input.Email" class="input" autocomplete="email" autofocus />
+                    <span asp-validation-for="Input.Email" class="field-error"></span>
+                </div>
+                <div>
+                    <label asp-for="Input.Password" class="label"></label>
+                    <input asp-for="Input.Password" class="input" autocomplete="current-password" />
+                    <span asp-validation-for="Input.Password" class="field-error"></span>
+                </div>
+                <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+                    <input asp-for="Input.RememberMe" class="size-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                    <span>مرا به خاطر بسپار؛ تا ۳۰ روز نیاز به ورود مجدد نباشد</span>
+                </label>
+                <button type="submit" class="btn-primary w-full">ورود به حساب</button>
+            </form>
+
+            <p class="mt-6 text-center text-sm text-slate-500">حساب ندارید؟ <a asp-page="/Account/Register" asp-route-returnUrl="@Model.ReturnUrl" class="font-bold text-indigo-700">ثبت‌نام کنید</a></p>
+        </div>
+    </section>
+</div>

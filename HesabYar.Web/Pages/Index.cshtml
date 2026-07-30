@@ -1,0 +1,135 @@
+@page
+@model IndexModel
+@{
+    ViewData["Title"] = "داشبورد";
+}
+<div class="mb-6 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+    <div>
+        <p class="text-sm text-slate-500">نمای کلی امروز، @Formatters.PersianDate(Model.Today)</p>
+        <h2 class="mt-1 text-2xl font-black">وضعیت مالی شما</h2>
+    </div>
+    <div class="flex gap-2">
+        <a asp-page="/Reports/Index" class="btn-secondary">مشاهده گزارش</a>
+        <a asp-page="/Expenses/Create" class="btn-primary">＋ ثبت خرج</a>
+    </div>
+</div>
+
+<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <section class="stat">
+        <div class="flex items-center justify-between"><span class="stat-label">خرج این ماه</span><span class="grid size-10 place-items-center rounded-2xl bg-rose-50">↗</span></div>
+        <div class="stat-value">@Formatters.Money(Model.MonthTotal)</div>
+        <p class="mt-2 text-xs text-slate-500">@Model.MonthExpenseCount تراکنش ثبت‌شده</p>
+    </section>
+    <section class="stat">
+        <div class="flex items-center justify-between"><span class="stat-label">خرج این هفته</span><span class="grid size-10 place-items-center rounded-2xl bg-amber-50">◷</span></div>
+        <div class="stat-value">@Formatters.Money(Model.WeekTotal)</div>
+        <p class="mt-2 text-xs text-slate-500">از ابتدای شنبه تا امروز</p>
+    </section>
+    <section class="stat">
+        <div class="flex items-center justify-between"><span class="stat-label">پس‌انداز این ماه</span><span class="grid size-10 place-items-center rounded-2xl bg-emerald-50">◇</span></div>
+        <div class="stat-value">@Formatters.Money(Model.MonthSavings)</div>
+        <p class="mt-2 text-xs text-slate-500">مجموع واریزی هدف‌های فعال</p>
+    </section>
+    <section class="stat bg-gradient-to-br from-indigo-600 to-violet-600 text-white">
+        <div class="flex items-center justify-between"><span class="text-sm text-indigo-100">نوع فضای فعال</span><span class="grid size-10 place-items-center rounded-2xl bg-white/15">♧</span></div>
+        <div class="mt-2 text-2xl font-black">@(Model.CurrentWorkspace.Type == WorkspaceType.Shared ? "مدیریت مشترک" : "مدیریت شخصی")</div>
+        <p class="mt-2 text-xs text-indigo-100">@Model.CurrentWorkspace.Name</p>
+    </section>
+</div>
+
+@if (Model.BudgetCards.Any(x => x.IsExceeded))
+{
+    <div class="mt-6 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-rose-800">
+        <strong>هشدار بودجه:</strong> سقف @string.Join("، ", Model.BudgetCards.Where(x => x.IsExceeded).Select(x => x.Name)) رد شده است.
+    </div>
+}
+
+<div class="mt-6 grid gap-6 xl:grid-cols-[1.2fr_.8fr]">
+    <section class="card">
+        <div class="mb-5 flex items-center justify-between">
+            <div><h3 class="card-title">بودجه‌های این ماه</h3><p class="muted mt-1">پیگیری مصرف و باقی‌مانده هر بودجه</p></div>
+            <a asp-page="/Budgets/Index" class="text-sm font-bold text-indigo-700">مدیریت</a>
+        </div>
+        @if (Model.BudgetCards.Count == 0)
+        {
+            <div class="rounded-2xl bg-slate-50 p-6 text-center">
+                <p class="text-sm text-slate-500">هنوز بودجه‌ای برای این ماه ندارید.</p>
+                <a asp-page="/Budgets/Index" class="btn-soft mt-3">ساخت بودجه</a>
+            </div>
+        }
+        else
+        {
+            <div class="space-y-5">
+                @foreach (var budget in Model.BudgetCards)
+                {
+                    var width = Math.Min(budget.Percent, 100);
+                    <div>
+                        <div class="mb-2 flex items-center justify-between gap-3">
+                            <div class="flex items-center gap-2"><span>@budget.Icon</span><strong class="text-sm">@budget.Name</strong></div>
+                            <span class="text-xs font-bold @(budget.IsExceeded ? "text-rose-600" : budget.IsWarning ? "text-amber-600" : "text-slate-500")">@Formatters.Percent(budget.Percent)</span>
+                        </div>
+                        <div class="progress"><div class="progress-bar @(budget.IsExceeded ? "bg-rose-600" : budget.IsWarning ? "bg-amber-500" : "bg-indigo-600")" style="width: @(width)%"></div></div>
+                        <div class="mt-2 flex justify-between text-xs text-slate-500">
+                            <span>مصرف: @Formatters.Money(budget.Spent)</span>
+                            <span class="@(budget.Remaining < 0 ? "text-rose-600" : "")">@(budget.Remaining >= 0 ? "مانده" : "مازاد"): @Formatters.Money(Math.Abs(budget.Remaining))</span>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </section>
+
+    <section class="card">
+        <div class="mb-5 flex items-center justify-between">
+            <div><h3 class="card-title">هدف‌های پس‌انداز</h3><p class="muted mt-1">پیشرفت هدف‌های فعال</p></div>
+            <a asp-page="/Savings/Index" class="text-sm font-bold text-indigo-700">مدیریت</a>
+        </div>
+        @if (Model.SavingsCards.Count == 0)
+        {
+            <div class="rounded-2xl bg-slate-50 p-6 text-center">
+                <p class="text-sm text-slate-500">یک هدف پس‌انداز ایجاد کنید.</p>
+                <a asp-page="/Savings/Index" class="btn-soft mt-3">هدف جدید</a>
+            </div>
+        }
+        else
+        {
+            <div class="space-y-4">
+                @foreach (var goal in Model.SavingsCards.Take(4))
+                {
+                    var width = Math.Min(goal.Percent, 100);
+                    <a asp-page="/Savings/Index" class="block rounded-2xl border border-slate-200 p-4 transition hover:border-indigo-300">
+                        <div class="flex justify-between gap-3"><strong class="text-sm">@goal.Name</strong><span class="text-xs font-bold text-indigo-700">@Formatters.Percent(goal.Percent)</span></div>
+                        <div class="progress mt-3"><div class="progress-bar bg-emerald-500" style="width: @(width)%"></div></div>
+                        <div class="mt-2 flex justify-between text-xs text-slate-500"><span>@Formatters.Money(goal.Saved)</span><span>هدف @Formatters.Money(goal.Target)</span></div>
+                    </a>
+                }
+            </div>
+        }
+    </section>
+</div>
+
+<section class="card mt-6">
+    <div class="mb-5 flex items-center justify-between">
+        <div><h3 class="card-title">آخرین مخارج</h3><p class="muted mt-1">جدیدترین تراکنش‌های فضای فعال</p></div>
+        <a asp-page="/Expenses/Index" class="text-sm font-bold text-indigo-700">مشاهده همه</a>
+    </div>
+    @if (Model.RecentExpenses.Count == 0)
+    {
+        <div class="empty"><div class="text-4xl">🧾</div><p class="mt-3 font-bold">هنوز خرجی ثبت نشده</p><a asp-page="/Expenses/Create" class="btn-primary mt-4">اولین خرج را ثبت کنید</a></div>
+    }
+    else
+    {
+        <div class="divide-y divide-slate-100">
+            @foreach (var expense in Model.RecentExpenses)
+            {
+                <div class="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
+                    <div class="flex min-w-0 items-center gap-3">
+                        <span class="grid size-11 shrink-0 place-items-center rounded-2xl bg-slate-100 text-xl">@expense.Category.Icon</span>
+                        <div class="min-w-0"><p class="truncate text-sm font-bold">@expense.Reason</p><p class="truncate text-xs text-slate-500">@expense.Category.Name · @Formatters.PersianDate(expense.ExpenseDate) · @expense.CreatedByUser.DisplayName</p></div>
+                    </div>
+                    <strong class="shrink-0 text-sm text-rose-600">- @Formatters.Money(expense.Amount)</strong>
+                </div>
+            }
+        </div>
+    }
+</section>

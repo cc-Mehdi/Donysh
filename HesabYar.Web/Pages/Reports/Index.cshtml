@@ -1,0 +1,72 @@
+@page
+@model IndexModel
+@{
+    ViewData["Title"] = "گزارش‌ها";
+    var anchorValue = FormValueHelper.RawOrPersianDate(ViewData, "Anchor", Model.Anchor ?? DateOnly.FromDateTime(DateTime.Now));
+}
+<div class="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
+    <div><h2 class="text-2xl font-black">گزارش مخارج</h2><p class="mt-1 text-sm text-slate-500">تحلیل روزانه، هفتگی، ماهانه و سالانه برای فضای فعال</p></div>
+    <form method="get" class="flex flex-wrap items-end gap-2">
+        <div><label asp-for="Period" class="label">نوع گزارش</label><select asp-for="Period" class="input min-w-32"><option value="daily">روزانه</option><option value="weekly">هفتگی</option><option value="monthly">ماهانه</option><option value="yearly">سالانه</option></select></div>
+        <div><label asp-for="Anchor" class="label">تاریخ مبنا</label><input id="Anchor" name="Anchor" value="@anchorValue" type="text" inputmode="numeric" autocomplete="off" data-persian-date class="input ltr-input" placeholder="۱۴۰۵/۰۵/۰۸" /></div>
+        <button type="submit" class="btn-primary">نمایش</button>
+    </form>
+</div>
+
+<div class="mb-5 flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-3">
+    <a asp-page="Index" asp-route-period="@Model.Period" asp-route-anchor="@Model.PreviousAnchor.ToString("yyyy-MM-dd")" class="btn-secondary px-3">→ قبلی</a>
+    <strong class="px-3 text-center">@Model.PeriodTitle</strong>
+    <a asp-page="Index" asp-route-period="@Model.Period" asp-route-anchor="@Model.NextAnchor.ToString("yyyy-MM-dd")" class="btn-secondary px-3">بعدی ←</a>
+</div>
+
+<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <section class="stat"><span class="stat-label">مجموع مخارج</span><div class="stat-value">@Formatters.Money(Model.Total)</div></section>
+    <section class="stat"><span class="stat-label">تعداد مخارج</span><div class="stat-value">@Model.ExpenseCount</div><p class="mt-2 text-xs text-slate-500">تراکنش در این بازه</p></section>
+    <section class="stat"><span class="stat-label">میانگین روزانه</span><div class="stat-value">@Formatters.Money(Model.AveragePerDay)</div></section>
+    <section class="stat"><span class="stat-label">بیشترین دسته</span><div class="stat-value text-xl">@(Model.TopCategory is null ? "—" : $"{Model.TopCategory.Icon} {Model.TopCategory.Name}")</div>@if(Model.TopCategory is not null){<p class="mt-2 text-xs text-slate-500">@Formatters.Money(Model.TopCategory.Amount)</p>}</section>
+</div>
+
+<div class="mt-6 grid gap-6 xl:grid-cols-[1.25fr_.75fr]">
+    <section class="card overflow-hidden">
+        <div class="mb-6"><h3 class="card-title">روند هزینه</h3><p class="muted mt-1">مقایسه مبلغ خرج در طول بازه انتخابی</p></div>
+        @if (Model.Total == 0)
+        {
+            <div class="empty border-0 bg-slate-50"><p class="text-sm text-slate-500">داده‌ای برای نمایش وجود ندارد.</p></div>
+        }
+        else
+        {
+            <div class="flex h-72 items-end gap-1 overflow-x-auto border-b border-slate-200 pb-2">
+                @foreach (var point in Model.Trend)
+                {
+                    var height = Model.MaxTrendAmount <= 0 ? 0 : Math.Max(point.Amount / Model.MaxTrendAmount * 100, point.Amount > 0 ? 4 : 0);
+                    <div class="group flex min-w-8 flex-1 flex-col items-center justify-end gap-2" title="@point.Label: @Formatters.Money(point.Amount)">
+                        <div class="hidden text-[10px] font-bold text-slate-600 group-hover:block">@point.Amount.ToString("N0")</div>
+                        <div class="w-full max-w-12 rounded-t-lg bg-indigo-500 transition hover:bg-indigo-700" style="height: @(height)%"></div>
+                        <span class="text-[10px] text-slate-500">@point.Label</span>
+                    </div>
+                }
+            </div>
+        }
+    </section>
+
+    <section class="card">
+        <div class="mb-5"><h3 class="card-title">سهم دسته‌ها</h3><p class="muted mt-1">مخارج به تفکیک دسته‌بندی</p></div>
+        @if (Model.Categories.Count == 0)
+        {
+            <p class="rounded-2xl bg-slate-50 p-6 text-center text-sm text-slate-500">دسته‌ای برای نمایش نیست.</p>
+        }
+        else
+        {
+            <div class="space-y-5">
+                @foreach (var category in Model.Categories)
+                {
+                    <div>
+                        <div class="mb-2 flex items-center justify-between gap-3"><div class="flex items-center gap-2"><span>@category.Icon</span><strong class="text-sm">@category.Name</strong></div><span class="text-xs font-bold text-indigo-700">@Formatters.Percent(category.Percent)</span></div>
+                        <div class="progress"><div class="progress-bar" style="width: @(category.Percent)%"></div></div>
+                        <div class="mt-2 flex justify-between text-xs text-slate-500"><span>@category.Count مورد</span><span>@Formatters.Money(category.Amount)</span></div>
+                    </div>
+                }
+            </div>
+        }
+    </section>
+</div>

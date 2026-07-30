@@ -1,0 +1,14 @@
+@page
+@model ErrorModel
+@{
+    ViewData["Title"] = "خطا";
+}
+<div class="mx-auto mt-20 max-w-xl text-center">
+    <div class="card">
+        <img src="~/images/logo-mark.svg" alt="حساب‌یار" class="mx-auto mb-5 size-16" />
+        <div class="mb-4 text-5xl">⚠️</div>
+        <h1 class="text-2xl font-black">مشکلی پیش آمد</h1>
+        <p class="mt-2 text-slate-500">درخواست شما انجام نشد. لطفاً دوباره تلاش کنید.</p>
+        <a asp-page="/Index" class="btn-primary mt-6">بازگشت به داشبورد</a>
+    </div>
+</div>

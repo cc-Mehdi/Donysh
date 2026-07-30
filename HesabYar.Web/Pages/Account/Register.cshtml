@@ -1,0 +1,63 @@
+@page
+@model RegisterModel
+@{
+    ViewData["Title"] = "ثبت‌نام";
+}
+<div class="grid min-h-screen lg:grid-cols-2">
+    <section class="hidden bg-slate-950 p-12 text-white lg:flex lg:flex-col lg:justify-between">
+        <div>
+            @{ ViewData["BrandLight"] = true; }
+            <partial name="_Brand" />
+            @{ ViewData.Remove("BrandLight"); }
+        </div>
+        <div class="max-w-xl space-y-5">
+            <h1 class="text-4xl font-black leading-relaxed">در چند دقیقه، تصویر روشنی از وضعیت مالی خود بسازید.</h1>
+            <div class="grid gap-3 text-slate-300">
+                <p>✓ ثبت و دسته‌بندی سریع مخارج</p>
+                <p>✓ بودجه ماهانه و هشدار عبور از سقف</p>
+                <p>✓ هدف پس‌انداز شخصی و مشترک</p>
+                <p>✓ گزارش روزانه، هفتگی، ماهانه و سالانه</p>
+            </div>
+        </div>
+        <p class="text-sm text-slate-400">اطلاعات هر کاربر و هر فضای مالی کاملاً تفکیک می‌شود.</p>
+    </section>
+
+    <section class="flex items-center justify-center p-5 sm:p-10">
+        <div class="w-full max-w-md">
+            <a asp-page="/Index" class="mb-8 inline-flex lg:hidden" aria-label="حساب‌یار">
+                <partial name="_Brand" />
+            </a>
+            <h2 class="text-3xl font-black">ساخت حساب جدید</h2>
+            <p class="mt-2 text-slate-500">فضای مالی شخصی شما خودکار ساخته می‌شود.</p>
+
+            <form method="post" class="mt-8 space-y-4">
+                <input type="hidden" asp-for="ReturnUrl" />
+                <div asp-validation-summary="ModelOnly"></div>
+                <div>
+                    <label asp-for="Input.DisplayName" class="label"></label>
+                    <input asp-for="Input.DisplayName" class="input" autocomplete="name" autofocus />
+                    <span asp-validation-for="Input.DisplayName" class="field-error"></span>
+                </div>
+                <div>
+                    <label asp-for="Input.Email" class="label"></label>
+                    <input asp-for="Input.Email" class="input" autocomplete="email" />
+                    <span asp-validation-for="Input.Email" class="field-error"></span>
+                </div>
+                <div>
+                    <label asp-for="Input.Password" class="label"></label>
+                    <input asp-for="Input.Password" class="input" autocomplete="new-password" />
+                    <span asp-validation-for="Input.Password" class="field-error"></span>
+                    <p class="mt-1 text-xs text-slate-500">حداقل ۸ کاراکتر، شامل حرف و عدد</p>
+                </div>
+                <div>
+                    <label asp-for="Input.ConfirmPassword" class="label"></label>
+                    <input asp-for="Input.ConfirmPassword" class="input" autocomplete="new-password" />
+                    <span asp-validation-for="Input.ConfirmPassword" class="field-error"></span>
+                </div>
+                <button type="submit" class="btn-primary w-full">ساخت حساب</button>
+            </form>
+
+            <p class="mt-6 text-center text-sm text-slate-500">قبلاً ثبت‌نام کرده‌اید؟ <a asp-page="/Account/Login" asp-route-returnUrl="@Model.ReturnUrl" class="font-bold text-indigo-700">وارد شوید</a></p>
+        </div>
+    </section>
+</div>

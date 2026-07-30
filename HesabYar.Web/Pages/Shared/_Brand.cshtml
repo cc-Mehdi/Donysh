@@ -1,0 +1,14 @@
+@{
+    var compact = ViewData["BrandCompact"] as bool? ?? false;
+    var light = ViewData["BrandLight"] as bool? ?? false;
+}
+<span class="inline-flex items-center gap-3">
+    <img src="~/images/logo-mark.svg" alt="" class="size-11 shrink-0 drop-shadow-sm" />
+    @if (!compact)
+    {
+        <span>
+            <strong class="block text-lg leading-6 @(light ? "text-white" : "text-slate-950")">حساب‌یار</strong>
+            <small class="block @(light ? "text-indigo-100" : "text-slate-500")">مدیریت مالی ساده</small>
+        </span>
+    }
+</span>
