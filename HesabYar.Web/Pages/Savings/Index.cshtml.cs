@@ -63,23 +63,42 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
     public async Task<IActionResult> OnPostCreateAsync(CancellationToken cancellationToken)
     {
         var workspace = await workspaceContext.RequireCurrentAsync(cancellationToken);
+
         RemoveModelStatePrefix(nameof(Contribution));
+
         if (!ModelState.IsValid)
         {
             await LoadAsync(cancellationToken);
             return Page();
         }
 
+        var goalName = NewGoal.Name.Trim();
+
+        var duplicateGoal = await db.SavingsGoals
+            .AnyAsync(
+                x => x.WorkspaceId == workspace.Id &&
+                     x.Name == goalName,
+                cancellationToken);
+
+        if (duplicateGoal)
+        {
+            TempData["Error"] = "هدف پس‌اندازی با این عنوان قبلاً ثبت شده است.";
+            return RedirectToPage();
+        }
+
         db.SavingsGoals.Add(new SavingsGoal
         {
             WorkspaceId = workspace.Id,
-            Name = NewGoal.Name.Trim(),
+            Name = goalName,
             TargetAmount = NewGoal.TargetAmount,
             MonthlyTargetAmount = NewGoal.MonthlyTargetAmount,
             TargetDate = NewGoal.TargetDate
         });
+
         await db.SaveChangesAsync(cancellationToken);
+
         TempData["Success"] = "هدف پس‌انداز ساخته شد.";
+
         return RedirectToPage();
     }
 

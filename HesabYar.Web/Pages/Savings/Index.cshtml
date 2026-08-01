@@ -43,6 +43,11 @@
                             </div>
                             <div class="flex gap-2">
                                 <form method="post" asp-page-handler="ToggleComplete" asp-route-id="@card.Goal.Id"><button class="btn-secondary px-3 py-2" type="submit">@(card.Goal.IsCompleted ? "فعال‌سازی" : "تکمیل هدف")</button></form>
+                        <a asp-page="./Edit"
+                           asp-route-id="@card.Goal.Id"
+                           class="btn-secondary px-3 py-2">
+                            ویرایش
+                        </a>
                             </div>
                         </div>
 
