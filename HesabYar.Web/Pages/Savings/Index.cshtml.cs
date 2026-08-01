@@ -39,7 +39,6 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
         [Required]
         public Guid GoalId { get; set; }
 
-        [Range(1, 999_999_999_999, ErrorMessage = "مبلغ واریزی باید بیشتر از صفر باشد.")]
         public decimal Amount { get; set; }
 
         [Required]
@@ -128,6 +127,11 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
     {
         var workspace = await workspaceContext.RequireCurrentAsync(cancellationToken);
         RemoveModelStatePrefix(nameof(NewGoal));
+        if (Contribution.Amount <= 0)
+        {
+            TempData["Error"] = "مبلغ واریزی باید بیشتر از صفر باشد.";
+            return RedirectToPage();
+        }
         if (!ModelState.IsValid)
         {
             TempData["Error"] = "مبلغ و تاریخ شمسی واریزی را بررسی کنید.";
