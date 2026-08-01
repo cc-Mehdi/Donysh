@@ -77,13 +77,17 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
         var duplicateGoal = await db.SavingsGoals
             .AnyAsync(
                 x => x.WorkspaceId == workspace.Id &&
-                     x.Name == goalName,
+                     x.Name.Trim() == goalName,
                 cancellationToken);
 
         if (duplicateGoal)
         {
-            TempData["Error"] = "هدف پس‌اندازی با این عنوان قبلاً ثبت شده است.";
-            return RedirectToPage();
+            ModelState.AddModelError(
+                "NewGoal.Name",
+                "هدف پس‌اندازی با این عنوان قبلاً ثبت شده است.");
+
+            await LoadAsync(cancellationToken);
+            return Page();
         }
 
         db.SavingsGoals.Add(new SavingsGoal

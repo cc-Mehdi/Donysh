@@ -8,15 +8,19 @@
 <div class="mb-6">
     <h2 class="text-2xl font-black">ویرایش هدف پس‌انداز</h2>
     <p class="mt-1 text-sm text-slate-500">
-        اطلاعات هدف خود را تغییر دهید.
+        اطلاعات هدف پس‌انداز را تغییر دهید.
     </p>
 </div>
+
 
 <section class="card max-w-xl">
 
     <form method="post" class="space-y-4">
 
         <div asp-validation-summary="ModelOnly"></div>
+
+        <input asp-for="Goal.Id" type="hidden" />
+
 
         <div>
             <label asp-for="Goal.Name" class="label">
@@ -32,15 +36,16 @@
 
 
         <div>
-            <label asp-for="Goal.TargetAmount" class="label">
-                مبلغ نهایی هدف (تومان)
+            <label asp-for="Goal.TargetAmount"
+                   class="label">
+                مبلغ نهایی هدف
             </label>
 
             <input asp-for="Goal.TargetAmount"
                    type="text"
                    inputmode="numeric"
-                   autocomplete="off"
                    data-money
+                   autocomplete="off"
                    class="input ltr-input" />
 
             <span asp-validation-for="Goal.TargetAmount"
@@ -49,16 +54,16 @@
 
 
         <div>
-            <label asp-for="Goal.MonthlyTargetAmount" class="label">
-                هدف ماهانه (تومان)
+            <label asp-for="Goal.MonthlyTargetAmount"
+                   class="label">
+                هدف ماهانه
             </label>
 
             <input asp-for="Goal.MonthlyTargetAmount"
                    type="text"
                    inputmode="numeric"
-                   autocomplete="off"
                    data-money
-                   data-allow-zero="true"
+                   autocomplete="off"
                    class="input ltr-input" />
 
             <span asp-validation-for="Goal.MonthlyTargetAmount"
@@ -67,15 +72,16 @@
 
 
         <div>
-            <label asp-for="Goal.TargetDate" class="label">
+            <label asp-for="Goal.TargetDate"
+                   class="label">
                 تاریخ هدف
             </label>
 
             <input asp-for="Goal.TargetDate"
                    type="text"
                    inputmode="numeric"
-                   autocomplete="off"
                    data-persian-date
+                   autocomplete="off"
                    class="input ltr-input" />
 
             <span asp-validation-for="Goal.TargetDate"
@@ -84,15 +90,18 @@
 
 
         <div class="flex gap-3">
+
             <button type="submit"
                     class="btn-primary">
-                ذخیره تغییرات
+                ذخیره
             </button>
+
 
             <a asp-page="./Index"
                class="btn-secondary">
-                انصراف
+                بازگشت
             </a>
+
         </div>
 
     </form>
