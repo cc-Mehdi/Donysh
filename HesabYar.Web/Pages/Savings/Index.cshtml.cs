@@ -68,6 +68,24 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
 
         if (!ModelState.IsValid)
         {
+            var errors = ModelState
+                .Where(x => x.Value?.Errors.Count > 0)
+                .SelectMany(x => x.Value!.Errors)
+                .Select(x => x.ErrorMessage)
+                .ToList();
+
+            TempData["Error"] = string.Join(" | ", errors);
+
+            await LoadAsync(cancellationToken);
+            return Page();
+        }
+
+        if (string.IsNullOrWhiteSpace(NewGoal.Name))
+        {
+            ModelState.AddModelError(
+                "NewGoal.Name",
+                "نام هدف الزامی است.");
+
             await LoadAsync(cancellationToken);
             return Page();
         }
