@@ -13,6 +13,8 @@ public sealed class DatabaseInitializer(ApplicationDbContext db, ILogger<Databas
             try
             {
                 await db.Database.EnsureCreatedAsync(cancellationToken);
+                await ApplyCompatibilityUpdatesAsync(cancellationToken);
+
                 logger.LogInformation("Database is ready.");
                 return;
             }
@@ -24,5 +26,26 @@ public sealed class DatabaseInitializer(ApplicationDbContext db, ILogger<Databas
         }
 
         await db.Database.EnsureCreatedAsync(cancellationToken);
+        await ApplyCompatibilityUpdatesAsync(cancellationToken);
+    }
+
+    private async Task ApplyCompatibilityUpdatesAsync(CancellationToken cancellationToken)
+    {
+        // The project currently uses EnsureCreated instead of EF migrations.
+        // These idempotent ALTER statements upgrade existing databases without
+        // deleting any saved data.
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            ALTER TABLE "SavingsGoals"
+            ADD COLUMN IF NOT EXISTS "Description" character varying(500);
+            """,
+            cancellationToken);
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            ALTER TABLE "SavingsGoals"
+            ADD COLUMN IF NOT EXISTS "IsCancelled" boolean NOT NULL DEFAULT FALSE;
+            """,
+            cancellationToken);
     }
 }

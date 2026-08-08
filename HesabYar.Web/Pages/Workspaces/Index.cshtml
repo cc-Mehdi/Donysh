@@ -3,6 +3,7 @@
 @{
     ViewData["Title"] = "فضاهای مالی";
 }
+
 <div class="mb-6">
     <h2 class="text-2xl font-black">فضاهای مالی</h2>
     <p class="mt-1 text-sm text-slate-500">اطلاعات فضای شخصی جداست؛ در فضای مشترک اعضا خرج، بودجه و هدف پس‌انداز یکسان را می‌بینند.</p>
@@ -34,12 +35,20 @@
     <section class="card h-fit">
         <h3 class="card-title">ساخت فضای مشترک</h3>
         <p class="muted mt-1">برای مدیریت مالی دو نفره یا خانوادگی</p>
+
         <form method="post" asp-page-handler="Create" class="mt-5 space-y-4">
             <div asp-validation-summary="ModelOnly"></div>
-            <div><label asp-for="CreateWorkspace.Name" class="label">نام فضا</label><input asp-for="CreateWorkspace.Name" class="input" placeholder="مثلاً هزینه‌های خانه" /><span asp-validation-for="CreateWorkspace.Name" class="field-error"></span></div>
+            <div>
+                <label asp-for="CreateWorkspace.Name" class="label">نام فضا</label>
+                <input asp-for="CreateWorkspace.Name" class="input" placeholder="مثلاً هزینه‌های خانه" />
+                <span asp-validation-for="CreateWorkspace.Name" class="field-error"></span>
+            </div>
             <button type="submit" class="btn-primary w-full">ساخت فضای مشترک</button>
         </form>
-        <div class="mt-5 rounded-2xl bg-slate-50 p-4 text-sm leading-7 text-slate-600">هر کاربر فقط فضاهایی را می‌بیند که عضو آن‌هاست. اطلاعات شخصی با اطلاعات مشترک ترکیب نمی‌شود.</div>
+
+        <div class="mt-5 rounded-2xl bg-slate-50 p-4 text-sm leading-7 text-slate-600">
+            هر کاربر فقط فضاهایی را می‌بیند که عضو آن‌هاست. اطلاعات شخصی با اطلاعات مشترک ترکیب نمی‌شود.
+        </div>
     </section>
 
     <section class="space-y-5">
@@ -48,31 +57,104 @@
             <article class="card @(card.Workspace.Id == Model.CurrentWorkspaceId ? "ring-2 ring-indigo-500" : "")">
                 <div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
                     <div class="flex items-center gap-3">
-                        <span class="grid size-12 place-items-center rounded-2xl @(card.Workspace.Type == WorkspaceType.Shared ? "bg-violet-100" : "bg-indigo-100") text-2xl">@(card.Workspace.Type == WorkspaceType.Shared ? "♧" : "⌂")</span>
-                        <div><div class="flex items-center gap-2"><h3 class="text-lg font-black">@card.Workspace.Name</h3>@if(card.Workspace.Id == Model.CurrentWorkspaceId){<span class="badge">فعال</span>}</div><p class="mt-1 text-xs text-slate-500">@(card.Workspace.Type == WorkspaceType.Shared ? "فضای مشترک" : "فضای شخصی") · نقش شما: @(card.MyRole == WorkspaceRole.Owner ? "مالک" : "عضو")</p></div>
+                        <span class="grid size-12 place-items-center rounded-2xl @(card.Workspace.Type == WorkspaceType.Shared ? "bg-violet-100" : "bg-indigo-100") text-2xl">
+                            @(card.Workspace.Type == WorkspaceType.Shared ? "♧" : "⌂")
+                        </span>
+
+                        <div>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <h3 class="text-lg font-black">@card.Workspace.Name</h3>
+                                @if (card.Workspace.Id == Model.CurrentWorkspaceId)
+                                {
+                                    <span class="badge">فعال</span>
+                                }
+                            </div>
+                            <p class="mt-1 text-xs text-slate-500">
+                                @(card.Workspace.Type == WorkspaceType.Shared ? "فضای مشترک" : "فضای شخصی")
+                                · نقش شما: @(card.MyRole == WorkspaceRole.Owner ? "مالک" : "عضو")
+                            </p>
+                        </div>
                     </div>
-                    @if (card.Workspace.Id != Model.CurrentWorkspaceId)
-                    {
-                        <form method="post" asp-page="/Workspaces/Switch">
-                            <input type="hidden" name="workspaceId" value="@card.Workspace.Id" />
-                            <input type="hidden" name="returnUrl" value="/Workspaces" />
-                            <button type="submit" class="btn-secondary">انتخاب این فضا</button>
-                        </form>
-                    }
+
+                    <div class="flex flex-wrap gap-2">
+                        @if (card.Workspace.Id != Model.CurrentWorkspaceId)
+                        {
+                            <form method="post" asp-page="/Workspaces/Switch">
+                                <input type="hidden" name="workspaceId" value="@card.Workspace.Id" />
+                                <input type="hidden" name="returnUrl" value="/Workspaces" />
+                                <button type="submit" class="btn-secondary">انتخاب این فضا</button>
+                            </form>
+                        }
+
+                        @if (card.MyRole == WorkspaceRole.Owner)
+                        {
+                            <details class="relative">
+                                <summary class="btn-secondary cursor-pointer">مدیریت فضا</summary>
+                                <div class="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                    <form method="post" asp-page-handler="EditWorkspace" class="space-y-3">
+                                        <input type="hidden" name="EditWorkspace.Id" value="@card.Workspace.Id" />
+
+                                        <div>
+                                            <label class="label">نام فضای مالی</label>
+                                            <input name="EditWorkspace.Name"
+                                                   value="@card.Workspace.Name"
+                                                   class="input"
+                                                   maxlength="100"
+                                                   required />
+                                        </div>
+
+                                        <button type="submit" class="btn-primary w-full">ذخیره نام جدید</button>
+                                    </form>
+
+                                    <div class="my-4 border-t border-slate-200"></div>
+
+                                    <form method="post"
+                                          asp-page-handler="DeleteWorkspace"
+                                          asp-route-id="@card.Workspace.Id">
+                                        <button type="submit"
+                                                class="btn-secondary w-full text-rose-700"
+                                                data-confirm="این فضای مالی و تمام مخارج، بودجه‌ها، دسته‌بندی‌ها و هدف‌های پس‌انداز آن برای همیشه حذف شود؟">
+                                            حذف فضای مالی
+                                        </button>
+                                    </form>
+
+                                    <p class="mt-2 text-xs leading-6 text-slate-500">
+                                        حذف فضای مالی غیرقابل بازگشت است. آخرین فضای قابل‌دسترسی حساب حذف نمی‌شود.
+                                    </p>
+                                </div>
+                            </details>
+                        }
+                    </div>
                 </div>
 
                 @if (card.Workspace.Type == WorkspaceType.Shared)
                 {
                     <div class="mt-5 border-t border-slate-100 pt-5">
                         <h4 class="text-sm font-black">اعضا (@card.Members.Count)</h4>
+
                         <div class="mt-3 grid gap-2 sm:grid-cols-2">
                             @foreach (var member in card.Members)
                             {
                                 <div class="flex items-center justify-between gap-2 rounded-2xl bg-slate-50 p-3">
-                                    <div class="min-w-0"><p class="truncate text-sm font-bold">@member.DisplayName</p><p class="truncate text-xs text-slate-500">@member.Email · @(member.Role == WorkspaceRole.Owner ? "مالک" : "عضو")</p></div>
+                                    <div class="min-w-0">
+                                        <p class="truncate text-sm font-bold">@member.DisplayName</p>
+                                        <p class="truncate text-xs text-slate-500">
+                                            @member.Email · @(member.Role == WorkspaceRole.Owner ? "مالک" : "عضو")
+                                        </p>
+                                    </div>
+
                                     @if (card.MyRole == WorkspaceRole.Owner && member.Role != WorkspaceRole.Owner)
                                     {
-                                        <form method="post" asp-page-handler="RemoveMember" asp-route-workspaceId="@card.Workspace.Id" asp-route-userId="@member.UserId"><button type="submit" class="text-xs font-bold text-rose-600" data-confirm="این عضو از فضای مشترک حذف شود؟">حذف</button></form>
+                                        <form method="post"
+                                              asp-page-handler="RemoveMember"
+                                              asp-route-workspaceId="@card.Workspace.Id"
+                                              asp-route-userId="@member.UserId">
+                                            <button type="submit"
+                                                    class="text-xs font-bold text-rose-600"
+                                                    data-confirm="این عضو از فضای مشترک حذف شود؟">
+                                                حذف
+                                            </button>
+                                        </form>
                                     }
                                 </div>
                             }
@@ -82,9 +164,20 @@
                         {
                             <details class="mt-4 rounded-2xl border border-violet-100 bg-violet-50 p-4">
                                 <summary class="cursor-pointer font-bold text-violet-800">＋ دعوت عضو جدید</summary>
+
                                 <form method="post" asp-page-handler="Invite" class="mt-4 flex flex-col gap-3 sm:flex-row">
                                     <input type="hidden" name="Invite.WorkspaceId" value="@card.Workspace.Id" />
-                                    <div class="flex-1"><input name="Invite.Email" value="@(Model.Invite.WorkspaceId == card.Workspace.Id ? Model.Invite.Email : "")" type="email" class="input" placeholder="email@example.com" dir="ltr" /><span asp-validation-for="Invite.Email" class="field-error"></span></div>
+
+                                    <div class="flex-1">
+                                        <input name="Invite.Email"
+                                               value="@(Model.Invite.WorkspaceId == card.Workspace.Id ? Model.Invite.Email : "")"
+                                               type="email"
+                                               class="input"
+                                               placeholder="email@example.com"
+                                               dir="ltr" />
+                                        <span asp-validation-for="Invite.Email" class="field-error"></span>
+                                    </div>
+
                                     <button type="submit" class="btn-primary">ساخت لینک دعوت</button>
                                 </form>
                             </details>

@@ -111,6 +111,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
         builder.Entity<SavingsGoal>(entity =>
         {
             entity.Property(x => x.Name).HasMaxLength(120);
+            entity.Property(x => x.Description).HasMaxLength(500);
             entity.Property(x => x.TargetAmount).HasPrecision(18, 0);
             entity.Property(x => x.MonthlyTargetAmount).HasPrecision(18, 0);
             entity.HasOne(x => x.Workspace)

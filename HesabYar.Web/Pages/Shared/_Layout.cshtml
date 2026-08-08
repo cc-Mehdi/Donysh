@@ -1,7 +1,12 @@
 @inject IWorkspaceContext WorkspaceContext
+@inject Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> UserManager
 @{
     var authenticated = User.Identity?.IsAuthenticated == true;
     var currentWorkspace = authenticated ? await WorkspaceContext.GetCurrentAsync() : null;
+    var currentUser = authenticated ? await UserManager.GetUserAsync(User) : null;
+    var currentUserDisplayName = string.IsNullOrWhiteSpace(currentUser?.DisplayName)
+        ? currentUser?.Email
+        : currentUser?.DisplayName;
     IReadOnlyList<Workspace> workspaces = authenticated ? await WorkspaceContext.GetAccessibleAsync() : Array.Empty<Workspace>();
     var page = ViewContext.RouteData.Values["page"]?.ToString() ?? string.Empty;
 
@@ -58,17 +63,21 @@
                 <a asp-page="/Savings/Index" class="@NavClass("/Savings")"><span>◇</span><span>پس‌انداز</span></a>
                 <a asp-page="/Reports/Index" class="@NavClass("/Reports")"><span>▥</span><span>گزارش‌ها</span></a>
                 <a asp-page="/Workspaces/Index" class="@NavClass("/Workspaces")"><span>♧</span><span>فضاهای مالی</span></a>
+                <a asp-page="/Settings/Index" class="@NavClass("/Settings")"><span>⚙</span><span>تنظیمات</span></a>
             </nav>
 
             <div class="absolute inset-x-5 bottom-5 lg:static lg:mt-10">
                 <div class="rounded-2xl border border-slate-200 p-3">
                     <div class="mb-3 min-w-0">
-                        <div class="truncate text-sm font-semibold">@User.Identity?.Name</div>
-                        <div class="text-xs text-slate-500">حساب کاربری</div>
+                        <div class="truncate text-sm font-semibold">@currentUserDisplayName</div>
+                        <div class="truncate text-xs text-slate-500">@currentUser?.Email</div>
                     </div>
-                    <form method="post" asp-page="/Account/Logout">
-                        <button class="btn-secondary w-full" type="submit">خروج</button>
-                    </form>
+                    <div class="grid gap-2">
+                        <a asp-page="/Settings/Index" class="btn-secondary w-full">تنظیمات حساب</a>
+                        <form method="post" asp-page="/Account/Logout">
+                            <button class="btn-secondary w-full" type="submit">خروج</button>
+                        </form>
+                    </div>
                 </div>
             </div>
         </aside>

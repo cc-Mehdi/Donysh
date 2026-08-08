@@ -67,10 +67,14 @@ public sealed class SavingsGoal
     [MaxLength(120)]
     public string Name { get; set; } = string.Empty;
 
+    [MaxLength(500)]
+    public string? Description { get; set; }
+
     public decimal TargetAmount { get; set; }
     public decimal MonthlyTargetAmount { get; set; }
     public DateOnly? TargetDate { get; set; }
     public bool IsCompleted { get; set; }
+    public bool IsCancelled { get; set; }
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 
     public Workspace Workspace { get; set; } = null!;

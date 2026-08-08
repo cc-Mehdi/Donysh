@@ -3,107 +3,73 @@
 
 @{
     ViewData["Title"] = "ویرایش هدف پس‌انداز";
+    var targetDateValue = FormValueHelper.RawOrPersianDate(ViewData, "Goal.TargetDate", Model.Goal.TargetDate);
 }
 
 <div class="mb-6">
     <h2 class="text-2xl font-black">ویرایش هدف پس‌انداز</h2>
     <p class="mt-1 text-sm text-slate-500">
-        اطلاعات هدف پس‌انداز را تغییر دهید.
+        نام، توضیحات و مقادیر هدف پس‌انداز را تغییر دهید.
     </p>
 </div>
 
-
 <section class="card max-w-xl">
-
     <form method="post" class="space-y-4">
-
         <div asp-validation-summary="ModelOnly"></div>
 
         <input asp-for="Goal.Id" type="hidden" />
 
-
         <div>
-            <label asp-for="Goal.Name" class="label">
-                نام هدف
-            </label>
-
-            <input asp-for="Goal.Name"
-                   class="input" />
-
-            <span asp-validation-for="Goal.Name"
-                  class="field-error"></span>
+            <label asp-for="Goal.Name" class="label">نام هدف</label>
+            <input asp-for="Goal.Name" class="input" />
+            <span asp-validation-for="Goal.Name" class="field-error"></span>
         </div>
 
+        <div>
+            <label asp-for="Goal.Description" class="label">توضیحات (اختیاری)</label>
+            <textarea asp-for="Goal.Description" rows="4" class="input" placeholder="توضیح کوتاهی درباره این هدف"></textarea>
+            <span asp-validation-for="Goal.Description" class="field-error"></span>
+        </div>
 
         <div>
-            <label asp-for="Goal.TargetAmount"
-                   class="label">
-                مبلغ نهایی هدف
-            </label>
-
+            <label asp-for="Goal.TargetAmount" class="label">مبلغ نهایی هدف</label>
             <input asp-for="Goal.TargetAmount"
                    type="text"
                    inputmode="numeric"
                    data-money
                    autocomplete="off"
                    class="input ltr-input" />
-
-            <span asp-validation-for="Goal.TargetAmount"
-                  class="field-error"></span>
+            <span asp-validation-for="Goal.TargetAmount" class="field-error"></span>
         </div>
 
-
         <div>
-            <label asp-for="Goal.MonthlyTargetAmount"
-                   class="label">
-                هدف ماهانه
-            </label>
-
+            <label asp-for="Goal.MonthlyTargetAmount" class="label">هدف ماهانه</label>
             <input asp-for="Goal.MonthlyTargetAmount"
                    type="text"
                    inputmode="numeric"
                    data-money
+                   data-allow-zero="true"
                    autocomplete="off"
                    class="input ltr-input" />
-
-            <span asp-validation-for="Goal.MonthlyTargetAmount"
-                  class="field-error"></span>
+            <span asp-validation-for="Goal.MonthlyTargetAmount" class="field-error"></span>
         </div>
 
-
         <div>
-            <label asp-for="Goal.TargetDate"
-                   class="label">
-                تاریخ هدف
-            </label>
-
-            <input asp-for="Goal.TargetDate"
+            <label for="Goal_TargetDate" class="label">تاریخ هدف</label>
+            <input id="Goal_TargetDate"
+                   name="Goal.TargetDate"
+                   value="@targetDateValue"
                    type="text"
                    inputmode="numeric"
                    data-persian-date
                    autocomplete="off"
                    class="input ltr-input" />
-
-            <span asp-validation-for="Goal.TargetDate"
-                  class="field-error"></span>
+            <span asp-validation-for="Goal.TargetDate" class="field-error"></span>
         </div>
-
 
         <div class="flex gap-3">
-
-            <button type="submit"
-                    class="btn-primary">
-                ذخیره
-            </button>
-
-
-            <a asp-page="./Index"
-               class="btn-secondary">
-                بازگشت
-            </a>
-
+            <button type="submit" class="btn-primary">ذخیره</button>
+            <a asp-page="./Index" class="btn-secondary">بازگشت</a>
         </div>
-
     </form>
-
 </section>

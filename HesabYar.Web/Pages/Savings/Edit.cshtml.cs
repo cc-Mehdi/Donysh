@@ -11,18 +11,14 @@ public sealed class EditModel(
     ApplicationDbContext db,
     IWorkspaceContext workspaceContext) : PageModel
 {
-
     [BindProperty]
     public GoalInput Goal { get; set; } = new();
-
 
     public async Task<IActionResult> OnGetAsync(
         Guid id,
         CancellationToken cancellationToken)
     {
-        var workspace =
-            await workspaceContext.RequireCurrentAsync(cancellationToken);
-
+        var workspace = await workspaceContext.RequireCurrentAsync(cancellationToken);
 
         var goal = await db.SavingsGoals
             .AsNoTracking()
@@ -31,40 +27,33 @@ public sealed class EditModel(
                      x.WorkspaceId == workspace.Id,
                 cancellationToken);
 
-
         if (goal is null)
         {
             return NotFound();
         }
 
-
         Goal = new GoalInput
         {
             Id = goal.Id,
             Name = goal.Name,
+            Description = goal.Description,
             TargetAmount = goal.TargetAmount,
             MonthlyTargetAmount = goal.MonthlyTargetAmount,
             TargetDate = goal.TargetDate
         };
 
-
         return Page();
     }
-
-
 
     public async Task<IActionResult> OnPostAsync(
         CancellationToken cancellationToken)
     {
-        var workspace =
-            await workspaceContext.RequireCurrentAsync(cancellationToken);
-
+        var workspace = await workspaceContext.RequireCurrentAsync(cancellationToken);
 
         if (!ModelState.IsValid)
         {
             return Page();
         }
-
 
         var goal = await db.SavingsGoals
             .FirstOrDefaultAsync(
@@ -72,20 +61,19 @@ public sealed class EditModel(
                      x.WorkspaceId == workspace.Id,
                 cancellationToken);
 
-
         if (goal is null)
         {
             return NotFound();
         }
 
+        var goalName = Goal.Name.Trim();
 
         var duplicateName = await db.SavingsGoals
             .AnyAsync(
                 x => x.WorkspaceId == workspace.Id &&
                      x.Id != Goal.Id &&
-                     x.Name == Goal.Name.Trim(),
+                     x.Name == goalName,
                 cancellationToken);
-
 
         if (duplicateName)
         {
@@ -96,42 +84,38 @@ public sealed class EditModel(
             return Page();
         }
 
-
-        goal.Name = Goal.Name.Trim();
+        goal.Name = goalName;
+        goal.Description = string.IsNullOrWhiteSpace(Goal.Description)
+            ? null
+            : Goal.Description.Trim();
         goal.TargetAmount = Goal.TargetAmount;
         goal.MonthlyTargetAmount = Goal.MonthlyTargetAmount;
         goal.TargetDate = Goal.TargetDate;
 
-
         await db.SaveChangesAsync(cancellationToken);
 
-
         TempData["Success"] = "هدف پس‌انداز ویرایش شد.";
-
         return RedirectToPage("./Index");
     }
-
-
 
     public sealed class GoalInput
     {
         public Guid Id { get; set; }
 
-
         [Required(ErrorMessage = "نام هدف را وارد کنید.")]
         [StringLength(120, MinimumLength = 2)]
         public string Name { get; set; } = string.Empty;
 
+        [StringLength(500, ErrorMessage = "توضیحات هدف نمی‌تواند بیشتر از ۵۰۰ کاراکتر باشد.")]
+        public string? Description { get; set; }
 
         [Range(1, 999_999_999_999,
             ErrorMessage = "مبلغ هدف باید بیشتر از صفر باشد.")]
         public decimal TargetAmount { get; set; }
 
-
         [Range(0, 999_999_999_999,
             ErrorMessage = "هدف ماهانه معتبر نیست.")]
         public decimal MonthlyTargetAmount { get; set; }
-
 
         public DateOnly? TargetDate { get; set; }
     }

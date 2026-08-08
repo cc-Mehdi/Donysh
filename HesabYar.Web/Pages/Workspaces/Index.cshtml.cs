@@ -20,6 +20,9 @@ public sealed class IndexModel(
     public CreateWorkspaceInput CreateWorkspace { get; set; } = new();
 
     [BindProperty]
+    public EditWorkspaceInput EditWorkspace { get; set; } = new();
+
+    [BindProperty]
     public InviteInput Invite { get; set; } = new();
 
     public IReadOnlyList<WorkspaceCard> Workspaces { get; private set; } = [];
@@ -29,7 +32,17 @@ public sealed class IndexModel(
     public sealed class CreateWorkspaceInput
     {
         [Required(ErrorMessage = "نام فضای مشترک را وارد کنید.")]
-        [StringLength(100, MinimumLength = 2)]
+        [StringLength(100, MinimumLength = 2, ErrorMessage = "نام فضا باید بین ۲ تا ۱۰۰ کاراکتر باشد.")]
+        public string Name { get; set; } = string.Empty;
+    }
+
+    public sealed class EditWorkspaceInput
+    {
+        [Required]
+        public Guid Id { get; set; }
+
+        [Required(ErrorMessage = "نام فضای مالی را وارد کنید.")]
+        [StringLength(100, MinimumLength = 2, ErrorMessage = "نام فضا باید بین ۲ تا ۱۰۰ کاراکتر باشد.")]
         public string Name { get; set; } = string.Empty;
     }
 
@@ -64,6 +77,7 @@ public sealed class IndexModel(
             Type = WorkspaceType.Shared,
             OwnerUserId = userId
         };
+
         db.Workspaces.Add(workspace);
         db.WorkspaceMembers.Add(new WorkspaceMember
         {
@@ -72,10 +86,85 @@ public sealed class IndexModel(
             Role = WorkspaceRole.Owner
         });
         db.ExpenseCategories.AddRange(DefaultCategories.For(workspace.Id));
+
         await db.SaveChangesAsync(cancellationToken);
         await workspaceContext.SetCurrentAsync(workspace.Id, cancellationToken);
 
         TempData["Success"] = "فضای مالی مشترک ساخته شد.";
+        return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostEditWorkspaceAsync(CancellationToken cancellationToken)
+    {
+        ModelState.Clear();
+        if (!TryValidateModel(EditWorkspace, nameof(EditWorkspace)))
+        {
+            TempData["Error"] = "نام فضای مالی باید بین ۲ تا ۱۰۰ کاراکتر باشد.";
+            return RedirectToPage();
+        }
+
+        if (!await workspaceContext.IsOwnerAsync(EditWorkspace.Id, cancellationToken))
+        {
+            return Forbid();
+        }
+
+        var workspace = await db.Workspaces.SingleOrDefaultAsync(
+            x => x.Id == EditWorkspace.Id,
+            cancellationToken);
+
+        if (workspace is null)
+        {
+            return NotFound();
+        }
+
+        workspace.Name = EditWorkspace.Name.Trim();
+        await db.SaveChangesAsync(cancellationToken);
+
+        TempData["Success"] = "نام فضای مالی ویرایش شد.";
+        return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostDeleteWorkspaceAsync(Guid id, CancellationToken cancellationToken)
+    {
+        if (!await workspaceContext.IsOwnerAsync(id, cancellationToken))
+        {
+            return Forbid();
+        }
+
+        var userId = workspaceContext.UserId!;
+        var workspace = await db.Workspaces.SingleOrDefaultAsync(
+            x => x.Id == id && x.OwnerUserId == userId,
+            cancellationToken);
+
+        if (workspace is null)
+        {
+            return NotFound();
+        }
+
+        var remainingWorkspaceId = await db.WorkspaceMembers
+            .Where(x => x.UserId == userId && x.WorkspaceId != id)
+            .OrderBy(x => x.Workspace.Type)
+            .ThenBy(x => x.Workspace.CreatedAtUtc)
+            .Select(x => (Guid?)x.WorkspaceId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (!remainingWorkspaceId.HasValue)
+        {
+            TempData["Error"] = "آخرین فضای مالی حساب قابل حذف نیست. ابتدا یک فضای مالی دیگر بسازید.";
+            return RedirectToPage();
+        }
+
+        var currentWorkspaceId = (await workspaceContext.GetCurrentAsync(cancellationToken))?.Id;
+
+        db.Workspaces.Remove(workspace);
+        await db.SaveChangesAsync(cancellationToken);
+
+        if (currentWorkspaceId == id)
+        {
+            await workspaceContext.SetCurrentAsync(remainingWorkspaceId.Value, cancellationToken);
+        }
+
+        TempData["Success"] = "فضای مالی و تمام اطلاعات وابسته به آن حذف شد.";
         return RedirectToPage();
     }
 
@@ -96,6 +185,7 @@ public sealed class IndexModel(
         var workspace = await db.Workspaces.SingleOrDefaultAsync(
             x => x.Id == Invite.WorkspaceId && x.Type == WorkspaceType.Shared,
             cancellationToken);
+
         if (workspace is null)
         {
             return NotFound();
@@ -103,6 +193,7 @@ public sealed class IndexModel(
 
         var email = Invite.Email.Trim().ToLowerInvariant();
         var existingUser = await userManager.FindByEmailAsync(email);
+
         if (existingUser is not null && await db.WorkspaceMembers.AnyAsync(
                 x => x.WorkspaceId == workspace.Id && x.UserId == existingUser.Id,
                 cancellationToken))
@@ -113,11 +204,15 @@ public sealed class IndexModel(
         }
 
         var oldInvites = await db.WorkspaceInvitations
-            .Where(x => x.WorkspaceId == workspace.Id && x.Email == email && x.AcceptedAtUtc == null)
+            .Where(x => x.WorkspaceId == workspace.Id &&
+                        x.Email == email &&
+                        x.AcceptedAtUtc == null)
             .ToListAsync(cancellationToken);
+
         db.WorkspaceInvitations.RemoveRange(oldInvites);
 
         var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
+
         db.WorkspaceInvitations.Add(new WorkspaceInvitation
         {
             WorkspaceId = workspace.Id,
@@ -126,21 +221,33 @@ public sealed class IndexModel(
             InvitedByUserId = workspaceContext.UserId!,
             ExpiresAtUtc = DateTime.UtcNow.AddDays(7)
         });
+
         await db.SaveChangesAsync(cancellationToken);
 
-        TempData["InviteLink"] = Url.Page("/Workspaces/Accept", null, new { token }, Request.Scheme);
+        TempData["InviteLink"] = Url.Page(
+            "/Workspaces/Accept",
+            null,
+            new { token },
+            Request.Scheme);
+
         TempData["Success"] = "لینک دعوت ساخته شد و تا ۷ روز معتبر است.";
         return RedirectToPage();
     }
 
-    public async Task<IActionResult> OnPostRemoveMemberAsync(Guid workspaceId, string userId, CancellationToken cancellationToken)
+    public async Task<IActionResult> OnPostRemoveMemberAsync(
+        Guid workspaceId,
+        string userId,
+        CancellationToken cancellationToken)
     {
         if (!await workspaceContext.IsOwnerAsync(workspaceId, cancellationToken))
         {
             return Forbid();
         }
 
-        var workspace = await db.Workspaces.SingleOrDefaultAsync(x => x.Id == workspaceId && x.Type == WorkspaceType.Shared, cancellationToken);
+        var workspace = await db.Workspaces.SingleOrDefaultAsync(
+            x => x.Id == workspaceId && x.Type == WorkspaceType.Shared,
+            cancellationToken);
+
         if (workspace is null)
         {
             return NotFound();
@@ -155,6 +262,7 @@ public sealed class IndexModel(
         var member = await db.WorkspaceMembers.SingleOrDefaultAsync(
             x => x.WorkspaceId == workspaceId && x.UserId == userId,
             cancellationToken);
+
         if (member is not null)
         {
             db.WorkspaceMembers.Remove(member);
@@ -185,12 +293,15 @@ public sealed class IndexModel(
         Workspaces = workspaces.Select(workspace =>
         {
             var myMembership = workspace.Members.Single(x => x.UserId == userId);
+
             var members = workspace.Members
                 .OrderBy(x => x.Role)
                 .ThenBy(x => x.User.DisplayName)
                 .Select(x => new MemberRow(
                     x.UserId,
-                    string.IsNullOrWhiteSpace(x.User.DisplayName) ? x.User.Email ?? "کاربر" : x.User.DisplayName,
+                    string.IsNullOrWhiteSpace(x.User.DisplayName)
+                        ? x.User.Email ?? "کاربر"
+                        : x.User.DisplayName,
                     x.User.Email ?? string.Empty,
                     x.Role))
                 .ToList();

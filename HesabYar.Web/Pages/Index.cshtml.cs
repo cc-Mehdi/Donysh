@@ -75,7 +75,7 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
         }).ToList();
 
         var goals = await db.SavingsGoals
-            .Where(x => x.WorkspaceId == CurrentWorkspace.Id && !x.IsCompleted)
+            .Where(x => x.WorkspaceId == CurrentWorkspace.Id && !x.IsCompleted && !x.IsCancelled)
             .Include(x => x.Contributions)
             .OrderBy(x => x.TargetDate)
             .AsNoTracking()
