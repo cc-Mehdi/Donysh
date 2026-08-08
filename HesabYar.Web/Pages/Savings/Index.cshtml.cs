@@ -124,22 +124,39 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
     public async Task<IActionResult> OnPostContributeAsync(CancellationToken cancellationToken)
     {
         var workspace = await workspaceContext.RequireCurrentAsync(cancellationToken);
-        RemoveModelStatePrefix(nameof(NewGoal));
+        var form = await Request.ReadFormAsync(cancellationToken);
 
-        if (Contribution.Amount <= 0)
+        var goalIdRaw = form["Contribution.GoalId"].FirstOrDefault();
+        var amountRaw = form["Contribution.Amount"].FirstOrDefault();
+        var dateRaw = form["Contribution.Date"].FirstOrDefault();
+        var note = form["Contribution.Note"].FirstOrDefault()?.Trim();
+
+        if (!Guid.TryParse(goalIdRaw, out var goalId))
+        {
+            TempData["Error"] = "هدف پس‌انداز انتخاب‌شده معتبر نیست.";
+            return RedirectToPage();
+        }
+
+        if (!InputNormalization.TryParseMoney(amountRaw, out var amount) || amount <= 0)
         {
             TempData["Error"] = "مبلغ واریزی باید بیشتر از صفر باشد.";
             return RedirectToPage();
         }
 
-        if (!ModelState.IsValid)
+        if (!PersianCalendarHelper.TryParseInput(dateRaw, out var contributionDate))
         {
-            TempData["Error"] = "مبلغ و تاریخ شمسی واریزی را بررسی کنید.";
+            TempData["Error"] = "تاریخ واریزی را به‌صورت شمسی و معتبر وارد کنید.";
+            return RedirectToPage();
+        }
+
+        if (note?.Length > 200)
+        {
+            TempData["Error"] = "یادداشت واریزی نمی‌تواند بیشتر از ۲۰۰ کاراکتر باشد.";
             return RedirectToPage();
         }
 
         var goalExists = await db.SavingsGoals.AnyAsync(
-            x => x.Id == Contribution.GoalId &&
+            x => x.Id == goalId &&
                  x.WorkspaceId == workspace.Id &&
                  !x.IsCompleted &&
                  !x.IsCancelled,
@@ -153,11 +170,11 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
 
         db.SavingsContributions.Add(new SavingsContribution
         {
-            SavingsGoalId = Contribution.GoalId,
+            SavingsGoalId = goalId,
             CreatedByUserId = workspaceContext.UserId!,
-            Amount = Contribution.Amount,
-            ContributionDate = Contribution.Date,
-            Note = string.IsNullOrWhiteSpace(Contribution.Note) ? null : Contribution.Note.Trim()
+            Amount = amount,
+            ContributionDate = contributionDate,
+            Note = string.IsNullOrWhiteSpace(note) ? null : note
         });
 
         await db.SaveChangesAsync(cancellationToken);
