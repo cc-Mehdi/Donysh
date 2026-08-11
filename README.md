@@ -1,4 +1,4 @@
-# حساب‌یار / Donysh — نسخه Production و CI/CD
+# دنیش / Donysh — نسخه Production و CI/CD
 
 سامانه مدیریت مالی شخصی و مشترک با ASP.NET Core Razor Pages، PostgreSQL، Tailwind CSS، Docker و Caddy.
 
