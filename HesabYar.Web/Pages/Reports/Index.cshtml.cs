@@ -23,16 +23,30 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
     public DateOnly PreviousAnchor { get; private set; }
     public DateOnly NextAnchor { get; private set; }
     public string PeriodTitle { get; private set; } = string.Empty;
+    public string MemberMonthTitle { get; private set; } = string.Empty;
     public decimal Total { get; private set; }
     public decimal AveragePerDay { get; private set; }
     public int ExpenseCount { get; private set; }
     public CategoryReport? TopCategory { get; private set; }
     public IReadOnlyList<CategoryReport> Categories { get; private set; } = [];
     public IReadOnlyList<TrendPoint> Trend { get; private set; } = [];
+    public IReadOnlyList<MemberMonthlyReport> Members { get; private set; } = [];
     public decimal MaxTrendAmount => Trend.Count == 0 ? 0 : Trend.Max(x => x.Amount);
 
     public sealed record CategoryReport(Guid CategoryId, string Name, string Icon, decimal Amount, int Count, decimal Percent);
     public sealed record TrendPoint(string Label, decimal Amount, int Count);
+    public sealed record MemberCategoryReport(Guid CategoryId, string Name, string Icon, decimal Amount, int Count, decimal Percent);
+    public sealed record MemberGoalSaving(Guid GoalId, string GoalName, decimal Amount, int Count);
+    public sealed record MemberMonthlyReport(
+        string UserId,
+        string DisplayName,
+        string Email,
+        decimal ExpenseAmount,
+        int ExpenseCount,
+        IReadOnlyList<MemberCategoryReport> Categories,
+        decimal SavingsAmount,
+        int SavingsCount,
+        IReadOnlyList<MemberGoalSaving> SavingsGoals);
 
     public async Task OnGetAsync(CancellationToken cancellationToken)
     {
@@ -65,6 +79,88 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
 
         TopCategory = Categories.FirstOrDefault();
         Trend = BuildTrend(expenses);
+
+        await LoadMemberMonthlyReportAsync(workspace.Id, cancellationToken);
+    }
+
+    private async Task LoadMemberMonthlyReportAsync(Guid workspaceId, CancellationToken cancellationToken)
+    {
+        var anchor = Anchor ?? DateOnly.FromDateTime(DateTime.Now);
+        var month = PersianCalendarHelper.GetYearMonth(anchor);
+        var monthStart = PersianCalendarHelper.StartOfMonth(month);
+        var monthEnd = PersianCalendarHelper.EndOfMonthExclusive(month);
+        MemberMonthTitle = PersianCalendarHelper.Title(month);
+
+        var members = await db.WorkspaceMembers
+            .Where(x => x.WorkspaceId == workspaceId)
+            .Include(x => x.User)
+            .OrderBy(x => x.Role)
+            .ThenBy(x => x.User.DisplayName)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        var monthExpenses = await db.Expenses
+            .Where(x => x.WorkspaceId == workspaceId && x.ExpenseDate >= monthStart && x.ExpenseDate < monthEnd)
+            .Include(x => x.Category)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        var monthContributions = await db.SavingsContributions
+            .Where(x => x.SavingsGoal.WorkspaceId == workspaceId &&
+                        x.ContributionDate >= monthStart &&
+                        x.ContributionDate < monthEnd)
+            .Include(x => x.SavingsGoal)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        Members = members.Select(member =>
+        {
+            var memberExpenses = monthExpenses
+                .Where(x => x.CreatedByUserId == member.UserId)
+                .ToList();
+            var expenseTotal = memberExpenses.Sum(x => x.Amount);
+
+            var categories = memberExpenses
+                .GroupBy(x => new { x.CategoryId, x.Category.Name, x.Category.Icon })
+                .Select(group => new MemberCategoryReport(
+                    group.Key.CategoryId,
+                    group.Key.Name,
+                    group.Key.Icon,
+                    group.Sum(x => x.Amount),
+                    group.Count(),
+                    expenseTotal <= 0 ? 0 : Math.Round(group.Sum(x => x.Amount) / expenseTotal * 100, 1)))
+                .OrderByDescending(x => x.Amount)
+                .ToList();
+
+            var savings = monthContributions
+                .Where(x => x.CreatedByUserId == member.UserId)
+                .ToList();
+
+            var goals = savings
+                .GroupBy(x => new { x.SavingsGoalId, x.SavingsGoal.Name })
+                .Select(group => new MemberGoalSaving(
+                    group.Key.SavingsGoalId,
+                    group.Key.Name,
+                    group.Sum(x => x.Amount),
+                    group.Count()))
+                .OrderByDescending(x => x.Amount)
+                .ToList();
+
+            var displayName = string.IsNullOrWhiteSpace(member.User.DisplayName)
+                ? member.User.Email ?? "کاربر"
+                : member.User.DisplayName;
+
+            return new MemberMonthlyReport(
+                member.UserId,
+                displayName,
+                member.User.Email ?? string.Empty,
+                expenseTotal,
+                memberExpenses.Count,
+                categories,
+                savings.Sum(x => x.Amount),
+                savings.Count,
+                goals);
+        }).ToList();
     }
 
     private void NormalizePeriod()

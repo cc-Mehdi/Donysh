@@ -27,6 +27,7 @@ public sealed class IndexModel(
 
     public IReadOnlyList<WorkspaceCard> Workspaces { get; private set; } = [];
     public Guid? CurrentWorkspaceId { get; private set; }
+    public string CurrentBudgetPeriodTitle { get; private set; } = string.Empty;
     public string? InviteLink => TempData.Peek("InviteLink") as string;
 
     public sealed class CreateWorkspaceInput
@@ -57,7 +58,12 @@ public sealed class IndexModel(
     }
 
     public sealed record MemberRow(string UserId, string DisplayName, string Email, WorkspaceRole Role);
-    public sealed record WorkspaceCard(Workspace Workspace, WorkspaceRole MyRole, IReadOnlyList<MemberRow> Members);
+    public sealed record WorkspaceCard(
+        Workspace Workspace,
+        WorkspaceRole MyRole,
+        IReadOnlyList<MemberRow> Members,
+        decimal CurrentMonthBudgetTotal,
+        int CurrentMonthBudgetCount);
 
     public async Task OnGetAsync(CancellationToken cancellationToken) => await LoadAsync(cancellationToken);
 
@@ -290,6 +296,29 @@ public sealed class IndexModel(
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
+        var today = DateOnly.FromDateTime(DateTime.Now);
+        var currentPeriod = PersianCalendarHelper.GetYearMonth(today);
+        CurrentBudgetPeriodTitle = PersianCalendarHelper.Title(currentPeriod);
+
+        var workspaceIds = workspaces.Select(x => x.Id).ToList();
+        var budgetRows = await db.Budgets
+            .Where(x => workspaceIds.Contains(x.WorkspaceId) &&
+                        x.Year == currentPeriod.Year &&
+                        x.Month == currentPeriod.Month)
+            .Select(x => new { x.WorkspaceId, x.Amount })
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        var budgetByWorkspace = budgetRows
+            .GroupBy(x => x.WorkspaceId)
+            .ToDictionary(
+                group => group.Key,
+                group => new
+                {
+                    Total = group.Sum(x => x.Amount),
+                    Count = group.Count()
+                });
+
         Workspaces = workspaces.Select(workspace =>
         {
             var myMembership = workspace.Members.Single(x => x.UserId == userId);
@@ -306,7 +335,13 @@ public sealed class IndexModel(
                     x.Role))
                 .ToList();
 
-            return new WorkspaceCard(workspace, myMembership.Role, members);
+            var budget = budgetByWorkspace.GetValueOrDefault(workspace.Id);
+            return new WorkspaceCard(
+                workspace,
+                myMembership.Role,
+                members,
+                budget?.Total ?? 0,
+                budget?.Count ?? 0);
         }).ToList();
     }
 }

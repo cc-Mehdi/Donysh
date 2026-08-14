@@ -12,6 +12,19 @@
     </div>
 </div>
 
+<section class="mb-6 grid gap-3 sm:grid-cols-2">
+    <div class="stat">
+        <span class="stat-label">مجموع بودجه‌های این فضای مالی</span>
+        <div class="stat-value">@Formatters.Money(Model.TotalBudgetAmount)</div>
+        <p class="mt-2 text-xs text-slate-500">مجموع @Model.BudgetCount بودجه ثبت‌شده برای @Model.PeriodTitle</p>
+    </div>
+    <div class="stat">
+        <span class="stat-label">دوره بودجه</span>
+        <div class="stat-value text-xl">@Model.PeriodTitle</div>
+        <p class="mt-2 text-xs text-slate-500">مبلغ بالا جمع همه سقف‌های بودجه ثبت‌شده در این دوره است.</p>
+    </div>
+</section>
+
 <div class="grid gap-6 xl:grid-cols-[23rem_1fr]">
     <section class="card h-fit">
         <h3 class="card-title">تعریف بودجه</h3>

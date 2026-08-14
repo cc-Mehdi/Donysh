@@ -10,6 +10,55 @@
     <p class="mt-1 text-sm text-slate-500">هدف کلی و میزان پس‌انداز ماهانه را تعیین کنید؛ اعضای فضای مشترک می‌توانند با هم مشارکت کنند.</p>
 </div>
 
+<section class="card mb-6">
+    <div class="mb-4 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
+        <div>
+            <h3 class="card-title">پس‌انداز اعضا در این ماه</h3>
+            <p class="muted mt-1">میزان واریزی هر شخص و هدف‌هایی که در @Model.CurrentMonthTitle برای آن‌ها پس‌انداز کرده است</p>
+        </div>
+        <span class="badge">@Model.MemberSavings.Count نفر</span>
+    </div>
+
+    @if (Model.MemberSavings.Count == 0)
+    {
+        <p class="rounded-2xl bg-slate-50 p-5 text-center text-sm text-slate-500">عضوی برای نمایش وجود ندارد.</p>
+    }
+    else
+    {
+        <div class="grid gap-3 md:grid-cols-2">
+            @foreach (var member in Model.MemberSavings)
+            {
+                <article class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <h4 class="truncate font-black">@member.DisplayName</h4>
+                            <p class="mt-1 text-xs text-slate-500">@member.MonthContributionCount واریزی</p>
+                        </div>
+                        <strong class="shrink-0 text-sm text-emerald-700">@Formatters.Money(member.MonthSaved)</strong>
+                    </div>
+
+                    @if (member.Goals.Count == 0)
+                    {
+                        <p class="mt-3 rounded-xl bg-white p-3 text-xs text-slate-500">این ماه واریزی ثبت نشده است.</p>
+                    }
+                    else
+                    {
+                        <div class="mt-3 grid gap-2">
+                            @foreach (var goal in member.Goals)
+                            {
+                                <div class="flex items-center justify-between gap-2 rounded-xl bg-white p-3 text-xs">
+                                    <span class="truncate font-bold">🎯 @goal.GoalName</span>
+                                    <span class="shrink-0 text-emerald-700">@Formatters.Money(goal.Amount)</span>
+                                </div>
+                            }
+                        </div>
+                    }
+                </article>
+            }
+        </div>
+    }
+</section>
+
 <div class="grid gap-6 xl:grid-cols-[23rem_1fr]">
     <section class="card h-fit">
         <h3 class="card-title">هدف جدید</h3>
@@ -181,6 +230,28 @@
                                         <button class="btn-primary w-full" type="submit">ثبت واریزی</button>
                                     </div>
                                 </form>
+                            </details>
+                        }
+
+                        @if (card.MemberContributions.Count > 0)
+                        {
+                            <details class="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                <summary class="cursor-pointer text-sm font-bold text-slate-700">سهم اعضا در این هدف</summary>
+                                <div class="mt-4 grid gap-2 sm:grid-cols-2">
+                                    @foreach (var member in card.MemberContributions)
+                                    {
+                                        <div class="rounded-xl bg-white p-3">
+                                            <div class="flex items-center justify-between gap-3 text-sm">
+                                                <strong class="truncate">@member.DisplayName</strong>
+                                                <strong class="shrink-0 text-emerald-700">@Formatters.Money(member.TotalSaved)</strong>
+                                            </div>
+                                            <div class="mt-2 flex items-center justify-between gap-2 text-xs text-slate-500">
+                                                <span>این ماه: @Formatters.Money(member.MonthSaved)</span>
+                                                <span>@member.ContributionCount واریزی</span>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
                             </details>
                         }
 

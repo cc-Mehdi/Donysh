@@ -127,6 +127,17 @@
                     </div>
                 </div>
 
+                <div class="mt-5 grid gap-3 border-t border-slate-100 pt-5 sm:grid-cols-2">
+                    <div class="rounded-2xl bg-indigo-50 p-4">
+                        <span class="block text-xs font-bold text-indigo-700">مجموع بودجه‌های @Model.CurrentBudgetPeriodTitle</span>
+                        <strong class="mt-2 block text-lg font-black text-indigo-900">@Formatters.Money(card.CurrentMonthBudgetTotal)</strong>
+                    </div>
+                    <div class="rounded-2xl bg-slate-50 p-4">
+                        <span class="block text-xs text-slate-500">بودجه‌های ثبت‌شده</span>
+                        <strong class="mt-2 block text-lg font-black">@card.CurrentMonthBudgetCount مورد</strong>
+                    </div>
+                </div>
+
                 @if (card.Workspace.Type == WorkspaceType.Shared)
                 {
                     <div class="mt-5 border-t border-slate-100 pt-5">

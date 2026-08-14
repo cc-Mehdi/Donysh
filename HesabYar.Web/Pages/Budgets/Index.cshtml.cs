@@ -22,6 +22,8 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
 
     public IReadOnlyList<ExpenseCategory> Categories { get; private set; } = [];
     public IReadOnlyList<BudgetRow> Items { get; private set; } = [];
+    public decimal TotalBudgetAmount => Items.Sum(x => x.Budget.Amount);
+    public int BudgetCount => Items.Count;
     public DateOnly PeriodStart { get; private set; }
     public PersianYearMonth PreviousPeriod { get; private set; }
     public PersianYearMonth NextPeriod { get; private set; }

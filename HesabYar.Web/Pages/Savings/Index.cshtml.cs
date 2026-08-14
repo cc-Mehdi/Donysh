@@ -18,6 +18,8 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
     public ContributionInput Contribution { get; set; } = new();
 
     public IReadOnlyList<GoalCard> Goals { get; private set; } = [];
+    public IReadOnlyList<MemberSavingsSummary> MemberSavings { get; private set; } = [];
+    public string CurrentMonthTitle { get; private set; } = string.Empty;
 
     public sealed class GoalInput
     {
@@ -51,6 +53,23 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
         public string? Note { get; set; }
     }
 
+    public sealed record MemberGoalSaving(Guid GoalId, string GoalName, decimal Amount, int Count);
+
+    public sealed record MemberSavingsSummary(
+        string UserId,
+        string DisplayName,
+        string Email,
+        decimal MonthSaved,
+        int MonthContributionCount,
+        IReadOnlyList<MemberGoalSaving> Goals);
+
+    public sealed record GoalMemberContribution(
+        string UserId,
+        string DisplayName,
+        decimal TotalSaved,
+        decimal MonthSaved,
+        int ContributionCount);
+
     public sealed record GoalCard(
         SavingsGoal Goal,
         decimal TotalSaved,
@@ -58,7 +77,8 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
         decimal Remaining,
         decimal TotalPercent,
         decimal MonthlyPercent,
-        IReadOnlyList<SavingsContribution> RecentContributions);
+        IReadOnlyList<SavingsContribution> RecentContributions,
+        IReadOnlyList<GoalMemberContribution> MemberContributions);
 
     public async Task OnGetAsync(CancellationToken cancellationToken) => await LoadAsync(cancellationToken);
 
@@ -277,6 +297,15 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
         var currentPeriod = PersianCalendarHelper.GetYearMonth(today);
         var monthStart = PersianCalendarHelper.StartOfMonth(currentPeriod);
         var monthEnd = PersianCalendarHelper.EndOfMonthExclusive(currentPeriod);
+        CurrentMonthTitle = PersianCalendarHelper.Title(currentPeriod);
+
+        var members = await db.WorkspaceMembers
+            .Where(x => x.WorkspaceId == workspace.Id)
+            .Include(x => x.User)
+            .OrderBy(x => x.Role)
+            .ThenBy(x => x.User.DisplayName)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
 
         var goals = await db.SavingsGoals
             .Where(x => x.WorkspaceId == workspace.Id)
@@ -289,12 +318,74 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
+        var contributionRows = goals
+            .SelectMany(goal => goal.Contributions.Select(contribution => new
+            {
+                Goal = goal,
+                Contribution = contribution
+            }))
+            .ToList();
+
+        MemberSavings = members.Select(member =>
+        {
+            var monthItems = contributionRows
+                .Where(x => x.Contribution.CreatedByUserId == member.UserId &&
+                            x.Contribution.ContributionDate >= monthStart &&
+                            x.Contribution.ContributionDate < monthEnd)
+                .ToList();
+
+            var goalRows = monthItems
+                .GroupBy(x => new { x.Goal.Id, x.Goal.Name })
+                .Select(group => new MemberGoalSaving(
+                    group.Key.Id,
+                    group.Key.Name,
+                    group.Sum(x => x.Contribution.Amount),
+                    group.Count()))
+                .OrderByDescending(x => x.Amount)
+                .ToList();
+
+            var displayName = string.IsNullOrWhiteSpace(member.User.DisplayName)
+                ? member.User.Email ?? "کاربر"
+                : member.User.DisplayName;
+
+            return new MemberSavingsSummary(
+                member.UserId,
+                displayName,
+                member.User.Email ?? string.Empty,
+                monthItems.Sum(x => x.Contribution.Amount),
+                monthItems.Count,
+                goalRows);
+        }).ToList();
+
         Goals = goals.Select(goal =>
         {
             var total = goal.Contributions.Sum(x => x.Amount);
             var monthly = goal.Contributions
                 .Where(x => x.ContributionDate >= monthStart && x.ContributionDate < monthEnd)
                 .Sum(x => x.Amount);
+
+            var memberContributions = members.Select(member =>
+            {
+                var items = goal.Contributions
+                    .Where(x => x.CreatedByUserId == member.UserId)
+                    .ToList();
+                var monthItems = items
+                    .Where(x => x.ContributionDate >= monthStart && x.ContributionDate < monthEnd)
+                    .ToList();
+                var displayName = string.IsNullOrWhiteSpace(member.User.DisplayName)
+                    ? member.User.Email ?? "کاربر"
+                    : member.User.DisplayName;
+
+                return new GoalMemberContribution(
+                    member.UserId,
+                    displayName,
+                    items.Sum(x => x.Amount),
+                    monthItems.Sum(x => x.Amount),
+                    items.Count);
+            })
+            .Where(x => x.TotalSaved > 0 || x.MonthSaved > 0)
+            .OrderByDescending(x => x.TotalSaved)
+            .ToList();
 
             return new GoalCard(
                 goal,
@@ -307,7 +398,9 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
                     .OrderByDescending(x => x.ContributionDate)
                     .ThenByDescending(x => x.CreatedAtUtc)
                     .Take(5)
-                    .ToList());
+                    .ToList(),
+                memberContributions);
         }).ToList();
     }
+
 }
