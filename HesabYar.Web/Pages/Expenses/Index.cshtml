@@ -46,6 +46,59 @@
     <strong class="text-lg">@Formatters.Money(Model.Total)</strong>
 </div>
 
+@if (Model.IsSharedWorkspace)
+{
+    <section class="card mb-5">
+        <div class="mb-4 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
+            <div>
+                <h3 class="card-title">خرج اعضا در این ماه</h3>
+                <p class="muted mt-1">در فضای مالی مشترک مشخص است هر شخص در @Model.CurrentMonthTitle چه مبلغی خرج کرده و هزینه‌هایش در چه دسته‌هایی بوده است.</p>
+            </div>
+            <span class="badge">مجموع: @Formatters.Money(Model.CurrentMonthTotal)</span>
+        </div>
+
+        @if (Model.MemberExpenses.Count == 0)
+        {
+            <p class="rounded-2xl bg-slate-50 p-5 text-center text-sm text-slate-500">عضوی برای نمایش وجود ندارد.</p>
+        }
+        else
+        {
+            <div class="grid gap-3 md:grid-cols-2">
+                @foreach (var member in Model.MemberExpenses)
+                {
+                    var share = Model.CurrentMonthTotal <= 0 ? 0 : Math.Round(member.Amount / Model.CurrentMonthTotal * 100, 1);
+                    <article class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <h4 class="truncate font-black">@member.DisplayName</h4>
+                                <p class="mt-1 text-xs text-slate-500">@member.Count خرج ثبت‌شده · @Formatters.Percent(share) از مخارج این ماه</p>
+                            </div>
+                            <strong class="shrink-0 text-sm text-rose-600">@Formatters.Money(member.Amount)</strong>
+                        </div>
+
+                        @if (member.Categories.Count == 0)
+                        {
+                            <p class="mt-3 rounded-xl bg-white p-3 text-xs text-slate-500">این ماه خرجی توسط این عضو ثبت نشده است.</p>
+                        }
+                        else
+                        {
+                            <div class="mt-3 grid gap-2">
+                                @foreach (var category in member.Categories)
+                                {
+                                    <div class="flex items-center justify-between gap-2 rounded-xl bg-white p-3 text-xs">
+                                        <span class="truncate font-bold">@category.Icon @category.Name <span class="text-slate-400">(@category.Count مورد)</span></span>
+                                        <span class="shrink-0 font-bold text-rose-600">@Formatters.Money(category.Amount)</span>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </article>
+                }
+            </div>
+        }
+    </section>
+}
+
 @if (Model.Items.Count == 0)
 {
     <div class="empty"><div class="text-5xl">🧾</div><h3 class="mt-4 text-lg font-bold">خرجی پیدا نشد</h3><p class="mt-1 text-sm text-slate-500">فیلترها را تغییر دهید یا یک خرج جدید ثبت کنید.</p><a asp-page="Create" class="btn-primary mt-5">ثبت خرج</a></div>

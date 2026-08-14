@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using HesabYar.Web.Data;
 using HesabYar.Web.Domain;
+using HesabYar.Web.Helpers;
 using HesabYar.Web.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -87,7 +88,48 @@ public sealed class EditModel(ApplicationDbContext db, IWorkspaceContext workspa
         await db.SaveChangesAsync(cancellationToken);
 
         TempData["Success"] = "خرج ویرایش شد.";
+        await SetBudgetAlertAsync(workspace.Id, cancellationToken);
         return RedirectToPage("Index");
+    }
+
+    private async Task SetBudgetAlertAsync(Guid workspaceId, CancellationToken cancellationToken)
+    {
+        var period = PersianCalendarHelper.GetYearMonth(Input.ExpenseDate);
+        var monthStart = PersianCalendarHelper.StartOfMonth(period);
+        var monthEnd = PersianCalendarHelper.EndOfMonthExclusive(period);
+        var budgets = await db.Budgets
+            .Where(x => x.WorkspaceId == workspaceId && x.Year == period.Year && x.Month == period.Month &&
+                        (x.CategoryId == null || x.CategoryId == Input.CategoryId))
+            .Include(x => x.Category)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        var budgetIds = budgets.Select(x => x.Id).ToList();
+        var transfers = budgetIds.Count == 0
+            ? new List<BudgetTransfer>()
+            : await db.BudgetTransfers
+                .Where(x => x.WorkspaceId == workspaceId &&
+                            (budgetIds.Contains(x.SourceBudgetId) || budgetIds.Contains(x.DestinationBudgetId)))
+                .AsNoTracking()
+                .ToListAsync(cancellationToken);
+
+        foreach (var budget in budgets)
+        {
+            var spent = await db.Expenses
+                .Where(x => x.WorkspaceId == workspaceId && x.ExpenseDate >= monthStart && x.ExpenseDate < monthEnd &&
+                            (!budget.CategoryId.HasValue || x.CategoryId == budget.CategoryId.Value))
+                .SumAsync(x => x.Amount, cancellationToken);
+
+            var incoming = transfers.Where(x => x.DestinationBudgetId == budget.Id).Sum(x => x.Amount);
+            var outgoing = transfers.Where(x => x.SourceBudgetId == budget.Id).Sum(x => x.Amount);
+            var effectiveAmount = budget.Amount + incoming - outgoing;
+
+            if (spent > effectiveAmount)
+            {
+                TempData["Error"] = $"هشدار: بودجه «{budget.Category?.Name ?? "کل ماه"}» رد شده است؛ {Formatters.Money(spent - effectiveAmount)} بیشتر از سقف موثر. از صفحه بودجه‌ها می‌توانید کسری را از یک دسته دیگر جبران کنید.";
+                return;
+            }
+        }
     }
 
     private async Task LoadCategoriesAsync(CancellationToken cancellationToken)

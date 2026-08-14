@@ -13,6 +13,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<ExpenseCategory> ExpenseCategories => Set<ExpenseCategory>();
     public DbSet<Expense> Expenses => Set<Expense>();
     public DbSet<Budget> Budgets => Set<Budget>();
+    public DbSet<BudgetTransfer> BudgetTransfers => Set<BudgetTransfer>();
     public DbSet<SavingsGoal> SavingsGoals => Set<SavingsGoal>();
     public DbSet<SavingsContribution> SavingsContributions => Set<SavingsContribution>();
 
@@ -105,6 +106,32 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.HasOne(x => x.Category)
                 .WithMany(x => x.Budgets)
                 .HasForeignKey(x => x.CategoryId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+
+        builder.Entity<BudgetTransfer>(entity =>
+        {
+            entity.Property(x => x.Amount).HasPrecision(18, 0);
+            entity.Property(x => x.Note).HasMaxLength(200);
+            entity.HasIndex(x => new { x.WorkspaceId, x.TransferDate });
+            entity.HasIndex(x => x.SourceBudgetId);
+            entity.HasIndex(x => x.DestinationBudgetId);
+            entity.HasOne(x => x.Workspace)
+                .WithMany(x => x.BudgetTransfers)
+                .HasForeignKey(x => x.WorkspaceId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.SourceBudget)
+                .WithMany(x => x.OutgoingTransfers)
+                .HasForeignKey(x => x.SourceBudgetId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.DestinationBudget)
+                .WithMany(x => x.IncomingTransfers)
+                .HasForeignKey(x => x.DestinationBudgetId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.CreatedByUser)
+                .WithMany()
+                .HasForeignKey(x => x.CreatedByUserId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 

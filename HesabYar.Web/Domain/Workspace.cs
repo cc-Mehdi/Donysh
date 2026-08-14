@@ -13,6 +13,7 @@ public sealed class Workspace
     public ICollection<ExpenseCategory> Categories { get; set; } = [];
     public ICollection<Expense> Expenses { get; set; } = [];
     public ICollection<Budget> Budgets { get; set; } = [];
+    public ICollection<BudgetTransfer> BudgetTransfers { get; set; } = [];
     public ICollection<SavingsGoal> SavingsGoals { get; set; } = [];
 }
 

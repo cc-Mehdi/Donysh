@@ -74,6 +74,55 @@
 <section class="card mt-6">
     <div class="mb-5 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
         <div>
+            <h3 class="card-title">تاریخچه انتقال بودجه</h3>
+            <p class="muted mt-1">تمام قرض‌ها و جابه‌جایی‌های بودجه در بازه انتخابی، با تاریخ، مبلغ، مبدا، مقصد و ثبت‌کننده</p>
+        </div>
+        <span class="badge">@Model.BudgetTransfers.Count انتقال</span>
+    </div>
+
+    @if (Model.BudgetTransfers.Count == 0)
+    {
+        <p class="rounded-2xl bg-slate-50 p-5 text-center text-sm text-slate-500">در این بازه انتقال بودجه‌ای ثبت نشده است.</p>
+    }
+    else
+    {
+        <div class="hidden md:block table-wrap">
+            <table class="table">
+                <thead><tr><th>تاریخ</th><th>بودجه مبدا</th><th>بودجه مقصد</th><th>مبلغ</th><th>ثبت‌کننده</th><th>توضیح</th></tr></thead>
+                <tbody>
+                @foreach (var item in Model.BudgetTransfers)
+                {
+                    <tr>
+                        <td class="text-slate-500">@Formatters.PersianDate(item.TransferDate)</td>
+                        <td class="font-bold">@item.SourceIcon @item.SourceName</td>
+                        <td class="font-bold">@item.DestinationIcon @item.DestinationName</td>
+                        <td class="font-black text-indigo-700">@Formatters.Money(item.Amount)</td>
+                        <td class="text-slate-500">@item.CreatedBy</td>
+                        <td class="text-slate-500">@(string.IsNullOrWhiteSpace(item.Note) ? "—" : item.Note)</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+        <div class="space-y-3 md:hidden">
+            @foreach (var item in Model.BudgetTransfers)
+            {
+                <article class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div class="flex items-center justify-between gap-3">
+                        <strong class="text-indigo-700">@Formatters.Money(item.Amount)</strong>
+                        <span class="text-xs text-slate-500">@Formatters.PersianDate(item.TransferDate)</span>
+                    </div>
+                    <p class="mt-3 text-sm font-bold">@item.SourceIcon @item.SourceName ← @item.DestinationIcon @item.DestinationName</p>
+                    <p class="mt-2 text-xs text-slate-500">ثبت توسط @item.CreatedBy@(string.IsNullOrWhiteSpace(item.Note) ? "" : $" · {item.Note}")</p>
+                </article>
+            }
+        </div>
+    }
+</section>
+
+<section class="card mt-6">
+    <div class="mb-5 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
+        <div>
             <h3 class="card-title">عملکرد اعضا در این ماه</h3>
             <p class="muted mt-1">خرج‌ها، دسته‌بندی هزینه و واریزی‌های پس‌انداز هر شخص در @Model.MemberMonthTitle</p>
         </div>

@@ -4,7 +4,10 @@
     ViewData["Title"] = "بودجه‌ها";
 }
 <div class="mb-6 flex flex-col justify-between gap-3 md:flex-row md:items-end">
-    <div><h2 class="text-2xl font-black">بودجه‌بندی ماهانه</h2><p class="mt-1 text-sm text-slate-500">برای کل مخارج یا یک دسته مشخص سقف تعیین کنید.</p></div>
+    <div>
+        <h2 class="text-2xl font-black">بودجه‌بندی ماهانه</h2>
+        <p class="mt-1 text-sm text-slate-500">برای کل مخارج یا یک دسته مشخص سقف تعیین کنید و در صورت کسری، از بودجه آزاد دسته‌های دیگر استفاده کنید.</p>
+    </div>
     <div class="flex items-center gap-2">
         <a asp-page="Index" asp-route-year="@Model.PreviousPeriod.Year" asp-route-month="@Model.PreviousPeriod.Month" class="btn-secondary px-3">→</a>
         <span class="min-w-36 text-center font-black">@Model.PeriodTitle</span>
@@ -19,9 +22,9 @@
         <p class="mt-2 text-xs text-slate-500">مجموع @Model.BudgetCount بودجه ثبت‌شده برای @Model.PeriodTitle</p>
     </div>
     <div class="stat">
-        <span class="stat-label">دوره بودجه</span>
-        <div class="stat-value text-xl">@Model.PeriodTitle</div>
-        <p class="mt-2 text-xs text-slate-500">مبلغ بالا جمع همه سقف‌های بودجه ثبت‌شده در این دوره است.</p>
+        <span class="stat-label">انتقال بودجه</span>
+        <div class="stat-value text-xl">@Model.TransferHistory.Count مورد</div>
+        <p class="mt-2 text-xs text-slate-500">انتقال بین دسته‌ها مجموع بودجه فضای مالی را تغییر نمی‌دهد؛ فقط سقف موثر دسته‌ها جابه‌جا می‌شود.</p>
     </div>
 </section>
 
@@ -37,7 +40,10 @@
                 <label asp-for="Input.CategoryId" class="label">دامنه بودجه</label>
                 <select asp-for="Input.CategoryId" class="input">
                     <option value="">💳 کل مخارج ماه</option>
-                    @foreach (var category in Model.Categories) { <option value="@category.Id">@category.Icon @category.Name</option> }
+                    @foreach (var category in Model.Categories)
+                    {
+                        <option value="@category.Id">@category.Icon @category.Name</option>
+                    }
                 </select>
                 <span asp-validation-for="Input.CategoryId" class="field-error"></span>
             </div>
@@ -59,7 +65,11 @@
     <section>
         @if (Model.Items.Count == 0)
         {
-            <div class="empty"><div class="text-5xl">◎</div><h3 class="mt-4 text-lg font-bold">برای این ماه بودجه‌ای ندارید</h3><p class="mt-1 text-sm text-slate-500">از فرم کناری اولین سقف هزینه را تعیین کنید.</p></div>
+            <div class="empty">
+                <div class="text-5xl">◎</div>
+                <h3 class="mt-4 text-lg font-bold">برای این ماه بودجه‌ای ندارید</h3>
+                <p class="mt-1 text-sm text-slate-500">از فرم کناری اولین سقف هزینه را تعیین کنید.</p>
+            </div>
         }
         else
         {
@@ -69,14 +79,104 @@
                     var width = Math.Min(row.Percent, 100);
                     <article class="card">
                         <div class="flex items-start justify-between gap-3">
-                            <div class="flex items-center gap-3"><span class="grid size-12 place-items-center rounded-2xl bg-slate-100 text-2xl">@(row.Budget.Category?.Icon ?? "💳")</span><div><h3 class="font-black">@(row.Budget.Category?.Name ?? "کل مخارج ماه")</h3><p class="mt-1 text-xs text-slate-500">هشدار از @row.Budget.WarningPercent٪</p></div></div>
+                            <div class="flex items-center gap-3">
+                                <span class="grid size-12 place-items-center rounded-2xl bg-slate-100 text-2xl">@(row.Budget.Category?.Icon ?? "💳")</span>
+                                <div>
+                                    <h3 class="font-black">@(row.Budget.Category?.Name ?? "کل مخارج ماه")</h3>
+                                    <p class="mt-1 text-xs text-slate-500">هشدار از @row.Budget.WarningPercent٪</p>
+                                </div>
+                            </div>
                             <span class="rounded-full px-2 py-1 text-xs font-black @(row.IsExceeded ? "bg-rose-100 text-rose-700" : row.IsWarning ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700")">@Formatters.Percent(row.Percent)</span>
                         </div>
-                        <div class="progress mt-5"><div class="progress-bar @(row.IsExceeded ? "bg-rose-600" : row.IsWarning ? "bg-amber-500" : "bg-indigo-600")" style="width: @(width)%"></div></div>
-                        <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
-                            <div class="rounded-xl bg-slate-50 p-3"><span class="block text-xs text-slate-500">مصرف‌شده</span><strong class="mt-1 block">@Formatters.Money(row.Spent)</strong></div>
-                            <div class="rounded-xl bg-slate-50 p-3"><span class="block text-xs text-slate-500">@(row.Remaining >= 0 ? "باقی‌مانده" : "عبور از سقف")</span><strong class="mt-1 block @(row.Remaining < 0 ? "text-rose-600" : "")">@Formatters.Money(Math.Abs(row.Remaining))</strong></div>
+
+                        <div class="progress mt-5">
+                            <div class="progress-bar @(row.IsExceeded ? "bg-rose-600" : row.IsWarning ? "bg-amber-500" : "bg-indigo-600")" style="width: @(width)%"></div>
                         </div>
+
+                        <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
+                            <div class="rounded-xl bg-slate-50 p-3">
+                                <span class="block text-xs text-slate-500">مصرف‌شده</span>
+                                <strong class="mt-1 block">@Formatters.Money(row.Spent)</strong>
+                            </div>
+                            <div class="rounded-xl bg-slate-50 p-3">
+                                <span class="block text-xs text-slate-500">@(row.Remaining >= 0 ? "باقی‌مانده" : "کسری بودجه")</span>
+                                <strong class="mt-1 block @(row.Remaining < 0 ? "text-rose-600" : "")">@Formatters.Money(Math.Abs(row.Remaining))</strong>
+                            </div>
+                        </div>
+
+                        @if (row.IncomingAmount > 0 || row.OutgoingAmount > 0)
+                        {
+                            <div class="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
+                                <div class="flex items-center justify-between gap-3">
+                                    <span class="text-slate-500">سقف اولیه</span>
+                                    <strong>@Formatters.Money(row.OriginalAmount)</strong>
+                                </div>
+                                @if (row.IncomingAmount > 0)
+                                {
+                                    <div class="mt-2 flex items-center justify-between gap-3 text-emerald-700">
+                                        <span>بودجه دریافت‌شده</span>
+                                        <strong>+ @Formatters.Money(row.IncomingAmount)</strong>
+                                    </div>
+                                }
+                                @if (row.OutgoingAmount > 0)
+                                {
+                                    <div class="mt-2 flex items-center justify-between gap-3 text-amber-700">
+                                        <span>بودجه قرض‌داده‌شده</span>
+                                        <strong>- @Formatters.Money(row.OutgoingAmount)</strong>
+                                    </div>
+                                }
+                                <div class="mt-2 flex items-center justify-between gap-3 border-t border-slate-200 pt-2">
+                                    <span class="font-bold">سقف موثر فعلی</span>
+                                    <strong class="text-indigo-700">@Formatters.Money(row.EffectiveAmount)</strong>
+                                </div>
+                            </div>
+                        }
+
+                        @if (row.IsExceeded && row.Budget.CategoryId.HasValue)
+                        {
+                            <details class="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-4">
+                                <summary class="cursor-pointer text-sm font-black text-rose-700">↔ جبران کسری از بودجه یک دسته دیگر</summary>
+                                @if (row.TransferSources.Count == 0)
+                                {
+                                    <p class="mt-3 text-xs text-rose-700">در حال حاضر هیچ بودجه دسته‌ای، مبلغ آزاد کافی برای قرض‌دادن ندارد.</p>
+                                }
+                                else
+                                {
+                                    <p class="mt-3 text-xs text-slate-600">کسری فعلی: <strong>@Formatters.Money(Math.Abs(row.Remaining))</strong>. منبع را خودتان انتخاب کنید؛ هر انتقال در گزارش‌ها ثبت می‌شود.</p>
+                                    <form method="post" asp-page-handler="Transfer" class="mt-4 grid gap-3">
+                                        <input type="hidden" name="Transfer.DestinationBudgetId" value="@row.Budget.Id" />
+                                        <input type="hidden" name="Transfer.Year" value="@Model.Year" />
+                                        <input type="hidden" name="Transfer.Month" value="@Model.Month" />
+                                        <div>
+                                            <label class="label">قرض گرفتن از بودجه</label>
+                                            <select name="Transfer.SourceBudgetId" class="input" required>
+                                                <option value="">انتخاب دسته مبدا</option>
+                                                @foreach (var source in row.TransferSources)
+                                                {
+                                                    <option value="@source.BudgetId">@source.Icon @source.Name — آزاد: @source.AvailableAmount.ToString("N0") تومان</option>
+                                                }
+                                            </select>
+                                        </div>
+                                        <div class="grid gap-3 sm:grid-cols-2">
+                                            <div>
+                                                <label class="label">مبلغ انتقال</label>
+                                                <input name="Transfer.Amount" value="@Math.Abs(row.Remaining).ToString("0")" type="text" inputmode="numeric" autocomplete="off" data-money class="input ltr-input" required />
+                                            </div>
+                                            <div>
+                                                <label class="label">تاریخ انتقال</label>
+                                                <input name="Transfer.Date" value="@Model.DefaultTransferDate" type="text" inputmode="numeric" autocomplete="off" data-persian-date class="input ltr-input" required />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="label">توضیح (اختیاری)</label>
+                                            <input name="Transfer.Note" maxlength="200" class="input" placeholder="مثلاً جبران افزایش هزینه خرید ماهانه" />
+                                        </div>
+                                        <button type="submit" class="btn-primary w-full" data-confirm="این مبلغ از بودجه دسته انتخاب‌شده کم و به این دسته اضافه شود؟">ثبت انتقال بودجه</button>
+                                    </form>
+                                }
+                            </details>
+                        }
+
                         <details class="mt-4 border-t border-slate-100 pt-4">
                             <summary class="cursor-pointer text-sm font-bold text-indigo-700">ویرایش بودجه</summary>
                             <form method="post" asp-page-handler="Save" class="mt-4 grid gap-3 sm:grid-cols-2">
@@ -84,8 +184,14 @@
                                 <input type="hidden" name="Input.CategoryId" value="@row.Budget.CategoryId" />
                                 <input type="hidden" name="Input.Year" value="@row.Budget.Year" />
                                 <input type="hidden" name="Input.Month" value="@row.Budget.Month" />
-                                <div><label class="label">مبلغ</label><input name="Input.Amount" value="@row.Budget.Amount.ToString("0")" type="text" inputmode="numeric" autocomplete="off" data-money class="input ltr-input" /></div>
-                                <div><label class="label">درصد هشدار</label><input name="Input.WarningPercent" value="@row.Budget.WarningPercent" type="number" min="1" max="100" class="input" /></div>
+                                <div>
+                                    <label class="label">مبلغ</label>
+                                    <input name="Input.Amount" value="@row.Budget.Amount.ToString("0")" type="text" inputmode="numeric" autocomplete="off" data-money class="input ltr-input" />
+                                </div>
+                                <div>
+                                    <label class="label">درصد هشدار</label>
+                                    <input name="Input.WarningPercent" value="@row.Budget.WarningPercent" type="number" min="1" max="100" class="input" />
+                                </div>
                                 <button class="btn-soft sm:col-span-2" type="submit">ذخیره</button>
                             </form>
                         </details>
@@ -98,3 +204,54 @@
         }
     </section>
 </div>
+
+<section class="card mt-6">
+    <div class="mb-5 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
+        <div>
+            <h3 class="card-title">تاریخچه انتقال و قرض بودجه</h3>
+            <p class="muted mt-1">برای کنترل مالی شفاف، مبدا، مقصد، مبلغ، تاریخ و ثبت‌کننده هر انتقال نگهداری می‌شود.</p>
+        </div>
+        <span class="badge">@Model.TransferHistory.Count انتقال</span>
+    </div>
+
+    @if (Model.TransferHistory.Count == 0)
+    {
+        <p class="rounded-2xl bg-slate-50 p-5 text-center text-sm text-slate-500">در @Model.PeriodTitle انتقال بودجه‌ای ثبت نشده است.</p>
+    }
+    else
+    {
+        <div class="hidden md:block table-wrap">
+            <table class="table">
+                <thead>
+                    <tr><th>تاریخ</th><th>از بودجه</th><th>به بودجه</th><th>مبلغ</th><th>ثبت‌کننده</th><th>توضیح</th></tr>
+                </thead>
+                <tbody>
+                @foreach (var item in Model.TransferHistory)
+                {
+                    <tr>
+                        <td class="text-slate-500">@Formatters.PersianDate(item.TransferDate)</td>
+                        <td class="font-bold">@item.SourceIcon @item.SourceName</td>
+                        <td class="font-bold">@item.DestinationIcon @item.DestinationName</td>
+                        <td class="font-black text-indigo-700">@Formatters.Money(item.Amount)</td>
+                        <td class="text-slate-500">@item.CreatedBy</td>
+                        <td class="text-slate-500">@(string.IsNullOrWhiteSpace(item.Note) ? "—" : item.Note)</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+        <div class="space-y-3 md:hidden">
+            @foreach (var item in Model.TransferHistory)
+            {
+                <article class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div class="flex items-center justify-between gap-3">
+                        <strong class="text-indigo-700">@Formatters.Money(item.Amount)</strong>
+                        <span class="text-xs text-slate-500">@Formatters.PersianDate(item.TransferDate)</span>
+                    </div>
+                    <p class="mt-3 text-sm font-bold">@item.SourceIcon @item.SourceName ← @item.DestinationIcon @item.DestinationName</p>
+                    <p class="mt-2 text-xs text-slate-500">ثبت توسط @item.CreatedBy@(string.IsNullOrWhiteSpace(item.Note) ? "" : $" · {item.Note}")</p>
+                </article>
+            }
+        </div>
+    }
+</section>

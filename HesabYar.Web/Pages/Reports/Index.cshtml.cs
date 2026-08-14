@@ -31,6 +31,7 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
     public IReadOnlyList<CategoryReport> Categories { get; private set; } = [];
     public IReadOnlyList<TrendPoint> Trend { get; private set; } = [];
     public IReadOnlyList<MemberMonthlyReport> Members { get; private set; } = [];
+    public IReadOnlyList<BudgetTransferReport> BudgetTransfers { get; private set; } = [];
     public decimal MaxTrendAmount => Trend.Count == 0 ? 0 : Trend.Max(x => x.Amount);
 
     public sealed record CategoryReport(Guid CategoryId, string Name, string Icon, decimal Amount, int Count, decimal Percent);
@@ -47,6 +48,16 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
         decimal SavingsAmount,
         int SavingsCount,
         IReadOnlyList<MemberGoalSaving> SavingsGoals);
+
+    public sealed record BudgetTransferReport(
+        DateOnly TransferDate,
+        string SourceName,
+        string SourceIcon,
+        string DestinationName,
+        string DestinationIcon,
+        decimal Amount,
+        string CreatedBy,
+        string? Note);
 
     public async Task OnGetAsync(CancellationToken cancellationToken)
     {
@@ -80,7 +91,33 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
         TopCategory = Categories.FirstOrDefault();
         Trend = BuildTrend(expenses);
 
+        await LoadBudgetTransfersAsync(workspace.Id, cancellationToken);
         await LoadMemberMonthlyReportAsync(workspace.Id, cancellationToken);
+    }
+
+    private async Task LoadBudgetTransfersAsync(Guid workspaceId, CancellationToken cancellationToken)
+    {
+        var transfers = await db.BudgetTransfers
+            .Where(x => x.WorkspaceId == workspaceId && x.TransferDate >= Start && x.TransferDate < EndExclusive)
+            .Include(x => x.SourceBudget).ThenInclude(x => x.Category)
+            .Include(x => x.DestinationBudget).ThenInclude(x => x.Category)
+            .Include(x => x.CreatedByUser)
+            .OrderByDescending(x => x.TransferDate)
+            .ThenByDescending(x => x.CreatedAtUtc)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        BudgetTransfers = transfers.Select(x => new BudgetTransferReport(
+            x.TransferDate,
+            x.SourceBudget.Category?.Name ?? "بودجه",
+            x.SourceBudget.Category?.Icon ?? "📦",
+            x.DestinationBudget.Category?.Name ?? "بودجه",
+            x.DestinationBudget.Category?.Icon ?? "📦",
+            x.Amount,
+            string.IsNullOrWhiteSpace(x.CreatedByUser.DisplayName)
+                ? x.CreatedByUser.Email ?? "کاربر"
+                : x.CreatedByUser.DisplayName,
+            x.Note)).ToList();
     }
 
     private async Task LoadMemberMonthlyReportAsync(Guid workspaceId, CancellationToken cancellationToken)

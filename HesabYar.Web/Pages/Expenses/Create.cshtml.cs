@@ -94,14 +94,28 @@ public sealed class CreateModel(ApplicationDbContext db, IWorkspaceContext works
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
+        var budgetIds = budgets.Select(x => x.Id).ToList();
+        var transfers = budgetIds.Count == 0
+            ? new List<BudgetTransfer>()
+            : await db.BudgetTransfers
+                .Where(x => x.WorkspaceId == workspaceId &&
+                            (budgetIds.Contains(x.SourceBudgetId) || budgetIds.Contains(x.DestinationBudgetId)))
+                .AsNoTracking()
+                .ToListAsync(cancellationToken);
+
         foreach (var budget in budgets)
         {
             var spent = await db.Expenses
                 .Where(x => x.WorkspaceId == workspaceId && x.ExpenseDate >= monthStart && x.ExpenseDate < monthEnd && (!budget.CategoryId.HasValue || x.CategoryId == budget.CategoryId.Value))
                 .SumAsync(x => x.Amount, cancellationToken);
-            if (spent >= budget.Amount)
+
+            var incoming = transfers.Where(x => x.DestinationBudgetId == budget.Id).Sum(x => x.Amount);
+            var outgoing = transfers.Where(x => x.SourceBudgetId == budget.Id).Sum(x => x.Amount);
+            var effectiveAmount = budget.Amount + incoming - outgoing;
+
+            if (spent > effectiveAmount)
             {
-                TempData["Error"] = $"هشدار: بودجه «{budget.Category?.Name ?? "کل ماه"}» رد شده است؛ {Formatters.Money(spent - budget.Amount)} بیشتر از سقف.";
+                TempData["Error"] = $"هشدار: بودجه «{budget.Category?.Name ?? "کل ماه"}» رد شده است؛ {Formatters.Money(spent - effectiveAmount)} بیشتر از سقف موثر. از صفحه بودجه‌ها می‌توانید کسری را از یک دسته دیگر جبران کنید.";
                 return;
             }
         }

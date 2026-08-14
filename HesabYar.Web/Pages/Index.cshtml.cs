@@ -56,21 +56,34 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
+        var budgetIds = budgets.Select(x => x.Id).ToList();
+        var transfers = budgetIds.Count == 0
+            ? new List<BudgetTransfer>()
+            : await db.BudgetTransfers
+                .Where(x => x.WorkspaceId == CurrentWorkspace.Id &&
+                            (budgetIds.Contains(x.SourceBudgetId) || budgetIds.Contains(x.DestinationBudgetId)))
+                .AsNoTracking()
+                .ToListAsync(cancellationToken);
+
         BudgetCards = budgets.Select(budget =>
         {
             var spent = budget.CategoryId.HasValue
                 ? monthExpenses.Where(x => x.CategoryId == budget.CategoryId.Value).Sum(x => x.Amount)
                 : MonthTotal;
-            var percent = budget.Amount <= 0 ? 0 : Math.Round(spent / budget.Amount * 100, 1);
+            var incoming = transfers.Where(x => x.DestinationBudgetId == budget.Id).Sum(x => x.Amount);
+            var outgoing = transfers.Where(x => x.SourceBudgetId == budget.Id).Sum(x => x.Amount);
+            var effectiveAmount = budget.Amount + incoming - outgoing;
+            var remaining = effectiveAmount - spent;
+            var percent = effectiveAmount <= 0 ? (spent > 0 ? 100 : 0) : Math.Round(spent / effectiveAmount * 100, 1);
             return new BudgetCard(
                 budget.Id,
                 budget.Category?.Name ?? "بودجه کل ماه",
                 budget.Category?.Icon ?? "💳",
-                budget.Amount,
+                effectiveAmount,
                 spent,
-                budget.Amount - spent,
+                remaining,
                 percent,
-                percent >= 100,
+                remaining < 0,
                 percent >= budget.WarningPercent);
         }).ToList();
 

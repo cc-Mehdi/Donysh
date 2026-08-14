@@ -47,5 +47,39 @@ public sealed class DatabaseInitializer(ApplicationDbContext db, ILogger<Databas
             ADD COLUMN IF NOT EXISTS "IsCancelled" boolean NOT NULL DEFAULT FALSE;
             """,
             cancellationToken);
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            CREATE TABLE IF NOT EXISTS "BudgetTransfers" (
+                "Id" uuid NOT NULL,
+                "WorkspaceId" uuid NOT NULL,
+                "SourceBudgetId" uuid NOT NULL,
+                "DestinationBudgetId" uuid NOT NULL,
+                "CreatedByUserId" text NOT NULL,
+                "Amount" numeric(18,0) NOT NULL,
+                "TransferDate" date NOT NULL,
+                "Note" character varying(200),
+                "CreatedAtUtc" timestamp with time zone NOT NULL,
+                CONSTRAINT "PK_BudgetTransfers" PRIMARY KEY ("Id"),
+                CONSTRAINT "FK_BudgetTransfers_Workspaces_WorkspaceId" FOREIGN KEY ("WorkspaceId") REFERENCES "Workspaces" ("Id") ON DELETE CASCADE,
+                CONSTRAINT "FK_BudgetTransfers_Budgets_SourceBudgetId" FOREIGN KEY ("SourceBudgetId") REFERENCES "Budgets" ("Id") ON DELETE RESTRICT,
+                CONSTRAINT "FK_BudgetTransfers_Budgets_DestinationBudgetId" FOREIGN KEY ("DestinationBudgetId") REFERENCES "Budgets" ("Id") ON DELETE RESTRICT,
+                CONSTRAINT "FK_BudgetTransfers_AspNetUsers_CreatedByUserId" FOREIGN KEY ("CreatedByUserId") REFERENCES "AspNetUsers" ("Id") ON DELETE RESTRICT
+            );
+            """,
+            cancellationToken);
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            CREATE INDEX IF NOT EXISTS "IX_BudgetTransfers_WorkspaceId_TransferDate"
+            ON "BudgetTransfers" ("WorkspaceId", "TransferDate");
+
+            CREATE INDEX IF NOT EXISTS "IX_BudgetTransfers_SourceBudgetId"
+            ON "BudgetTransfers" ("SourceBudgetId");
+
+            CREATE INDEX IF NOT EXISTS "IX_BudgetTransfers_DestinationBudgetId"
+            ON "BudgetTransfers" ("DestinationBudgetId");
+            """,
+            cancellationToken);
     }
 }

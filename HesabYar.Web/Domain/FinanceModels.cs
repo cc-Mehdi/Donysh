@@ -57,6 +57,29 @@ public sealed class Budget
 
     public Workspace Workspace { get; set; } = null!;
     public ExpenseCategory? Category { get; set; }
+    public ICollection<BudgetTransfer> OutgoingTransfers { get; set; } = [];
+    public ICollection<BudgetTransfer> IncomingTransfers { get; set; } = [];
+}
+
+public sealed class BudgetTransfer
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid WorkspaceId { get; set; }
+    public Guid SourceBudgetId { get; set; }
+    public Guid DestinationBudgetId { get; set; }
+    public string CreatedByUserId { get; set; } = string.Empty;
+    public decimal Amount { get; set; }
+    public DateOnly TransferDate { get; set; }
+
+    [MaxLength(200)]
+    public string? Note { get; set; }
+
+    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+
+    public Workspace Workspace { get; set; } = null!;
+    public Budget SourceBudget { get; set; } = null!;
+    public Budget DestinationBudget { get; set; } = null!;
+    public ApplicationUser CreatedByUser { get; set; } = null!;
 }
 
 public sealed class SavingsGoal
