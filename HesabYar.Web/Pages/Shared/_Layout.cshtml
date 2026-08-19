@@ -60,6 +60,7 @@
                 <a asp-page="/Expenses/Index" class="@NavClass("/Expenses")"><span>↗</span><span>مخارج</span></a>
                 <a asp-page="/Categories/Index" class="@NavClass("/Categories")"><span>◫</span><span>دسته‌بندی‌ها</span></a>
                 <a asp-page="/Budgets/Index" class="@NavClass("/Budgets")"><span>◎</span><span>بودجه‌ها</span></a>
+                <a asp-page="/Obligations/Index" class="@NavClass("/Obligations")"><span>◷</span><span>اقساط و هزینه‌های ثابت</span></a>
                 <a asp-page="/Savings/Index" class="@NavClass("/Savings")"><span>◇</span><span>پس‌انداز</span></a>
                 <a asp-page="/Reports/Index" class="@NavClass("/Reports")"><span>▥</span><span>گزارش‌ها</span></a>
                 <a asp-page="/Workspaces/Index" class="@NavClass("/Workspaces")"><span>♧</span><span>فضاهای مالی</span></a>
@@ -96,6 +97,7 @@
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
+                        @await Component.InvokeAsync("ObligationAlert")
                         <button type="button" class="btn-secondary px-3" data-guide-open aria-label="بازکردن راهنما">؟ <span class="hidden sm:inline">راهنما</span></button>
                         <a asp-page="/Expenses/Create" class="btn-primary"><span class="text-lg">＋</span><span class="hidden sm:inline">ثبت خرج</span></a>
                     </div>

@@ -7,16 +7,22 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HesabYar.Web.Pages;
 
-public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext workspaceContext) : PageModel
+public sealed class IndexModel(
+    ApplicationDbContext db,
+    IWorkspaceContext workspaceContext,
+    BudgetBalanceService budgetBalanceService) : PageModel
 {
     public Workspace CurrentWorkspace { get; private set; } = null!;
     public decimal MonthTotal { get; private set; }
     public decimal WeekTotal { get; private set; }
     public decimal MonthSavings { get; private set; }
+    public decimal MonthObligationTotal { get; private set; }
+    public decimal MonthObligationUnpaid { get; private set; }
     public int MonthExpenseCount { get; private set; }
     public IReadOnlyList<Expense> RecentExpenses { get; private set; } = [];
     public IReadOnlyList<BudgetCard> BudgetCards { get; private set; } = [];
     public IReadOnlyList<SavingsCard> SavingsCards { get; private set; } = [];
+    public IReadOnlyList<ObligationAlert> ObligationAlerts { get; private set; } = [];
     public DateOnly Today { get; private set; }
 
     public async Task OnGetAsync(CancellationToken cancellationToken)
@@ -48,44 +54,18 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
-        var budgets = await db.Budgets
-            .Where(x => x.WorkspaceId == CurrentWorkspace.Id && x.Year == currentPeriod.Year && x.Month == currentPeriod.Month)
-            .Include(x => x.Category)
-            .OrderBy(x => x.CategoryId == null ? 0 : 1)
-            .ThenBy(x => x.Category!.Name)
-            .AsNoTracking()
-            .ToListAsync(cancellationToken);
-
-        var budgetIds = budgets.Select(x => x.Id).ToList();
-        var transfers = budgetIds.Count == 0
-            ? new List<BudgetTransfer>()
-            : await db.BudgetTransfers
-                .Where(x => x.WorkspaceId == CurrentWorkspace.Id &&
-                            (budgetIds.Contains(x.SourceBudgetId) || budgetIds.Contains(x.DestinationBudgetId)))
-                .AsNoTracking()
-                .ToListAsync(cancellationToken);
-
-        BudgetCards = budgets.Select(budget =>
-        {
-            var spent = budget.CategoryId.HasValue
-                ? monthExpenses.Where(x => x.CategoryId == budget.CategoryId.Value).Sum(x => x.Amount)
-                : MonthTotal;
-            var incoming = transfers.Where(x => x.DestinationBudgetId == budget.Id).Sum(x => x.Amount);
-            var outgoing = transfers.Where(x => x.SourceBudgetId == budget.Id).Sum(x => x.Amount);
-            var effectiveAmount = budget.Amount + incoming - outgoing;
-            var remaining = effectiveAmount - spent;
-            var percent = effectiveAmount <= 0 ? (spent > 0 ? 100 : 0) : Math.Round(spent / effectiveAmount * 100, 1);
-            return new BudgetCard(
-                budget.Id,
-                budget.Category?.Name ?? "بودجه کل ماه",
-                budget.Category?.Icon ?? "💳",
-                effectiveAmount,
-                spent,
-                remaining,
-                percent,
-                remaining < 0,
-                percent >= budget.WarningPercent);
-        }).ToList();
+        var budgetStates = await budgetBalanceService.GetPeriodAsync(CurrentWorkspace.Id, currentPeriod, cancellationToken);
+        BudgetCards = budgetStates.Select(state => new BudgetCard(
+            state.Budget.Id,
+            state.Budget.Category?.Name ?? "بودجه کل ماه",
+            state.Budget.Category?.Icon ?? "💳",
+            state.EffectiveAmount,
+            state.Spent,
+            state.Remaining,
+            state.Percent,
+            state.CarryoverDeduction,
+            state.Remaining < 0,
+            state.Percent >= state.Budget.WarningPercent)).ToList();
 
         var goals = await db.SavingsGoals
             .Where(x => x.WorkspaceId == CurrentWorkspace.Id && !x.IsCompleted && !x.IsCancelled)
@@ -97,39 +77,54 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
         SavingsCards = goals.Select(goal =>
         {
             var total = goal.Contributions.Sum(x => x.Amount);
-            var monthly = goal.Contributions
-                .Where(x => x.ContributionDate >= monthStart && x.ContributionDate < monthEnd)
-                .Sum(x => x.Amount);
-            return new SavingsCard(
-                goal.Id,
-                goal.Name,
-                goal.TargetAmount,
-                goal.MonthlyTargetAmount,
-                total,
-                monthly,
+            var monthly = goal.Contributions.Where(x => x.ContributionDate >= monthStart && x.ContributionDate < monthEnd).Sum(x => x.Amount);
+            return new SavingsCard(goal.Id, goal.Name, goal.TargetAmount, goal.MonthlyTargetAmount, total, monthly,
                 goal.TargetAmount <= 0 ? 0 : Math.Round(total / goal.TargetAmount * 100, 1));
         }).ToList();
-
         MonthSavings = SavingsCards.Sum(x => x.MonthlySaved);
+
+        await LoadObligationsAsync(currentPeriod, cancellationToken);
     }
 
-    public sealed record BudgetCard(
-        Guid Id,
-        string Name,
-        string Icon,
-        decimal Amount,
-        decimal Spent,
-        decimal Remaining,
-        decimal Percent,
-        bool IsExceeded,
-        bool IsWarning);
+    private async Task LoadObligationsAsync(PersianYearMonth period, CancellationToken cancellationToken)
+    {
+        var obligations = await db.RecurringObligations
+            .Where(x => x.WorkspaceId == CurrentWorkspace.Id && x.IsActive)
+            .Include(x => x.Category)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
 
-    public sealed record SavingsCard(
-        Guid Id,
-        string Name,
-        decimal Target,
-        decimal MonthlyTarget,
-        decimal Saved,
-        decimal MonthlySaved,
-        decimal Percent);
+        var ids = obligations.Select(x => x.Id).ToList();
+        var payments = ids.Count == 0
+            ? new List<RecurringObligationPayment>()
+            : await db.RecurringObligationPayments
+                .Where(x => ids.Contains(x.RecurringObligationId) && x.PeriodYear == period.Year && x.PeriodMonth == period.Month)
+                .AsNoTracking().ToListAsync(cancellationToken);
+
+        var scheduled = obligations.Where(x => RecurringObligationHelper.IsScheduledForPeriod(x, period)).ToList();
+        MonthObligationTotal = scheduled.Sum(x => x.Amount);
+        var alerts = new List<ObligationAlert>();
+        foreach (var item in scheduled)
+        {
+            if (payments.Any(x => x.RecurringObligationId == item.Id)) continue;
+            MonthObligationUnpaid += item.Amount;
+            var due = RecurringObligationHelper.GetDueDate(item, period);
+            var days = due.DayNumber - Today.DayNumber;
+            var overdue = due < Today;
+            var dueSoon = days >= 0 && days <= item.ReminderDaysBefore;
+            if (overdue || dueSoon)
+            {
+                alerts.Add(new ObligationAlert(item.Id, item.Title, item.Category.Icon, item.Amount, due, overdue, days));
+            }
+        }
+
+        ObligationAlerts = alerts.OrderByDescending(x => x.IsOverdue).ThenBy(x => x.DueDate).Take(5).ToList();
+    }
+
+    public sealed record BudgetCard(Guid Id, string Name, string Icon, decimal Amount, decimal Spent, decimal Remaining,
+        decimal Percent, decimal CarryoverDeduction, bool IsExceeded, bool IsWarning);
+
+    public sealed record SavingsCard(Guid Id, string Name, decimal Target, decimal MonthlyTarget, decimal Saved, decimal MonthlySaved, decimal Percent);
+
+    public sealed record ObligationAlert(Guid Id, string Title, string Icon, decimal Amount, DateOnly DueDate, bool IsOverdue, int DaysUntilDue);
 }

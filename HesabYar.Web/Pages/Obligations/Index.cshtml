@@ -1,0 +1,291 @@
+@page
+@model HesabYar.Web.Pages.Obligations.IndexModel
+@{
+    ViewData["Title"] = "اقساط و هزینه‌های ثابت";
+}
+
+<div class="mb-6 flex flex-col justify-between gap-3 lg:flex-row lg:items-end">
+    <div>
+        <h2 class="text-2xl font-black">تعهدات ماهانه</h2>
+        <p class="mt-1 text-sm text-slate-500">قسط‌ها و هزینه‌های ثابت را یک‌بار تعریف کنید؛ Donysh سررسید، پرداخت و مبلغ باقی‌مانده هر ماه را برایتان پیگیری می‌کند.</p>
+    </div>
+    <div class="flex items-center gap-2">
+        <a asp-page="Index" asp-route-year="@Model.PreviousPeriod.Year" asp-route-month="@Model.PreviousPeriod.Month" class="btn-secondary px-3">→</a>
+        <span class="min-w-36 text-center font-black">@Model.PeriodTitle</span>
+        <a asp-page="Index" asp-route-year="@Model.NextPeriod.Year" asp-route-month="@Model.NextPeriod.Month" class="btn-secondary px-3">←</a>
+    </div>
+</div>
+
+<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <section class="stat">
+        <span class="stat-label">تعهد این ماه</span>
+        <div class="stat-value">@Formatters.Money(Model.MonthExpectedTotal)</div>
+        <p class="mt-2 text-xs text-slate-500">مجموع قسط‌ها و هزینه‌های ثابت برنامه‌ریزی‌شده</p>
+    </section>
+    <section class="stat">
+        <span class="stat-label">پرداخت‌شده</span>
+        <div class="stat-value text-emerald-700">@Formatters.Money(Model.MonthPaidTotal)</div>
+        <p class="mt-2 text-xs text-slate-500">پرداخت‌های ثبت‌شده به‌صورت خودکار وارد مخارج می‌شوند</p>
+    </section>
+    <section class="stat">
+        <span class="stat-label">باقی‌مانده پرداخت</span>
+        <div class="stat-value @(Model.MonthUnpaidTotal > 0 ? "text-amber-700" : "text-emerald-700")">@Formatters.Money(Model.MonthUnpaidTotal)</div>
+        <p class="mt-2 text-xs text-slate-500">@Model.UnpaidCount مورد هنوز پرداخت نشده</p>
+    </section>
+    <section class="stat">
+        <span class="stat-label">اعلان‌های مهم</span>
+        <div class="stat-value @(Model.AlertCount > 0 ? "text-rose-700" : "text-emerald-700")">@Model.AlertCount مورد</div>
+        <p class="mt-2 text-xs text-slate-500">سررسید نزدیک یا پرداخت عقب‌افتاده</p>
+    </section>
+</div>
+
+<div class="mt-6 grid gap-6 xl:grid-cols-[23rem_1fr]">
+    <section class="card h-fit">
+        <h3 class="card-title">تعریف تعهد جدید</h3>
+        <p class="muted mt-1">برای قسط مدت مشخص کنید؛ هزینه ثابت تا زمانی که متوقفش کنید هر ماه تکرار می‌شود.</p>
+        <form method="post" asp-page-handler="Save" class="mt-5 space-y-4">
+            <div asp-validation-summary="ModelOnly"></div>
+            <div>
+                <label asp-for="Input.Title" class="label">عنوان</label>
+                <input asp-for="Input.Title" class="input" placeholder="مثلاً بیمه خودرو یا اینترنت مودم" />
+                <span asp-validation-for="Input.Title" class="field-error"></span>
+            </div>
+            <div>
+                <label asp-for="Input.Type" class="label">نوع</label>
+                <select asp-for="Input.Type" class="input">
+                    <option value="1">قسط با مدت مشخص</option>
+                    <option value="2">هزینه ثابت ماهانه</option>
+                </select>
+            </div>
+            <div>
+                <label asp-for="Input.CategoryId" class="label">دسته هزینه</label>
+                <select asp-for="Input.CategoryId" class="input">
+                    <option value="">انتخاب دسته</option>
+                    @foreach (var category in Model.Categories)
+                    {
+                        <option value="@category.Id">@category.Icon @category.Name</option>
+                    }
+                </select>
+                <span asp-validation-for="Input.CategoryId" class="field-error"></span>
+            </div>
+            <div>
+                <label asp-for="Input.Amount" class="label">مبلغ ماهانه (تومان)</label>
+                <input asp-for="Input.Amount" type="text" inputmode="numeric" autocomplete="off" data-money class="input ltr-input" />
+                <span asp-validation-for="Input.Amount" class="field-error"></span>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label asp-for="Input.StartYear" class="label">سال شروع</label>
+                    <input asp-for="Input.StartYear" type="number" class="input" />
+                </div>
+                <div>
+                    <label asp-for="Input.StartMonth" class="label">ماه شروع</label>
+                    <input asp-for="Input.StartMonth" type="number" min="1" max="12" class="input" />
+                </div>
+            </div>
+            <div>
+                <label asp-for="Input.DurationMonths" class="label">تعداد ماه برای قسط</label>
+                <input asp-for="Input.DurationMonths" type="number" min="1" class="input" placeholder="مثلاً ۱۰" />
+                <span asp-validation-for="Input.DurationMonths" class="field-error"></span>
+                <p class="mt-1 text-xs text-slate-500">برای هزینه ثابت خالی بگذارید.</p>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label asp-for="Input.DueDay" class="label">روز سررسید</label>
+                    <input asp-for="Input.DueDay" type="number" min="1" max="31" class="input" />
+                </div>
+                <div>
+                    <label asp-for="Input.ReminderDaysBefore" class="label">یادآوری چند روز قبل</label>
+                    <input asp-for="Input.ReminderDaysBefore" type="number" min="0" max="30" class="input" />
+                </div>
+            </div>
+            <div>
+                <label asp-for="Input.Note" class="label">توضیحات (اختیاری)</label>
+                <textarea asp-for="Input.Note" rows="3" class="input" placeholder="شماره قرارداد، توضیح پرداخت و ..."></textarea>
+            </div>
+            <button type="submit" class="btn-primary w-full">ذخیره تعهد</button>
+        </form>
+    </section>
+
+    <section class="space-y-4">
+        @if (Model.Items.Count == 0)
+        {
+            <div class="empty">
+                <div class="text-5xl">◷</div>
+                <h3 class="mt-4 text-lg font-bold">برای @Model.PeriodTitle تعهدی ندارید</h3>
+                <p class="mt-1 text-sm text-slate-500">قسط یا هزینه ثابت را از فرم کناری اضافه کنید.</p>
+            </div>
+        }
+        else
+        {
+            @foreach (var row in Model.Items)
+            {
+                <article class="card @(row.IsOverdue ? "border-rose-200" : row.IsDueSoon ? "border-amber-200" : "")">
+                    <div class="flex flex-wrap items-start justify-between gap-3">
+                        <div class="flex items-start gap-3">
+                            <span class="grid size-12 place-items-center rounded-2xl bg-slate-100 text-2xl">@row.Obligation.Category.Icon</span>
+                            <div>
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <h3 class="font-black">@row.Obligation.Title</h3>
+                                    <span class="rounded-full px-2 py-1 text-[11px] font-black @row.StatusClass">@row.StatusText</span>
+                                </div>
+                                <p class="mt-1 text-xs text-slate-500">
+                                    @(row.Obligation.Type == RecurringObligationType.Installment ? "قسط" : "هزینه ثابت") · @row.Obligation.Category.Name · سررسید @Formatters.PersianDate(row.DueDate)
+                                </p>
+                                @if (row.InstallmentNumber.HasValue)
+                                {
+                                    <p class="mt-1 text-xs text-indigo-700">قسط @row.InstallmentNumber از @row.Obligation.DurationMonths · @(row.RemainingInstallments ?? 0) قسط بعد از این ماه باقی می‌ماند</p>
+                                }
+                            </div>
+                        </div>
+                        <strong class="text-lg">@Formatters.Money(row.ExpectedAmount)</strong>
+                    </div>
+
+                    @if (!row.IsPaid)
+                    {
+                        <div class="mt-4 rounded-2xl @(row.IsOverdue ? "bg-rose-50" : row.IsDueSoon ? "bg-amber-50" : "bg-slate-50") p-4">
+                            @if (row.IsOverdue)
+                            {
+                                <p class="mb-3 text-sm font-bold text-rose-700">این پرداخت از سررسید گذشته و هنوز ثبت نشده است.</p>
+                            }
+                            else if (row.IsDueSoon)
+                            {
+                                <p class="mb-3 text-sm font-bold text-amber-700">@row.DaysUntilDue روز تا سررسید باقی مانده است.</p>
+                            }
+                            <form method="post" asp-page-handler="Pay" class="grid gap-3 md:grid-cols-[1fr_1fr_1.2fr_auto] md:items-end">
+                                <input type="hidden" name="Payment.ObligationId" value="@row.Obligation.Id" />
+                                <input type="hidden" name="Payment.Year" value="@Model.Year" />
+                                <input type="hidden" name="Payment.Month" value="@Model.Month" />
+                                <div>
+                                    <label class="label">مبلغ واقعی پرداخت</label>
+                                    <input name="Payment.Amount" value="@row.ExpectedAmount.ToString("0")" data-money inputmode="numeric" class="input ltr-input" required />
+                                </div>
+                                <div>
+                                    <label class="label">تاریخ پرداخت</label>
+                                    <input name="Payment.PaidDate" value="@Model.DefaultPaidDate" data-persian-date inputmode="numeric" class="input ltr-input" required />
+                                </div>
+                                <div>
+                                    <label class="label">توضیح (اختیاری)</label>
+                                    <input name="Payment.Note" maxlength="200" class="input" placeholder="مثلاً پرداخت از کارت ..." />
+                                </div>
+                                <button type="submit" class="btn-primary">ثبت پرداخت</button>
+                            </form>
+                            <p class="mt-2 text-[11px] text-slate-500">با ثبت پرداخت، یک خرج واقعی در دسته «@row.Obligation.Category.Name» هم ایجاد می‌شود تا بودجه و گزارش‌ها دقیق بمانند.</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-emerald-50 p-4">
+                            <div class="text-sm text-emerald-800">
+                                <strong>@Formatters.Money(row.PaidAmount)</strong> در تاریخ @Formatters.PersianDate(row.PaidDate!.Value) پرداخت شده است.
+                            </div>
+                            <form method="post" asp-page-handler="UndoPayment" asp-route-paymentId="@row.PaymentId" asp-route-year="@Model.Year" asp-route-month="@Model.Month">
+                                <button type="submit" class="text-xs font-bold text-rose-600" data-confirm="ثبت پرداخت و خرج مرتبط حذف شود؟">لغو ثبت پرداخت</button>
+                            </form>
+                        </div>
+                    }
+                </article>
+            }
+        }
+    </section>
+</div>
+
+<section class="card mt-6">
+    <div class="mb-5 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
+        <div>
+            <h3 class="card-title">مدیریت قسط‌ها و هزینه‌های ثابت</h3>
+            <p class="muted mt-1">قوانین تکرارشونده را ویرایش یا متوقف کنید. موارد دارای سابقه پرداخت حذف نمی‌شوند تا گزارش مالی سالم بماند.</p>
+        </div>
+        <span class="badge">@Model.Definitions.Count مورد</span>
+    </div>
+
+    @if (Model.Definitions.Count == 0)
+    {
+        <p class="rounded-2xl bg-slate-50 p-5 text-center text-sm text-slate-500">تعهدی تعریف نشده است.</p>
+    }
+    else
+    {
+        <div class="grid gap-4 lg:grid-cols-2">
+            @foreach (var item in Model.Definitions)
+            {
+                <article class="rounded-2xl border border-slate-200 p-4 @(item.IsActive ? "bg-white" : "bg-slate-50 opacity-75")">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <strong>@item.Category.Icon @item.Title</strong>
+                                <span class="badge">@(item.Type == RecurringObligationType.Installment ? $"قسط {item.DurationMonths} ماهه" : "هزینه ثابت")</span>
+                                @if (!item.IsActive)
+                                {
+                                    <span class="rounded-full bg-slate-200 px-2 py-1 text-[11px] font-bold text-slate-600">متوقف</span>
+                                }
+                            </div>
+                            <p class="mt-2 text-xs text-slate-500">@Formatters.Money(item.Amount) · سررسید روز @item.DueDay · یادآوری @item.ReminderDaysBefore روز قبل</p>
+                        </div>
+                        <form method="post" asp-page-handler="Toggle" asp-route-id="@item.Id" asp-route-year="@Model.Year" asp-route-month="@Model.Month">
+                            <button type="submit" class="text-xs font-bold @(item.IsActive ? "text-amber-700" : "text-emerald-700")">@(item.IsActive ? "توقف" : "فعال‌سازی")</button>
+                        </form>
+                    </div>
+
+                    <details class="mt-4 border-t border-slate-100 pt-3">
+                        <summary class="cursor-pointer text-sm font-bold text-indigo-700">ویرایش</summary>
+                        <form method="post" asp-page-handler="Save" class="mt-4 grid gap-3 sm:grid-cols-2">
+                            <input type="hidden" name="Input.Id" value="@item.Id" />
+                            <div class="sm:col-span-2">
+                                <label class="label">عنوان</label>
+                                <input name="Input.Title" value="@item.Title" class="input" />
+                            </div>
+                            <div>
+                                <label class="label">نوع</label>
+                                <select name="Input.Type" class="input">
+                                    <option value="1" selected="@(item.Type == RecurringObligationType.Installment)">قسط</option>
+                                    <option value="2" selected="@(item.Type == RecurringObligationType.FixedMonthlyExpense)">هزینه ثابت</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="label">دسته</label>
+                                <select name="Input.CategoryId" class="input">
+                                    @foreach (var category in Model.Categories)
+                                    {
+                                        <option value="@category.Id" selected="@(category.Id == item.CategoryId)">@category.Icon @category.Name</option>
+                                    }
+                                </select>
+                            </div>
+                            <div>
+                                <label class="label">مبلغ</label>
+                                <input name="Input.Amount" value="@item.Amount.ToString("0")" data-money class="input ltr-input" />
+                            </div>
+                            <div>
+                                <label class="label">تعداد ماه</label>
+                                <input name="Input.DurationMonths" value="@item.DurationMonths" type="number" min="1" class="input" />
+                            </div>
+                            <div>
+                                <label class="label">سال شروع</label>
+                                <input name="Input.StartYear" value="@item.StartYear" type="number" class="input" />
+                            </div>
+                            <div>
+                                <label class="label">ماه شروع</label>
+                                <input name="Input.StartMonth" value="@item.StartMonth" type="number" min="1" max="12" class="input" />
+                            </div>
+                            <div>
+                                <label class="label">روز سررسید</label>
+                                <input name="Input.DueDay" value="@item.DueDay" type="number" min="1" max="31" class="input" />
+                            </div>
+                            <div>
+                                <label class="label">یادآوری قبل از سررسید</label>
+                                <input name="Input.ReminderDaysBefore" value="@item.ReminderDaysBefore" type="number" min="0" max="30" class="input" />
+                            </div>
+                            <div class="sm:col-span-2">
+                                <label class="label">توضیحات</label>
+                                <textarea name="Input.Note" rows="2" class="input">@item.Note</textarea>
+                            </div>
+                            <button type="submit" class="btn-soft sm:col-span-2">ذخیره تغییرات</button>
+                        </form>
+                    </details>
+                    <form method="post" asp-page-handler="Delete" asp-route-id="@item.Id" asp-route-year="@Model.Year" asp-route-month="@Model.Month" class="mt-3">
+                        <button type="submit" class="text-xs font-bold text-rose-600" data-confirm="این تعهد حذف شود؟">حذف</button>
+                    </form>
+                </article>
+            }
+        </div>
+    }
+</section>

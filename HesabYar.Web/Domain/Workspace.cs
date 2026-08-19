@@ -15,6 +15,7 @@ public sealed class Workspace
     public ICollection<Budget> Budgets { get; set; } = [];
     public ICollection<BudgetTransfer> BudgetTransfers { get; set; } = [];
     public ICollection<SavingsGoal> SavingsGoals { get; set; } = [];
+    public ICollection<RecurringObligation> RecurringObligations { get; set; } = [];
 }
 
 public sealed class WorkspaceMember

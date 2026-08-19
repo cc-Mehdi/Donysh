@@ -92,6 +92,7 @@ if (!string.IsNullOrWhiteSpace(keysPath))
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IWorkspaceContext, WorkspaceContext>();
 builder.Services.AddScoped<DatabaseInitializer>();
+builder.Services.AddScoped<BudgetBalanceService>();
 
 builder.Services
     .AddRazorPages(options =>

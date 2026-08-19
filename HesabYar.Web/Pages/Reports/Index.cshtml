@@ -6,17 +6,24 @@
 }
 <div class="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
     <div><h2 class="text-2xl font-black">گزارش مالی</h2><p class="mt-1 text-sm text-slate-500">تحلیل مخارج و مشاهده سهم هزینه و پس‌انداز اعضای فضای فعال</p></div>
-    <form method="get" class="flex flex-wrap items-end gap-2">
-        <div><label asp-for="Period" class="label">نوع گزارش</label><select asp-for="Period" class="input min-w-32"><option value="daily">روزانه</option><option value="weekly">هفتگی</option><option value="monthly">ماهانه</option><option value="yearly">سالانه</option></select></div>
-        <div><label asp-for="Anchor" class="label">تاریخ مبنا</label><input id="Anchor" name="Anchor" value="@anchorValue" type="text" inputmode="numeric" autocomplete="off" data-persian-date class="input ltr-input" placeholder="۱۴۰۵/۰۵/۰۸" /></div>
-        <button type="submit" class="btn-primary">نمایش</button>
-    </form>
+    <div class="flex flex-wrap items-end gap-2">
+        <form method="get" class="flex flex-wrap items-end gap-2">
+            <div><label asp-for="Period" class="label">نوع گزارش</label><select asp-for="Period" class="input min-w-32"><option value="daily">روزانه</option><option value="weekly">هفتگی</option><option value="monthly">ماهانه</option><option value="yearly">سالانه</option></select></div>
+            <div><label asp-for="Anchor" class="label">تاریخ مبنا</label><input id="Anchor" name="Anchor" value="@anchorValue" type="text" inputmode="numeric" autocomplete="off" data-persian-date class="input ltr-input" placeholder="۱۴۰۵/۰۵/۰۸" /></div>
+            <button type="submit" class="btn-primary">نمایش</button>
+        </form>
+        <a asp-page-handler="AiExport" asp-route-period="@Model.Period" asp-route-anchor="@Model.Anchor?.ToString("yyyy-MM-dd")" class="btn-secondary">⬇ گزارش برای هوش مصنوعی</a>
+    </div>
 </div>
 
 <div class="mb-5 flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-3">
     <a asp-page="Index" asp-route-period="@Model.Period" asp-route-anchor="@Model.PreviousAnchor.ToString("yyyy-MM-dd")" class="btn-secondary px-3">→ قبلی</a>
     <strong class="px-3 text-center">@Model.PeriodTitle</strong>
     <a asp-page="Index" asp-route-period="@Model.Period" asp-route-anchor="@Model.NextAnchor.ToString("yyyy-MM-dd")" class="btn-secondary px-3">بعدی ←</a>
+</div>
+
+<div class="mb-5 rounded-2xl border border-indigo-100 bg-indigo-50 p-4 text-sm text-indigo-900">
+    <strong>گزارش آماده تحلیل هوش مصنوعی:</strong> دکمه «گزارش برای هوش مصنوعی» یک فایل JSON ساختاریافته از مخارج، بودجه‌ها، کسری منتقل‌شده، انتقال بین دسته‌ها، پس‌اندازها، اعضا و اقساط می‌سازد. فایل را می‌توانید بدون نیاز به API یا توکن، مستقیماً به AI دلخواهتان بدهید.
 </div>
 
 <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -70,6 +77,43 @@
         }
     </section>
 </div>
+
+<section class="card mt-6">
+    <div class="mb-5 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
+        <div>
+            <h3 class="card-title">اقساط و هزینه‌های ثابت @Model.MemberMonthTitle</h3>
+            <p class="muted mt-1">وضعیت تعهدات ماهانه برای تشخیص پرداخت‌های انجام‌شده، باقی‌مانده و موارد عقب‌افتاده</p>
+        </div>
+        <div class="flex flex-wrap gap-2 text-xs">
+            <span class="badge">تعهد @Formatters.Money(Model.MonthlyObligationExpected)</span>
+            <span class="badge">پرداخت @Formatters.Money(Model.MonthlyObligationPaid)</span>
+            <span class="badge">باقی‌مانده @Formatters.Money(Model.MonthlyObligationUnpaid)</span>
+        </div>
+    </div>
+    @if (Model.MonthlyObligations.Count == 0)
+    {
+        <p class="rounded-2xl bg-slate-50 p-5 text-center text-sm text-slate-500">برای این ماه قسط یا هزینه ثابت فعالی وجود ندارد.</p>
+    }
+    else
+    {
+        <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            @foreach (var item in Model.MonthlyObligations)
+            {
+                <article class="rounded-2xl border @(item.IsPaid ? "border-emerald-200 bg-emerald-50" : item.Status == "عقب‌افتاده" ? "border-rose-200 bg-rose-50" : "border-slate-200 bg-slate-50") p-4">
+                    <div class="flex items-start justify-between gap-3">
+                        <div><strong>@item.CategoryIcon @item.Title</strong><p class="mt-1 text-xs text-slate-500">@item.CategoryName · سررسید @Formatters.PersianDate(item.DueDate)</p></div>
+                        <span class="badge">@item.Status</span>
+                    </div>
+                    <div class="mt-3 flex items-center justify-between text-sm"><span>مبلغ برنامه‌ریزی‌شده</span><strong>@Formatters.Money(item.ExpectedAmount)</strong></div>
+                    @if (item.IsPaid)
+                    {
+                        <div class="mt-2 flex items-center justify-between text-xs text-emerald-800"><span>پرداخت واقعی @Formatters.PersianDate(item.PaidDate!.Value)</span><strong>@Formatters.Money(item.PaidAmount)</strong></div>
+                    }
+                </article>
+            }
+        </div>
+    }
+</section>
 
 <section class="card mt-6">
     <div class="mb-5 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">

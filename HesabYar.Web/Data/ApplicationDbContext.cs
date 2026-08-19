@@ -16,6 +16,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<BudgetTransfer> BudgetTransfers => Set<BudgetTransfer>();
     public DbSet<SavingsGoal> SavingsGoals => Set<SavingsGoal>();
     public DbSet<SavingsContribution> SavingsContributions => Set<SavingsContribution>();
+    public DbSet<RecurringObligation> RecurringObligations => Set<RecurringObligation>();
+    public DbSet<RecurringObligationPayment> RecurringObligationPayments => Set<RecurringObligationPayment>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -145,6 +147,48 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
                 .WithMany(x => x.SavingsGoals)
                 .HasForeignKey(x => x.WorkspaceId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+
+
+        builder.Entity<RecurringObligation>(entity =>
+        {
+            entity.Property(x => x.Title).HasMaxLength(140);
+            entity.Property(x => x.Note).HasMaxLength(500);
+            entity.Property(x => x.Amount).HasPrecision(18, 0);
+            entity.HasIndex(x => new { x.WorkspaceId, x.IsActive });
+            entity.HasOne(x => x.Workspace)
+                .WithMany(x => x.RecurringObligations)
+                .HasForeignKey(x => x.WorkspaceId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.Category)
+                .WithMany()
+                .HasForeignKey(x => x.CategoryId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.CreatedByUser)
+                .WithMany()
+                .HasForeignKey(x => x.CreatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<RecurringObligationPayment>(entity =>
+        {
+            entity.Property(x => x.Amount).HasPrecision(18, 0);
+            entity.Property(x => x.Note).HasMaxLength(200);
+            entity.HasIndex(x => new { x.RecurringObligationId, x.PeriodYear, x.PeriodMonth }).IsUnique();
+            entity.HasIndex(x => x.ExpenseId).IsUnique();
+            entity.HasOne(x => x.RecurringObligation)
+                .WithMany(x => x.Payments)
+                .HasForeignKey(x => x.RecurringObligationId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.Expense)
+                .WithMany()
+                .HasForeignKey(x => x.ExpenseId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.PaidByUser)
+                .WithMany()
+                .HasForeignKey(x => x.PaidByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<SavingsContribution>(entity =>

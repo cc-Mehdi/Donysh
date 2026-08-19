@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HesabYar.Web.Pages.Expenses;
 
-public sealed class CreateModel(ApplicationDbContext db, IWorkspaceContext workspaceContext) : PageModel
+public sealed class CreateModel(ApplicationDbContext db, IWorkspaceContext workspaceContext, BudgetBalanceService budgetBalanceService) : PageModel
 {
     [BindProperty]
     public InputModel Input { get; set; } = new();
@@ -84,40 +84,19 @@ public sealed class CreateModel(ApplicationDbContext db, IWorkspaceContext works
 
     private async Task SetBudgetAlertAsync(Guid workspaceId, CancellationToken cancellationToken)
     {
-        var date = Input.ExpenseDate;
-        var period = PersianCalendarHelper.GetYearMonth(date);
-        var monthStart = PersianCalendarHelper.StartOfMonth(period);
-        var monthEnd = PersianCalendarHelper.EndOfMonthExclusive(period);
-        var budgets = await db.Budgets
-            .Where(x => x.WorkspaceId == workspaceId && x.Year == period.Year && x.Month == period.Month && (x.CategoryId == null || x.CategoryId == Input.CategoryId))
-            .Include(x => x.Category)
-            .AsNoTracking()
-            .ToListAsync(cancellationToken);
+        var period = PersianCalendarHelper.GetYearMonth(Input.ExpenseDate);
+        var states = await budgetBalanceService.GetPeriodAsync(workspaceId, period, cancellationToken);
+        var exceeded = states
+            .Where(x => (x.Budget.CategoryId == null || x.Budget.CategoryId == Input.CategoryId) && x.Remaining < 0)
+            .OrderByDescending(x => Math.Abs(x.Remaining))
+            .FirstOrDefault();
 
-        var budgetIds = budgets.Select(x => x.Id).ToList();
-        var transfers = budgetIds.Count == 0
-            ? new List<BudgetTransfer>()
-            : await db.BudgetTransfers
-                .Where(x => x.WorkspaceId == workspaceId &&
-                            (budgetIds.Contains(x.SourceBudgetId) || budgetIds.Contains(x.DestinationBudgetId)))
-                .AsNoTracking()
-                .ToListAsync(cancellationToken);
+        if (exceeded is null) return;
 
-        foreach (var budget in budgets)
-        {
-            var spent = await db.Expenses
-                .Where(x => x.WorkspaceId == workspaceId && x.ExpenseDate >= monthStart && x.ExpenseDate < monthEnd && (!budget.CategoryId.HasValue || x.CategoryId == budget.CategoryId.Value))
-                .SumAsync(x => x.Amount, cancellationToken);
-
-            var incoming = transfers.Where(x => x.DestinationBudgetId == budget.Id).Sum(x => x.Amount);
-            var outgoing = transfers.Where(x => x.SourceBudgetId == budget.Id).Sum(x => x.Amount);
-            var effectiveAmount = budget.Amount + incoming - outgoing;
-
-            if (spent > effectiveAmount)
-            {
-                TempData["Error"] = $"هشدار: بودجه «{budget.Category?.Name ?? "کل ماه"}» رد شده است؛ {Formatters.Money(spent - effectiveAmount)} بیشتر از سقف موثر. از صفحه بودجه‌ها می‌توانید کسری را از یک دسته دیگر جبران کنید.";
-                return;
-            }
-        }
+        var name = exceeded.Budget.Category?.Name ?? "کل ماه";
+        var carryover = exceeded.Budget.CarryOverOverspend
+            ? " اگر با انتقال بودجه جبران نشود، این کسری از سقف مؤثر ماه بعد کم می‌شود."
+            : string.Empty;
+        TempData["Error"] = $"هشدار: بودجه «{name}» {Formatters.Money(Math.Abs(exceeded.Remaining))} از سقف مؤثر عبور کرده است.{carryover}";
     }
 }

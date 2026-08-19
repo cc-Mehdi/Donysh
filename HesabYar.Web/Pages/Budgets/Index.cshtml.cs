@@ -9,21 +9,21 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HesabYar.Web.Pages.Budgets;
 
-public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext workspaceContext) : PageModel
+public sealed class IndexModel(
+    ApplicationDbContext db,
+    IWorkspaceContext workspaceContext,
+    BudgetBalanceService budgetBalanceService) : PageModel
 {
-    [BindProperty(SupportsGet = true)]
-    public int? Year { get; set; }
-
-    [BindProperty(SupportsGet = true)]
-    public int? Month { get; set; }
-
-    [BindProperty]
-    public InputModel Input { get; set; } = new();
+    [BindProperty(SupportsGet = true)] public int? Year { get; set; }
+    [BindProperty(SupportsGet = true)] public int? Month { get; set; }
+    [BindProperty] public InputModel Input { get; set; } = new();
 
     public IReadOnlyList<ExpenseCategory> Categories { get; private set; } = [];
     public IReadOnlyList<BudgetRow> Items { get; private set; } = [];
     public IReadOnlyList<BudgetTransferRow> TransferHistory { get; private set; } = [];
-    public decimal TotalBudgetAmount => Items.Sum(x => x.Budget.Amount);
+    public decimal TotalBudgetAmount => Items.Sum(x => x.OriginalAmount);
+    public decimal TotalEffectiveBudgetAmount => Items.Sum(x => x.EffectiveAmount);
+    public decimal TotalCarryoverDeduction => Items.Sum(x => x.CarryoverDeduction);
     public int BudgetCount => Items.Count;
     public DateOnly PeriodStart { get; private set; }
     public DateOnly PeriodEndExclusive { get; private set; }
@@ -36,18 +36,11 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
     {
         public Guid? Id { get; set; }
         public Guid? CategoryId { get; set; }
-
-        [Range(1300, 1600)]
-        public int Year { get; set; }
-
-        [Range(1, 12)]
-        public int Month { get; set; }
-
-        [Range(1, 999_999_999_999, ErrorMessage = "مبلغ بودجه باید بیشتر از صفر باشد.")]
-        public decimal Amount { get; set; }
-
-        [Range(1, 100, ErrorMessage = "درصد هشدار باید بین ۱ تا ۱۰۰ باشد.")]
-        public int WarningPercent { get; set; } = 80;
+        [Range(1300, 1600)] public int Year { get; set; }
+        [Range(1, 12)] public int Month { get; set; }
+        [Range(1, 999_999_999_999, ErrorMessage = "مبلغ بودجه باید بیشتر از صفر باشد.")] public decimal Amount { get; set; }
+        [Range(1, 100, ErrorMessage = "درصد هشدار باید بین ۱ تا ۱۰۰ باشد.")] public int WarningPercent { get; set; } = 80;
+        public bool CarryOverOverspend { get; set; } = true;
     }
 
     public sealed record TransferSourceOption(Guid BudgetId, string Name, string Icon, decimal AvailableAmount);
@@ -57,30 +50,27 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
         decimal OriginalAmount,
         decimal IncomingAmount,
         decimal OutgoingAmount,
+        decimal CarryoverDeduction,
         decimal EffectiveAmount,
         decimal Spent,
         decimal Remaining,
         decimal Percent,
+        decimal NextMonthCarryover,
         bool IsExceeded,
         bool IsWarning,
         IReadOnlyList<TransferSourceOption> TransferSources);
 
     public sealed record BudgetTransferRow(
-        Guid Id,
-        DateOnly TransferDate,
-        string SourceName,
-        string SourceIcon,
-        string DestinationName,
-        string DestinationIcon,
-        decimal Amount,
-        string CreatedBy,
-        string? Note);
+        Guid Id, DateOnly TransferDate, string SourceName, string SourceIcon,
+        string DestinationName, string DestinationIcon, decimal Amount,
+        string CreatedBy, string? Note);
 
     public async Task OnGetAsync(CancellationToken cancellationToken)
     {
         NormalizePeriod();
         Input.Year = Year!.Value;
         Input.Month = Month!.Value;
+        Input.CarryOverOverspend = true;
         await LoadAsync(cancellationToken);
     }
 
@@ -96,10 +86,7 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
             var validCategory = await db.ExpenseCategories.AnyAsync(
                 x => x.Id == Input.CategoryId.Value && x.WorkspaceId == workspace.Id && !x.IsArchived,
                 cancellationToken);
-            if (!validCategory)
-            {
-                ModelState.AddModelError("Input.CategoryId", "دسته‌بندی معتبر نیست.");
-            }
+            if (!validCategory) ModelState.AddModelError("Input.CategoryId", "دسته‌بندی معتبر نیست.");
         }
 
         if (!ModelState.IsValid)
@@ -115,10 +102,7 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
         }
 
         budget ??= await db.Budgets.SingleOrDefaultAsync(
-            x => x.WorkspaceId == workspace.Id
-                 && x.Year == Input.Year
-                 && x.Month == Input.Month
-                 && x.CategoryId == Input.CategoryId,
+            x => x.WorkspaceId == workspace.Id && x.Year == Input.Year && x.Month == Input.Month && x.CategoryId == Input.CategoryId,
             cancellationToken);
 
         if (budget is null)
@@ -132,6 +116,7 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
         budget.Month = Input.Month;
         budget.Amount = Input.Amount;
         budget.WarningPercent = Input.WarningPercent;
+        budget.CarryOverOverspend = Input.CarryOverOverspend;
         await db.SaveChangesAsync(cancellationToken);
 
         TempData["Success"] = "بودجه ذخیره شد.";
@@ -142,15 +127,9 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
     {
         var workspace = await workspaceContext.RequireCurrentAsync(cancellationToken);
         var form = await Request.ReadFormAsync(cancellationToken);
-
-        var yearRaw = InputNormalization.ToLatinDigits(form["Transfer.Year"].FirstOrDefault());
-        var monthRaw = InputNormalization.ToLatinDigits(form["Transfer.Month"].FirstOrDefault());
-        _ = int.TryParse(yearRaw, out var year);
-        _ = int.TryParse(monthRaw, out var month);
-
-        Year = year;
-        Month = month;
-        NormalizePeriod();
+        _ = int.TryParse(InputNormalization.ToLatinDigits(form["Transfer.Year"].FirstOrDefault()), out var year);
+        _ = int.TryParse(InputNormalization.ToLatinDigits(form["Transfer.Month"].FirstOrDefault()), out var month);
+        Year = year; Month = month; NormalizePeriod();
 
         if (!Guid.TryParse(form["Transfer.DestinationBudgetId"].FirstOrDefault(), out var destinationBudgetId) ||
             !Guid.TryParse(form["Transfer.SourceBudgetId"].FirstOrDefault(), out var sourceBudgetId))
@@ -158,27 +137,21 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
             TempData["Error"] = "بودجه مبدا یا مقصد معتبر نیست.";
             return RedirectToPage(new { year = Year, month = Month });
         }
-
         if (sourceBudgetId == destinationBudgetId)
         {
             TempData["Error"] = "بودجه مبدا و مقصد باید متفاوت باشند.";
             return RedirectToPage(new { year = Year, month = Month });
         }
-
         if (!InputNormalization.TryParseMoney(form["Transfer.Amount"].FirstOrDefault(), out var amount) || amount <= 0)
         {
             TempData["Error"] = "مبلغ انتقال بودجه باید بیشتر از صفر باشد.";
             return RedirectToPage(new { year = Year, month = Month });
         }
-
-        var transferDateRaw = form["Transfer.Date"].FirstOrDefault();
-        if (!PersianCalendarHelper.TryParseInput(transferDateRaw, out var transferDate) ||
-            transferDate < PeriodStart || transferDate >= PeriodEndExclusive)
+        if (!PersianCalendarHelper.TryParseInput(form["Transfer.Date"].FirstOrDefault(), out var transferDate) || transferDate < PeriodStart || transferDate >= PeriodEndExclusive)
         {
             TempData["Error"] = $"تاریخ انتقال باید داخل دوره {PeriodTitle} باشد.";
             return RedirectToPage(new { year = Year, month = Month });
         }
-
         var note = form["Transfer.Note"].FirstOrDefault()?.Trim();
         if (note?.Length > 200)
         {
@@ -187,12 +160,10 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
         }
 
         var budgets = await db.Budgets
-            .Where(x => x.WorkspaceId == workspace.Id &&
-                        x.Year == Year && x.Month == Month &&
+            .Where(x => x.WorkspaceId == workspace.Id && x.Year == Year && x.Month == Month &&
                         (x.Id == sourceBudgetId || x.Id == destinationBudgetId))
             .Include(x => x.Category)
             .ToListAsync(cancellationToken);
-
         var source = budgets.SingleOrDefault(x => x.Id == sourceBudgetId);
         var destination = budgets.SingleOrDefault(x => x.Id == destinationBudgetId);
         if (source is null || destination is null || source.CategoryId is null || destination.CategoryId is null)
@@ -201,44 +172,27 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
             return RedirectToPage(new { year = Year, month = Month });
         }
 
-        var periodTransfers = await db.BudgetTransfers
-            .Where(x => x.WorkspaceId == workspace.Id &&
-                        (x.SourceBudgetId == sourceBudgetId || x.DestinationBudgetId == sourceBudgetId ||
-                         x.SourceBudgetId == destinationBudgetId || x.DestinationBudgetId == destinationBudgetId))
-            .AsNoTracking()
-            .ToListAsync(cancellationToken);
+        var states = await budgetBalanceService.GetPeriodAsync(workspace.Id, new PersianYearMonth(Year!.Value, Month!.Value), cancellationToken);
+        var sourceState = states.SingleOrDefault(x => x.Budget.Id == source.Id);
+        var destinationState = states.SingleOrDefault(x => x.Budget.Id == destination.Id);
+        if (sourceState is null || destinationState is null)
+        {
+            TempData["Error"] = "وضعیت بودجه قابل محاسبه نیست.";
+            return RedirectToPage(new { year = Year, month = Month });
+        }
 
-        var sourceSpent = await db.Expenses
-            .Where(x => x.WorkspaceId == workspace.Id && x.CategoryId == source.CategoryId.Value &&
-                        x.ExpenseDate >= PeriodStart && x.ExpenseDate < PeriodEndExclusive)
-            .SumAsync(x => x.Amount, cancellationToken);
-        var destinationSpent = await db.Expenses
-            .Where(x => x.WorkspaceId == workspace.Id && x.CategoryId == destination.CategoryId.Value &&
-                        x.ExpenseDate >= PeriodStart && x.ExpenseDate < PeriodEndExclusive)
-            .SumAsync(x => x.Amount, cancellationToken);
-
-        var sourceIncoming = periodTransfers.Where(x => x.DestinationBudgetId == source.Id).Sum(x => x.Amount);
-        var sourceOutgoing = periodTransfers.Where(x => x.SourceBudgetId == source.Id).Sum(x => x.Amount);
-        var sourceEffective = source.Amount + sourceIncoming - sourceOutgoing;
-        var sourceAvailable = Math.Max(0, sourceEffective - sourceSpent);
-
-        var destinationIncoming = periodTransfers.Where(x => x.DestinationBudgetId == destination.Id).Sum(x => x.Amount);
-        var destinationOutgoing = periodTransfers.Where(x => x.SourceBudgetId == destination.Id).Sum(x => x.Amount);
-        var destinationEffective = destination.Amount + destinationIncoming - destinationOutgoing;
-        var destinationDeficit = Math.Max(0, destinationSpent - destinationEffective);
-
+        var sourceAvailable = Math.Max(0, sourceState.Remaining);
+        var destinationDeficit = Math.Max(0, -destinationState.Remaining);
         if (destinationDeficit <= 0)
         {
             TempData["Error"] = $"بودجه «{destination.Category?.Name}» در حال حاضر از سقف موثر خود عبور نکرده است.";
             return RedirectToPage(new { year = Year, month = Month });
         }
-
         if (amount > destinationDeficit)
         {
             TempData["Error"] = $"حداکثر مبلغ موردنیاز برای جبران کسری این بودجه {Formatters.Money(destinationDeficit)} است.";
             return RedirectToPage(new { year = Year, month = Month });
         }
-
         if (amount > sourceAvailable)
         {
             TempData["Error"] = $"بودجه «{source.Category?.Name}» فقط {Formatters.Money(sourceAvailable)} ظرفیت آزاد برای انتقال دارد.";
@@ -256,7 +210,6 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
             Note = string.IsNullOrWhiteSpace(note) ? null : note
         });
         await db.SaveChangesAsync(cancellationToken);
-
         TempData["Success"] = $"{Formatters.Money(amount)} از بودجه «{source.Category?.Name}» به «{destination.Category?.Name}» منتقل شد.";
         return RedirectToPage(new { year = Year, month = Month });
     }
@@ -265,14 +218,9 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
     {
         var workspace = await workspaceContext.RequireCurrentAsync(cancellationToken);
         var budget = await db.Budgets.SingleOrDefaultAsync(x => x.Id == id && x.WorkspaceId == workspace.Id, cancellationToken);
-        if (budget is null)
-        {
-            return NotFound();
-        }
+        if (budget is null) return NotFound();
 
-        var hasTransferHistory = await db.BudgetTransfers.AnyAsync(
-            x => x.SourceBudgetId == id || x.DestinationBudgetId == id,
-            cancellationToken);
+        var hasTransferHistory = await db.BudgetTransfers.AnyAsync(x => x.SourceBudgetId == id || x.DestinationBudgetId == id, cancellationToken);
         if (hasTransferHistory)
         {
             TempData["Error"] = "این بودجه سابقه انتقال دارد و برای حفظ گزارش مالی قابل حذف نیست. می‌توانید مبلغ آن را ویرایش کنید.";
@@ -292,17 +240,13 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
         var year = Year is >= 1300 and <= 1600 ? Year.Value : current.Year;
         var month = Month is >= 1 and <= 12 ? Month.Value : current.Month;
         var period = new PersianYearMonth(year, month);
-        Year = year;
-        Month = month;
+        Year = year; Month = month;
         PeriodStart = PersianCalendarHelper.StartOfMonth(period);
         PeriodEndExclusive = PersianCalendarHelper.EndOfMonthExclusive(period);
         PreviousPeriod = period.AddMonths(-1);
         NextPeriod = period.AddMonths(1);
         PeriodTitle = PersianCalendarHelper.Title(period);
-
-        var defaultDate = today >= PeriodStart && today < PeriodEndExclusive
-            ? today
-            : PeriodEndExclusive.AddDays(-1);
+        var defaultDate = today >= PeriodStart && today < PeriodEndExclusive ? today : PeriodEndExclusive.AddDays(-1);
         DefaultTransferDate = PersianCalendarHelper.ToInput(defaultDate);
     }
 
@@ -311,102 +255,42 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
         var workspace = await workspaceContext.RequireCurrentAsync(cancellationToken);
         Categories = await db.ExpenseCategories
             .Where(x => x.WorkspaceId == workspace.Id && !x.IsArchived)
-            .OrderBy(x => x.Name)
-            .AsNoTracking()
-            .ToListAsync(cancellationToken);
+            .OrderBy(x => x.Name).AsNoTracking().ToListAsync(cancellationToken);
 
-        var expenses = await db.Expenses
-            .Where(x => x.WorkspaceId == workspace.Id && x.ExpenseDate >= PeriodStart && x.ExpenseDate < PeriodEndExclusive)
-            .AsNoTracking()
-            .ToListAsync(cancellationToken);
-
-        var budgets = await db.Budgets
-            .Where(x => x.WorkspaceId == workspace.Id && x.Year == Year && x.Month == Month)
-            .Include(x => x.Category)
-            .OrderBy(x => x.CategoryId == null ? 0 : 1)
-            .ThenBy(x => x.Category!.Name)
-            .AsNoTracking()
-            .ToListAsync(cancellationToken);
-
-        var budgetIds = budgets.Select(x => x.Id).ToList();
-        List<BudgetTransfer> transfers = budgetIds.Count == 0
-            ? new List<BudgetTransfer>()
-            : await db.BudgetTransfers
-                .Where(x => x.WorkspaceId == workspace.Id &&
-                            (budgetIds.Contains(x.SourceBudgetId) || budgetIds.Contains(x.DestinationBudgetId)))
-                .Include(x => x.SourceBudget).ThenInclude(x => x.Category)
-                .Include(x => x.DestinationBudget).ThenInclude(x => x.Category)
-                .Include(x => x.CreatedByUser)
-                .OrderByDescending(x => x.TransferDate)
-                .ThenByDescending(x => x.CreatedAtUtc)
-                .AsNoTracking()
-                .ToListAsync(cancellationToken);
-
-        var baseRows = budgets.Select(budget =>
-        {
-            var spent = budget.CategoryId.HasValue
-                ? expenses.Where(x => x.CategoryId == budget.CategoryId.Value).Sum(x => x.Amount)
-                : expenses.Sum(x => x.Amount);
-            var incoming = transfers.Where(x => x.DestinationBudgetId == budget.Id).Sum(x => x.Amount);
-            var outgoing = transfers.Where(x => x.SourceBudgetId == budget.Id).Sum(x => x.Amount);
-            var effective = budget.Amount + incoming - outgoing;
-            var remaining = effective - spent;
-            var percent = effective <= 0 ? (spent > 0 ? 100 : 0) : Math.Round(spent / effective * 100, 1);
-            return new
-            {
-                Budget = budget,
-                Spent = spent,
-                Incoming = incoming,
-                Outgoing = outgoing,
-                Effective = effective,
-                Remaining = remaining,
-                Percent = percent
-            };
-        }).ToList();
-
-        Items = baseRows.Select(row =>
+        var period = new PersianYearMonth(Year!.Value, Month!.Value);
+        var states = await budgetBalanceService.GetPeriodAsync(workspace.Id, period, cancellationToken);
+        Items = states.Select(row =>
         {
             IReadOnlyList<TransferSourceOption> sources = row.Budget.CategoryId.HasValue && row.Remaining < 0
-                ? baseRows
-                    .Where(source => source.Budget.Id != row.Budget.Id &&
-                                     source.Budget.CategoryId.HasValue &&
-                                     source.Remaining > 0)
+                ? states.Where(source => source.Budget.Id != row.Budget.Id && source.Budget.CategoryId.HasValue && source.Remaining > 0)
                     .OrderByDescending(source => source.Remaining)
-                    .Select(source => new TransferSourceOption(
-                        source.Budget.Id,
-                        source.Budget.Category?.Name ?? "دسته",
-                        source.Budget.Category?.Icon ?? "📦",
-                        source.Remaining))
+                    .Select(source => new TransferSourceOption(source.Budget.Id, source.Budget.Category?.Name ?? "دسته", source.Budget.Category?.Icon ?? "📦", source.Remaining))
                     .ToList()
                 : new List<TransferSourceOption>();
 
             return new BudgetRow(
-                row.Budget,
-                row.Budget.Amount,
-                row.Incoming,
-                row.Outgoing,
-                row.Effective,
-                row.Spent,
-                row.Remaining,
-                row.Percent,
-                row.Remaining < 0,
-                row.Percent >= row.Budget.WarningPercent,
-                sources);
+                row.Budget, row.BaseAmount, row.IncomingAmount, row.OutgoingAmount, row.CarryoverDeduction,
+                row.EffectiveAmount, row.Spent, row.Remaining, row.Percent, row.NextMonthCarryover,
+                row.Remaining < 0, row.Percent >= row.Budget.WarningPercent, sources);
         }).ToList();
 
-        TransferHistory = transfers
-            .Select(x => new BudgetTransferRow(
-                x.Id,
-                x.TransferDate,
-                x.SourceBudget.Category?.Name ?? "بودجه",
-                x.SourceBudget.Category?.Icon ?? "📦",
-                x.DestinationBudget.Category?.Name ?? "بودجه",
-                x.DestinationBudget.Category?.Icon ?? "📦",
-                x.Amount,
-                string.IsNullOrWhiteSpace(x.CreatedByUser.DisplayName)
-                    ? x.CreatedByUser.Email ?? "کاربر"
-                    : x.CreatedByUser.DisplayName,
-                x.Note))
-            .ToList();
+        var budgetIds = states.Select(x => x.Budget.Id).ToList();
+        var transfers = budgetIds.Count == 0
+            ? new List<BudgetTransfer>()
+            : await db.BudgetTransfers
+                .Where(x => x.WorkspaceId == workspace.Id && (budgetIds.Contains(x.SourceBudgetId) || budgetIds.Contains(x.DestinationBudgetId)))
+                .Include(x => x.SourceBudget).ThenInclude(x => x.Category)
+                .Include(x => x.DestinationBudget).ThenInclude(x => x.Category)
+                .Include(x => x.CreatedByUser)
+                .OrderByDescending(x => x.TransferDate).ThenByDescending(x => x.CreatedAtUtc)
+                .AsNoTracking().ToListAsync(cancellationToken);
+
+        TransferHistory = transfers.Select(x => new BudgetTransferRow(
+            x.Id, x.TransferDate,
+            x.SourceBudget.Category?.Name ?? "بودجه", x.SourceBudget.Category?.Icon ?? "📦",
+            x.DestinationBudget.Category?.Name ?? "بودجه", x.DestinationBudget.Category?.Icon ?? "📦",
+            x.Amount,
+            string.IsNullOrWhiteSpace(x.CreatedByUser.DisplayName) ? x.CreatedByUser.Email ?? "کاربر" : x.CreatedByUser.DisplayName,
+            x.Note)).ToList();
     }
 }
