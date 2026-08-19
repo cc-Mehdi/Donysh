@@ -27,12 +27,14 @@ public sealed class ObligationAlertViewComponent(ApplicationDbContext db, IWorks
 
         var ids = obligations.Select(x => x.Id).ToList();
         var paidIds = ids.Count == 0
-            ? new HashSet<Guid>()
-            : (await db.RecurringObligationPayments
-                .Where(x => ids.Contains(x.RecurringObligationId) && x.PeriodYear == period.Year && x.PeriodMonth == period.Month)
-                .Select(x => x.RecurringObligationId)
-                .AsNoTracking()
-                .ToListAsync()).ToHashSet();
+     ? new HashSet<Guid>()
+     : (await db.RecurringObligationPayments
+         .AsNoTracking()
+         .Where(x => ids.Contains(x.RecurringObligationId) &&
+                     x.PeriodYear == period.Year &&
+                     x.PeriodMonth == period.Month)
+         .Select(x => x.RecurringObligationId)
+         .ToListAsync()).ToHashSet();
 
         var count = 0;
         var overdue = 0;
