@@ -28,6 +28,7 @@ public sealed class IndexModel(
 
     public string WorkspaceName { get; private set; } = string.Empty;
     public IReadOnlyList<AiChangePreview> PreviewItems { get; private set; } = [];
+    public bool EmptyPreview { get; private set; }
 
     public async Task OnGetAsync(CancellationToken cancellationToken)
     {
@@ -55,6 +56,7 @@ public sealed class IndexModel(
             var workspace = await workspaceContext.RequireCurrentAsync(cancellationToken);
             var preview = await aiWorkspaceService.PreviewAsync(workspace.Id, ChangesJson, null, cancellationToken);
             PreviewItems = preview.Items;
+            EmptyPreview = PreviewItems.Count == 0;
             ChangesJson = preview.NormalizedJson;
             SelectedIds = PreviewItems.Where(x => x.IsValid).Select(x => x.Id).ToList();
             PreviewToken = Protect(new PreviewEnvelope(
