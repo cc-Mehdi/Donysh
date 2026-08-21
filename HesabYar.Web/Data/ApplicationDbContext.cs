@@ -16,6 +16,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<BudgetTransfer> BudgetTransfers => Set<BudgetTransfer>();
     public DbSet<SavingsGoal> SavingsGoals => Set<SavingsGoal>();
     public DbSet<SavingsContribution> SavingsContributions => Set<SavingsContribution>();
+    public DbSet<InstallmentPlan> InstallmentPlans => Set<InstallmentPlan>();
+    public DbSet<AiImportReceipt> AiImportReceipts => Set<AiImportReceipt>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -159,6 +161,32 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.HasOne(x => x.CreatedByUser)
                 .WithMany()
                 .HasForeignKey(x => x.CreatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<InstallmentPlan>(entity =>
+        {
+            entity.Property(x => x.Title).HasMaxLength(120);
+            entity.Property(x => x.Notes).HasMaxLength(500);
+            entity.Property(x => x.TotalAmount).HasPrecision(18, 0);
+            entity.Property(x => x.InstallmentAmount).HasPrecision(18, 0);
+            entity.HasIndex(x => new { x.WorkspaceId, x.IsCompleted, x.FirstDueDate });
+            entity.HasOne(x => x.Workspace)
+                .WithMany(x => x.InstallmentPlans)
+                .HasForeignKey(x => x.WorkspaceId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<AiImportReceipt>(entity =>
+        {
+            entity.HasIndex(x => new { x.WorkspaceId, x.AppliedAtUtc });
+            entity.HasOne(x => x.Workspace)
+                .WithMany()
+                .HasForeignKey(x => x.WorkspaceId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.AppliedByUser)
+                .WithMany()
+                .HasForeignKey(x => x.AppliedByUserId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
     }

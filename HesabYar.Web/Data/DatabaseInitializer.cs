@@ -81,5 +81,47 @@ public sealed class DatabaseInitializer(ApplicationDbContext db, ILogger<Databas
             ON "BudgetTransfers" ("DestinationBudgetId");
             """,
             cancellationToken);
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            CREATE TABLE IF NOT EXISTS "InstallmentPlans" (
+                "Id" uuid NOT NULL,
+                "WorkspaceId" uuid NOT NULL,
+                "Title" character varying(120) NOT NULL,
+                "Notes" character varying(500),
+                "TotalAmount" numeric(18,0) NOT NULL,
+                "InstallmentAmount" numeric(18,0) NOT NULL,
+                "InstallmentCount" integer NOT NULL,
+                "PaidInstallments" integer NOT NULL,
+                "FirstDueDate" date NOT NULL,
+                "IsCompleted" boolean NOT NULL DEFAULT FALSE,
+                "CreatedAtUtc" timestamp with time zone NOT NULL,
+                "UpdatedAtUtc" timestamp with time zone NOT NULL,
+                CONSTRAINT "PK_InstallmentPlans" PRIMARY KEY ("Id"),
+                CONSTRAINT "FK_InstallmentPlans_Workspaces_WorkspaceId" FOREIGN KEY ("WorkspaceId") REFERENCES "Workspaces" ("Id") ON DELETE CASCADE
+            );
+
+            CREATE INDEX IF NOT EXISTS "IX_InstallmentPlans_WorkspaceId_IsCompleted_FirstDueDate"
+            ON "InstallmentPlans" ("WorkspaceId", "IsCompleted", "FirstDueDate");
+            """,
+            cancellationToken);
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            CREATE TABLE IF NOT EXISTS "AiImportReceipts" (
+                "Id" uuid NOT NULL,
+                "WorkspaceId" uuid NOT NULL,
+                "AppliedByUserId" text NOT NULL,
+                "ChangeCount" integer NOT NULL,
+                "AppliedAtUtc" timestamp with time zone NOT NULL,
+                CONSTRAINT "PK_AiImportReceipts" PRIMARY KEY ("Id"),
+                CONSTRAINT "FK_AiImportReceipts_Workspaces_WorkspaceId" FOREIGN KEY ("WorkspaceId") REFERENCES "Workspaces" ("Id") ON DELETE CASCADE,
+                CONSTRAINT "FK_AiImportReceipts_AspNetUsers_AppliedByUserId" FOREIGN KEY ("AppliedByUserId") REFERENCES "AspNetUsers" ("Id") ON DELETE RESTRICT
+            );
+
+            CREATE INDEX IF NOT EXISTS "IX_AiImportReceipts_WorkspaceId_AppliedAtUtc"
+            ON "AiImportReceipts" ("WorkspaceId", "AppliedAtUtc");
+            """,
+            cancellationToken);
     }
 }

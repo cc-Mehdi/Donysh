@@ -120,3 +120,38 @@ public sealed class SavingsContribution
     public SavingsGoal SavingsGoal { get; set; } = null!;
     public ApplicationUser CreatedByUser { get; set; } = null!;
 }
+
+public sealed class InstallmentPlan
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid WorkspaceId { get; set; }
+
+    [MaxLength(120)]
+    public string Title { get; set; } = string.Empty;
+
+    [MaxLength(500)]
+    public string? Notes { get; set; }
+
+    public decimal TotalAmount { get; set; }
+    public decimal InstallmentAmount { get; set; }
+    public int InstallmentCount { get; set; }
+    public int PaidInstallments { get; set; }
+    public DateOnly FirstDueDate { get; set; }
+    public bool IsCompleted { get; set; }
+    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAtUtc { get; set; } = DateTime.UtcNow;
+
+    public Workspace Workspace { get; set; } = null!;
+}
+
+public sealed class AiImportReceipt
+{
+    public Guid Id { get; set; }
+    public Guid WorkspaceId { get; set; }
+    public string AppliedByUserId { get; set; } = string.Empty;
+    public int ChangeCount { get; set; }
+    public DateTime AppliedAtUtc { get; set; } = DateTime.UtcNow;
+
+    public Workspace Workspace { get; set; } = null!;
+    public ApplicationUser AppliedByUser { get; set; } = null!;
+}

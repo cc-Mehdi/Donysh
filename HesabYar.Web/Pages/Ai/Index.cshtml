@@ -1,0 +1,138 @@
+@page
+@model HesabYar.Web.Pages.Ai.IndexModel
+@{
+    ViewData["Title"] = "دستیار هوشمند";
+}
+
+<div class="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
+    <div>
+        <h2 class="text-2xl font-black">دستیار هوشمند Donysh</h2>
+        <p class="mt-1 text-sm text-slate-500">تحلیل شخصی بگیرید و تغییرهای پیشنهادی AI را فقط پس از بازبینی خودتان اعمال کنید.</p>
+    </div>
+    <span class="badge">فضای مقصد: @Model.WorkspaceName</span>
+</div>
+
+<div asp-validation-summary="ModelOnly"></div>
+
+<section class="grid gap-4 lg:grid-cols-3">
+    <article class="card">
+        <span class="grid size-10 place-items-center rounded-2xl bg-indigo-50 font-black text-indigo-700">۱</span>
+        <h3 class="mt-4 font-black">دریافت فایل راهنما و داده</h3>
+        <p class="mt-2 text-sm leading-7 text-slate-500">فایل شامل توضیح ساختار داده، پرامپت مشاور مالی، اطلاعات فضای فعال و قرارداد JSON است.</p>
+        <form method="post" asp-page-handler="Download" class="mt-5">
+            <button type="submit" class="btn-primary w-full">دانلود فایل مخصوص AI</button>
+        </form>
+    </article>
+    <article class="card">
+        <span class="grid size-10 place-items-center rounded-2xl bg-violet-50 font-black text-violet-700">۲</span>
+        <h3 class="mt-4 font-black">گفت‌وگو با AI</h3>
+        <p class="mt-2 text-sm leading-7 text-slate-500">فایل را برای AI بفرستید. راهنمای داخل فایل از آن می‌خواهد توصیه متناسب با داده‌ها و در صورت نیاز JSON سازگار با Donysh ارائه کند.</p>
+        <p class="mt-4 rounded-2xl bg-amber-50 p-3 text-xs leading-6 text-amber-800">فایل حاوی داده مالی فضای فعال است؛ آن را فقط در اختیار سرویس مورد اعتماد خودتان بگذارید.</p>
+    </article>
+    <article class="card">
+        <span class="grid size-10 place-items-center rounded-2xl bg-emerald-50 font-black text-emerald-700">۳</span>
+        <h3 class="mt-4 font-black">Preview و تأیید انتخابی</h3>
+        <p class="mt-2 text-sm leading-7 text-slate-500">JSON پاسخ را وارد کنید. هیچ تغییری در preview اعمال نمی‌شود و می‌توانید هر مورد را جداگانه انتخاب یا رد کنید.</p>
+        <p class="mt-4 rounded-2xl bg-emerald-50 p-3 text-xs leading-6 text-emerald-800">فضای مقصد از نشست شما تعیین می‌شود؛ شناسه کاربر یا workspace در JSON پذیرفته نمی‌شود.</p>
+    </article>
+</section>
+
+<section class="card mt-6">
+    <div class="mb-4">
+        <h3 class="card-title">ورود JSON پیشنهادی</h3>
+        <p class="muted mt-1">می‌توانید خود JSON یا code block کامل <span dir="ltr">```json</span> را وارد کنید.</p>
+    </div>
+    <form method="post" asp-page-handler="Preview">
+        <textarea asp-for="ChangesJson" rows="14" dir="ltr" class="input font-mono text-xs leading-6" placeholder='{"format":"donysh.changes","version":1,"changes":[]}'></textarea>
+        <span asp-validation-for="ChangesJson" class="field-error"></span>
+        <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <span class="text-xs text-slate-500">حداکثر @AiWorkspaceService.MaxChanges تغییر؛ فقط دسته، بودجه، هدف پس‌انداز و قسط</span>
+            <button type="submit" class="btn-primary">ساخت پیش‌نمایش امن</button>
+        </div>
+    </form>
+</section>
+
+@if (Model.PreviewItems.Count > 0)
+{
+    var validCount = Model.PreviewItems.Count(x => x.IsValid);
+    <section class="mt-6">
+        <div class="mb-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+            <div>
+                <h3 class="text-xl font-black">پیش‌نمایش تغییرات</h3>
+                <p class="mt-1 text-sm text-slate-500">موارد نامعتبر اعمال نمی‌شوند. تیک هر تغییر معتبر را جداگانه بررسی کنید.</p>
+            </div>
+            <span class="badge">@validCount تغییر قابل انتخاب</span>
+        </div>
+
+        <form method="post" asp-page-handler="Apply" data-ai-apply-form>
+            <input asp-for="PreviewToken" type="hidden" />
+            <div class="mb-3 flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-3">
+                <label class="flex items-center gap-2 text-sm font-bold">
+                    <input type="checkbox" class="size-4 accent-indigo-600" data-ai-select-all checked="@(validCount > 0)" />
+                    انتخاب همه موارد معتبر
+                </label>
+                <span class="text-xs text-slate-500">اعمال نهایی اتمیک است: یا همه موارد منتخب، یا هیچ‌کدام.</span>
+            </div>
+
+            <div class="grid gap-3">
+                @foreach (var item in Model.PreviewItems)
+                {
+                    <label class="block rounded-2xl border p-4 @(item.IsValid ? "border-slate-200 bg-white" : "border-rose-200 bg-rose-50")">
+                        <div class="flex items-start gap-3">
+                            <input type="checkbox"
+                                   name="SelectedIds"
+                                   value="@item.Id"
+                                   checked="@(Model.SelectedIds.Contains(item.Id) || (Model.SelectedIds.Count == 0 && item.IsValid))"
+                                   disabled="@(!item.IsValid)"
+                                   class="mt-1 size-4 shrink-0 accent-indigo-600"
+                                   data-ai-change />
+                            <div class="min-w-0 flex-1">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <strong>@item.OperationLabel @item.EntityLabel</strong>
+                                    <span class="badge" dir="ltr">@item.Id</span>
+                                    @if (item.IsDestructive)
+                                    {
+                                        <span class="rounded-full bg-rose-100 px-2 py-1 text-[11px] font-bold text-rose-700">تغییر حذفی</span>
+                                    }
+                                </div>
+                                <p class="mt-2 text-sm leading-7 text-slate-700">@item.Summary</p>
+                                @if (!string.IsNullOrWhiteSpace(item.Reason))
+                                {
+                                    <p class="mt-2 text-xs text-slate-500">دلیل AI: @item.Reason</p>
+                                }
+                                @if (!item.IsValid)
+                                {
+                                    <p class="mt-2 text-xs font-bold text-rose-700">@item.Error</p>
+                                }
+                            </div>
+                        </div>
+                    </label>
+                }
+            </div>
+
+            <div class="sticky bottom-20 mt-5 rounded-2xl border border-indigo-200 bg-white/95 p-4 shadow-xl backdrop-blur lg:bottom-4">
+                <div class="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+                    <p class="text-sm text-slate-600">با زدن دکمه، فقط موارد تیک‌خورده روی فضای <strong>@Model.WorkspaceName</strong> اعمال می‌شوند.</p>
+                    <button type="submit" class="btn-primary" @(validCount == 0 ? "disabled" : null) onclick="return confirm('تغییرات انتخاب‌شده روی فضای مالی اعمال شوند؟');">اعمال تغییرات انتخاب‌شده</button>
+                </div>
+            </div>
+        </form>
+    </section>
+}
+
+@section Scripts {
+    <script>
+        (() => {
+            const selectAll = document.querySelector('[data-ai-select-all]');
+            const changes = [...document.querySelectorAll('[data-ai-change]:not(:disabled)')];
+            if (!selectAll) return;
+            const sync = () => {
+                selectAll.checked = changes.length > 0 && changes.every(item => item.checked);
+                selectAll.indeterminate = changes.some(item => item.checked) && !selectAll.checked;
+            };
+            selectAll.addEventListener('change', () => changes.forEach(item => item.checked = selectAll.checked));
+            changes.forEach(item => item.addEventListener('change', sync));
+            sync();
+        })();
+    </script>
+}

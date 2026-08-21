@@ -3,13 +3,15 @@
 @layer theme, base, components, utilities;
 @layer theme {
   :root, :host {
-    --font-sans: "IRANYekanXPro", Tahoma, Arial, ui-sans-serif, system-ui, sans-serif;
+    --font-sans: "YekanBakh", Tahoma, Arial, ui-sans-serif, system-ui, sans-serif;
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
       "Courier New", monospace;
     --color-amber-50: oklch(98.7% 0.022 95.277);
     --color-amber-100: oklch(96.2% 0.059 95.617);
     --color-amber-500: oklch(76.9% 0.188 70.08);
+    --color-amber-600: oklch(66.6% 0.179 58.318);
     --color-amber-700: oklch(55.5% 0.163 48.998);
+    --color-amber-800: oklch(47.3% 0.137 46.201);
     --color-emerald-50: oklch(97.9% 0.021 166.113);
     --color-emerald-100: oklch(95% 0.052 163.051);
     --color-emerald-200: oklch(90.5% 0.093 164.15);
@@ -30,6 +32,7 @@
     --color-violet-50: oklch(96.9% 0.016 293.756);
     --color-violet-100: oklch(94.3% 0.029 294.588);
     --color-violet-600: oklch(54.1% 0.281 293.009);
+    --color-violet-700: oklch(49.1% 0.27 292.581);
     --color-violet-800: oklch(43.2% 0.232 292.759);
     --color-rose-50: oklch(96.9% 0.015 12.422);
     --color-rose-100: oklch(94.1% 0.03 12.58);
@@ -45,6 +48,7 @@
     --color-slate-500: oklch(55.4% 0.046 257.417);
     --color-slate-600: oklch(44.6% 0.043 257.281);
     --color-slate-700: oklch(37.2% 0.044 257.287);
+    --color-slate-800: oklch(27.9% 0.041 260.031);
     --color-slate-900: oklch(20.8% 0.042 265.755);
     --color-slate-950: oklch(12.9% 0.042 264.695);
     --color-white: #fff;
@@ -82,6 +86,7 @@
     --radius-xl: 0.75rem;
     --radius-2xl: 1rem;
     --radius-3xl: 1.5rem;
+    --blur-sm: 8px;
     --default-transition-duration: 150ms;
     --default-transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
     --default-font-family: var(--font-sans);
@@ -240,6 +245,9 @@
   .fixed {
     position: fixed;
   }
+  .relative {
+    position: relative;
+  }
   .static {
     position: static;
   }
@@ -267,6 +275,9 @@
   .bottom-5 {
     bottom: calc(var(--spacing) * 5);
   }
+  .bottom-20 {
+    bottom: calc(var(--spacing) * 20);
+  }
   .z-30 {
     z-index: 30;
   }
@@ -276,8 +287,29 @@
   .col-span-2 {
     grid-column: span 2 / span 2;
   }
+  .container {
+    width: 100%;
+    @media (width >= 40rem) {
+      max-width: 40rem;
+    }
+    @media (width >= 48rem) {
+      max-width: 48rem;
+    }
+    @media (width >= 64rem) {
+      max-width: 64rem;
+    }
+    @media (width >= 80rem) {
+      max-width: 80rem;
+    }
+    @media (width >= 96rem) {
+      max-width: 96rem;
+    }
+  }
   .mx-auto {
     margin-inline: auto;
+  }
+  .my-4 {
+    margin-block: calc(var(--spacing) * 4);
   }
   .mt-1 {
     margin-top: calc(var(--spacing) * 1);
@@ -377,6 +409,9 @@
   .min-h-screen {
     min-height: 100vh;
   }
+  .w-32 {
+    width: calc(var(--spacing) * 32);
+  }
   .w-72 {
     width: calc(var(--spacing) * 72);
   }
@@ -421,6 +456,9 @@
   }
   .cursor-pointer {
     cursor: pointer;
+  }
+  .resize {
+    resize: both;
   }
   .grid-cols-2 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -478,6 +516,13 @@
       --tw-space-y-reverse: 0;
       margin-block-start: calc(calc(var(--spacing) * 1) * var(--tw-space-y-reverse));
       margin-block-end: calc(calc(var(--spacing) * 1) * calc(1 - var(--tw-space-y-reverse)));
+    }
+  }
+  .space-y-3 {
+    :where(& > :not(:last-child)) {
+      --tw-space-y-reverse: 0;
+      margin-block-start: calc(calc(var(--spacing) * 3) * var(--tw-space-y-reverse));
+      margin-block-end: calc(calc(var(--spacing) * 3) * calc(1 - var(--tw-space-y-reverse)));
     }
   }
   .space-y-4 {
@@ -612,6 +657,9 @@
   .bg-indigo-50 {
     background-color: var(--color-indigo-50);
   }
+  .bg-indigo-100 {
+    background-color: var(--color-indigo-100);
+  }
   .bg-indigo-500 {
     background-color: var(--color-indigo-500);
   }
@@ -732,6 +780,12 @@
   .py-4 {
     padding-block: calc(var(--spacing) * 4);
   }
+  .pt-2 {
+    padding-top: calc(var(--spacing) * 2);
+  }
+  .pt-3 {
+    padding-top: calc(var(--spacing) * 3);
+  }
   .pt-4 {
     padding-top: calc(var(--spacing) * 4);
   }
@@ -749,6 +803,9 @@
   }
   .text-left {
     text-align: left;
+  }
+  .font-mono {
+    font-family: var(--font-mono);
   }
   .text-2xl {
     font-size: var(--text-2xl);
@@ -816,8 +873,14 @@
     --tw-font-weight: var(--font-weight-semibold);
     font-weight: var(--font-weight-semibold);
   }
+  .text-amber-600 {
+    color: var(--color-amber-600);
+  }
   .text-amber-700 {
     color: var(--color-amber-700);
+  }
+  .text-amber-800 {
+    color: var(--color-amber-800);
   }
   .text-emerald-700 {
     color: var(--color-emerald-700);
@@ -873,8 +936,8 @@
   .text-slate-900 {
     color: var(--color-slate-900);
   }
-  .text-slate-950 {
-    color: var(--color-slate-950);
+  .text-violet-700 {
+    color: var(--color-violet-700);
   }
   .text-violet-800 {
     color: var(--color-violet-800);
@@ -886,8 +949,21 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+  .accent-indigo-600 {
+    accent-color: var(--color-indigo-600);
+  }
+  .opacity-60 {
+    opacity: 60%;
+  }
+  .opacity-70 {
+    opacity: 70%;
+  }
   .shadow-2xl {
     --tw-shadow: 0 25px 50px -12px var(--tw-shadow-color, rgb(0 0 0 / 0.25));
+    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+  }
+  .shadow-xl {
+    --tw-shadow: 0 20px 25px -5px var(--tw-shadow-color, rgb(0 0 0 / 0.1)), 0 8px 10px -6px var(--tw-shadow-color, rgb(0 0 0 / 0.1));
     box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
   }
   .ring-2 {
@@ -896,6 +972,10 @@
   }
   .ring-indigo-500 {
     --tw-ring-color: var(--color-indigo-500);
+  }
+  .blur {
+    --tw-blur: blur(8px);
+    filter: var(--tw-blur,) var(--tw-brightness,) var(--tw-contrast,) var(--tw-grayscale,) var(--tw-hue-rotate,) var(--tw-invert,) var(--tw-saturate,) var(--tw-sepia,) var(--tw-drop-shadow,);
   }
   .backdrop-blur {
     --tw-backdrop-blur: blur(8px);
@@ -938,6 +1018,13 @@
       }
     }
   }
+  .hover\:text-slate-800 {
+    &:hover {
+      @media (hover: hover) {
+        color: var(--color-slate-800);
+      }
+    }
+  }
   .focus\:ring-indigo-500 {
     &:focus {
       --tw-ring-color: var(--color-indigo-500);
@@ -961,6 +1048,11 @@
   .sm\:flex-row {
     @media (width >= 40rem) {
       flex-direction: row;
+    }
+  }
+  .sm\:items-center {
+    @media (width >= 40rem) {
+      align-items: center;
     }
   }
   .sm\:items-end {
@@ -998,6 +1090,11 @@
       display: block;
     }
   }
+  .md\:hidden {
+    @media (width >= 48rem) {
+      display: none;
+    }
+  }
   .md\:grid-cols-2 {
     @media (width >= 48rem) {
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1021,6 +1118,11 @@
   .lg\:static {
     @media (width >= 64rem) {
       position: static;
+    }
+  }
+  .lg\:bottom-4 {
+    @media (width >= 64rem) {
+      bottom: calc(var(--spacing) * 4);
     }
   }
   .lg\:mt-10 {
@@ -1056,6 +1158,11 @@
   .lg\:grid-cols-2 {
     @media (width >= 64rem) {
       grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  .lg\:grid-cols-3 {
+    @media (width >= 64rem) {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
   }
   .lg\:grid-cols-\[17rem_1fr\] {
@@ -1103,6 +1210,11 @@
       grid-column: span 2 / span 2;
     }
   }
+  .xl\:col-span-5 {
+    @media (width >= 80rem) {
+      grid-column: span 5 / span 5;
+    }
+  }
   .xl\:grid-cols-4 {
     @media (width >= 80rem) {
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1133,23 +1245,88 @@
       grid-template-columns: 23rem 1fr;
     }
   }
+  .xl\:grid-cols-\[24rem_1fr\] {
+    @media (width >= 80rem) {
+      grid-template-columns: 24rem 1fr;
+    }
+  }
 }
 @font-face {
-  font-family: "IRANYekanXPro";
-  src: url("/fonts/IRANYekanXVFaNumVF.woff2") format("woff2-variations");
+  font-family: "YekanBakh";
+  src: url("/fonts/YekanBakh-Thin.woff2") format("woff2");
   font-style: normal;
-  font-weight: 100 1000;
+  font-weight: 100;
+  font-display: swap;
+}
+@font-face {
+  font-family: "YekanBakh";
+  src: url("/fonts/YekanBakh-Light.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+}
+@font-face {
+  font-family: "YekanBakh";
+  src: url("/fonts/YekanBakh-Regular.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "YekanBakh";
+  src: url("/fonts/YekanBakh-SemiBold.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: "YekanBakh";
+  src: url("/fonts/YekanBakh-Bold.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: "YekanBakh";
+  src: url("/fonts/YekanBakh-ExtraBold.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+}
+@font-face {
+  font-family: "YekanBakh";
+  src: url("/fonts/YekanBakh-Black.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+}
+@font-face {
+  font-family: "YekanBakh";
+  src: url("/fonts/YekanBakh-ExtraBlack.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 950;
   font-display: swap;
 }
 @layer base {
-  * {
+  *, *::before, *::after {
     box-sizing: border-box;
   }
-  body {
+  html {
     font-family: var(--font-sans);
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-weight: 400;
   }
   input, select, textarea, button {
     font: inherit;
+  }
+  input, textarea {
+    font-family: var(--font-sans);
   }
   button, a {
     -webkit-tap-highlight-color: transparent;
@@ -1486,6 +1663,293 @@
     transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
     transition-duration: var(--tw-duration, var(--default-transition-duration));
   }
+  .ltr-input {
+    direction: ltr;
+    text-align: left;
+    font-variant-numeric: tabular-nums;
+  }
+  .guide-overlay {
+    z-index: 100;
+    position: fixed;
+    inset: calc(var(--spacing) * 0);
+    display: grid;
+    place-items: center;
+    background-color: color-mix(in srgb, oklch(12.9% 0.042 264.695) 50%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-slate-950) 50%, transparent);
+    }
+    padding: calc(var(--spacing) * 4);
+    --tw-backdrop-blur: blur(var(--blur-sm));
+    -webkit-backdrop-filter: var(--tw-backdrop-blur,) var(--tw-backdrop-brightness,) var(--tw-backdrop-contrast,) var(--tw-backdrop-grayscale,) var(--tw-backdrop-hue-rotate,) var(--tw-backdrop-invert,) var(--tw-backdrop-opacity,) var(--tw-backdrop-saturate,) var(--tw-backdrop-sepia,);
+    backdrop-filter: var(--tw-backdrop-blur,) var(--tw-backdrop-brightness,) var(--tw-backdrop-contrast,) var(--tw-backdrop-grayscale,) var(--tw-backdrop-hue-rotate,) var(--tw-backdrop-invert,) var(--tw-backdrop-opacity,) var(--tw-backdrop-saturate,) var(--tw-backdrop-sepia,);
+  }
+  .guide-dialog {
+    max-height: 90vh;
+    width: 100%;
+    max-width: var(--container-xl);
+    overflow-y: auto;
+    border-radius: var(--radius-3xl);
+    background-color: var(--color-white);
+    --tw-shadow: 0 25px 50px -12px var(--tw-shadow-color, rgb(0 0 0 / 0.25));
+    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+  }
+  .guide-close {
+    display: grid;
+    width: calc(var(--spacing) * 10);
+    height: calc(var(--spacing) * 10);
+    flex-shrink: 0;
+    place-items: center;
+    border-radius: var(--radius-xl);
+    color: var(--color-slate-500);
+    transition-property: color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to, opacity, box-shadow, transform, translate, scale, rotate, filter, -webkit-backdrop-filter, backdrop-filter, display, visibility, content-visibility, overlay, pointer-events;
+    transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
+    transition-duration: var(--tw-duration, var(--default-transition-duration));
+    &:hover {
+      @media (hover: hover) {
+        background-color: var(--color-slate-100);
+      }
+    }
+    &:hover {
+      @media (hover: hover) {
+        color: var(--color-slate-900);
+      }
+    }
+  }
+  .guide-icon {
+    display: grid;
+    width: calc(var(--spacing) * 14);
+    height: calc(var(--spacing) * 14);
+    place-items: center;
+    border-radius: var(--radius-2xl);
+    background-color: var(--color-indigo-100);
+    font-size: var(--text-xl);
+    line-height: var(--tw-leading, var(--text-xl--line-height));
+    --tw-font-weight: var(--font-weight-black);
+    font-weight: var(--font-weight-black);
+    color: var(--color-indigo-700);
+  }
+  .guide-dot {
+    width: calc(var(--spacing) * 2);
+    height: calc(var(--spacing) * 2);
+    border-radius: calc(infinity * 1px);
+    background-color: var(--color-slate-200);
+    transition-property: all;
+    transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
+    transition-duration: var(--tw-duration, var(--default-transition-duration));
+  }
+  .guide-dot-active {
+    width: calc(var(--spacing) * 7);
+    background-color: var(--color-indigo-600);
+  }
+  .persian-datepicker-control {
+    position: relative;
+    width: 100%;
+  }
+  .persian-datepicker-input {
+    padding-left: 3rem;
+  }
+  .persian-datepicker-trigger {
+    position: absolute;
+    left: 0.5rem;
+    top: 50%;
+    display: grid;
+    width: 2rem;
+    height: 2rem;
+    transform: translateY(-50%);
+    place-items: center;
+    border-radius: 0.65rem;
+    color: rgb(100 116 139);
+    transition: background-color 150ms ease, color 150ms ease;
+  }
+  .persian-datepicker-trigger:hover, .persian-datepicker-trigger-active {
+    background: rgb(238 242 255);
+    color: rgb(79 70 229);
+  }
+  .persian-datepicker-trigger svg {
+    width: 1.15rem;
+    height: 1.15rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .persian-datepicker-popover {
+    position: fixed;
+    z-index: 90;
+    direction: rtl;
+    border: 1px solid rgb(226 232 240);
+    border-radius: 1.25rem;
+    background: white;
+    padding: 0.85rem;
+    font-family: var(--font-sans);
+    box-shadow: 0 24px 60px -18px rgb(15 23 42 / 0.35), 0 8px 18px -10px rgb(15 23 42 / 0.18);
+  }
+  .persian-datepicker-header {
+    display: grid;
+    grid-template-columns: 2.25rem minmax(0, 1fr) 2.25rem;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+  .persian-datepicker-nav {
+    display: grid;
+    width: 2.25rem;
+    height: 2.25rem;
+    place-items: center;
+    border-radius: 0.75rem;
+    color: rgb(71 85 105);
+    font-size: 1.45rem;
+    line-height: 1;
+    transition: background-color 150ms ease, color 150ms ease;
+  }
+  .persian-datepicker-nav:hover {
+    background: rgb(241 245 249);
+    color: rgb(15 23 42);
+  }
+  .persian-datepicker-nav:disabled {
+    cursor: not-allowed;
+    opacity: 0.35;
+  }
+  .persian-datepicker-nav:disabled:hover {
+    background: transparent;
+    color: rgb(71 85 105);
+  }
+  .persian-datepicker-selects {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 5.5rem;
+    gap: 0.4rem;
+  }
+  .persian-datepicker-select {
+    min-width: 0;
+    width: 100%;
+    border: 1px solid rgb(226 232 240);
+    border-radius: 0.7rem;
+    background: rgb(248 250 252);
+    padding: 0.45rem 0.55rem;
+    color: rgb(30 41 59);
+    font-family: var(--font-sans);
+    font-size: 0.78rem;
+    font-weight: 700;
+    outline: none;
+  }
+  .persian-datepicker-select:focus {
+    border-color: rgb(99 102 241);
+    box-shadow: 0 0 0 3px rgb(224 231 255);
+  }
+  .persian-datepicker-weekdays, .persian-datepicker-days {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 0.2rem;
+  }
+  .persian-datepicker-weekdays {
+    margin-bottom: 0.3rem;
+  }
+  .persian-datepicker-weekdays span {
+    display: grid;
+    height: 1.75rem;
+    place-items: center;
+    color: rgb(148 163 184);
+    font-size: 0.7rem;
+    font-weight: 800;
+  }
+  .persian-datepicker-weekdays span:last-child {
+    color: rgb(244 63 94);
+  }
+  .persian-datepicker-day, .persian-datepicker-empty-day {
+    aspect-ratio: 1;
+    min-height: 2.25rem;
+    border-radius: 0.7rem;
+  }
+  .persian-datepicker-day {
+    display: grid;
+    place-items: center;
+    color: rgb(51 65 85);
+    font-family: var(--font-sans);
+    font-size: 0.78rem;
+    font-weight: 700;
+    transition: background-color 120ms ease, color 120ms ease, box-shadow 120ms ease;
+  }
+  .persian-datepicker-day:hover {
+    background: rgb(238 242 255);
+    color: rgb(67 56 202);
+  }
+  .persian-datepicker-day:nth-child(7n) {
+    color: rgb(225 29 72);
+  }
+  .persian-datepicker-day-today {
+    box-shadow: inset 0 0 0 1px rgb(129 140 248);
+    color: rgb(67 56 202);
+  }
+  .persian-datepicker-day-selected, .persian-datepicker-day-selected:hover, .persian-datepicker-day-selected:nth-child(7n) {
+    background: rgb(79 70 229);
+    color: white;
+    box-shadow: 0 7px 14px -8px rgb(79 70 229 / 0.8);
+  }
+  .persian-datepicker-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    padding-top: 0.65rem;
+    border-top: 1px solid rgb(241 245 249);
+  }
+  .persian-datepicker-action {
+    border-radius: 0.65rem;
+    padding: 0.4rem 0.65rem;
+    color: rgb(79 70 229);
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    font-weight: 800;
+    transition: background-color 150ms ease;
+  }
+  .persian-datepicker-action:hover {
+    background: rgb(238 242 255);
+  }
+  .persian-datepicker-clear {
+    color: rgb(225 29 72);
+  }
+  .persian-datepicker-clear:hover {
+    background: rgb(255 241 242);
+  }
+  @media (max-width: 420px) {
+    .persian-datepicker-popover {
+      padding: 0.7rem;
+      border-radius: 1rem;
+    }
+    .persian-datepicker-day, .persian-datepicker-empty-day {
+      min-height: 2.1rem;
+    }
+  }
+}
+.donysh-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.donysh-brand-light {
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.96);
+  padding: 0.5rem 0.75rem;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+}
+.donysh-brand-mark {
+  width: 2.75rem;
+  height: 2.75rem;
+  flex: 0 0 auto;
+  object-fit: contain;
+}
+.donysh-brand-wordmark {
+  width: auto;
+  height: 2rem;
+  max-width: 8rem;
+  object-fit: contain;
+}
+.donysh-error-mark {
+  width: 5rem;
+  height: 5rem;
+  object-fit: contain;
 }
 @property --tw-space-y-reverse {
   syntax: "*";
@@ -1617,6 +2081,59 @@
   inherits: false;
   initial-value: 0 0 #0000;
 }
+@property --tw-blur {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-brightness {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-contrast {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-grayscale {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-hue-rotate {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-invert {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-opacity {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-saturate {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-sepia {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-drop-shadow {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-drop-shadow-color {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-drop-shadow-alpha {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 100%;
+}
+@property --tw-drop-shadow-size {
+  syntax: "*";
+  inherits: false;
+}
 @property --tw-backdrop-blur {
   syntax: "*";
   inherits: false;
@@ -1688,6 +2205,19 @@
       --tw-ring-offset-width: 0px;
       --tw-ring-offset-color: #fff;
       --tw-ring-offset-shadow: 0 0 #0000;
+      --tw-blur: initial;
+      --tw-brightness: initial;
+      --tw-contrast: initial;
+      --tw-grayscale: initial;
+      --tw-hue-rotate: initial;
+      --tw-invert: initial;
+      --tw-opacity: initial;
+      --tw-saturate: initial;
+      --tw-sepia: initial;
+      --tw-drop-shadow: initial;
+      --tw-drop-shadow-color: initial;
+      --tw-drop-shadow-alpha: 100%;
+      --tw-drop-shadow-size: initial;
       --tw-backdrop-blur: initial;
       --tw-backdrop-brightness: initial;
       --tw-backdrop-contrast: initial;
@@ -1700,38 +2230,4 @@
       --tw-tracking: initial;
     }
   }
-}
-
-/* Donysh brand assets */
-.donysh-brand {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-.donysh-brand-light {
-    border-radius: 1rem;
-    background: rgba(255, 255, 255, 0.96);
-    padding: 0.5rem 0.75rem;
-    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
-}
-
-.donysh-brand-mark {
-    width: 2.75rem;
-    height: 2.75rem;
-    flex: 0 0 auto;
-    object-fit: contain;
-}
-
-.donysh-brand-wordmark {
-    width: auto;
-    height: 2rem;
-    max-width: 8rem;
-    object-fit: contain;
-}
-
-.donysh-error-mark {
-    width: 5rem;
-    height: 5rem;
-    object-fit: contain;
 }

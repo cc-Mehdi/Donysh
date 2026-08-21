@@ -91,6 +91,7 @@ if (!string.IsNullOrWhiteSpace(keysPath))
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IWorkspaceContext, WorkspaceContext>();
+builder.Services.AddScoped<AiWorkspaceService>();
 builder.Services.AddScoped<DatabaseInitializer>();
 
 builder.Services
