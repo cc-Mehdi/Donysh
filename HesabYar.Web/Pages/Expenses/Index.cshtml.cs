@@ -98,9 +98,18 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
             return NotFound();
         }
 
+        var recurringPayment = await db.RecurringObligationPayments
+            .SingleOrDefaultAsync(x => x.ExpenseId == expense.Id, cancellationToken);
+        if (recurringPayment is not null)
+        {
+            db.RecurringObligationPayments.Remove(recurringPayment);
+        }
+
         db.Expenses.Remove(expense);
         await db.SaveChangesAsync(cancellationToken);
-        TempData["Success"] = "خرج حذف شد.";
+        TempData["Success"] = recurringPayment is null
+            ? "خرج حذف شد."
+            : "خرج حذف شد و پرداخت تعهد ماهانه مرتبط دوباره به حالت پرداخت‌نشده برگشت.";
         return RedirectToPage();
     }
 

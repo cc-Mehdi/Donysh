@@ -1,0 +1,8 @@
+@model HesabYar.Web.ViewComponents.ObligationAlertViewComponent.AlertModel
+<a asp-page="/Obligations/Index" class="relative grid size-10 place-items-center rounded-xl border @(Model.Count > 0 ? "border-amber-200 bg-amber-50 text-amber-800" : "border-slate-200 bg-white text-slate-600")" aria-label="اعلان اقساط و هزینه‌های ثابت" title="اقساط و هزینه‌های ثابت">
+    <span>◷</span>
+    @if (Model.Count > 0)
+    {
+        <span class="absolute -left-1 -top-1 grid min-w-5 place-items-center rounded-full @(Model.OverdueCount > 0 ? "bg-rose-600" : "bg-amber-500") px-1 text-[10px] font-black text-white">@Model.Count</span>
+    }
+</a>

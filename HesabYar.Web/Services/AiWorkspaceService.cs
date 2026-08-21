@@ -102,22 +102,28 @@ public sealed class AiWorkspaceService(ApplicationDbContext db)
             })
             .ToListAsync(cancellationToken);
 
-        var installments = await db.InstallmentPlans
-            .Where(x => x.WorkspaceId == workspaceId)
-            .OrderBy(x => x.IsCompleted)
-            .ThenBy(x => x.FirstDueDate)
+        var installments = await db.RecurringObligations
+            .Where(x => x.WorkspaceId == workspaceId && x.Type == RecurringObligationType.Installment)
+            .Include(x => x.Category)
+            .OrderByDescending(x => x.IsActive)
+            .ThenBy(x => x.StartYear)
+            .ThenBy(x => x.StartMonth)
             .AsNoTracking()
             .Select(x => new
             {
                 id = x.Id,
                 title = x.Title,
-                notes = x.Notes,
-                totalAmount = x.TotalAmount,
-                installmentAmount = x.InstallmentAmount,
-                installmentCount = x.InstallmentCount,
-                paidInstallments = x.PaidInstallments,
-                firstDueDate = x.FirstDueDate,
-                isCompleted = x.IsCompleted
+                categoryId = x.CategoryId,
+                categoryName = x.Category.Name,
+                amount = x.Amount,
+                startYear = x.StartYear,
+                startMonth = x.StartMonth,
+                durationMonths = x.DurationMonths,
+                paidInstallments = x.Payments.Count,
+                dueDay = x.DueDay,
+                reminderDaysBefore = x.ReminderDaysBefore,
+                note = x.Note,
+                isActive = x.IsActive
             })
             .ToListAsync(cancellationToken);
 
@@ -162,7 +168,7 @@ public sealed class AiWorkspaceService(ApplicationDbContext db)
                 budgetPeriod = "year/month are Persian calendar values",
                 categories = "Expense categories; archived categories are retained for historical records",
                 savingsGoals = "savedAmount is calculated from immutable contribution records",
-                installments = "paidInstallments is a count, not an amount",
+                installments = "amount is each monthly installment; paidInstallments is calculated from immutable payment records",
                 recentExpenses = "At most the latest 500 expenses from the last 12 months"
             },
             snapshot = new
@@ -196,7 +202,7 @@ public sealed class AiWorkspaceService(ApplicationDbContext db)
                     category = new { fields = "name, icon, isArchived", requiredForCreate = "name" },
                     budget = new { fields = "categoryId or categoryName, year, month, amount, warningPercent", requiredForCreate = "year, month, amount; category is optional" },
                     savingsGoal = new { fields = "name, description, targetAmount, monthlyTargetAmount, targetDate, isCompleted, isCancelled", requiredForCreate = "name, targetAmount" },
-                    installment = new { fields = "title, notes, totalAmount, installmentAmount, installmentCount, paidInstallments, firstDueDate, isCompleted", requiredForCreate = "title, totalAmount, installmentAmount, installmentCount, firstDueDate" }
+                    installment = new { fields = "title, categoryId or categoryName, amount, startYear, startMonth, durationMonths, dueDay, reminderDaysBefore, note, isActive", requiredForCreate = "title, category, amount, startYear, startMonth, durationMonths" }
                 },
                 limits = new
                 {
@@ -323,7 +329,7 @@ public sealed class AiWorkspaceService(ApplicationDbContext db)
         {
             foreach (var change in ordered)
             {
-                await ApplyOneAsync(workspaceId, change, cancellationToken);
+                await ApplyOneAsync(workspaceId, userId, change, cancellationToken);
             }
 
             db.AiImportReceipts.Add(new AiImportReceipt
@@ -352,7 +358,12 @@ public sealed class AiWorkspaceService(ApplicationDbContext db)
         var categories = await db.ExpenseCategories.Where(x => x.WorkspaceId == workspaceId).AsNoTracking().ToListAsync(cancellationToken);
         var budgets = await db.Budgets.Where(x => x.WorkspaceId == workspaceId).Include(x => x.Category).AsNoTracking().ToListAsync(cancellationToken);
         var goals = await db.SavingsGoals.Where(x => x.WorkspaceId == workspaceId).Include(x => x.Contributions).AsNoTracking().ToListAsync(cancellationToken);
-        var installments = await db.InstallmentPlans.Where(x => x.WorkspaceId == workspaceId).AsNoTracking().ToListAsync(cancellationToken);
+        var installments = await db.RecurringObligations
+            .Where(x => x.WorkspaceId == workspaceId && x.Type == RecurringObligationType.Installment)
+            .Include(x => x.Category)
+            .Include(x => x.Payments)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
         var transferredBudgets = await db.BudgetTransfers
             .Where(x => x.WorkspaceId == workspaceId)
             .Select(x => new { x.SourceBudgetId, x.DestinationBudgetId })
@@ -379,7 +390,7 @@ public sealed class AiWorkspaceService(ApplicationDbContext db)
                 "category" => PreviewCategory(change, operation, state),
                 "budget" => PreviewBudget(change, operation, state, plannedCategoryNames),
                 "savingsGoal" => PreviewSavingsGoal(change, operation, state),
-                "installment" => PreviewInstallment(change, operation, state),
+                "installment" => PreviewInstallment(change, operation, state, plannedCategoryNames),
                 _ => throw new InvalidOperationException("نوع رکورد پشتیبانی نمی‌شود.")
             };
             return new AiChangePreview(change.Id, entity, entityLabel, operation, operationLabel, summary, CleanReason(change.Reason), true, null, destructive);
@@ -527,46 +538,55 @@ public sealed class AiWorkspaceService(ApplicationDbContext db)
         return $"هدف «{existing.Name}»: {string.Join("؛ ", parts)}";
     }
 
-    private static string PreviewInstallment(ChangeDocument change, string operation, WorkspaceState state)
+    private static string PreviewInstallment(ChangeDocument change, string operation, WorkspaceState state, HashSet<string> plannedCategoryNames)
     {
         if (operation == "delete")
         {
             var current = FindById(state.Installments, change.TargetId, x => x.Id, "قسط");
-            return $"حذف قسط «{current.Title}» با مانده تقریبی {Money(Math.Max(current.TotalAmount - current.PaidInstallments * current.InstallmentAmount, 0))}";
+            if (current.Payments.Count > 0)
+            {
+                throw new InvalidOperationException("این قسط سابقه پرداخت دارد و برای حفظ گزارش مالی قابل حذف نیست؛ می‌توان آن را غیرفعال کرد.");
+            }
+            return $"حذف قسط «{current.Title}» بدون سابقه پرداخت";
         }
 
-        InstallmentPlan? existing = null;
+        RecurringObligation? existing = null;
         if (operation == "update")
         {
             existing = FindById(state.Installments, change.TargetId, x => x.Id, "قسط");
         }
-        var title = ReadString(change.Data, "title", existing?.Title, operation == "create", 2, 120, "عنوان قسط");
-        var total = ReadDecimal(change.Data, "totalAmount", existing?.TotalAmount, operation == "create", 1, 999_999_999_999, "مبلغ کل");
-        var amount = ReadDecimal(change.Data, "installmentAmount", existing?.InstallmentAmount, operation == "create", 1, 999_999_999_999, "مبلغ هر قسط");
-        var count = ReadInt(change.Data, "installmentCount", existing?.InstallmentCount, operation == "create", 1, 600, "تعداد اقساط");
-        var paid = ReadInt(change.Data, "paidInstallments", existing?.PaidInstallments ?? 0, false, 0, 600, "تعداد پرداخت‌شده");
-        if (paid > count)
+        var title = ReadString(change.Data, "title", existing?.Title, operation == "create", 2, 140, "عنوان قسط");
+        var amount = ReadDecimal(change.Data, "amount", existing?.Amount, operation == "create", 1, 999_999_999_999, "مبلغ هر قسط");
+        var startYear = ReadInt(change.Data, "startYear", existing?.StartYear, operation == "create", 1300, 1600, "سال شروع");
+        var startMonth = ReadInt(change.Data, "startMonth", existing?.StartMonth, operation == "create", 1, 12, "ماه شروع");
+        var duration = ReadInt(change.Data, "durationMonths", existing?.DurationMonths, operation == "create", 1, 600, "تعداد اقساط");
+        var dueDay = ReadInt(change.Data, "dueDay", existing?.DueDay ?? 1, false, 1, 31, "روز سررسید");
+        var reminder = ReadInt(change.Data, "reminderDaysBefore", existing?.ReminderDaysBefore ?? 3, false, 0, 30, "روز یادآوری");
+        var note = OptionalNullableString(change.Data, "note", existing?.Note, 500);
+        var active = ReadBool(change.Data, "isActive", existing?.IsActive ?? true);
+        var category = ResolveCategory(change.Data, existing?.CategoryId, state, plannedCategoryNames);
+        var hasCategoryName = TryString(change.Data, "categoryName", out var plannedCategory) && !string.IsNullOrWhiteSpace(plannedCategory);
+        if (category is null && !hasCategoryName)
         {
-            throw new InvalidOperationException("تعداد پرداخت‌شده نمی‌تواند از تعداد کل اقساط بیشتر باشد.");
+            throw new InvalidOperationException("دسته‌بندی قسط لازم است.");
         }
-        var firstDue = ReadDate(change.Data, "firstDueDate", existing?.FirstDueDate, operation == "create", "اولین سررسید");
-        var notes = OptionalNullableString(change.Data, "notes", existing?.Notes, 500);
-        var completed = ReadBool(change.Data, "isCompleted", existing?.IsCompleted ?? false) || paid == count;
+        var categoryName = category?.Name ?? plannedCategory.Trim();
 
         if (operation == "create")
         {
-            return $"افزودن قسط «{title}»: {count} قسطِ {Money(amount)}، مبلغ کل {Money(total)}، اولین سررسید {DateText(firstDue)}";
+            return $"افزودن قسط «{title}» در دسته «{categoryName}»: {duration} قسطِ {Money(amount)} از {startYear}/{startMonth:00}، سررسید روز {dueDay}";
         }
 
         var parts = new List<string>();
         AddDifference(parts, "عنوان", existing!.Title, title);
-        AddDifference(parts, "مبلغ کل", Money(existing.TotalAmount), Money(total));
-        AddDifference(parts, "مبلغ هر قسط", Money(existing.InstallmentAmount), Money(amount));
-        AddDifference(parts, "تعداد", existing.InstallmentCount.ToString(), count.ToString());
-        AddDifference(parts, "پرداخت‌شده", existing.PaidInstallments.ToString(), paid.ToString());
-        AddDifference(parts, "اولین سررسید", DateText(existing.FirstDueDate), DateText(firstDue));
-        AddDifference(parts, "توضیحات", existing.Notes ?? "—", notes ?? "—");
-        AddDifference(parts, "تسویه", existing.IsCompleted ? "بله" : "خیر", completed ? "بله" : "خیر");
+        AddDifference(parts, "دسته", existing.Category.Name, categoryName);
+        AddDifference(parts, "مبلغ هر قسط", Money(existing.Amount), Money(amount));
+        AddDifference(parts, "شروع", $"{existing.StartYear}/{existing.StartMonth:00}", $"{startYear}/{startMonth:00}");
+        AddDifference(parts, "تعداد", existing.DurationMonths?.ToString() ?? "—", duration.ToString());
+        AddDifference(parts, "روز سررسید", existing.DueDay.ToString(), dueDay.ToString());
+        AddDifference(parts, "یادآوری", existing.ReminderDaysBefore.ToString(), reminder.ToString());
+        AddDifference(parts, "توضیحات", existing.Note ?? "—", note ?? "—");
+        AddDifference(parts, "وضعیت", existing.IsActive ? "فعال" : "غیرفعال", active ? "فعال" : "غیرفعال");
         RequireAny(parts);
         return $"قسط «{existing.Title}»: {string.Join("؛ ", parts)}";
     }
@@ -610,7 +630,7 @@ public sealed class AiWorkspaceService(ApplicationDbContext db)
         }
     }
 
-    private async Task ApplyOneAsync(Guid workspaceId, ChangeDocument change, CancellationToken cancellationToken)
+    private async Task ApplyOneAsync(Guid workspaceId, string userId, ChangeDocument change, CancellationToken cancellationToken)
     {
         var entity = NormalizeEntity(change.Entity);
         var operation = NormalizeOperation(change.Operation);
@@ -626,7 +646,7 @@ public sealed class AiWorkspaceService(ApplicationDbContext db)
                 await ApplySavingsGoalAsync(workspaceId, change, operation, cancellationToken);
                 break;
             case "installment":
-                await ApplyInstallmentAsync(workspaceId, change, operation, cancellationToken);
+                await ApplyInstallmentAsync(workspaceId, userId, change, operation, cancellationToken);
                 break;
             default:
                 throw new InvalidOperationException("نوع تغییر معتبر نیست.");
@@ -723,35 +743,52 @@ public sealed class AiWorkspaceService(ApplicationDbContext db)
         item.IsCancelled = ReadBool(change.Data, "isCancelled", item.IsCancelled);
     }
 
-    private async Task ApplyInstallmentAsync(Guid workspaceId, ChangeDocument change, string operation, CancellationToken cancellationToken)
+    private async Task ApplyInstallmentAsync(Guid workspaceId, string userId, ChangeDocument change, string operation, CancellationToken cancellationToken)
     {
         if (operation == "delete")
         {
             var id = RequiredTargetId(change);
-            var itemToDelete = await db.InstallmentPlans.SingleOrDefaultAsync(x => x.Id == id && x.WorkspaceId == workspaceId, cancellationToken)
+            var itemToDelete = await db.RecurringObligations
+                .Include(x => x.Payments)
+                .SingleOrDefaultAsync(x => x.Id == id && x.WorkspaceId == workspaceId && x.Type == RecurringObligationType.Installment, cancellationToken)
                 ?? throw new InvalidOperationException("قسط در فضای فعال پیدا نشد.");
-            db.InstallmentPlans.Remove(itemToDelete);
+            if (itemToDelete.Payments.Count > 0)
+            {
+                throw new InvalidOperationException("قسط دارای سابقه پرداخت قابل حذف نیست.");
+            }
+            db.RecurringObligations.Remove(itemToDelete);
             return;
         }
 
-        InstallmentPlan? item = null;
+        RecurringObligation? item = null;
         if (operation == "update")
         {
             var id = RequiredTargetId(change);
-            item = await db.InstallmentPlans.SingleOrDefaultAsync(x => x.Id == id && x.WorkspaceId == workspaceId, cancellationToken)
+            item = await db.RecurringObligations.SingleOrDefaultAsync(
+                x => x.Id == id && x.WorkspaceId == workspaceId && x.Type == RecurringObligationType.Installment,
+                cancellationToken)
                 ?? throw new InvalidOperationException("قسط در فضای فعال پیدا نشد.");
         }
-        item ??= new InstallmentPlan { WorkspaceId = workspaceId };
-        if (db.Entry(item).State == EntityState.Detached) db.InstallmentPlans.Add(item);
+        item ??= new RecurringObligation
+        {
+            WorkspaceId = workspaceId,
+            CreatedByUserId = userId,
+            Type = RecurringObligationType.Installment,
+            IsActive = true
+        };
+        if (db.Entry(item).State == EntityState.Detached) db.RecurringObligations.Add(item);
 
-        item.Title = ReadString(change.Data, "title", string.IsNullOrWhiteSpace(item.Title) ? null : item.Title, operation == "create", 2, 120, "عنوان قسط");
-        item.TotalAmount = ReadDecimal(change.Data, "totalAmount", item.TotalAmount == 0 ? null : item.TotalAmount, operation == "create", 1, 999_999_999_999, "مبلغ کل");
-        item.InstallmentAmount = ReadDecimal(change.Data, "installmentAmount", item.InstallmentAmount == 0 ? null : item.InstallmentAmount, operation == "create", 1, 999_999_999_999, "مبلغ هر قسط");
-        item.InstallmentCount = ReadInt(change.Data, "installmentCount", item.InstallmentCount == 0 ? null : item.InstallmentCount, operation == "create", 1, 600, "تعداد اقساط");
-        item.PaidInstallments = ReadInt(change.Data, "paidInstallments", item.PaidInstallments, false, 0, 600, "تعداد پرداخت‌شده");
-        item.FirstDueDate = ReadDate(change.Data, "firstDueDate", item.FirstDueDate == default ? null : item.FirstDueDate, operation == "create", "اولین سررسید");
-        item.Notes = OptionalNullableString(change.Data, "notes", item.Notes, 500);
-        item.IsCompleted = ReadBool(change.Data, "isCompleted", item.IsCompleted) || item.PaidInstallments == item.InstallmentCount;
+        item.Title = ReadString(change.Data, "title", string.IsNullOrWhiteSpace(item.Title) ? null : item.Title, operation == "create", 2, 140, "عنوان قسط");
+        item.CategoryId = await ResolveCategoryIdAsync(workspaceId, change.Data, item.CategoryId == Guid.Empty ? null : item.CategoryId, cancellationToken)
+            ?? throw new InvalidOperationException("دسته‌بندی قسط لازم است.");
+        item.Amount = ReadDecimal(change.Data, "amount", item.Amount == 0 ? null : item.Amount, operation == "create", 1, 999_999_999_999, "مبلغ هر قسط");
+        item.StartYear = ReadInt(change.Data, "startYear", item.StartYear == 0 ? null : item.StartYear, operation == "create", 1300, 1600, "سال شروع");
+        item.StartMonth = ReadInt(change.Data, "startMonth", item.StartMonth == 0 ? null : item.StartMonth, operation == "create", 1, 12, "ماه شروع");
+        item.DurationMonths = ReadInt(change.Data, "durationMonths", item.DurationMonths, operation == "create", 1, 600, "تعداد اقساط");
+        item.DueDay = ReadInt(change.Data, "dueDay", item.DueDay == 0 ? 1 : item.DueDay, false, 1, 31, "روز سررسید");
+        item.ReminderDaysBefore = ReadInt(change.Data, "reminderDaysBefore", item.ReminderDaysBefore, false, 0, 30, "روز یادآوری");
+        item.Note = OptionalNullableString(change.Data, "note", item.Note, 500);
+        item.IsActive = ReadBool(change.Data, "isActive", item.IsActive);
         item.UpdatedAtUtc = DateTime.UtcNow;
     }
 
@@ -935,7 +972,7 @@ public sealed class AiWorkspaceService(ApplicationDbContext db)
         "category" => new(StringComparer.OrdinalIgnoreCase) { "name", "icon", "isArchived" },
         "budget" => new(StringComparer.OrdinalIgnoreCase) { "categoryId", "categoryName", "year", "month", "amount", "warningPercent" },
         "savingsGoal" => new(StringComparer.OrdinalIgnoreCase) { "name", "description", "targetAmount", "monthlyTargetAmount", "targetDate", "isCompleted", "isCancelled" },
-        "installment" => new(StringComparer.OrdinalIgnoreCase) { "title", "notes", "totalAmount", "installmentAmount", "installmentCount", "paidInstallments", "firstDueDate", "isCompleted" },
+        "installment" => new(StringComparer.OrdinalIgnoreCase) { "title", "categoryId", "categoryName", "amount", "startYear", "startMonth", "durationMonths", "dueDay", "reminderDaysBefore", "note", "isActive" },
         _ => []
     };
 
@@ -1169,7 +1206,7 @@ public sealed class AiWorkspaceService(ApplicationDbContext db)
         List<ExpenseCategory> Categories,
         List<Budget> Budgets,
         List<SavingsGoal> Goals,
-        List<InstallmentPlan> Installments,
+        List<RecurringObligation> Installments,
         HashSet<Guid> TransferredBudgetIds);
 
     private sealed class ChangeSetDocument
