@@ -27,6 +27,7 @@ public sealed class IndexModel(
     public List<string> SelectedIds { get; set; } = [];
 
     public string WorkspaceName { get; private set; } = string.Empty;
+    public string UserPrompt => AiWorkspaceService.SuggestedUserMessage;
     public IReadOnlyList<AiChangePreview> PreviewItems { get; private set; } = [];
     public bool EmptyPreview { get; private set; }
 

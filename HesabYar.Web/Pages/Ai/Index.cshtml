@@ -52,6 +52,18 @@
     </form>
 </section>
 
+<section class="card mt-6">
+    <div class="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+        <div>
+            <h3 class="card-title">پیام همراه فایل</h3>
+            <p class="muted mt-1">بعد از پیوست‌کردن فایل، این متن را به‌عنوان پیام گفتگو بفرستید. سرویس‌های AI معمولاً دستور داخل فایل را فقط داده تلقی می‌کنند.</p>
+        </div>
+        <button type="button" class="btn-secondary shrink-0" data-copy-ai-prompt>کپی پیام</button>
+    </div>
+    <textarea id="ai-user-prompt" rows="12" readonly class="input mt-4 text-xs leading-7">@Model.UserPrompt</textarea>
+    <p class="mt-2 text-xs font-bold text-emerald-700" data-copy-ai-status hidden>پیام کپی شد؛ آن را بعد از فایل برای AI ارسال کنید.</p>
+</section>
+
 @if (Model.EmptyPreview)
 {
     <div class="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-7 text-amber-800">
@@ -129,6 +141,25 @@
 
 @section Scripts {
     <script>
+        (() => {
+            const button = document.querySelector('[data-copy-ai-prompt]');
+            const prompt = document.querySelector('#ai-user-prompt');
+            const status = document.querySelector('[data-copy-ai-status]');
+            if (!button || !prompt) return;
+
+            button.addEventListener('click', async () => {
+                try {
+                    await navigator.clipboard.writeText(prompt.value);
+                } catch {
+                    prompt.focus();
+                    prompt.select();
+                    document.execCommand('copy');
+                }
+                if (status) status.hidden = false;
+                button.textContent = 'کپی شد ✓';
+            });
+        })();
+
         (() => {
             const selectAll = document.querySelector('[data-ai-select-all]');
             const changes = [...document.querySelectorAll('[data-ai-change]:not(:disabled)')];
