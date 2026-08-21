@@ -925,7 +925,7 @@ public sealed class AiWorkspaceService(ApplicationDbContext db)
 
     private static string ExtractJson(string input)
     {
-        var trimmed = input.Trim();
+        var trimmed = NormalizePastedJson(input).Trim();
 
         // Accept the JSON object by itself as well as a complete AI response that
         // contains prose before the final donysh.changes object. This keeps the
@@ -966,6 +966,15 @@ public sealed class AiWorkspaceService(ApplicationDbContext db)
 
         return matchingObject;
     }
+
+    private static string NormalizePastedJson(string input)
+        => input
+            .Replace("&#x20;", " ", StringComparison.OrdinalIgnoreCase)
+            .Replace("&#32;", " ", StringComparison.OrdinalIgnoreCase)
+            .Replace("&nbsp;", " ", StringComparison.OrdinalIgnoreCase)
+            .Replace('\u00a0', ' ')
+            .Replace("\u200b", string.Empty, StringComparison.Ordinal)
+            .Replace("\ufeff", string.Empty, StringComparison.Ordinal);
 
     private static IEnumerable<string> ExtractJsonObjects(string input)
     {

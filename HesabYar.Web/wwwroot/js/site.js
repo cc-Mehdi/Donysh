@@ -437,6 +437,53 @@
         });
     });
 
+    const aiPreviewForm = document.querySelector('[data-ai-preview-form]');
+    aiPreviewForm?.addEventListener('submit', () => {
+        const submitButton = aiPreviewForm.querySelector('[data-ai-preview-submit]');
+        if (!submitButton) return;
+        submitButton.disabled = true;
+        submitButton.textContent = 'در حال ساخت پیش‌نمایش…';
+    });
+
+    const aiCopyButton = document.querySelector('[data-copy-ai-prompt]');
+    const aiPrompt = document.querySelector('#ai-user-prompt');
+    aiCopyButton?.addEventListener('click', async () => {
+        if (!aiPrompt) return;
+        try {
+            await navigator.clipboard.writeText(aiPrompt.value);
+        } catch {
+            aiPrompt.focus();
+            aiPrompt.select();
+            document.execCommand('copy');
+        }
+        const copyStatus = document.querySelector('[data-copy-ai-status]');
+        if (copyStatus) copyStatus.hidden = false;
+        aiCopyButton.textContent = 'کپی شد ✓';
+    });
+
+    const aiSelectAll = document.querySelector('[data-ai-select-all]');
+    const aiChanges = [...document.querySelectorAll('[data-ai-change]:not(:disabled)')];
+    if (aiSelectAll) {
+        const syncAiSelection = () => {
+            aiSelectAll.checked = aiChanges.length > 0 && aiChanges.every((item) => item.checked);
+            aiSelectAll.indeterminate = aiChanges.some((item) => item.checked) && !aiSelectAll.checked;
+        };
+        aiSelectAll.addEventListener('change', () => aiChanges.forEach((item) => { item.checked = aiSelectAll.checked; }));
+        aiChanges.forEach((item) => item.addEventListener('change', syncAiSelection));
+        syncAiSelection();
+    }
+
+    if (document.querySelector('[data-ai-preview-submitted="true"]')) {
+        const previewTarget = document.querySelector('#ai-preview-result')
+            ?? document.querySelector('[data-valmsg-for="ChangesJson"]');
+        if (previewTarget) {
+            requestAnimationFrame(() => {
+                previewTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                previewTarget.focus?.({ preventScroll: true });
+            });
+        }
+    }
+
     const guide = document.getElementById('onboarding-guide');
     if (guide) {
         const user = guide.dataset.onboardingUser || 'anonymous';

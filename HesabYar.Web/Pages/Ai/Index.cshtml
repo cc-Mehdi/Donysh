@@ -49,17 +49,17 @@
     <p class="mt-2 text-xs font-bold text-emerald-700" data-copy-ai-status hidden>پیام کپی شد؛ آن را بعد از فایل برای AI ارسال کنید.</p>
 </section>
 
-<section class="card mt-6" id="ai-json-input">
+<section class="card mt-6" id="ai-json-input" data-ai-preview-submitted="@(Model.PreviewSubmitted ? "true" : "false")">
     <div class="mb-4">
         <h3 class="card-title">ورود JSON پیشنهادی</h3>
         <p class="muted mt-1">می‌توانید خود JSON، code block کامل <span dir="ltr">```json</span> یا کل پاسخ AI را وارد کنید؛ JSON انتهایی خودکار استخراج می‌شود.</p>
     </div>
-    <form method="post" asp-page-handler="Preview">
+    <form method="post" asp-page-handler="Preview" data-ai-preview-form>
         <textarea asp-for="ChangesJson" rows="14" dir="ltr" class="input font-mono text-xs leading-6" placeholder='{"format":"donysh.changes","version":1,"changes":[]}'></textarea>
         <span asp-validation-for="ChangesJson" class="field-error mt-3 block rounded-2xl bg-rose-50 p-3 empty:hidden" role="alert"></span>
         <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
             <span class="text-xs text-slate-500">حداکثر @AiWorkspaceService.MaxChanges تغییر؛ فقط دسته، بودجه، هدف پس‌انداز و قسط</span>
-            <button type="submit" class="btn-primary">ساخت پیش‌نمایش امن</button>
+            <button type="submit" class="btn-primary" data-ai-preview-submit>ساخت پیش‌نمایش امن</button>
         </div>
     </form>
 </section>
@@ -132,60 +132,9 @@
             <div class="sticky bottom-20 mt-5 rounded-2xl border border-indigo-200 bg-white/95 p-4 shadow-xl backdrop-blur lg:bottom-4">
                 <div class="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
                     <p class="text-sm text-slate-600">با زدن دکمه، فقط موارد تیک‌خورده روی فضای <strong>@Model.WorkspaceName</strong> اعمال می‌شوند.</p>
-                    <button type="submit" class="btn-primary" @(validCount == 0 ? "disabled" : null) onclick="return confirm('تغییرات انتخاب‌شده روی فضای مالی اعمال شوند؟');">اعمال تغییرات انتخاب‌شده</button>
+                    <button type="submit" class="btn-primary" @(validCount == 0 ? "disabled" : null) data-confirm="تغییرات انتخاب‌شده روی فضای مالی اعمال شوند؟">اعمال تغییرات انتخاب‌شده</button>
                 </div>
             </div>
         </form>
     </section>
-}
-
-@section Scripts {
-    <script>
-        (() => {
-            const button = document.querySelector('[data-copy-ai-prompt]');
-            const prompt = document.querySelector('#ai-user-prompt');
-            const status = document.querySelector('[data-copy-ai-status]');
-            if (!button || !prompt) return;
-
-            button.addEventListener('click', async () => {
-                try {
-                    await navigator.clipboard.writeText(prompt.value);
-                } catch {
-                    prompt.focus();
-                    prompt.select();
-                    document.execCommand('copy');
-                }
-                if (status) status.hidden = false;
-                button.textContent = 'کپی شد ✓';
-            });
-        })();
-
-        @if (Model.PreviewSubmitted)
-        {
-            <text>
-            (() => {
-                const target = document.querySelector('#ai-preview-result')
-                    ?? document.querySelector('[data-valmsg-for="ChangesJson"]');
-                if (!target) return;
-                requestAnimationFrame(() => {
-                    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    if (target.focus) target.focus({ preventScroll: true });
-                });
-            })();
-            </text>
-        }
-
-        (() => {
-            const selectAll = document.querySelector('[data-ai-select-all]');
-            const changes = [...document.querySelectorAll('[data-ai-change]:not(:disabled)')];
-            if (!selectAll) return;
-            const sync = () => {
-                selectAll.checked = changes.length > 0 && changes.every(item => item.checked);
-                selectAll.indeterminate = changes.some(item => item.checked) && !selectAll.checked;
-            };
-            selectAll.addEventListener('change', () => changes.forEach(item => item.checked = selectAll.checked));
-            changes.forEach(item => item.addEventListener('change', sync));
-            sync();
-        })();
-    </script>
 }
