@@ -1036,6 +1036,11 @@
       padding-bottom: calc(var(--spacing) * 0);
     }
   }
+  .empty\:hidden {
+    &:empty {
+      display: none;
+    }
+  }
   .hover\:border-indigo-300 {
     &:hover {
       @media (hover: hover) {

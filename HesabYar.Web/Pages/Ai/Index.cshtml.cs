@@ -30,6 +30,7 @@ public sealed class IndexModel(
     public string UserPrompt => AiWorkspaceService.SuggestedUserMessage;
     public IReadOnlyList<AiChangePreview> PreviewItems { get; private set; } = [];
     public bool EmptyPreview { get; private set; }
+    public bool PreviewSubmitted { get; private set; }
 
     public async Task OnGetAsync(CancellationToken cancellationToken)
     {
@@ -46,6 +47,7 @@ public sealed class IndexModel(
 
     public async Task<IActionResult> OnPostPreviewAsync(CancellationToken cancellationToken)
     {
+        PreviewSubmitted = true;
         await LoadWorkspaceAsync(cancellationToken);
         if (!ModelState.IsValid)
         {

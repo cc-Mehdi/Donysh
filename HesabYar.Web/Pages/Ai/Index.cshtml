@@ -38,21 +38,6 @@
 </section>
 
 <section class="card mt-6">
-    <div class="mb-4">
-        <h3 class="card-title">ورود JSON پیشنهادی</h3>
-        <p class="muted mt-1">می‌توانید خود JSON یا code block کامل <span dir="ltr">```json</span> را وارد کنید.</p>
-    </div>
-    <form method="post" asp-page-handler="Preview">
-        <textarea asp-for="ChangesJson" rows="14" dir="ltr" class="input font-mono text-xs leading-6" placeholder='{"format":"donysh.changes","version":1,"changes":[]}'></textarea>
-        <span asp-validation-for="ChangesJson" class="field-error"></span>
-        <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
-            <span class="text-xs text-slate-500">حداکثر @AiWorkspaceService.MaxChanges تغییر؛ فقط دسته، بودجه، هدف پس‌انداز و قسط</span>
-            <button type="submit" class="btn-primary">ساخت پیش‌نمایش امن</button>
-        </div>
-    </form>
-</section>
-
-<section class="card mt-6">
     <div class="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
         <div>
             <h3 class="card-title">پیام همراه فایل</h3>
@@ -64,9 +49,24 @@
     <p class="mt-2 text-xs font-bold text-emerald-700" data-copy-ai-status hidden>پیام کپی شد؛ آن را بعد از فایل برای AI ارسال کنید.</p>
 </section>
 
+<section class="card mt-6" id="ai-json-input">
+    <div class="mb-4">
+        <h3 class="card-title">ورود JSON پیشنهادی</h3>
+        <p class="muted mt-1">می‌توانید خود JSON، code block کامل <span dir="ltr">```json</span> یا کل پاسخ AI را وارد کنید؛ JSON انتهایی خودکار استخراج می‌شود.</p>
+    </div>
+    <form method="post" asp-page-handler="Preview">
+        <textarea asp-for="ChangesJson" rows="14" dir="ltr" class="input font-mono text-xs leading-6" placeholder='{"format":"donysh.changes","version":1,"changes":[]}'></textarea>
+        <span asp-validation-for="ChangesJson" class="field-error mt-3 block rounded-2xl bg-rose-50 p-3 empty:hidden" role="alert"></span>
+        <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <span class="text-xs text-slate-500">حداکثر @AiWorkspaceService.MaxChanges تغییر؛ فقط دسته، بودجه، هدف پس‌انداز و قسط</span>
+            <button type="submit" class="btn-primary">ساخت پیش‌نمایش امن</button>
+        </div>
+    </form>
+</section>
+
 @if (Model.EmptyPreview)
 {
-    <div class="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-7 text-amber-800">
+    <div id="ai-preview-result" class="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-7 text-amber-800" tabindex="-1">
         JSON معتبر است، اما AI هنوز تغییری پیشنهاد نکرده است. پاسخ سؤال‌هایش را بدهید؛ طبق پروتکل فایل باید در پاسخ بعدی JSON کامل و به‌روز را دوباره تولید کند.
     </div>
 }
@@ -74,7 +74,7 @@
 @if (Model.PreviewItems.Count > 0)
 {
     var validCount = Model.PreviewItems.Count(x => x.IsValid);
-    <section class="mt-6">
+    <section class="mt-6" id="ai-preview-result" tabindex="-1">
         <div class="mb-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
             <div>
                 <h3 class="text-xl font-black">پیش‌نمایش تغییرات</h3>
@@ -159,6 +159,21 @@
                 button.textContent = 'کپی شد ✓';
             });
         })();
+
+        @if (Model.PreviewSubmitted)
+        {
+            <text>
+            (() => {
+                const target = document.querySelector('#ai-preview-result')
+                    ?? document.querySelector('[data-valmsg-for="ChangesJson"]');
+                if (!target) return;
+                requestAnimationFrame(() => {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    if (target.focus) target.focus({ preventScroll: true });
+                });
+            })();
+            </text>
+        }
 
         (() => {
             const selectAll = document.querySelector('[data-ai-select-all]');

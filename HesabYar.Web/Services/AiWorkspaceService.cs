@@ -926,21 +926,100 @@ public sealed class AiWorkspaceService(ApplicationDbContext db)
     private static string ExtractJson(string input)
     {
         var trimmed = input.Trim();
-        var fence = trimmed.IndexOf("```", StringComparison.Ordinal);
-        if (fence >= 0)
+
+        // Accept the JSON object by itself as well as a complete AI response that
+        // contains prose before the final donysh.changes object. This keeps the
+        // import flow usable when a provider omits the requested Markdown fence.
+        if (trimmed.StartsWith('{') && trimmed.EndsWith('}'))
         {
-            var contentStart = trimmed.IndexOf('\n', fence);
-            var fenceEnd = contentStart < 0 ? -1 : trimmed.IndexOf("```", contentStart + 1, StringComparison.Ordinal);
-            if (contentStart >= 0 && fenceEnd > contentStart)
+            return trimmed;
+        }
+
+        string? matchingObject = null;
+        foreach (var candidate in ExtractJsonObjects(trimmed))
+        {
+            try
             {
-                trimmed = trimmed[(contentStart + 1)..fenceEnd].Trim();
+                using var document = JsonDocument.Parse(candidate);
+                if (document.RootElement.ValueKind != JsonValueKind.Object)
+                {
+                    continue;
+                }
+
+                var hasFormat = document.RootElement.EnumerateObject().Any(property =>
+                    property.Name.Equals("format", StringComparison.OrdinalIgnoreCase));
+                if (hasFormat)
+                {
+                    matchingObject = candidate;
+                }
+            }
+            catch (JsonException)
+            {
+                // Keep looking: braces can legitimately occur in the prose.
             }
         }
-        if (!trimmed.StartsWith('{') || !trimmed.EndsWith('}'))
+
+        if (matchingObject is null)
         {
-            throw new InvalidOperationException("JSON باید یک object کامل باشد؛ متن پاسخ AI را بدون بخش JSON وارد نکنید.");
+            throw new InvalidOperationException("JSON تغییرات پیدا نشد. می‌توانید فقط JSON یا کل پاسخ AI شامل JSON انتهایی را وارد کنید.");
         }
-        return trimmed;
+
+        return matchingObject;
+    }
+
+    private static IEnumerable<string> ExtractJsonObjects(string input)
+    {
+        var start = -1;
+        var depth = 0;
+        var inString = false;
+        var escaped = false;
+
+        for (var index = 0; index < input.Length; index++)
+        {
+            var current = input[index];
+            if (start < 0)
+            {
+                if (current == '{')
+                {
+                    start = index;
+                    depth = 1;
+                    inString = false;
+                    escaped = false;
+                }
+                continue;
+            }
+
+            if (inString)
+            {
+                if (escaped)
+                {
+                    escaped = false;
+                }
+                else if (current == '\\')
+                {
+                    escaped = true;
+                }
+                else if (current == '"')
+                {
+                    inString = false;
+                }
+                continue;
+            }
+
+            if (current == '"')
+            {
+                inString = true;
+            }
+            else if (current == '{')
+            {
+                depth++;
+            }
+            else if (current == '}' && --depth == 0)
+            {
+                yield return input[start..(index + 1)].Trim();
+                start = -1;
+            }
+        }
     }
 
     private static void ValidateEnvelope(ChangeDocument change, string entity, string operation)
