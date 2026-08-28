@@ -19,7 +19,7 @@ public sealed record BudgetBalanceState(
     public decimal NextMonthCarryover => Budget.CarryOverOverspend ? Math.Max(0, -Remaining) : 0;
 }
 
-public sealed class BudgetBalanceService(ApplicationDbContext db)
+public sealed class BudgetBalanceService(ApplicationDbContext db, BudgetRolloverService budgetRolloverService)
 {
     private const int MaxCarryoverDepth = 60;
 
@@ -28,6 +28,7 @@ public sealed class BudgetBalanceService(ApplicationDbContext db)
         PersianYearMonth period,
         CancellationToken cancellationToken = default)
     {
+        await budgetRolloverService.EnsureCurrentPeriodAsync(workspaceId, period, cancellationToken);
         var cache = new Dictionary<(int Year, int Month), IReadOnlyList<BudgetBalanceState>>();
         return await GetPeriodInternalAsync(workspaceId, period, 0, cache, cancellationToken);
     }

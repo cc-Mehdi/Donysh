@@ -14,7 +14,8 @@ namespace HesabYar.Web.Pages.Workspaces;
 public sealed class IndexModel(
     ApplicationDbContext db,
     IWorkspaceContext workspaceContext,
-    UserManager<ApplicationUser> userManager) : PageModel
+    UserManager<ApplicationUser> userManager,
+    BudgetRolloverService budgetRolloverService) : PageModel
 {
     [BindProperty]
     public CreateWorkspaceInput CreateWorkspace { get; set; } = new();
@@ -299,6 +300,11 @@ public sealed class IndexModel(
         var today = DateOnly.FromDateTime(DateTime.Now);
         var currentPeriod = PersianCalendarHelper.GetYearMonth(today);
         CurrentBudgetPeriodTitle = PersianCalendarHelper.Title(currentPeriod);
+
+        if (CurrentWorkspaceId.HasValue)
+        {
+            await budgetRolloverService.EnsureCurrentPeriodAsync(CurrentWorkspaceId.Value, currentPeriod, cancellationToken);
+        }
 
         var workspaceIds = workspaces.Select(x => x.Id).ToList();
         var budgetRows = await db.Budgets

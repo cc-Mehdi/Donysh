@@ -437,6 +437,18 @@
         });
     });
 
+    document.querySelectorAll('[data-icon-picker]').forEach((picker) => {
+        const choices = [...picker.querySelectorAll('[data-icon-choice]')];
+        const custom = picker.querySelector('[data-icon-custom]');
+        choices.forEach((choice) => choice.addEventListener('change', () => {
+            if (choice.checked && custom) custom.value = '';
+        }));
+        custom?.addEventListener('input', () => {
+            if (!custom.value.trim()) return;
+            choices.forEach((choice) => { choice.checked = false; });
+        });
+    });
+
     const aiPreviewForm = document.querySelector('[data-ai-preview-form]');
     aiPreviewForm?.addEventListener('submit', () => {
         const submitButton = aiPreviewForm.querySelector('[data-ai-preview-submit]');

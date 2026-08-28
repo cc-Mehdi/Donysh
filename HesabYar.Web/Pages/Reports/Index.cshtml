@@ -12,7 +12,6 @@
             <div><label asp-for="Anchor" class="label">تاریخ مبنا</label><input id="Anchor" name="Anchor" value="@anchorValue" type="text" inputmode="numeric" autocomplete="off" data-persian-date class="input ltr-input" placeholder="۱۴۰۵/۰۵/۰۸" /></div>
             <button type="submit" class="btn-primary">نمایش</button>
         </form>
-        <a asp-page-handler="AiExport" asp-route-period="@Model.Period" asp-route-anchor="@Model.Anchor?.ToString("yyyy-MM-dd")" class="btn-secondary">⬇ گزارش برای هوش مصنوعی</a>
     </div>
 </div>
 
@@ -20,10 +19,6 @@
     <a asp-page="Index" asp-route-period="@Model.Period" asp-route-anchor="@Model.PreviousAnchor.ToString("yyyy-MM-dd")" class="btn-secondary px-3">→ قبلی</a>
     <strong class="px-3 text-center">@Model.PeriodTitle</strong>
     <a asp-page="Index" asp-route-period="@Model.Period" asp-route-anchor="@Model.NextAnchor.ToString("yyyy-MM-dd")" class="btn-secondary px-3">بعدی ←</a>
-</div>
-
-<div class="mb-5 rounded-2xl border border-indigo-100 bg-indigo-50 p-4 text-sm text-indigo-900">
-    <strong>گزارش آماده تحلیل هوش مصنوعی:</strong> دکمه «گزارش برای هوش مصنوعی» یک فایل JSON ساختاریافته از مخارج، بودجه‌ها، کسری منتقل‌شده، انتقال بین دسته‌ها، پس‌اندازها، اعضا و اقساط می‌سازد. فایل را می‌توانید بدون نیاز به API یا توکن، مستقیماً به AI دلخواهتان بدهید.
 </div>
 
 <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

@@ -26,6 +26,9 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
         [Required]
         [StringLength(16)]
         public string Icon { get; set; } = "📦";
+
+        [StringLength(16, ErrorMessage = "آیکن دلخواه بیش از حد طولانی است.")]
+        public string? CustomIcon { get; set; }
     }
 
     public sealed record CategoryRow(ExpenseCategory Category, int ExpenseCount, decimal TotalSpent);
@@ -36,6 +39,13 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
     {
         var workspace = await workspaceContext.RequireCurrentAsync(cancellationToken);
         var normalizedName = Input.Name.Trim();
+        var selectedIcon = string.IsNullOrWhiteSpace(Input.CustomIcon)
+            ? Input.Icon.Trim()
+            : Input.CustomIcon.Trim();
+        if (string.IsNullOrWhiteSpace(selectedIcon))
+        {
+            ModelState.AddModelError("Input.Icon", "یک آیکن انتخاب کنید.");
+        }
         var duplicate = await db.ExpenseCategories.AnyAsync(
             x => x.WorkspaceId == workspace.Id
                  && x.Name.ToLower() == normalizedName.ToLower()
@@ -60,7 +70,7 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
                 x => x.Id == Input.Id.Value && x.WorkspaceId == workspace.Id,
                 cancellationToken) ?? throw new InvalidOperationException("Category not found.");
             category.Name = normalizedName;
-            category.Icon = Input.Icon.Trim();
+            category.Icon = selectedIcon;
             category.IsArchived = false;
         }
         else
@@ -69,7 +79,7 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
             {
                 WorkspaceId = workspace.Id,
                 Name = normalizedName,
-                Icon = Input.Icon.Trim(),
+                Icon = selectedIcon,
                 Color = "slate"
             };
             db.ExpenseCategories.Add(category);

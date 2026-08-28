@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using HesabYar.Web.Data;
 using HesabYar.Web.Domain;
+using HesabYar.Web.Helpers;
 using Microsoft.EntityFrameworkCore;
 
 namespace HesabYar.Web.Services;
@@ -28,7 +29,7 @@ public sealed record AiApplyResult(
     int AppliedCount,
     IReadOnlyList<string> Errors);
 
-public sealed class AiWorkspaceService(ApplicationDbContext db)
+public sealed class AiWorkspaceService(ApplicationDbContext db, BudgetRolloverService budgetRolloverService)
 {
     public const int MaxJsonLength = 80_000;
     public const int MaxChanges = 50;
@@ -69,6 +70,9 @@ public sealed class AiWorkspaceService(ApplicationDbContext db)
 
     public async Task<string> BuildExportAsync(Guid workspaceId, CancellationToken cancellationToken)
     {
+        var currentPeriod = PersianCalendarHelper.GetYearMonth(DateOnly.FromDateTime(DateTime.Now));
+        await budgetRolloverService.EnsureCurrentPeriodAsync(workspaceId, currentPeriod, cancellationToken);
+
         var workspace = await db.Workspaces.AsNoTracking().SingleAsync(x => x.Id == workspaceId, cancellationToken);
         var categories = await db.ExpenseCategories
             .Where(x => x.WorkspaceId == workspaceId)

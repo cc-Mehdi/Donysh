@@ -7,6 +7,7 @@
     <div>
         <h2 class="text-2xl font-black">بودجه‌بندی ماهانه</h2>
         <p class="mt-1 text-sm text-slate-500">برای هر دسته سقف تعیین کنید؛ کسری را ابتدا با انتقال بین دسته‌ها مدیریت کنید و در صورت باقی‌ماندن، آن را شفاف به ماه بعد منتقل کنید.</p>
+        <p class="mt-2 text-xs font-bold text-indigo-700">در شروع هر ماه، بودجه‌های ماه قبل با همان مبلغ و تنظیمات به ماه جاری منتقل می‌شوند؛ تاریخچه ماه قبل حذف یا تغییر نمی‌کند.</p>
     </div>
     <div class="flex items-center gap-2">
         <a asp-page="Index" asp-route-year="@Model.PreviousPeriod.Year" asp-route-month="@Model.PreviousPeriod.Month" class="btn-secondary px-3">→</a>
