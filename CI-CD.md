@@ -114,6 +114,12 @@ git push origin main
 
 در GitHub وارد تب `Actions` شوید. Workflow با نام `CI and Deploy` باید مراحل Validate و Deploy را با موفقیت تمام کند.
 
+اگر اجرای قبلی هنوز روی سرور در حال build یا health check باشد، اجرای بعدی تا ۱۵ دقیقه منتظر lock است و سپس خودکار ادامه می‌دهد. برای تغییر این زمان می‌توانید هنگام اجرای اسکریپت مقدار `DEPLOY_LOCK_WAIT_SECONDS` را بر حسب ثانیه تنظیم کنید؛ برای مثال:
+
+```bash
+DEPLOY_LOCK_WAIT_SECONDS=1200 DEPLOY_BRANCH=main bash scripts/server-deploy.sh
+```
+
 ## دستورات بررسی روی سرور
 
 ```bash

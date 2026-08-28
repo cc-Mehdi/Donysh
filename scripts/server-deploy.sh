@@ -6,18 +6,26 @@ BRANCH="${DEPLOY_BRANCH:-main}"
 ENV_FILE="${ENV_FILE:-.env}"
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.domain.yml}"
 LOCK_FILE="${LOCK_FILE:-/tmp/donysh-deploy.lock}"
+LOCK_WAIT_SECONDS="${DEPLOY_LOCK_WAIT_SECONDS:-900}"
 
-exec 9>"$LOCK_FILE"
-if ! flock -n 9; then
-  echo "Another deployment is already running."
+for command in git docker curl flock; do
+  command -v "$command" >/dev/null 2>&1 || { echo "Required command not found: $command"; exit 1; }
+done
+
+if [[ ! "$LOCK_WAIT_SECONDS" =~ ^[0-9]+$ ]]; then
+  echo "DEPLOY_LOCK_WAIT_SECONDS must be a non-negative integer."
   exit 1
 fi
 
-cd "$APP_DIR"
+exec 9>"$LOCK_FILE"
+echo "Waiting up to ${LOCK_WAIT_SECONDS}s for the deployment lock ..."
+if ! flock -w "$LOCK_WAIT_SECONDS" 9; then
+  echo "Another deployment is still running after ${LOCK_WAIT_SECONDS}s."
+  exit 1
+fi
+echo "Deployment lock acquired."
 
-for command in git docker curl; do
-  command -v "$command" >/dev/null 2>&1 || { echo "Required command not found: $command"; exit 1; }
-done
+cd "$APP_DIR"
 
 docker compose version >/dev/null 2>&1 || { echo "Docker Compose v2 is required."; exit 1; }
 [[ -f "$ENV_FILE" ]] || { echo "Missing $APP_DIR/$ENV_FILE"; exit 1; }
