@@ -460,8 +460,16 @@
     aiPreviewForm?.addEventListener('submit', () => {
         const submitButton = aiPreviewForm.querySelector('[data-ai-preview-submit]');
         if (!submitButton) return;
-        submitButton.disabled = true;
+        submitButton.setAttribute('aria-busy', 'true');
         submitButton.textContent = 'در حال ساخت پیش‌نمایش…';
+
+        // Do not disable the submit control. Some browsers omit a control as
+        // soon as it is disabled during submit, and a failed navigation would
+        // otherwise leave the page looking permanently stuck.
+        window.setTimeout(() => {
+            submitButton.removeAttribute('aria-busy');
+            submitButton.textContent = 'ساخت پیش‌نمایش امن';
+        }, 15000);
     });
 
     const aiCopyButton = document.querySelector('[data-copy-ai-prompt]');

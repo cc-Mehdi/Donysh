@@ -13,7 +13,8 @@ namespace HesabYar.Web.Pages.Ai;
 public sealed class IndexModel(
     AiWorkspaceService aiWorkspaceService,
     IWorkspaceContext workspaceContext,
-    IDataProtectionProvider dataProtectionProvider) : PageModel
+    IDataProtectionProvider dataProtectionProvider,
+    ILogger<IndexModel> logger) : PageModel
 {
     private readonly IDataProtector _protector = dataProtectionProvider.CreateProtector("Donysh.AiChangePreview.v1");
 
@@ -62,7 +63,10 @@ public sealed class IndexModel(
     public async Task<IActionResult> OnPostPreviewAsync(CancellationToken cancellationToken)
     {
         PreviewSubmitted = true;
-        await LoadWorkspaceAsync(cancellationToken);
+        // Report-period discovery is unrelated to validating an imported JSON.
+        // Keeping it out of this POST prevents a reporting/database failure from
+        // turning an otherwise valid preview into a blank error response.
+        await LoadWorkspaceAsync(cancellationToken, loadAvailablePeriods: false);
         if (!ModelState.IsValid)
         {
             return Page();
@@ -87,13 +91,24 @@ public sealed class IndexModel(
         {
             ModelState.AddModelError(nameof(ChangesJson), ex.Message);
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "AI change preview failed for user {UserId}", workspaceContext.UserId);
+            ModelState.AddModelError(
+                nameof(ChangesJson),
+                "ساخت پیش‌نمایش به خطای موقت خورد. هیچ تغییری اعمال نشده است؛ دوباره تلاش کنید.");
+        }
 
         return Page();
     }
 
     public async Task<IActionResult> OnPostApplyAsync(CancellationToken cancellationToken)
     {
-        await LoadWorkspaceAsync(cancellationToken);
+        await LoadWorkspaceAsync(cancellationToken, loadAvailablePeriods: false);
         var workspace = await workspaceContext.RequireCurrentAsync(cancellationToken);
         PreviewEnvelope envelope;
         try
@@ -140,11 +155,30 @@ public sealed class IndexModel(
         return RedirectToPage();
     }
 
-    private async Task LoadWorkspaceAsync(CancellationToken cancellationToken, bool setDefaultPeriod = true)
+    private async Task LoadWorkspaceAsync(
+        CancellationToken cancellationToken,
+        bool setDefaultPeriod = true,
+        bool loadAvailablePeriods = true)
     {
         var workspace = await workspaceContext.RequireCurrentAsync(cancellationToken);
         WorkspaceName = workspace.Name;
-        AvailablePeriods = await aiWorkspaceService.GetAvailablePeriodsAsync(workspace.Id, cancellationToken);
+        if (loadAvailablePeriods)
+        {
+            AvailablePeriods = await aiWorkspaceService.GetAvailablePeriodsAsync(workspace.Id, cancellationToken);
+        }
+        else
+        {
+            var current = PersianCalendarHelper.GetYearMonth(DateOnly.FromDateTime(DateTime.Now));
+            AvailablePeriods =
+            [
+                new AiReportPeriod(
+                    current.Year,
+                    current.Month,
+                    $"{current.Year:D4}-{current.Month:D2}",
+                    PersianCalendarHelper.Title(current))
+            ];
+        }
+
         if (setDefaultPeriod && AvailablePeriods.All(x => x.Value != ReportPeriod))
         {
             var current = PersianCalendarHelper.GetYearMonth(DateOnly.FromDateTime(DateTime.Now));
