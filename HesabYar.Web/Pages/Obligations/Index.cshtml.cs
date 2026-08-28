@@ -252,11 +252,14 @@ public sealed class IndexModel(
 
         try
         {
-            await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
             db.Expenses.Add(expense);
             db.RecurringObligationPayments.Add(payment);
+
+            // SaveChanges already wraps both inserts in one implicit transaction.
+            // An explicit transaction is incompatible with the Npgsql retry
+            // execution strategy configured in Program.cs unless the entire
+            // operation is executed through that strategy.
             await db.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
