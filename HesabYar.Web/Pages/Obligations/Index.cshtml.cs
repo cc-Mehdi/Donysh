@@ -12,7 +12,8 @@ namespace HesabYar.Web.Pages.Obligations;
 public sealed class IndexModel(
     ApplicationDbContext db,
     IWorkspaceContext workspaceContext,
-    BudgetBalanceService budgetBalanceService) : PageModel
+    BudgetBalanceService budgetBalanceService,
+    ILogger<IndexModel> logger) : PageModel
 {
     [BindProperty(SupportsGet = true)]
     public int? Year { get; set; }
@@ -226,7 +227,6 @@ public sealed class IndexModel(
             return RedirectToPage(new { year = Year, month = Month });
         }
 
-        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         var expense = new Expense
         {
             WorkspaceId = workspace.Id,
@@ -238,9 +238,7 @@ public sealed class IndexModel(
             Amount = amount,
             ExpenseDate = paidDate
         };
-        db.Expenses.Add(expense);
-
-        db.RecurringObligationPayments.Add(new RecurringObligationPayment
+        var payment = new RecurringObligationPayment
         {
             RecurringObligationId = obligation.Id,
             ExpenseId = expense.Id,
@@ -250,19 +248,57 @@ public sealed class IndexModel(
             Amount = amount,
             PaidDate = paidDate,
             Note = string.IsNullOrWhiteSpace(note) ? null : note
-        });
+        };
 
-        await db.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
+        try
+        {
+            await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+            db.Expenses.Add(expense);
+            db.RecurringObligationPayments.Add(payment);
+            await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            db.ChangeTracker.Clear();
+            logger.LogError(
+                ex,
+                "Failed to record payment for obligation {ObligationId} in {Year}/{Month}",
+                obligation.Id,
+                period.Year,
+                period.Month);
+            TempData["Error"] = "ثبت پرداخت کامل نشد یا نتیجه آن قابل تأیید نبود. صفحه را تازه کنید؛ اگر پرداخت‌شده نمایش داده نشد دوباره تلاش کنید.";
+            return RedirectToPage(new { year = Year, month = Month });
+        }
 
         TempData["Success"] = $"پرداخت «{obligation.Title}» ثبت و به مخارج اضافه شد.";
 
-        var paidPeriod = PersianCalendarHelper.GetYearMonth(paidDate);
-        var budgetStates = await budgetBalanceService.GetPeriodAsync(workspace.Id, paidPeriod, cancellationToken);
-        var exceeded = budgetStates.FirstOrDefault(x => x.Budget.CategoryId == obligation.CategoryId && x.Remaining < 0);
-        if (exceeded is not null)
+        try
         {
-            TempData["Error"] = $"هشدار بودجه: با این پرداخت، بودجه «{obligation.Category.Name}» {Formatters.Money(Math.Abs(exceeded.Remaining))} کسری دارد. اگر انتقال بودجه انجام نشود، این کسری طبق تنظیم بودجه به ماه بعد منتقل می‌شود.";
+            var paidPeriod = PersianCalendarHelper.GetYearMonth(paidDate);
+            var budgetStates = await budgetBalanceService.GetPeriodAsync(workspace.Id, paidPeriod, cancellationToken);
+            var exceeded = budgetStates.FirstOrDefault(x => x.Budget.CategoryId == obligation.CategoryId && x.Remaining < 0);
+            if (exceeded is not null)
+            {
+                TempData["Error"] = $"هشدار بودجه: با این پرداخت، بودجه «{obligation.Category.Name}» {Formatters.Money(Math.Abs(exceeded.Remaining))} کسری دارد. اگر انتقال بودجه انجام نشود، این کسری طبق تنظیم بودجه به ماه بعد منتقل می‌شود.";
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            // The payment is already committed. A secondary budget-warning
+            // failure must never make the successful payment look unsuccessful.
+            logger.LogWarning(
+                ex,
+                "Payment {PaymentId} was recorded, but its budget warning could not be calculated",
+                payment.Id);
         }
 
         return RedirectToPage(new { year = Year, month = Month });
