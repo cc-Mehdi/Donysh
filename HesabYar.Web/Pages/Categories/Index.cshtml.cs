@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Globalization;
 using HesabYar.Web.Data;
 using HesabYar.Web.Domain;
 using HesabYar.Web.Services;
@@ -45,6 +46,10 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
         if (string.IsNullOrWhiteSpace(selectedIcon))
         {
             ModelState.AddModelError("Input.Icon", "یک آیکن انتخاب کنید.");
+        }
+        else if (StringInfo.ParseCombiningCharacters(selectedIcon).Length != 1)
+        {
+            ModelState.AddModelError("Input.CustomIcon", "فقط یک آیکن یا ایموجی وارد کنید.");
         }
         var duplicate = await db.ExpenseCategories.AnyAsync(
             x => x.WorkspaceId == workspace.Id

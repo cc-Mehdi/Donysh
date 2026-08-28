@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using HesabYar.Web.Helpers;
 using HesabYar.Web.Services;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Mvc;
@@ -26,7 +27,11 @@ public sealed class IndexModel(
     [BindProperty]
     public List<string> SelectedIds { get; set; } = [];
 
+    [BindProperty]
+    public string ReportPeriod { get; set; } = string.Empty;
+
     public string WorkspaceName { get; private set; } = string.Empty;
+    public IReadOnlyList<AiReportPeriod> AvailablePeriods { get; private set; } = [];
     public string UserPrompt => AiWorkspaceService.SuggestedUserMessage;
     public IReadOnlyList<AiChangePreview> PreviewItems { get; private set; } = [];
     public bool EmptyPreview { get; private set; }
@@ -39,9 +44,18 @@ public sealed class IndexModel(
 
     public async Task<IActionResult> OnPostDownloadAsync(CancellationToken cancellationToken)
     {
+        await LoadWorkspaceAsync(cancellationToken, setDefaultPeriod: false);
+        var selected = AvailablePeriods.SingleOrDefault(x => x.Value == ReportPeriod);
+        if (selected is null)
+        {
+            ModelState.AddModelError(nameof(ReportPeriod), "ماه انتخاب‌شده معتبر نیست یا داده‌ای ندارد.");
+            return Page();
+        }
+
         var workspace = await workspaceContext.RequireCurrentAsync(cancellationToken);
-        var content = await aiWorkspaceService.BuildExportAsync(workspace.Id, cancellationToken);
-        var fileName = $"donysh-ai-context-{DateTime.UtcNow:yyyyMMdd-HHmm}.json";
+        var period = new PersianYearMonth(selected.Year, selected.Month);
+        var content = await aiWorkspaceService.BuildExportAsync(workspace.Id, period, cancellationToken);
+        var fileName = $"donysh-ai-context-{selected.Value}-{DateTime.UtcNow:yyyyMMdd-HHmm}.json";
         return File(Encoding.UTF8.GetBytes(content), "application/json; charset=utf-8", fileName);
     }
 
@@ -126,9 +140,18 @@ public sealed class IndexModel(
         return RedirectToPage();
     }
 
-    private async Task LoadWorkspaceAsync(CancellationToken cancellationToken)
+    private async Task LoadWorkspaceAsync(CancellationToken cancellationToken, bool setDefaultPeriod = true)
     {
-        WorkspaceName = (await workspaceContext.RequireCurrentAsync(cancellationToken)).Name;
+        var workspace = await workspaceContext.RequireCurrentAsync(cancellationToken);
+        WorkspaceName = workspace.Name;
+        AvailablePeriods = await aiWorkspaceService.GetAvailablePeriodsAsync(workspace.Id, cancellationToken);
+        if (setDefaultPeriod && AvailablePeriods.All(x => x.Value != ReportPeriod))
+        {
+            var current = PersianCalendarHelper.GetYearMonth(DateOnly.FromDateTime(DateTime.Now));
+            ReportPeriod = AvailablePeriods
+                .FirstOrDefault(x => x.Year == current.Year && x.Month == current.Month)?.Value
+                ?? AvailablePeriods.First().Value;
+        }
     }
 
     private string Protect(PreviewEnvelope envelope)

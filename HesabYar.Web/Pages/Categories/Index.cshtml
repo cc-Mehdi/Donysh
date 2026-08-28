@@ -54,6 +54,7 @@
                 <div class="mt-3">
                     <label asp-for="Input.CustomIcon" class="label">یا ایموجی دلخواه</label>
                     <input asp-for="Input.CustomIcon" class="input text-center text-xl" maxlength="16" placeholder="مثلاً 🐾" data-icon-custom />
+                    <p class="mt-1 text-xs text-slate-500">فقط یک ایموجی یا کاراکتر نمایشی مجاز است.</p>
                     <span asp-validation-for="Input.Icon" class="field-error"></span>
                     <span asp-validation-for="Input.CustomIcon" class="field-error"></span>
                 </div>
@@ -107,6 +108,7 @@
                                         </div>
                                     </fieldset>
                                     <input name="Input.CustomIcon" value="@(knownIcons.Contains(row.Category.Icon) ? "" : row.Category.Icon)" class="input text-center text-xl" maxlength="16" placeholder="ایموجی دلخواه" aria-label="ایموجی دلخواه" data-icon-custom />
+                                    <p class="text-xs text-slate-500">فقط یک ایموجی یا کاراکتر نمایشی</p>
                                     <button type="submit" class="btn-soft w-full">ذخیره تغییرات</button>
                                 </form>
                             </details>

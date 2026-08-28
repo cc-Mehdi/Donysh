@@ -440,11 +440,18 @@
     document.querySelectorAll('[data-icon-picker]').forEach((picker) => {
         const choices = [...picker.querySelectorAll('[data-icon-choice]')];
         const custom = picker.querySelector('[data-icon-custom]');
+        const segmenter = 'Segmenter' in Intl
+            ? new Intl.Segmenter(undefined, { granularity: 'grapheme' })
+            : null;
         choices.forEach((choice) => choice.addEventListener('change', () => {
             if (choice.checked && custom) custom.value = '';
         }));
         custom?.addEventListener('input', () => {
             if (!custom.value.trim()) return;
+            const characters = segmenter
+                ? [...segmenter.segment(custom.value)].map((item) => item.segment)
+                : Array.from(custom.value);
+            if (characters.length > 1) custom.value = characters[0];
             choices.forEach((choice) => { choice.checked = false; });
         });
     });
