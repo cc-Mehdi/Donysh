@@ -33,6 +33,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
         builder.Entity<Workspace>(entity =>
         {
             entity.Property(x => x.Name).HasMaxLength(100);
+            entity.Property(x => x.MonthlySpendingLimit).HasPrecision(18, 0);
             entity.HasOne(x => x.OwnerUser)
                 .WithMany()
                 .HasForeignKey(x => x.OwnerUserId)
@@ -144,6 +145,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(x => x.Description).HasMaxLength(500);
             entity.Property(x => x.TargetAmount).HasPrecision(18, 0);
             entity.Property(x => x.MonthlyTargetAmount).HasPrecision(18, 0);
+            entity.Property(x => x.Priority).HasDefaultValue(3);
             entity.HasOne(x => x.Workspace)
                 .WithMany(x => x.SavingsGoals)
                 .HasForeignKey(x => x.WorkspaceId)

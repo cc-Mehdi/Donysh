@@ -39,6 +39,7 @@ public sealed class EditModel(
             Description = goal.Description,
             TargetAmount = goal.TargetAmount,
             MonthlyTargetAmount = goal.MonthlyTargetAmount,
+            Priority = goal.Priority,
             TargetDate = goal.TargetDate
         };
 
@@ -90,6 +91,7 @@ public sealed class EditModel(
             : Goal.Description.Trim();
         goal.TargetAmount = Goal.TargetAmount;
         goal.MonthlyTargetAmount = Goal.MonthlyTargetAmount;
+        goal.Priority = Goal.Priority;
         goal.TargetDate = Goal.TargetDate;
 
         await db.SaveChangesAsync(cancellationToken);
@@ -116,6 +118,9 @@ public sealed class EditModel(
         [Range(0, 999_999_999_999,
             ErrorMessage = "هدف ماهانه معتبر نیست.")]
         public decimal MonthlyTargetAmount { get; set; }
+
+        [Range(1, 5, ErrorMessage = "اولویت هدف معتبر نیست.")]
+        public int Priority { get; set; } = 3;
 
         public DateOnly? TargetDate { get; set; }
     }

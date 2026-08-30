@@ -55,6 +55,18 @@
         </div>
 
         <div>
+            <label asp-for="Goal.Priority" class="label">اولویت هدف</label>
+            <select asp-for="Goal.Priority" class="input">
+                <option value="1">خیلی بالا</option>
+                <option value="2">بالا</option>
+                <option value="3">عادی</option>
+                <option value="4">پایین</option>
+                <option value="5">خیلی پایین</option>
+            </select>
+            <span asp-validation-for="Goal.Priority" class="field-error"></span>
+        </div>
+
+        <div>
             <label for="Goal_TargetDate" class="label">تاریخ هدف</label>
             <input id="Goal_TargetDate"
                    name="Goal.TargetDate"

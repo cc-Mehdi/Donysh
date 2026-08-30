@@ -96,6 +96,7 @@ public sealed class SavingsGoal
 
     public decimal TargetAmount { get; set; }
     public decimal MonthlyTargetAmount { get; set; }
+    public int Priority { get; set; } = 3;
     public DateOnly? TargetDate { get; set; }
     public bool IsCompleted { get; set; }
     public bool IsCancelled { get; set; }

@@ -50,6 +50,16 @@ public sealed class DatabaseInitializer(ApplicationDbContext db, ILogger<Databas
 
         await db.Database.ExecuteSqlRawAsync(
             """
+            ALTER TABLE "SavingsGoals"
+            ADD COLUMN IF NOT EXISTS "Priority" integer NOT NULL DEFAULT 3;
+
+            ALTER TABLE "Workspaces"
+            ADD COLUMN IF NOT EXISTS "MonthlySpendingLimit" numeric(18,0);
+            """,
+            cancellationToken);
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
             CREATE TABLE IF NOT EXISTS "BudgetTransfers" (
                 "Id" uuid NOT NULL,
                 "WorkspaceId" uuid NOT NULL,

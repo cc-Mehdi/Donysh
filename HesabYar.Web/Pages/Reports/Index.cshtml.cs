@@ -104,6 +104,10 @@ public sealed class IndexModel(
         var goals = await db.SavingsGoals
             .Where(x => x.WorkspaceId == workspace.Id)
             .Include(x => x.Contributions)
+            .OrderBy(x => x.IsCancelled)
+            .ThenBy(x => x.IsCompleted)
+            .ThenBy(x => x.Priority)
+            .ThenBy(x => x.TargetDate)
             .AsNoTracking().ToListAsync(cancellationToken);
 
         var transfers = await db.BudgetTransfers
@@ -190,7 +194,12 @@ public sealed class IndexModel(
             schema = "donysh-financial-ai-report/v1",
             generatedAtUtc = DateTime.UtcNow,
             currency = "TOMAN",
-            workspace = new { workspace.Name, type = workspace.Type.ToString() },
+            workspace = new
+            {
+                workspace.Name,
+                type = workspace.Type.ToString(),
+                monthlySpendingLimit = workspace.MonthlySpendingLimit
+            },
             period = new
             {
                 mode = Period,
@@ -249,6 +258,7 @@ public sealed class IndexModel(
                 goal.Description,
                 targetAmount = goal.TargetAmount,
                 monthlyTargetAmount = goal.MonthlyTargetAmount,
+                priority = goal.Priority,
                 totalSaved = goal.Contributions.Sum(x => x.Amount),
                 savedInSelectedPeriod = goal.Contributions.Where(x => x.ContributionDate >= Start && x.ContributionDate < EndExclusive).Sum(x => x.Amount),
                 targetDate = goal.TargetDate.HasValue ? Formatters.PersianDate(goal.TargetDate.Value) : null,
@@ -262,7 +272,8 @@ public sealed class IndexModel(
                 "موارد عبور از بودجه و اثر کسری منتقل‌شده از ماه قبل/به ماه بعد را بررسی کن.",
                 "انتقال بودجه بین دسته‌ها را از نظر تکرار و علت احتمالی تحلیل کن.",
                 "تعهدات ماهانه پرداخت‌نشده یا عقب‌افتاده و فشار آن‌ها بر جریان نقدی را مشخص کن.",
-                "وضعیت پس‌انداز در مقایسه با اهداف را بررسی کن.",
+                "هزینه‌ها و بودجه‌های پیشنهادی را با monthlySpendingLimit فضای مالی مقایسه کن؛ null یعنی سقف تعیین نشده است.",
+                "وضعیت پس‌انداز را با توجه به priority هدف‌ها بررسی کن؛ عدد کمتر یعنی اولویت بالاتر.",
                 "برای ماه بعد چند اقدام مشخص، واقع‌بینانه و قابل‌اندازه‌گیری پیشنهاد بده."
             }
         };

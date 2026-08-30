@@ -5,6 +5,7 @@ public sealed class Workspace
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Name { get; set; } = string.Empty;
     public WorkspaceType Type { get; set; }
+    public decimal? MonthlySpendingLimit { get; set; }
     public string OwnerUserId { get; set; } = string.Empty;
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 

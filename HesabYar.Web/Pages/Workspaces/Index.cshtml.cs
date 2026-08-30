@@ -36,6 +36,9 @@ public sealed class IndexModel(
         [Required(ErrorMessage = "نام فضای مشترک را وارد کنید.")]
         [StringLength(100, MinimumLength = 2, ErrorMessage = "نام فضا باید بین ۲ تا ۱۰۰ کاراکتر باشد.")]
         public string Name { get; set; } = string.Empty;
+
+        [Range(1, 999_999_999_999, ErrorMessage = "مبلغ قابل خرج ماهانه باید بیشتر از صفر باشد.")]
+        public decimal? MonthlySpendingLimit { get; set; }
     }
 
     public sealed class EditWorkspaceInput
@@ -46,6 +49,9 @@ public sealed class IndexModel(
         [Required(ErrorMessage = "نام فضای مالی را وارد کنید.")]
         [StringLength(100, MinimumLength = 2, ErrorMessage = "نام فضا باید بین ۲ تا ۱۰۰ کاراکتر باشد.")]
         public string Name { get; set; } = string.Empty;
+
+        [Range(1, 999_999_999_999, ErrorMessage = "مبلغ قابل خرج ماهانه باید بیشتر از صفر باشد.")]
+        public decimal? MonthlySpendingLimit { get; set; }
     }
 
     public sealed class InviteInput
@@ -82,6 +88,7 @@ public sealed class IndexModel(
         {
             Name = CreateWorkspace.Name.Trim(),
             Type = WorkspaceType.Shared,
+            MonthlySpendingLimit = CreateWorkspace.MonthlySpendingLimit,
             OwnerUserId = userId
         };
 
@@ -106,7 +113,7 @@ public sealed class IndexModel(
         ModelState.Clear();
         if (!TryValidateModel(EditWorkspace, nameof(EditWorkspace)))
         {
-            TempData["Error"] = "نام فضای مالی باید بین ۲ تا ۱۰۰ کاراکتر باشد.";
+            TempData["Error"] = "نام فضا و مبلغ قابل خرج ماهانه را بررسی کنید.";
             return RedirectToPage();
         }
 
@@ -125,9 +132,10 @@ public sealed class IndexModel(
         }
 
         workspace.Name = EditWorkspace.Name.Trim();
+        workspace.MonthlySpendingLimit = EditWorkspace.MonthlySpendingLimit;
         await db.SaveChangesAsync(cancellationToken);
 
-        TempData["Success"] = "نام فضای مالی ویرایش شد.";
+        TempData["Success"] = "تنظیمات فضای مالی ویرایش شد.";
         return RedirectToPage();
     }
 

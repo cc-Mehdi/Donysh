@@ -90,6 +90,18 @@
             </div>
 
             <div>
+                <label asp-for="NewGoal.Priority" class="label">اولویت هدف</label>
+                <select asp-for="NewGoal.Priority" class="input">
+                    <option value="1">خیلی بالا</option>
+                    <option value="2">بالا</option>
+                    <option value="3">عادی</option>
+                    <option value="4">پایین</option>
+                    <option value="5">خیلی پایین</option>
+                </select>
+                <span asp-validation-for="NewGoal.Priority" class="field-error"></span>
+            </div>
+
+            <div>
                 <label for="NewGoal_TargetDate" class="label">تاریخ هدف (اختیاری)</label>
                 <input id="NewGoal_TargetDate" name="NewGoal.TargetDate" value="@targetDateValue" type="text" inputmode="numeric" autocomplete="off" data-persian-date class="input ltr-input" placeholder="۱۴۰۵/۱۲/۲۹" />
                 <span asp-validation-for="NewGoal.TargetDate" class="field-error"></span>
@@ -136,6 +148,7 @@
                                     {
                                         <span class="rounded-full bg-indigo-100 px-2 py-1 text-xs font-bold text-indigo-700">فعال</span>
                                     }
+                                    <span class="rounded-full bg-amber-100 px-2 py-1 text-xs font-bold text-amber-800">اولویت: @IndexModel.PriorityLabel(card.Goal.Priority)</span>
                                 </div>
 
                                 <p class="mt-2 text-sm text-slate-500">

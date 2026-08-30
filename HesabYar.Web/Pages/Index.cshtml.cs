@@ -70,7 +70,8 @@ public sealed class IndexModel(
         var goals = await db.SavingsGoals
             .Where(x => x.WorkspaceId == CurrentWorkspace.Id && !x.IsCompleted && !x.IsCancelled)
             .Include(x => x.Contributions)
-            .OrderBy(x => x.TargetDate)
+            .OrderBy(x => x.Priority)
+            .ThenBy(x => x.TargetDate)
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 

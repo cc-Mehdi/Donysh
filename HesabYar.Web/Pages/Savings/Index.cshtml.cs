@@ -36,6 +36,9 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
         [Range(0, 999_999_999_999, ErrorMessage = "هدف ماهانه معتبر نیست.")]
         public decimal MonthlyTargetAmount { get; set; }
 
+        [Range(1, 5, ErrorMessage = "اولویت هدف معتبر نیست.")]
+        public int Priority { get; set; } = 3;
+
         public DateOnly? TargetDate { get; set; }
     }
 
@@ -132,6 +135,7 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
                 : NewGoal.Description.Trim(),
             TargetAmount = NewGoal.TargetAmount,
             MonthlyTargetAmount = NewGoal.MonthlyTargetAmount,
+            Priority = NewGoal.Priority,
             TargetDate = NewGoal.TargetDate
         });
 
@@ -313,6 +317,7 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
                 .ThenInclude(x => x.CreatedByUser)
             .OrderBy(x => x.IsCancelled)
             .ThenBy(x => x.IsCompleted)
+            .ThenBy(x => x.Priority)
             .ThenBy(x => x.TargetDate)
             .ThenBy(x => x.Name)
             .AsNoTracking()
@@ -402,5 +407,15 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
                 memberContributions);
         }).ToList();
     }
+
+    public static string PriorityLabel(int priority) => priority switch
+    {
+        1 => "خیلی بالا",
+        2 => "بالا",
+        3 => "عادی",
+        4 => "پایین",
+        5 => "خیلی پایین",
+        _ => "عادی"
+    };
 
 }

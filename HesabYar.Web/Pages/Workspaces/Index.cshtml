@@ -43,6 +43,11 @@
                 <input asp-for="CreateWorkspace.Name" class="input" placeholder="مثلاً هزینه‌های خانه" />
                 <span asp-validation-for="CreateWorkspace.Name" class="field-error"></span>
             </div>
+            <div>
+                <label asp-for="CreateWorkspace.MonthlySpendingLimit" class="label">مبلغ قابل خرج ماهانه (اختیاری)</label>
+                <input asp-for="CreateWorkspace.MonthlySpendingLimit" type="text" inputmode="numeric" autocomplete="off" data-money class="input ltr-input" placeholder="مثلاً ۲۰,۰۰۰,۰۰۰" />
+                <span asp-validation-for="CreateWorkspace.MonthlySpendingLimit" class="field-error"></span>
+            </div>
             <button type="submit" class="btn-primary w-full">ساخت فضای مشترک</button>
         </form>
 
@@ -103,7 +108,20 @@
                                                    required />
                                         </div>
 
-                                        <button type="submit" class="btn-primary w-full">ذخیره نام جدید</button>
+                                        <div>
+                                            <label class="label">مبلغ قابل خرج ماهانه</label>
+                                            <input name="EditWorkspace.MonthlySpendingLimit"
+                                                   value="@card.Workspace.MonthlySpendingLimit"
+                                                   type="text"
+                                                   inputmode="numeric"
+                                                   autocomplete="off"
+                                                   data-money
+                                                   class="input ltr-input"
+                                                   placeholder="برای نامشخص خالی بگذارید" />
+                                            <p class="mt-1 text-xs text-slate-500">سقف کلی هزینه ماهانه این فضا؛ مستقل از بودجه دسته‌ها</p>
+                                        </div>
+
+                                        <button type="submit" class="btn-primary w-full">ذخیره تنظیمات</button>
                                     </form>
 
                                     <div class="my-4 border-t border-slate-200"></div>
@@ -127,7 +145,13 @@
                     </div>
                 </div>
 
-                <div class="mt-5 grid gap-3 border-t border-slate-100 pt-5 sm:grid-cols-2">
+                <div class="mt-5 grid gap-3 border-t border-slate-100 pt-5 sm:grid-cols-3">
+                    <div class="rounded-2xl bg-emerald-50 p-4">
+                        <span class="block text-xs font-bold text-emerald-700">مبلغ قابل خرج ماهانه</span>
+                        <strong class="mt-2 block text-lg font-black text-emerald-900">
+                            @(card.Workspace.MonthlySpendingLimit.HasValue ? Formatters.Money(card.Workspace.MonthlySpendingLimit.Value) : "تعیین نشده")
+                        </strong>
+                    </div>
                     <div class="rounded-2xl bg-indigo-50 p-4">
                         <span class="block text-xs font-bold text-indigo-700">مجموع بودجه‌های @Model.CurrentBudgetPeriodTitle</span>
                         <strong class="mt-2 block text-lg font-black text-indigo-900">@Formatters.Money(card.CurrentMonthBudgetTotal)</strong>
