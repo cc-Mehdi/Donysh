@@ -473,6 +473,21 @@
         });
     });
 
+    document.querySelectorAll('[data-ai-workspace-report]').forEach((row) => {
+        const checkbox = row.querySelector('[data-ai-workspace-check]');
+        const dates = row.querySelector('[data-ai-workspace-dates]');
+        const sync = () => {
+            const selected = checkbox?.checked === true;
+            row.classList.toggle('border-indigo-300', selected);
+            row.classList.toggle('bg-indigo-50', selected);
+            row.classList.toggle('border-slate-200', !selected);
+            row.classList.toggle('bg-slate-50', !selected);
+            dates?.classList.toggle('opacity-50', !selected);
+        };
+        checkbox?.addEventListener('change', sync);
+        sync();
+    });
+
     const aiPreviewForm = document.querySelector('[data-ai-preview-form]');
     aiPreviewForm?.addEventListener('submit', () => {
         const submitButton = aiPreviewForm.querySelector('[data-ai-preview-submit]');

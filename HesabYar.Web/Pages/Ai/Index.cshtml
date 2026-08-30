@@ -9,41 +9,61 @@
         <h2 class="text-2xl font-black">دستیار هوشمند Donysh</h2>
         <p class="mt-1 text-sm text-slate-500">تحلیل شخصی بگیرید و تغییرهای پیشنهادی AI را فقط پس از بازبینی خودتان اعمال کنید.</p>
     </div>
-    <span class="badge">فضای مقصد: @Model.WorkspaceName</span>
+    <span class="badge">فضای مقصد JSON: @Model.TargetWorkspaceName</span>
 </div>
 
 <div asp-validation-summary="ModelOnly"></div>
 
 <section class="grid gap-4 lg:grid-cols-3">
-    <article class="card">
+    <article class="card lg:col-span-3">
         <span class="grid size-10 place-items-center rounded-2xl bg-indigo-50 font-black text-indigo-700">۱</span>
-        <h3 class="mt-4 font-black">دریافت فایل راهنما و داده</h3>
-        <p class="mt-2 text-sm leading-7 text-slate-500">ماه موردنظر را از بین دوره‌هایی که داده مالی دارند انتخاب کنید.</p>
+        <h3 class="mt-4 font-black">انتخاب فضاها و بازه گزارش</h3>
+        <p class="mt-2 text-sm leading-7 text-slate-500">هر فضای مالی دلخواه را تیک بزنید و بازه زمانی مستقل آن را مشخص کنید.</p>
         <form method="post" asp-page-handler="Download" class="mt-5 space-y-3">
-            <div>
-                <label asp-for="ReportPeriod" class="label">ماه گزارش</label>
-                <select asp-for="ReportPeriod" class="input">
-                    @foreach (var period in Model.AvailablePeriods)
-                    {
-                        <option value="@period.Value">@period.Title</option>
-                    }
-                </select>
-                <span asp-validation-for="ReportPeriod" class="field-error"></span>
+            <span asp-validation-for="ReportWorkspaces" class="field-error block"></span>
+            <div class="grid gap-3">
+                @for (var index = 0; index < Model.ReportWorkspaces.Count; index++)
+                {
+                    var workspace = Model.AccessibleWorkspaces.Single(x => x.Id == Model.ReportWorkspaces[index].WorkspaceId);
+                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4" data-ai-workspace-report>
+                        <input asp-for="ReportWorkspaces[index].WorkspaceId" type="hidden" />
+                        <div class="flex flex-col gap-4 lg:flex-row lg:items-end">
+                            <label class="flex min-w-52 items-center gap-3 font-bold">
+                                <input asp-for="ReportWorkspaces[index].IsSelected" class="size-5 accent-indigo-600" data-ai-workspace-check />
+                                <span>@workspace.Name <small class="mr-1 text-slate-400">(@Model.WorkspaceTypeLabel(workspace))</small></span>
+                            </label>
+                            <div class="grid flex-1 gap-3 sm:grid-cols-2" data-ai-workspace-dates>
+                                <div>
+                                    <label asp-for="ReportWorkspaces[index].StartDate" class="label">از تاریخ</label>
+                                    <input asp-for="ReportWorkspaces[index].StartDate" class="input" data-persian-date autocomplete="off" />
+                                    <span asp-validation-for="ReportWorkspaces[index].StartDate" class="field-error"></span>
+                                </div>
+                                <div>
+                                    <label asp-for="ReportWorkspaces[index].EndDate" class="label">تا تاریخ</label>
+                                    <input asp-for="ReportWorkspaces[index].EndDate" class="input" data-persian-date autocomplete="off" />
+                                    <span asp-validation-for="ReportWorkspaces[index].EndDate" class="field-error"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
             </div>
-            <button type="submit" class="btn-primary w-full">دانلود فایل مخصوص AI</button>
+            <div class="flex justify-end">
+                <button type="submit" class="btn-primary">دانلود گزارش چندفضایی مخصوص AI</button>
+            </div>
         </form>
     </article>
     <article class="card">
         <span class="grid size-10 place-items-center rounded-2xl bg-violet-50 font-black text-violet-700">۲</span>
         <h3 class="mt-4 font-black">گفت‌وگو با AI</h3>
-        <p class="mt-2 text-sm leading-7 text-slate-500">فایل را برای AI بفرستید. راهنمای داخل فایل از آن می‌خواهد در پایان هر پاسخ—حتی هنگام پرسیدن سؤال—حتماً JSON سازگار با Donysh ارائه کند.</p>
-        <p class="mt-4 rounded-2xl bg-amber-50 p-3 text-xs leading-6 text-amber-800">فایل حاوی داده مالی فضای فعال است؛ آن را فقط در اختیار سرویس مورد اعتماد خودتان بگذارید.</p>
+        <p class="mt-2 text-sm leading-7 text-slate-500">فایل را برای AI بفرستید. راهنما از آن می‌خواهد تحلیل و JSON هر فضای مالی را با نام و بازه خودش جدا ارائه کند.</p>
+        <p class="mt-4 rounded-2xl bg-amber-50 p-3 text-xs leading-6 text-amber-800">فایل حاوی داده مالی همه فضاهای تیک‌خورده است؛ آن را فقط در اختیار سرویس مورد اعتماد خودتان بگذارید.</p>
     </article>
     <article class="card">
         <span class="grid size-10 place-items-center rounded-2xl bg-emerald-50 font-black text-emerald-700">۳</span>
         <h3 class="mt-4 font-black">Preview و تأیید انتخابی</h3>
         <p class="mt-2 text-sm leading-7 text-slate-500">JSON پاسخ را وارد کنید. هیچ تغییری در preview اعمال نمی‌شود و می‌توانید هر مورد را جداگانه انتخاب یا رد کنید.</p>
-        <p class="mt-4 rounded-2xl bg-emerald-50 p-3 text-xs leading-6 text-emerald-800">فضای مقصد از نشست شما تعیین می‌شود؛ شناسه کاربر یا workspace در JSON پذیرفته نمی‌شود.</p>
+        <p class="mt-4 rounded-2xl bg-emerald-50 p-3 text-xs leading-6 text-emerald-800">فضای مقصد را خودتان پیش از preview انتخاب می‌کنید؛ شناسه کاربر یا workspace در JSON پذیرفته نمی‌شود.</p>
     </article>
 </section>
 
@@ -65,6 +85,17 @@
         <p class="muted mt-1">می‌توانید خود JSON، code block کامل <span dir="ltr">```json</span> یا کل پاسخ AI را وارد کنید؛ JSON انتهایی خودکار استخراج می‌شود.</p>
     </div>
     <form method="post" asp-page-handler="Preview" data-ai-preview-form>
+        <div class="mb-4">
+            <label asp-for="TargetWorkspaceId" class="label">فضای مالی مقصد این JSON</label>
+            <select asp-for="TargetWorkspaceId" class="input">
+                @foreach (var workspace in Model.AccessibleWorkspaces)
+                {
+                    <option value="@workspace.Id">@workspace.Name (@Model.WorkspaceTypeLabel(workspace))</option>
+                }
+            </select>
+            <span asp-validation-for="TargetWorkspaceId" class="field-error"></span>
+            <p class="mt-2 text-xs text-slate-500">JSON جداگانه‌ای را که AI برای این فضا ساخته وارد کنید. رکوردها فقط با داده‌های همین مقصد اعتبارسنجی می‌شوند.</p>
+        </div>
         <textarea asp-for="ChangesJson" rows="14" dir="ltr" class="input font-mono text-xs leading-6" placeholder='{"format":"donysh.changes","version":1,"changes":[]}'></textarea>
         <span asp-validation-for="ChangesJson" class="field-error mt-3 block rounded-2xl bg-rose-50 p-3 empty:hidden" role="alert"></span>
         <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
@@ -95,6 +126,7 @@
 
         <form method="post" asp-page-handler="Apply" data-ai-apply-form>
             <input asp-for="PreviewToken" type="hidden" />
+            <input asp-for="TargetWorkspaceId" type="hidden" />
             <div class="mb-3 flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-3">
                 <label class="flex items-center gap-2 text-sm font-bold">
                     <input type="checkbox" class="size-4 accent-indigo-600" data-ai-select-all checked="@(validCount > 0)" />
@@ -141,7 +173,7 @@
 
             <div class="sticky bottom-20 mt-5 rounded-2xl border border-indigo-200 bg-white/95 p-4 shadow-xl backdrop-blur lg:bottom-4">
                 <div class="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-                    <p class="text-sm text-slate-600">با زدن دکمه، فقط موارد تیک‌خورده روی فضای <strong>@Model.WorkspaceName</strong> اعمال می‌شوند.</p>
+                    <p class="text-sm text-slate-600">با زدن دکمه، فقط موارد تیک‌خورده روی فضای <strong>@Model.TargetWorkspaceName</strong> اعمال می‌شوند.</p>
                     <button type="submit" class="btn-primary" @(validCount == 0 ? "disabled" : null) data-confirm="تغییرات انتخاب‌شده روی فضای مالی اعمال شوند؟">اعمال تغییرات انتخاب‌شده</button>
                 </div>
             </div>

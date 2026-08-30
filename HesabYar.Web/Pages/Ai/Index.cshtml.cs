@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using HesabYar.Web.Domain;
 using HesabYar.Web.Helpers;
 using HesabYar.Web.Services;
 using Microsoft.AspNetCore.DataProtection;
@@ -16,6 +17,8 @@ public sealed class IndexModel(
     IDataProtectionProvider dataProtectionProvider,
     ILogger<IndexModel> logger) : PageModel
 {
+    private const int MaxWorkspaceReports = 10;
+    private const int MaxReportRangeDays = 1095;
     private readonly IDataProtector _protector = dataProtectionProvider.CreateProtector("Donysh.AiChangePreview.v1");
 
     [BindProperty]
@@ -29,10 +32,13 @@ public sealed class IndexModel(
     public List<string> SelectedIds { get; set; } = [];
 
     [BindProperty]
-    public string? ReportPeriod { get; set; }
+    public List<WorkspaceReportInput> ReportWorkspaces { get; set; } = [];
 
-    public string WorkspaceName { get; private set; } = string.Empty;
-    public IReadOnlyList<AiReportPeriod> AvailablePeriods { get; private set; } = [];
+    [BindProperty]
+    public Guid? TargetWorkspaceId { get; set; }
+
+    public IReadOnlyList<Workspace> AccessibleWorkspaces { get; private set; } = [];
+    public string TargetWorkspaceName { get; private set; } = string.Empty;
     public string UserPrompt => AiWorkspaceService.SuggestedUserMessage;
     public IReadOnlyList<AiChangePreview> PreviewItems { get; private set; } = [];
     public bool EmptyPreview { get; private set; }
@@ -40,52 +46,46 @@ public sealed class IndexModel(
 
     public async Task OnGetAsync(CancellationToken cancellationToken)
     {
-        await LoadWorkspaceAsync(cancellationToken);
+        await LoadPageAsync(cancellationToken, initializeReportRows: true);
     }
 
     public async Task<IActionResult> OnPostDownloadAsync(CancellationToken cancellationToken)
     {
-        await LoadWorkspaceAsync(cancellationToken, setDefaultPeriod: false);
-        var selected = AvailablePeriods.SingleOrDefault(x => x.Value == ReportPeriod);
-        if (selected is null)
-        {
-            ModelState.AddModelError(nameof(ReportPeriod), "ماه انتخاب‌شده معتبر نیست یا داده‌ای ندارد.");
-            return Page();
-        }
+        await LoadPageAsync(cancellationToken, initializeReportRows: false);
+        var requests = ValidateReportRequests();
+        MergeReportRows();
+        if (!ModelState.IsValid) return Page();
 
-        var workspace = await workspaceContext.RequireCurrentAsync(cancellationToken);
-        var period = new PersianYearMonth(selected.Year, selected.Month);
-        var content = await aiWorkspaceService.BuildExportAsync(workspace.Id, period, cancellationToken);
-        var fileName = $"donysh-ai-context-{selected.Value}-{DateTime.UtcNow:yyyyMMdd-HHmm}.json";
+        var content = await aiWorkspaceService.BuildMultiWorkspaceExportAsync(requests, cancellationToken);
+        var fileName = $"donysh-ai-context-{requests.Count}-spaces-{DateTime.UtcNow:yyyyMMdd-HHmm}.json";
         return File(Encoding.UTF8.GetBytes(content), "application/json; charset=utf-8", fileName);
     }
 
     public async Task<IActionResult> OnPostPreviewAsync(CancellationToken cancellationToken)
     {
         PreviewSubmitted = true;
-        // Report-period discovery is unrelated to validating an imported JSON.
-        // Keeping it out of this POST prevents a reporting/database failure from
-        // turning an otherwise valid preview into a blank error response.
-        await LoadWorkspaceAsync(cancellationToken, loadAvailablePeriods: false);
-        if (!ModelState.IsValid)
+        await LoadPageAsync(cancellationToken, initializeReportRows: false);
+        MergeReportRows();
+        var target = ResolveTargetWorkspace();
+        if (!ModelState.IsValid || target is null)
         {
             return Page();
         }
 
         try
         {
-            var workspace = await workspaceContext.RequireCurrentAsync(cancellationToken);
-            var preview = await aiWorkspaceService.PreviewAsync(workspace.Id, ChangesJson ?? string.Empty, null, cancellationToken);
+            var preview = await aiWorkspaceService.PreviewAsync(target.Id, ChangesJson ?? string.Empty, null, cancellationToken);
             PreviewItems = preview.Items;
             EmptyPreview = PreviewItems.Count == 0;
             ChangesJson = preview.NormalizedJson;
             SelectedIds = PreviewItems.Where(x => x.IsValid).Select(x => x.Id).ToList();
             PreviewToken = Protect(new PreviewEnvelope(
                 Guid.NewGuid(),
-                workspace.Id,
+                target.Id,
                 workspaceContext.UserId!,
                 DateTimeOffset.UtcNow.AddMinutes(20),
                 preview.NormalizedJson));
+            TargetWorkspaceName = target.Name;
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException)
         {
@@ -97,7 +97,7 @@ public sealed class IndexModel(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "AI change preview failed for user {UserId}", workspaceContext.UserId);
+            logger.LogError(ex, "AI change preview failed for user {UserId} and workspace {WorkspaceId}", workspaceContext.UserId, target.Id);
             ModelState.AddModelError(
                 nameof(ChangesJson),
                 "ساخت پیش‌نمایش به خطای موقت خورد. هیچ تغییری اعمال نشده است؛ دوباره تلاش کنید.");
@@ -108,8 +108,8 @@ public sealed class IndexModel(
 
     public async Task<IActionResult> OnPostApplyAsync(CancellationToken cancellationToken)
     {
-        await LoadWorkspaceAsync(cancellationToken, loadAvailablePeriods: false);
-        var workspace = await workspaceContext.RequireCurrentAsync(cancellationToken);
+        await LoadPageAsync(cancellationToken, initializeReportRows: false);
+        MergeReportRows();
         PreviewEnvelope envelope;
         try
         {
@@ -121,13 +121,18 @@ public sealed class IndexModel(
             return Page();
         }
 
+        var canAccess = await workspaceContext.CanAccessAsync(envelope.WorkspaceId, cancellationToken);
         if (envelope.ExpiresAtUtc < DateTimeOffset.UtcNow ||
-            envelope.WorkspaceId != workspace.Id ||
+            TargetWorkspaceId != envelope.WorkspaceId ||
+            !canAccess ||
             !string.Equals(envelope.UserId, workspaceContext.UserId, StringComparison.Ordinal))
         {
-            ModelState.AddModelError(string.Empty, "پیش‌نمایش متعلق به این کاربر و فضای فعال نیست یا منقضی شده است.");
+            ModelState.AddModelError(string.Empty, "پیش‌نمایش متعلق به این کاربر و فضای مقصد انتخاب‌شده نیست یا منقضی شده است.");
             return Page();
         }
+
+        var workspace = AccessibleWorkspaces.Single(x => x.Id == envelope.WorkspaceId);
+        TargetWorkspaceName = workspace.Name;
 
         if (SelectedIds.Count > AiWorkspaceService.MaxChanges || SelectedIds.Any(x => x.Length > 64))
         {
@@ -155,37 +160,100 @@ public sealed class IndexModel(
         return RedirectToPage();
     }
 
-    private async Task LoadWorkspaceAsync(
-        CancellationToken cancellationToken,
-        bool setDefaultPeriod = true,
-        bool loadAvailablePeriods = true)
+    public string WorkspaceTypeLabel(Workspace workspace)
+        => workspace.Type == WorkspaceType.Personal ? "شخصی" : "اشتراکی";
+
+    private async Task LoadPageAsync(CancellationToken cancellationToken, bool initializeReportRows)
     {
-        var workspace = await workspaceContext.RequireCurrentAsync(cancellationToken);
-        WorkspaceName = workspace.Name;
-        if (loadAvailablePeriods)
+        AccessibleWorkspaces = await workspaceContext.GetAccessibleAsync(cancellationToken);
+        var current = await workspaceContext.RequireCurrentAsync(cancellationToken);
+        if (TargetWorkspaceId is null || AccessibleWorkspaces.All(x => x.Id != TargetWorkspaceId)) TargetWorkspaceId = current.Id;
+        TargetWorkspaceName = AccessibleWorkspaces.FirstOrDefault(x => x.Id == TargetWorkspaceId)?.Name ?? current.Name;
+        if (!initializeReportRows) return;
+
+        var today = DateOnly.FromDateTime(DateTime.Now);
+        var monthStart = PersianCalendarHelper.StartOfMonth(PersianCalendarHelper.GetYearMonth(today));
+        ReportWorkspaces = AccessibleWorkspaces.Select(x => new WorkspaceReportInput
         {
-            AvailablePeriods = await aiWorkspaceService.GetAvailablePeriodsAsync(workspace.Id, cancellationToken);
+            WorkspaceId = x.Id,
+            IsSelected = x.Id == current.Id,
+            StartDate = PersianCalendarHelper.ToInput(monthStart),
+            EndDate = PersianCalendarHelper.ToInput(today)
+        }).ToList();
+    }
+
+    private List<AiWorkspaceReportRequest> ValidateReportRequests()
+    {
+        var accessibleIds = AccessibleWorkspaces.Select(x => x.Id).ToHashSet();
+        var selectedRows = ReportWorkspaces.Where(x => x.IsSelected).ToList();
+        var requests = new List<AiWorkspaceReportRequest>(selectedRows.Count);
+        if (selectedRows.Count == 0)
+        {
+            ModelState.AddModelError(nameof(ReportWorkspaces), "حداقل یک فضای مالی را برای گزارش انتخاب کنید.");
+            return requests;
         }
-        else
+        if (selectedRows.Count > MaxWorkspaceReports || selectedRows.Select(x => x.WorkspaceId).Distinct().Count() != selectedRows.Count)
         {
-            var current = PersianCalendarHelper.GetYearMonth(DateOnly.FromDateTime(DateTime.Now));
-            AvailablePeriods =
-            [
-                new AiReportPeriod(
-                    current.Year,
-                    current.Month,
-                    $"{current.Year:D4}-{current.Month:D2}",
-                    PersianCalendarHelper.Title(current))
-            ];
+            ModelState.AddModelError(nameof(ReportWorkspaces), "فهرست فضاهای انتخاب‌شده معتبر نیست.");
+            return requests;
         }
 
-        if (setDefaultPeriod && AvailablePeriods.All(x => x.Value != ReportPeriod))
+        foreach (var row in selectedRows)
         {
-            var current = PersianCalendarHelper.GetYearMonth(DateOnly.FromDateTime(DateTime.Now));
-            ReportPeriod = AvailablePeriods
-                .FirstOrDefault(x => x.Year == current.Year && x.Month == current.Month)?.Value
-                ?? AvailablePeriods.First().Value;
+            var index = ReportWorkspaces.IndexOf(row);
+            if (!accessibleIds.Contains(row.WorkspaceId))
+            {
+                ModelState.AddModelError(nameof(ReportWorkspaces), "به یکی از فضاهای انتخاب‌شده دسترسی ندارید.");
+                continue;
+            }
+            if (!PersianCalendarHelper.TryParseInput(row.StartDate, out var start))
+            {
+                ModelState.AddModelError($"ReportWorkspaces[{index}].StartDate", "تاریخ شروع معتبر نیست.");
+                continue;
+            }
+            if (!PersianCalendarHelper.TryParseInput(row.EndDate, out var end))
+            {
+                ModelState.AddModelError($"ReportWorkspaces[{index}].EndDate", "تاریخ پایان معتبر نیست.");
+                continue;
+            }
+            if (end < start)
+            {
+                ModelState.AddModelError($"ReportWorkspaces[{index}].EndDate", "تاریخ پایان نباید قبل از تاریخ شروع باشد.");
+                continue;
+            }
+            if (end.DayNumber - start.DayNumber > MaxReportRangeDays)
+            {
+                ModelState.AddModelError($"ReportWorkspaces[{index}].EndDate", "بازه هر فضا حداکثر سه سال است.");
+                continue;
+            }
+            requests.Add(new AiWorkspaceReportRequest(row.WorkspaceId, start, end));
         }
+        return requests;
+    }
+
+    private void MergeReportRows()
+    {
+        var submitted = ReportWorkspaces.GroupBy(x => x.WorkspaceId).ToDictionary(x => x.Key, x => x.First());
+        var today = DateOnly.FromDateTime(DateTime.Now);
+        var monthStart = PersianCalendarHelper.StartOfMonth(PersianCalendarHelper.GetYearMonth(today));
+        ReportWorkspaces = AccessibleWorkspaces.Select(workspace => submitted.TryGetValue(workspace.Id, out var row) ? row : new WorkspaceReportInput
+        {
+            WorkspaceId = workspace.Id,
+            StartDate = PersianCalendarHelper.ToInput(monthStart),
+            EndDate = PersianCalendarHelper.ToInput(today)
+        }).ToList();
+    }
+
+    private Workspace? ResolveTargetWorkspace()
+    {
+        if (TargetWorkspaceId is null)
+        {
+            ModelState.AddModelError(nameof(TargetWorkspaceId), "فضای مالی مقصد را انتخاب کنید.");
+            return null;
+        }
+        var target = AccessibleWorkspaces.SingleOrDefault(x => x.Id == TargetWorkspaceId);
+        if (target is null) ModelState.AddModelError(nameof(TargetWorkspaceId), "به فضای مالی مقصد دسترسی ندارید.");
+        return target;
     }
 
     private string Protect(PreviewEnvelope envelope)
@@ -199,6 +267,14 @@ public sealed class IndexModel(
         }
         return JsonSerializer.Deserialize<PreviewEnvelope>(_protector.Unprotect(token))
             ?? throw new InvalidOperationException("Invalid preview token.");
+    }
+
+    public sealed class WorkspaceReportInput
+    {
+        public Guid WorkspaceId { get; set; }
+        public bool IsSelected { get; set; }
+        public string? StartDate { get; set; }
+        public string? EndDate { get; set; }
     }
 
     private sealed record PreviewEnvelope(Guid RequestId, Guid WorkspaceId, string UserId, DateTimeOffset ExpiresAtUtc, string Json);
