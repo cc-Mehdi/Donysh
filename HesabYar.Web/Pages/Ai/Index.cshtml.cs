@@ -20,16 +20,16 @@ public sealed class IndexModel(
 
     [BindProperty]
     [StringLength(AiWorkspaceService.MaxJsonLength, ErrorMessage = "حجم JSON بیشتر از حد مجاز است.")]
-    public string ChangesJson { get; set; } = string.Empty;
+    public string? ChangesJson { get; set; }
 
     [BindProperty]
-    public string PreviewToken { get; set; } = string.Empty;
+    public string? PreviewToken { get; set; }
 
     [BindProperty]
     public List<string> SelectedIds { get; set; } = [];
 
     [BindProperty]
-    public string ReportPeriod { get; set; } = string.Empty;
+    public string? ReportPeriod { get; set; }
 
     public string WorkspaceName { get; private set; } = string.Empty;
     public IReadOnlyList<AiReportPeriod> AvailablePeriods { get; private set; } = [];
@@ -75,7 +75,7 @@ public sealed class IndexModel(
         try
         {
             var workspace = await workspaceContext.RequireCurrentAsync(cancellationToken);
-            var preview = await aiWorkspaceService.PreviewAsync(workspace.Id, ChangesJson, null, cancellationToken);
+            var preview = await aiWorkspaceService.PreviewAsync(workspace.Id, ChangesJson ?? string.Empty, null, cancellationToken);
             PreviewItems = preview.Items;
             EmptyPreview = PreviewItems.Count == 0;
             ChangesJson = preview.NormalizedJson;
@@ -113,7 +113,7 @@ public sealed class IndexModel(
         PreviewEnvelope envelope;
         try
         {
-            envelope = Unprotect(PreviewToken);
+            envelope = Unprotect(PreviewToken ?? string.Empty);
         }
         catch (Exception ex) when (ex is CryptographicException or JsonException or InvalidOperationException)
         {

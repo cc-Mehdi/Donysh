@@ -43,7 +43,7 @@
     <section class="card h-fit">
         <h3 class="card-title">تعریف تعهد جدید</h3>
         <p class="muted mt-1">برای قسط مدت مشخص کنید؛ هزینه ثابت تا زمانی که متوقفش کنید هر ماه تکرار می‌شود.</p>
-        <form method="post" asp-page-handler="Save" class="mt-5 space-y-4">
+        <form method="post" asp-page-handler="Save" class="mt-5 space-y-4" data-obligation-form>
             <div asp-validation-summary="ModelOnly"></div>
             <div>
                 <label asp-for="Input.Title" class="label">عنوان</label>
@@ -52,7 +52,7 @@
             </div>
             <div>
                 <label asp-for="Input.Type" class="label">نوع</label>
-                <select asp-for="Input.Type" class="input">
+                <select asp-for="Input.Type" class="input" data-obligation-type>
                     <option value="1">قسط با مدت مشخص</option>
                     <option value="2">هزینه ثابت ماهانه</option>
                 </select>
@@ -83,9 +83,9 @@
                     <input asp-for="Input.StartMonth" type="number" min="1" max="12" class="input" />
                 </div>
             </div>
-            <div>
+            <div data-obligation-duration>
                 <label asp-for="Input.DurationMonths" class="label">تعداد ماه برای قسط</label>
-                <input asp-for="Input.DurationMonths" type="number" min="1" class="input" placeholder="مثلاً ۱۰" />
+                <input asp-for="Input.DurationMonths" type="number" min="1" class="input" placeholder="مثلاً ۱۰" data-obligation-duration-input />
                 <span asp-validation-for="Input.DurationMonths" class="field-error"></span>
                 <p class="mt-1 text-xs text-slate-500">برای هزینه ثابت خالی بگذارید.</p>
             </div>
@@ -228,7 +228,7 @@
 
                     <details class="mt-4 border-t border-slate-100 pt-3">
                         <summary class="cursor-pointer text-sm font-bold text-indigo-700">ویرایش</summary>
-                        <form method="post" asp-page-handler="Save" class="mt-4 grid gap-3 sm:grid-cols-2">
+                        <form method="post" asp-page-handler="Save" class="mt-4 grid gap-3 sm:grid-cols-2" data-obligation-form>
                             <input type="hidden" name="Input.Id" value="@item.Id" />
                             <div class="sm:col-span-2">
                                 <label class="label">عنوان</label>
@@ -236,7 +236,7 @@
                             </div>
                             <div>
                                 <label class="label">نوع</label>
-                                <select name="Input.Type" class="input">
+                                <select name="Input.Type" class="input" data-obligation-type>
                                     <option value="1" selected="@(item.Type == RecurringObligationType.Installment)">قسط</option>
                                     <option value="2" selected="@(item.Type == RecurringObligationType.FixedMonthlyExpense)">هزینه ثابت</option>
                                 </select>
@@ -254,9 +254,10 @@
                                 <label class="label">مبلغ</label>
                                 <input name="Input.Amount" value="@item.Amount.ToString("0")" data-money class="input ltr-input" />
                             </div>
-                            <div>
-                                <label class="label">تعداد ماه</label>
-                                <input name="Input.DurationMonths" value="@item.DurationMonths" type="number" min="1" class="input" />
+                            <div class="rounded-2xl bg-indigo-50 p-3" data-obligation-duration>
+                                <label class="label">تعداد اقساط (ماه)</label>
+                                <input name="Input.DurationMonths" value="@item.DurationMonths" type="number" min="1" class="input" data-obligation-duration-input />
+                                <p class="mt-1 text-xs text-indigo-700">تعداد کل ماه‌های این قسط را وارد کنید.</p>
                             </div>
                             <div>
                                 <label class="label">سال شروع</label>
