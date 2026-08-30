@@ -109,6 +109,7 @@ public sealed class AiWorkspaceService(ApplicationDbContext db, BudgetRolloverSe
                 "برای هر فضا الگوی هزینه، بودجه، پس‌انداز و فشار اقساط را فقط در reportRange همان فضا تحلیل کن.",
                 "monthlySpendingLimit سقف کلی خرج ماهانه همان فضاست. اگر مقدار دارد، مجموع پیشنهادهای هزینه و بودجه را نسبت به آن ارزیابی کن؛ null یعنی کاربر هنوز سقفی تعیین نکرده است.",
                 "priority هدف پس‌انداز از 1 تا 5 است: 1 خیلی بالا، 2 بالا، 3 عادی، 4 پایین و 5 خیلی پایین. پیشنهاد تخصیص پس‌انداز باید این ترتیب را رعایت کند.",
+                "installments فهرست کامل اقساط همان فضاست، حتی اگر در بازه گزارش سررسیدی نداشته باشند. scheduleInReportRange فقط رخدادهای داخل بازه انتخابی را نشان می‌دهد و ممکن است خالی باشد.",
                 "درآمد یا شرایط ثبت‌نشده را حدس نزن و توصیه پرریسک یا تضمین نتیجه سرمایه‌گذاری نده.",
                 "مبالغ تومان‌اند؛ تاریخ‌های داده ISO/Gregorian و year/month بودجه شمسی است.",
                 "برای هر workspaceReport دقیقاً یک donysh.changes مستقل تولید کن. قبل از code block نام فضا و reportKey را بنویس.",
@@ -122,6 +123,7 @@ public sealed class AiWorkspaceService(ApplicationDbContext db, BudgetRolloverSe
                 budgetPeriod = "year/month are Persian calendar values",
                 monthlySpendingLimit = "optional total monthly spending capacity for that workspace; null means unspecified",
                 savingsGoalPriority = "1=very high, 2=high, 3=normal, 4=low, 5=very low",
+                installments = "complete installment list for the workspace; scheduleInReportRange contains only due occurrences inside the selected range",
                 workspaceReports = "independent financial spaces; never merge their records or change sets"
             },
             workspaceReports = reports,
@@ -234,7 +236,6 @@ public sealed class AiWorkspaceService(ApplicationDbContext db, BudgetRolloverSe
                     .Where(x => x.dueDate >= request.StartDate && x.dueDate < endExclusive)
                     .ToList()
             })
-            .Where(x => x.schedule.Count > 0)
             .Select(x => new
             {
                 id = x.item.Id,
@@ -246,10 +247,17 @@ public sealed class AiWorkspaceService(ApplicationDbContext db, BudgetRolloverSe
                 startMonth = x.item.StartMonth,
                 durationMonths = x.item.DurationMonths,
                 paidInstallments = x.item.Payments.Count,
+                remainingInstallments = x.item.DurationMonths.HasValue
+                    ? Math.Max(x.item.DurationMonths.Value - x.item.Payments.Count, 0)
+                    : (int?)null,
+                totalRemainingAmount = x.item.DurationMonths.HasValue
+                    ? Math.Max(x.item.DurationMonths.Value - x.item.Payments.Count, 0) * x.item.Amount
+                    : (decimal?)null,
                 dueDay = x.item.DueDay,
                 reminderDaysBefore = x.item.ReminderDaysBefore,
                 note = x.item.Note,
                 isActive = x.item.IsActive,
+                hasOccurrenceInReportRange = x.schedule.Count > 0,
                 scheduleInReportRange = x.schedule
             })
             .ToList();
