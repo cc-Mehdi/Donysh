@@ -20,5 +20,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Maui.Controls" Version="9.0.111" />
     <Compile Include="../HesabYar.Web/Sms/Shared/*.cs" Link="Shared/%(Filename)%(Extension)" />
+    <MauiIcon Include="Resources/AppIcon/appicon.svg" Color="#F8FAFC" BaseSize="64,64" />
+    <MauiImage Include="Resources/Images/*" />
   </ItemGroup>
 </Project>
