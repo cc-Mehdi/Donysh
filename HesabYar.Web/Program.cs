@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
+using HesabYar.Web.Sms;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -90,6 +91,7 @@ if (!string.IsNullOrWhiteSpace(keysPath))
 }
 
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddMobileApi();
 builder.Services.AddScoped<IWorkspaceContext, WorkspaceContext>();
 builder.Services.AddScoped<AiWorkspaceService>();
 builder.Services.AddScoped<DatabaseInitializer>();
@@ -137,10 +139,12 @@ var localizationOptions = new RequestLocalizationOptions()
 app.UseRequestLocalization(localizationOptions);
 
 app.UseRouting();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapRazorPages();
+app.MapMobileApi();
 app.MapGet("/health", async (ApplicationDbContext db, CancellationToken ct) =>
 {
     var healthy = await db.Database.CanConnectAsync(ct);

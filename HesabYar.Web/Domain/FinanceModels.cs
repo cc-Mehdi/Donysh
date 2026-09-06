@@ -26,6 +26,9 @@ public sealed class ExpenseCategory
 
 public sealed class Expense
 {
+    [MaxLength(2048)] public string? SmsText { get; set; }
+    [MaxLength(5)] public string? SmsLocalTime { get; set; }
+    public bool NeedsReview { get; set; }
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid WorkspaceId { get; set; }
     public Guid CategoryId { get; set; }

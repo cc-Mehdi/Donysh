@@ -1,0 +1,40 @@
+@page
+@model HesabYar.Web.Pages.Mobile.IndexModel
+@{ ViewData["Title"] = "همراه دونیش"; }
+<div class="mb-6"><h2 class="text-2xl font-black">همراه دونیش · پیامک بانکی</h2>
+<p class="mt-2 text-sm text-slate-500">ثبت خودکار برداشت‌های ملت و بلو با اپ Android؛ همه خرج‌ها ابتدا «نیازمند بررسی» هستند.</p></div>
+<section class="card mb-5 space-y-4">
+    <h3 class="card-title">اتصال گوشی به «@Model.Workspace.Name»</h3>
+    <p>برای تغییر مقصد، ابتدا فضای مالی را از منو انتخاب کنید و سپس اتصال بسازید. تغییر فضای فعال سایت، مقصد اتصال‌های قبلی را تغییر نمی‌دهد.</p>
+    <p class="text-sm text-slate-500">اپ فقط پیامک‌های جدیدِ فرستنده‌هایی را که خودتان فعال می‌کنید می‌خواند. متن برداشت شامل اطلاعات حساب و مانده در این فضای مالی ذخیره می‌شود؛ در فضای مشترک برای اعضا قابل مشاهده است. ارسال ممکن است به علت محدودیت باتری Android با تأخیر انجام شود.</p>
+    <form method="post" class="space-y-4">
+        <div asp-validation-summary="All" class="field-error"></div>
+        <div><label asp-for="DeviceName" class="label">نام اتصال</label><input asp-for="DeviceName" class="input" maxlength="80" /></div>
+        <div><label asp-for="CategoryId" class="label">دسته اولیه خرج‌های پیامکی</label>
+            <select asp-for="CategoryId" class="input"><option value="">انتخاب دسته</option>
+            @foreach (var category in Model.Categories) { <option value="@category.Id">@category.Icon @category.Name</option> }
+            </select>
+            <p class="muted">می‌توانید ابتدا دسته‌ای به نام «نیازمند بررسی» بسازید. دسته بعداً برای هر خرج قابل ویرایش است.</p>
+        </div>
+        <button type="submit" class="btn-primary">ساخت کد اتصال ۱۰ دقیقه‌ای</button>
+    </form>
+    @if (Model.PairCode is not null)
+    {
+        <div class="rounded-xl bg-indigo-50 p-4"><p>این کد یک‌بارمصرف را در اپ وارد کنید؛ آن را با دیگران به اشتراک نگذارید.</p>
+        <input readonly value="@Model.PairCode" aria-label="کد اتصال" class="input ltr-input mt-3" /></div>
+    }
+</section>
+<section class="card space-y-4">
+    <h3 class="card-title">اتصال‌های من</h3>
+    @foreach (var device in Model.Devices)
+    {
+        <div class="border-b border-slate-100 pb-3">
+            <strong>@device.Name</strong> <span>@device.Workspace.Name / @device.Category.Name</span>
+            <span class="badge">@(device.Revoked ? "لغوشده" : device.TokenHash != null ? "متصل" : device.PairExpiresAtUtc < DateTime.UtcNow ? "کد منقضی" : "در انتظار اتصال")</span>
+            @if (!device.Revoked) {
+                <form method="post" asp-page-handler="Revoke" class="mt-2"><input type="hidden" name="id" value="@device.Id" /><button class="btn-secondary" data-confirm="دسترسی این گوشی لغو شود؟" type="submit">لغو دسترسی</button></form>
+            }
+        </div>
+    }
+    <a asp-page="/Expenses/Index" asp-route-NeedsReview="true" class="btn-secondary">خرج‌های نیازمند بررسیِ فضای فعال</a>
+</section>

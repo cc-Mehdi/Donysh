@@ -31,6 +31,7 @@ public sealed class DatabaseInitializer(ApplicationDbContext db, ILogger<Databas
 
     private async Task ApplyCompatibilityUpdatesAsync(CancellationToken cancellationToken)
     {
+        await HesabYar.Web.Sms.MobileSchema.UpgradeAsync(db, cancellationToken);
         // The project currently uses EnsureCreated instead of EF migrations.
         // These idempotent ALTER statements upgrade existing databases without
         // deleting any saved data.

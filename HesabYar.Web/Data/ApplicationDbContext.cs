@@ -19,10 +19,13 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<RecurringObligation> RecurringObligations => Set<RecurringObligation>();
     public DbSet<RecurringObligationPayment> RecurringObligationPayments => Set<RecurringObligationPayment>();
     public DbSet<AiImportReceipt> AiImportReceipts => Set<AiImportReceipt>();
+    public DbSet<HesabYar.Web.Sms.MobileDevice> MobileDevices => Set<HesabYar.Web.Sms.MobileDevice>();
+    public DbSet<HesabYar.Web.Sms.SmsReceipt> SmsReceipts => Set<HesabYar.Web.Sms.SmsReceipt>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
+        HesabYar.Web.Sms.MobileSchema.Configure(builder);
 
         builder.Entity<ApplicationUser>(entity =>
         {

@@ -15,9 +15,12 @@ public sealed class EditModel(ApplicationDbContext db, IWorkspaceContext workspa
     public InputModel Input { get; set; } = new();
 
     public IReadOnlyList<ExpenseCategory> Categories { get; private set; } = [];
+    public string? SmsText { get; private set; }
+    public string? SmsLocalTime { get; private set; }
 
     public sealed class InputModel
     {
+        public bool NeedsReview { get; set; }
         public Guid Id { get; set; }
 
         [Required(ErrorMessage = "دلیل خرج را وارد کنید.")]
@@ -49,12 +52,15 @@ public sealed class EditModel(ApplicationDbContext db, IWorkspaceContext workspa
 
         Input = new InputModel
         {
+            NeedsReview = expense.NeedsReview,
             Id = expense.Id,
             Reason = expense.Reason,
             Amount = expense.Amount,
             CategoryId = expense.CategoryId,
             ExpenseDate = expense.ExpenseDate
         };
+        SmsText = expense.SmsText;
+        SmsLocalTime = expense.SmsLocalTime;
         await LoadCategoriesAsync(cancellationToken);
         return Page();
     }
@@ -76,11 +82,14 @@ public sealed class EditModel(ApplicationDbContext db, IWorkspaceContext workspa
 
         if (!ModelState.IsValid)
         {
+            SmsText = expense.SmsText;
+            SmsLocalTime = expense.SmsLocalTime;
             await LoadCategoriesAsync(cancellationToken);
             return Page();
         }
 
         expense.Reason = Input.Reason.Trim();
+        if (expense.SmsText is not null) expense.NeedsReview = Input.NeedsReview;
         expense.Amount = Input.Amount;
         expense.CategoryId = Input.CategoryId;
         expense.ExpenseDate = Input.ExpenseDate;

@@ -12,6 +12,7 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
 {
     [BindProperty(SupportsGet = true)]
     public string? Q { get; set; }
+    [BindProperty(SupportsGet = true)] public bool NeedsReview { get; set; }
 
     [BindProperty(SupportsGet = true)]
     public Guid? CategoryId { get; set; }
@@ -65,9 +66,9 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
         }
 
         if (CategoryId.HasValue)
-        {
             query = query.Where(x => x.CategoryId == CategoryId.Value);
-        }
+
+        if (NeedsReview) query = query.Where(x => x.NeedsReview);
 
         if (From.HasValue)
         {

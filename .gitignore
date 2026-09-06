@@ -3,9 +3,12 @@
 !.env.example
 **/bin/
 **/obj/
+**/.nuget/
 **/node_modules/
 .vs/
 .idea/
 *.user
 *.suo
 .DS_Store
+*.keystore
+*.jks
