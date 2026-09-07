@@ -16,6 +16,12 @@ Test("Blu withdrawal not balance, Persian full date", () => {
     Check(p!.LocalDateTime == new DateTime(2026, 9, 6, 12, 18, 0));
 });
 Test("Persian digits and grouping", () => Check(BankSmsParser.Parse(mellat.Replace("50,000,000", "۵۰٬۰۰۰٬۰۰۰"))?.AmountToman == 5_000_000));
+Test("Fully Persian Mellat numbers with Arabic comma grouping", () => {
+    const string message = "حساب۵۵۵۵۵۵۵۵۵۵\nبرداشت۵۰،۰۰۰،۰۰۰\nمانده۱۱۱،۱۱۱،۱۱۱\n۰۵/۰۶/۱۵-۱۲:۱۴";
+    var parsed = BankSmsParser.Parse(message);
+    Check(parsed is { Bank: "mellat", Account: "5555555555", AmountToman: 5_000_000 });
+    Check(parsed!.LocalDateTime == new DateTime(2026, 9, 6, 12, 14, 0));
+});
 Test("Deposits and OTP never create expenses", () => {
     Check(BankSmsParser.Parse(mellat.Replace("برداشت", "واریز")) is null);
     Check(BankSmsParser.Parse("رمز یکبار مصرف\n" + mellat) is null);

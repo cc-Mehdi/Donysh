@@ -13,9 +13,13 @@ public static class BankSmsParser
 
     public static string Normalize(string text)
     {
-        return string.Concat(text.Select(c => c is >= '۰' and <= '۹' ? (char)('0' + c - '۰')
+        var normalized = string.Concat(text.Select(c => c is >= '۰' and <= '۹' ? (char)('0' + c - '۰')
             : c is >= '٠' and <= '٩' ? (char)('0' + c - '٠') : c == '٬' ? ',' : c))
             .Replace("\r", "").Replace("\u200e", "").Replace("\u200f", "").Trim();
+        var chars = normalized.ToCharArray();
+        for (var i = 1; i < chars.Length - 1; i++)
+            if (chars[i] == '،' && char.IsAsciiDigit(chars[i - 1]) && char.IsAsciiDigit(chars[i + 1])) chars[i] = ',';
+        return new string(chars);
     }
 
     public static BankWithdrawal? Parse(string? text)
