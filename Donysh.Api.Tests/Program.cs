@@ -1,6 +1,8 @@
 using System.Net;
 using System.Text;
 using HesabYar.Web.Data;
+using HesabYar.Web.Domain;
+using HesabYar.Web.Pages.Expenses;
 using HesabYar.Web.Sms;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -10,6 +12,23 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+
+// The list and member summary must share every user-selected filter.
+var selectedCategory = Guid.NewGuid();
+var otherCategory = Guid.NewGuid();
+var selectedDate = new DateOnly(2026, 9, 19);
+var expenses = new[]
+{
+    new Expense { Reason = "خرید روزانه", CategoryId = selectedCategory, ExpenseDate = selectedDate, NeedsReview = true, Amount = 10 },
+    new Expense { Reason = "خرید روزانه", CategoryId = selectedCategory, ExpenseDate = selectedDate.AddDays(-1), NeedsReview = true, Amount = 20 },
+    new Expense { Reason = "خرید روزانه", CategoryId = otherCategory, ExpenseDate = selectedDate, NeedsReview = true, Amount = 30 },
+    new Expense { Reason = "خرید روزانه", CategoryId = selectedCategory, ExpenseDate = selectedDate, NeedsReview = false, Amount = 40 },
+    new Expense { Reason = "هزینه دیگر", CategoryId = selectedCategory, ExpenseDate = selectedDate, NeedsReview = true, Amount = 50 }
+}.AsQueryable();
+var filtered = ExpenseListFilter.Apply(expenses, "  خرید  ", selectedCategory, true, selectedDate, selectedDate).ToList();
+if (filtered.Count != 1 || filtered[0].Amount != 10)
+    throw new Exception("Expense filters must apply equally to member summaries.");
+Console.WriteLine("PASS Member expenses respect search, category, review and date filters");
 
 // Starts only a loopback test host. The unavailable database deliberately proves guards do not query it.
 var builder = WebApplication.CreateBuilder();

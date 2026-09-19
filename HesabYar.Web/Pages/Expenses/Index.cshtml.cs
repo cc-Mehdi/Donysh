@@ -27,8 +27,9 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
     public IReadOnlyList<ExpenseCategory> Categories { get; private set; } = [];
     public IReadOnlyList<MemberExpenseSummary> MemberExpenses { get; private set; } = [];
     public decimal Total { get; private set; }
-    public decimal CurrentMonthTotal { get; private set; }
-    public string CurrentMonthTitle { get; private set; } = string.Empty;
+    public decimal MemberExpensesTotal { get; private set; }
+    public string MemberExpensesPeriodTitle { get; private set; } = string.Empty;
+    public bool HasDateFilter => From.HasValue || To.HasValue;
     public bool IsSharedWorkspace { get; private set; }
 
     public sealed record MemberExpenseCategory(Guid CategoryId, string Name, string Icon, decimal Amount, int Count);
@@ -58,27 +59,7 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
             .Include(x => x.CreatedByUser)
             .AsNoTracking()
             .AsQueryable();
-
-        if (!string.IsNullOrWhiteSpace(Q))
-        {
-            var search = Q.Trim();
-            query = query.Where(x => x.Reason.Contains(search));
-        }
-
-        if (CategoryId.HasValue)
-            query = query.Where(x => x.CategoryId == CategoryId.Value);
-
-        if (NeedsReview) query = query.Where(x => x.NeedsReview);
-
-        if (From.HasValue)
-        {
-            query = query.Where(x => x.ExpenseDate >= From.Value);
-        }
-
-        if (To.HasValue)
-        {
-            query = query.Where(x => x.ExpenseDate <= To.Value);
-        }
+        query = ExpenseListFilter.Apply(query, Q, CategoryId, NeedsReview, From, To);
 
         Items = await query
             .OrderByDescending(x => x.ExpenseDate)
@@ -120,7 +101,13 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
         var currentPeriod = PersianCalendarHelper.GetYearMonth(today);
         var monthStart = PersianCalendarHelper.StartOfMonth(currentPeriod);
         var monthEnd = PersianCalendarHelper.EndOfMonthExclusive(currentPeriod);
-        CurrentMonthTitle = PersianCalendarHelper.Title(currentPeriod);
+        MemberExpensesPeriodTitle = HasDateFilter
+            ? From.HasValue && To.HasValue
+                ? $"از {PersianCalendarHelper.ToInput(From.Value)} تا {PersianCalendarHelper.ToInput(To.Value)}"
+                : From.HasValue
+                    ? $"از {PersianCalendarHelper.ToInput(From.Value)}"
+                    : $"تا {PersianCalendarHelper.ToInput(To!.Value)}"
+            : PersianCalendarHelper.Title(currentPeriod);
 
         var members = await db.WorkspaceMembers
             .Where(x => x.WorkspaceId == workspaceId)
@@ -130,13 +117,17 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
-        var monthExpenses = await db.Expenses
-            .Where(x => x.WorkspaceId == workspaceId && x.ExpenseDate >= monthStart && x.ExpenseDate < monthEnd)
+        IQueryable<Expense> memberQuery = db.Expenses
+            .Where(x => x.WorkspaceId == workspaceId)
             .Include(x => x.Category)
-            .AsNoTracking()
+            .AsNoTracking();
+        if (!HasDateFilter)
+            memberQuery = memberQuery.Where(x => x.ExpenseDate >= monthStart && x.ExpenseDate < monthEnd);
+
+        var monthExpenses = await ExpenseListFilter.Apply(memberQuery, Q, CategoryId, NeedsReview, From, To)
             .ToListAsync(cancellationToken);
 
-        CurrentMonthTotal = monthExpenses.Sum(x => x.Amount);
+        MemberExpensesTotal = monthExpenses.Sum(x => x.Amount);
 
         MemberExpenses = members.Select(member =>
         {
