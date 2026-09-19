@@ -32,7 +32,11 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: HesabYar.Web
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
+
+      - name: Audit frontend dependencies
+        working-directory: HesabYar.Web
+        run: npm audit --audit-level=high
 
       - name: Build Tailwind CSS
         working-directory: HesabYar.Web
@@ -43,6 +47,12 @@ jobs:
 
       - name: Build .NET project
         run: dotnet build HesabYar.sln --configuration Release --no-restore
+
+      - name: Run API and security regression tests
+        run: dotnet run --project Donysh.Api.Tests --configuration Release
+
+      - name: Run SMS parser and queue tests
+        run: dotnet run --project Donysh.Sms.Tests --configuration Release
 
       - name: Validate Docker image
         run: docker build --file HesabYar.Web/Dockerfile --tag donysh-ci:${{ github.sha }} .

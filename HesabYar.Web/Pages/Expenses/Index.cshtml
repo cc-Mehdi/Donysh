@@ -60,7 +60,7 @@
 
         @if (Model.MemberExpenses.Count == 0)
         {
-            <p class="rounded-2xl bg-slate-50 p-5 text-center text-sm text-slate-500">عضوی برای نمایش وجود ندارد.</p>
+            <p class="rounded-2xl bg-slate-50 p-5 text-center text-sm text-slate-500">@(Model.HasActiveFilter ? "هیچ عضوی با فیلترهای انتخاب‌شده خرجی ندارد." : "عضوی برای نمایش وجود ندارد.")</p>
         }
         else
         {

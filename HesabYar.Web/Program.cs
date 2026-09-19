@@ -5,12 +5,22 @@ using HesabYar.Web.ModelBinding;
 using HesabYar.Web.Services;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
 using HesabYar.Web.Sms;
+using HesabYar.Web.Security;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = 1_048_576);
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.ValueCountLimit = 256;
+    options.ValueLengthLimit = 300_000;
+    options.MultipartBodyLengthLimit = 1_048_576;
+});
 
 var reverseProxyEnabled = builder.Configuration.GetValue<bool>("ReverseProxy:Enabled");
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
@@ -66,7 +76,7 @@ if (reverseProxyEnabled)
             ForwardedHeaders.XForwardedHost;
 
         // Only the reverse proxy can reach the web container in domain mode.
-        options.KnownNetworks.Clear();
+        options.KnownIPNetworks.Clear();
         options.KnownProxies.Clear();
         options.ForwardLimit = 1;
     });
@@ -129,6 +139,8 @@ if (!app.Environment.IsDevelopment())
     }
 }
 
+app.UseDonyshSecurityHeaders();
+
 app.UseStaticFiles();
 
 var supportedCultures = new[] { new CultureInfo("fa-IR"), new CultureInfo("en-US") };
@@ -141,6 +153,19 @@ app.UseRequestLocalization(localizationOptions);
 app.UseRouting();
 app.UseRateLimiter();
 app.UseAuthentication();
+app.Use(async (context, next) =>
+{
+    context.Response.OnStarting(() =>
+    {
+        if (context.User.Identity?.IsAuthenticated == true)
+        {
+            context.Response.Headers.CacheControl = "no-store, no-cache";
+            context.Response.Headers.Pragma = "no-cache";
+        }
+        return Task.CompletedTask;
+    });
+    await next();
+});
 app.UseAuthorization();
 
 app.MapRazorPages();

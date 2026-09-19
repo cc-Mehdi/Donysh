@@ -26,7 +26,7 @@
         <p class="mt-1 text-sm text-indigo-700">این لینک را فقط برای شخص موردنظر بفرستید؛ لینک ۷ روز اعتبار دارد.</p>
         <div class="mt-4 flex flex-col gap-2 sm:flex-row">
             <input id="invite-link" readonly value="@inviteLink" class="input direction-ltr flex-1 text-left" dir="ltr" />
-            <button type="button" class="btn-primary" onclick="navigator.clipboard.writeText(document.getElementById('invite-link').value); this.textContent='کپی شد'">کپی لینک</button>
+            <button type="button" class="btn-primary" data-copy-target="invite-link" data-copy-success="کپی شد">کپی لینک</button>
         </div>
     </section>
 }

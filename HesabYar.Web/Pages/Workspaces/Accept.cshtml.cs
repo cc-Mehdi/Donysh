@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
+using HesabYar.Web.Security;
 
 namespace HesabYar.Web.Pages.Workspaces;
 
@@ -60,14 +61,19 @@ public sealed class AcceptModel(
 
     private async Task<IActionResult?> LoadAndValidateAsync(CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(Token))
+        Response.Headers.CacheControl = "no-store";
+        Response.Headers["Referrer-Policy"] = "no-referrer";
+
+        if (Token.Length != 64)
         {
             return NotFound();
         }
 
+        var tokenHash = InvitationToken.Hash(Token);
         Invitation = await db.WorkspaceInvitations
             .Include(x => x.Workspace)
-            .SingleOrDefaultAsync(x => x.Token == Token, cancellationToken) ?? null!;
+            // The plaintext comparison keeps invitation links issued before this hardening valid.
+            .SingleOrDefaultAsync(x => x.Token == tokenHash || x.Token == Token, cancellationToken) ?? null!;
         if (Invitation is null)
         {
             return NotFound();
@@ -93,7 +99,7 @@ public sealed class AcceptModel(
 
         if (!string.Equals(user.Email, Invitation.Email, StringComparison.OrdinalIgnoreCase))
         {
-            TempData["Error"] = $"این دعوت برای ایمیل {Invitation.Email} ساخته شده است. با همان ایمیل وارد شوید.";
+            TempData["Error"] = "این دعوت برای حساب کاربری دیگری ساخته شده است. با حساب دعوت‌شده وارد شوید.";
             return RedirectToPage("/Workspaces/Index");
         }
 

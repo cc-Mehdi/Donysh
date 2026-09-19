@@ -4,6 +4,7 @@ using HesabYar.Web.Data;
 using HesabYar.Web.Domain;
 using HesabYar.Web.Pages.Expenses;
 using HesabYar.Web.Sms;
+using HesabYar.Web.Security;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
@@ -29,6 +30,20 @@ var filtered = ExpenseListFilter.Apply(expenses, "  خرید  ", selectedCategor
 if (filtered.Count != 1 || filtered[0].Amount != 10)
     throw new Exception("Expense filters must apply equally to member summaries.");
 Console.WriteLine("PASS Member expenses respect search, category, review and date filters");
+if (!ExpenseListFilter.HasAny("خرید", null, false, null, null)
+    || ExpenseListFilter.IncludeMember(0, true)
+    || !ExpenseListFilter.IncludeMember(1, true)
+    || !ExpenseListFilter.IncludeMember(0, false))
+    throw new Exception("Filtered member summary must hide members without matching expenses.");
+Console.WriteLine("PASS Filtered member summary hides members without matching expenses");
+
+var invitationToken = InvitationToken.Create();
+var invitationTokenHash = InvitationToken.Hash(invitationToken);
+if (invitationToken.Length != 64 || invitationTokenHash.Length != 64
+    || invitationToken == invitationTokenHash
+    || InvitationToken.Hash(invitationToken) != invitationTokenHash)
+    throw new Exception("Invitation tokens must be random and stored as deterministic one-way digests.");
+Console.WriteLine("PASS Invitation tokens are stored as one-way digests");
 
 // Starts only a loopback test host. The unavailable database deliberately proves guards do not query it.
 var builder = WebApplication.CreateBuilder();
@@ -37,11 +52,20 @@ builder.WebHost.UseUrls("http://127.0.0.1:0");
 builder.Services.AddDbContext<ApplicationDbContext>(o => o.UseNpgsql("Host=127.0.0.1;Port=1;Database=donysh_unused;Username=unused;Timeout=1"));
 builder.Services.AddMobileApi();
 await using var app = builder.Build();
+app.UseDonyshSecurityHeaders();
 app.UseRouting();
+app.Use(async (ctx, next) =>
+{
+    if (ctx.Request.Headers.TryGetValue("Test-Remote-Ip", out var value)
+        && IPAddress.TryParse(value, out var address))
+        ctx.Connection.RemoteIpAddress = address;
+    await next();
+});
 app.UseRateLimiter();
 app.Use(async (ctx, next) => { if (ctx.Request.Headers.ContainsKey("Test-Https")) ctx.Request.Scheme = "https"; await next(); });
 app.MapMobileApi();
 app.MapGet("/ordinary-page", () => Results.Ok());
+app.MapGet("/account-test", () => Results.Ok()).RequireRateLimiting("account");
 await app.StartAsync();
 var address = app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.Single();
 using var client = new HttpClient { BaseAddress = new Uri(address), Timeout = TimeSpan.FromSeconds(5) };
@@ -72,9 +96,40 @@ for (int i = 0; i < 61; i++) {
 }
 if (!limited) failed++;
 Console.WriteLine($"{(limited ? "PASS" : "FAIL")} API flood receives 429 and Retry-After");
+using (var otherClientRequest = new HttpRequestMessage(HttpMethod.Post, "/api/mobile/sms")
+       { Content = new StringContent("{}", Encoding.UTF8, "application/json") })
+{
+    otherClientRequest.Headers.Add("Test-Remote-Ip", "127.0.0.2");
+    using var otherClientResponse = await client.SendAsync(otherClientRequest);
+    var isolated = otherClientResponse.StatusCode != HttpStatusCode.TooManyRequests;
+    if (!isolated) failed++;
+    Console.WriteLine($"{(isolated ? "PASS" : "FAIL")} One mobile client cannot exhaust another client's rate limit");
+}
 using var web = await client.GetAsync("/ordinary-page");
 if (web.StatusCode != HttpStatusCode.OK) failed++;
 Console.WriteLine($"{(web.StatusCode == HttpStatusCode.OK ? "PASS" : "FAIL")} Mobile limits do not block normal web pages");
+var csp = web.Headers.GetValues("Content-Security-Policy").Single();
+var hardened = web.Headers.GetValues("X-Frame-Options").Single() == "DENY"
+    && csp.Contains("script-src 'self'", StringComparison.Ordinal)
+    && !csp.Contains("unsafe-eval", StringComparison.Ordinal);
+if (!hardened) failed++;
+Console.WriteLine($"{(hardened ? "PASS" : "FAIL")} Browser security headers block framing and string evaluation");
+bool accountLimited = false;
+for (int i = 0; i < 31; i++)
+{
+    using var response = await client.GetAsync("/account-test");
+    if (response.StatusCode == HttpStatusCode.TooManyRequests) { accountLimited = true; break; }
+}
+if (!accountLimited) failed++;
+Console.WriteLine($"{(accountLimited ? "PASS" : "FAIL")} Account endpoints are rate limited per client");
+using (var otherAccountRequest = new HttpRequestMessage(HttpMethod.Get, "/account-test"))
+{
+    otherAccountRequest.Headers.Add("Test-Remote-Ip", "127.0.0.3");
+    using var otherAccountResponse = await client.SendAsync(otherAccountRequest);
+    var isolated = otherAccountResponse.StatusCode == HttpStatusCode.OK;
+    if (!isolated) failed++;
+    Console.WriteLine($"{(isolated ? "PASS" : "FAIL")} One login client cannot exhaust another client's rate limit");
+}
 await app.StopAsync();
 var postgres = Environment.GetEnvironmentVariable("DONYSH_TEST_POSTGRES");
 if (string.IsNullOrWhiteSpace(postgres)) Console.WriteLine("SKIP PostgreSQL checks: set DONYSH_TEST_POSTGRES to a local disposable PostgreSQL server with CREATE DATABASE privilege.");

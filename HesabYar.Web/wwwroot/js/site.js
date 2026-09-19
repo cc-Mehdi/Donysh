@@ -437,6 +437,25 @@
         });
     });
 
+    document.querySelectorAll('[data-auto-submit]').forEach((element) => {
+        element.addEventListener('change', () => element.form?.requestSubmit());
+    });
+
+    document.querySelectorAll('[data-copy-target]').forEach((button) => {
+        button.addEventListener('click', async () => {
+            const target = document.getElementById(button.dataset.copyTarget || '');
+            if (!target) return;
+            try {
+                await navigator.clipboard.writeText(target.value ?? target.textContent ?? '');
+            } catch {
+                target.focus?.();
+                target.select?.();
+                document.execCommand('copy');
+            }
+            button.textContent = button.dataset.copySuccess || 'کپی شد';
+        });
+    });
+
     document.querySelectorAll('[data-obligation-form]').forEach((form) => {
         const typeInput = form.querySelector('[data-obligation-type]');
         const durationGroup = form.querySelector('[data-obligation-duration]');

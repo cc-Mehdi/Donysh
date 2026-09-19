@@ -20,14 +20,24 @@ public static class MobileApi
         services.AddRateLimiter(o => {
             o.RejectionStatusCode = 429;
             o.OnRejected = (ctx, _) => { ctx.HttpContext.Response.Headers.RetryAfter = "60"; return ValueTask.CompletedTask; };
-            o.AddPolicy("mobile", _ => RateLimitPartition.GetFixedWindowLimiter("mobile-global", _ => new() {
-                PermitLimit = 60, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+            o.AddPolicy("mobile", ctx => RateLimitPartition.GetFixedWindowLimiter(
+                $"mobile:{ClientKey(ctx)}", _ => new() {
+                PermitLimit = 60, Window = TimeSpan.FromMinutes(1), QueueLimit = 0,
+                AutoReplenishment = true }));
+            o.AddPolicy("account", ctx => RateLimitPartition.GetFixedWindowLimiter(
+                $"account:{ClientKey(ctx)}", _ => new() {
+                PermitLimit = 30, Window = TimeSpan.FromMinutes(1), QueueLimit = 0,
+                AutoReplenishment = true }));
             o.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
                 ctx.Request.Path.StartsWithSegments("/api/mobile")
-                    ? RateLimitPartition.GetConcurrencyLimiter("mobile", _ => new() { PermitLimit = 2, QueueLimit = 0 })
+                    ? RateLimitPartition.GetConcurrencyLimiter(
+                        $"mobile-concurrency:{ClientKey(ctx)}", _ => new() { PermitLimit = 2, QueueLimit = 0 })
                     : RateLimitPartition.GetNoLimiter("web"));
         });
     }
+
+    private static string ClientKey(HttpContext context) =>
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
     public static void MapMobileApi(this WebApplication app)
     {
@@ -53,7 +63,11 @@ public static class MobileApi
         int count;
         while ((count = await ctx.Request.Body.ReadAsync(chunk, ct)) != 0)
         {
-            if (buffer.Length + count > 32768) return default;
+            if (buffer.Length + count > 32768)
+            {
+                if (ctx.Request.Protocol == "HTTP/1.1") ctx.Response.Headers.Connection = "close";
+                return default;
+            }
             buffer.Write(chunk, 0, count);
         }
         try { return JsonSerializer.Deserialize<T>(buffer.ToArray(), new JsonSerializerOptions(JsonSerializerDefaults.Web) { MaxDepth = 8 }); }

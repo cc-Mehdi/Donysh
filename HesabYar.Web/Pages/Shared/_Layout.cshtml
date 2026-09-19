@@ -45,7 +45,7 @@
                     </div>
                     <form method="post" asp-page="/Workspaces/Switch">
                         <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
-                        <select name="workspaceId" class="input py-2 text-sm" onchange="this.form.submit()" aria-label="انتخاب فضای مالی">
+                        <select name="workspaceId" class="input py-2 text-sm" data-auto-submit aria-label="انتخاب فضای مالی">
                             @foreach (var workspace in workspaces)
                             {
                                 <option value="@workspace.Id" selected="@(workspace.Id == currentWorkspace.Id)">@workspace.Name</option>

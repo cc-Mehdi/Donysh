@@ -30,6 +30,7 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
     public decimal MemberExpensesTotal { get; private set; }
     public string MemberExpensesPeriodTitle { get; private set; } = string.Empty;
     public bool HasDateFilter => From.HasValue || To.HasValue;
+    public bool HasActiveFilter => ExpenseListFilter.HasAny(Q, CategoryId, NeedsReview, From, To);
     public bool IsSharedWorkspace { get; private set; }
 
     public sealed record MemberExpenseCategory(Guid CategoryId, string Name, string Icon, decimal Amount, int Count);
@@ -157,6 +158,6 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
                 memberItems.Sum(x => x.Amount),
                 memberItems.Count,
                 categories);
-        }).ToList();
+        }).Where(x => ExpenseListFilter.IncludeMember(x.Count, HasActiveFilter)).ToList();
     }
 }

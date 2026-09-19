@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using System.Security.Cryptography;
 using HesabYar.Web.Data;
 using HesabYar.Web.Domain;
 using HesabYar.Web.Helpers;
@@ -8,6 +7,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
+using HesabYar.Web.Security;
 
 namespace HesabYar.Web.Pages.Workspaces;
 
@@ -226,13 +226,14 @@ public sealed class IndexModel(
 
         db.WorkspaceInvitations.RemoveRange(oldInvites);
 
-        var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
+        var token = InvitationToken.Create();
 
         db.WorkspaceInvitations.Add(new WorkspaceInvitation
         {
             WorkspaceId = workspace.Id,
             Email = email,
-            Token = token,
+            // Store only a digest: a database leak must not expose active bearer links.
+            Token = InvitationToken.Hash(token),
             InvitedByUserId = workspaceContext.UserId!,
             ExpiresAtUtc = DateTime.UtcNow.AddDays(7)
         });

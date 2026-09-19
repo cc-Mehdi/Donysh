@@ -4,6 +4,12 @@ namespace HesabYar.Web.Pages.Expenses;
 
 public static class ExpenseListFilter
 {
+    public static bool HasAny(string? q, Guid? categoryId, bool needsReview, DateOnly? from, DateOnly? to)
+        => !string.IsNullOrWhiteSpace(q) || categoryId.HasValue || needsReview || from.HasValue || to.HasValue;
+
+    public static bool IncludeMember(int matchingExpenseCount, bool hasAnyFilter)
+        => !hasAnyFilter || matchingExpenseCount > 0;
+
     public static IQueryable<Expense> Apply(
         IQueryable<Expense> query, string? q, Guid? categoryId, bool needsReview,
         DateOnly? from, DateOnly? to)
