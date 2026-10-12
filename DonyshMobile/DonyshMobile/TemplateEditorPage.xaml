@@ -2,61 +2,77 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="DonyshMobile.TemplateEditorPage"
-             FlowDirection="RightToLeft" BackgroundColor="#F8FAFC" Title="ویرایش قالب">
+             FlowDirection="RightToLeft" Title="ساخت قالب">
     <ScrollView>
-        <VerticalStackLayout Padding="20,18,20,32" Spacing="15">
-            <Label Text="تعریف قالب پیامک" FontSize="24" FontAttributes="Bold" TextColor="#0F172A" />
-            <Label x:Name="SenderLabel" TextColor="#64748B" />
+        <VerticalStackLayout Padding="20,18,20,36" Spacing="16">
+            <Label Text="ساخت ساده قالب" Style="{StaticResource PageTitle}" />
+            <Label x:Name="SenderLabel" Style="{StaticResource MutedText}" />
 
-            <Border Padding="14" BackgroundColor="#EEF2FF" Stroke="#C7D2FE" StrokeShape="RoundRectangle 16">
-                <VerticalStackLayout Spacing="7">
-                    <Label Text="راهنمای جای‌نگهدارها" FontAttributes="Bold" TextColor="#312E81" />
-                    <Label Text="{}{amount} مبلغ · {date} تاریخ · {time} ساعت · {type} عبارت نوع تراکنش · {ignore} بخش اضافی"
-                           TextColor="#4338CA" FontSize="13" />
-                    <Label Text="متن‌های ثابت پیام را همان‌طور که هستند بنویسید. هر قالب دقیقاً یک {amount} لازم دارد."
-                           TextColor="#4338CA" FontSize="12" />
+            <Border Style="{StaticResource InfoCard}" Padding="14">
+                <Label Text="یک پیام واقعی را انتخاب کنید. برنامه مبلغ، تاریخ و ساعت را پیدا می‌کند و قالب را برایتان می‌سازد."
+                       TextColor="{AppThemeBinding Light=#3730A3, Dark=#C7D2FE}" FontSize="13" />
+            </Border>
+
+            <Label Text="۱. پیام نمونه" Style="{StaticResource SectionTitle}" />
+            <Picker x:Name="SamplePicker" Title="یک پیام ذخیره‌شده را انتخاب کنید"
+                    SelectedIndexChanged="OnSampleSelected" />
+            <Editor x:Name="SampleEditor" HeightRequest="150" IsReadOnly="True"
+                    Placeholder="ابتدا یک پیام از این فرستنده دریافت کنید." />
+
+            <VerticalStackLayout x:Name="FieldsSection" Spacing="12" IsVisible="False">
+                <Label Text="۲. اطلاعات تراکنش" Style="{StaticResource SectionTitle}" />
+                <Label Text="مبلغ تراکنش را انتخاب کنید؛ مبلغ موجودی حساب را انتخاب نکنید."
+                       Style="{StaticResource MutedText}" FontSize="12" />
+                <Picker x:Name="AmountPicker" Title="مبلغ تراکنش" />
+
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                    <VerticalStackLayout Spacing="5">
+                        <Label Text="واحد مبلغ" Style="{StaticResource SectionTitle}" />
+                        <Picker x:Name="UnitPicker">
+                            <Picker.Items><x:String>ریال</x:String><x:String>تومان</x:String></Picker.Items>
+                        </Picker>
+                    </VerticalStackLayout>
+                    <VerticalStackLayout Grid.Column="1" Spacing="5">
+                        <Label Text="نوع تراکنش" Style="{StaticResource SectionTitle}" />
+                        <Picker x:Name="KindPicker" SelectedIndexChanged="OnKindChanged">
+                            <Picker.Items><x:String>برداشت</x:String><x:String>واریز</x:String></Picker.Items>
+                        </Picker>
+                    </VerticalStackLayout>
+                </Grid>
+
+                <Label Text="عبارت تشخیص نوع در پیام" Style="{StaticResource SectionTitle}" />
+                <Entry x:Name="TypePhraseEntry" Placeholder="مثلاً: از حسابت پرید" MaxLength="100" />
+                <Label Text="برنامه هر بار این عبارت را ببیند، آن را به نوع انتخاب‌شده بالا تبدیل می‌کند. خالی گذاشتن یعنی این قالب همیشه همان نوع را دارد."
+                       Style="{StaticResource MutedText}" FontSize="12" />
+
+                <Border Style="{StaticResource Card}" Padding="12">
+                    <Label x:Name="DetectedFieldsLabel" Style="{StaticResource MutedText}" FontSize="12" />
+                </Border>
+
+                <Button Text="ساخت و بررسی قالب" Clicked="OnGenerateClicked" Style="{StaticResource PrimaryAction}" />
+            </VerticalStackLayout>
+
+            <Border x:Name="ResultCard" Style="{StaticResource Card}" Padding="14" IsVisible="False">
+                <VerticalStackLayout Spacing="6">
+                    <Label Text="نتیجه" Style="{StaticResource SectionTitle}" />
+                    <Label x:Name="ResultLabel" TextColor="{AppThemeBinding Light=#047857, Dark=#6EE7B7}" />
                 </VerticalStackLayout>
             </Border>
 
-            <Label Text="نام قالب" FontAttributes="Bold" TextColor="#0F172A" />
-            <Entry x:Name="NameEntry" Placeholder="مثلاً برداشت بانک ملت" MaxLength="80" />
-            <Label Text="متن قالب" FontAttributes="Bold" TextColor="#0F172A" />
-            <Editor x:Name="PatternEditor" Placeholder="حساب{ignore}&#10;{type}{amount}&#10;مانده{ignore}&#10;{date}-{time}"
-                    HeightRequest="160" MaxLength="2000" AutoSize="TextChanges" BackgroundColor="White" />
+            <Button x:Name="AdvancedButton" Text="تنظیمات پیشرفته" Clicked="OnAdvancedClicked"
+                    Style="{StaticResource SecondaryAction}" />
+            <VerticalStackLayout x:Name="AdvancedSection" IsVisible="False" Spacing="10">
+                <Label Text="نام قالب" Style="{StaticResource SectionTitle}" />
+                <Entry x:Name="NameEntry" Placeholder="مثلاً برداشت بلو" MaxLength="80" />
+                <Label Text="متن فنی قالب" Style="{StaticResource SectionTitle}" />
+                <Editor x:Name="PatternEditor" HeightRequest="160" MaxLength="2000" />
+                <Label Text="نگاشت‌های بیشتر؛ هر خط به شکل عبارت=برداشت یا عبارت=واریز"
+                       Style="{StaticResource MutedText}" FontSize="12" />
+                <Editor x:Name="MappingsEditor" HeightRequest="100"
+                        Placeholder="از حسابت پرید=برداشت&#10;واریز به حساب=واریز" />
+            </VerticalStackLayout>
 
-            <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
-                <VerticalStackLayout Spacing="5">
-                    <Label Text="واحد مبلغ پیامک" FontAttributes="Bold" TextColor="#0F172A" />
-                    <Picker x:Name="UnitPicker" Title="واحد پول">
-                        <Picker.Items><x:String>ریال</x:String><x:String>تومان</x:String></Picker.Items>
-                    </Picker>
-                </VerticalStackLayout>
-                <VerticalStackLayout Grid.Column="1" Spacing="5">
-                    <Label Text="نوع پیش‌فرض" FontAttributes="Bold" TextColor="#0F172A" />
-                    <Picker x:Name="KindPicker" Title="نوع تراکنش">
-                        <Picker.Items><x:String>برداشت</x:String><x:String>واریز</x:String></Picker.Items>
-                    </Picker>
-                </VerticalStackLayout>
-            </Grid>
-            <Label Text="اگر {type} در قالب باشد، نوع پیش‌فرض استفاده نمی‌شود و نگاشت زیر لازم است."
-                   FontSize="12" TextColor="#64748B" />
-
-            <Label Text="نگاشت عبارت‌های نوع تراکنش" FontAttributes="Bold" TextColor="#0F172A" />
-            <Label Text="در هر خط: عبارت داخل پیام = برداشت یا واریز" FontSize="12" TextColor="#64748B" />
-            <Editor x:Name="MappingsEditor" HeightRequest="100" BackgroundColor="White"
-                    Placeholder="از حسابت پرید=برداشت&#10;واریز به حساب=واریز" />
-
-            <Label Text="آزمون با متن یک پیام" FontAttributes="Bold" TextColor="#0F172A" />
-            <Picker x:Name="SamplePicker" Title="انتخاب از پیام‌های ذخیره‌شده" SelectedIndexChanged="OnSampleSelected" />
-            <Editor x:Name="SampleEditor" HeightRequest="140" BackgroundColor="White"
-                    Placeholder="پیامی را انتخاب کنید یا متن نمونه را اینجا بنویسید." />
-            <Button Text="آزمون قالب" Clicked="OnTestClicked" BackgroundColor="#E0E7FF"
-                    TextColor="#3730A3" CornerRadius="12" />
-            <Border Padding="13" BackgroundColor="White" Stroke="#CBD5E1" StrokeShape="RoundRectangle 12">
-                <Label x:Name="ResultLabel" Text="نتیجه آزمون اینجا نمایش داده می‌شود." TextColor="#334155" />
-            </Border>
-            <Button Text="ذخیره قالب" Clicked="OnSaveClicked" BackgroundColor="#059669"
-                    TextColor="White" CornerRadius="12" />
+            <Button Text="ذخیره قالب" Clicked="OnSaveClicked" Style="{StaticResource SuccessAction}" />
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

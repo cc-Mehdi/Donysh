@@ -5,41 +5,39 @@
              x:Class="DonyshMobile.MainPage"
              x:DataType="local:MainPage"
              FlowDirection="RightToLeft"
-             BackgroundColor="#F8FAFC"
              Title="مانیتور پیامک">
     <Grid RowDefinitions="Auto,Auto,*" Padding="20,18" RowSpacing="16">
         <VerticalStackLayout Grid.Row="0" Spacing="4">
             <HorizontalStackLayout Spacing="10">
                 <Image Source="donysh_logo.svg" WidthRequest="38" HeightRequest="38" />
-                <Label Text="Donysh Mobile" FontSize="27" FontAttributes="Bold" TextColor="#0F172A" VerticalOptions="Center" />
+                <Label Text="Donysh Mobile" FontSize="27" Style="{StaticResource PageTitle}" VerticalOptions="Center" />
             </HorizontalStackLayout>
             <Label Text="فقط پیامک‌های جدیدِ فرستنده‌های انتخاب‌شده، روی همین گوشی نگهداری می‌شوند."
-                   FontSize="13" TextColor="#64748B" />
+                   FontSize="13" Style="{StaticResource MutedText}" />
         </VerticalStackLayout>
 
         <VerticalStackLayout Grid.Row="1" Spacing="12">
-            <Border Stroke="#C7D2FE" BackgroundColor="#EEF2FF" Padding="15" StrokeShape="RoundRectangle 18">
+            <Border Style="{StaticResource InfoCard}" Padding="15" StrokeShape="RoundRectangle 18">
                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
                     <VerticalStackLayout Spacing="3">
-                        <Label Text="دسترسی دریافت پیامک" FontAttributes="Bold" TextColor="#312E81" />
-                        <Label Text="{Binding PermissionStatusText}" FontSize="12" TextColor="#4F46E5" />
+                        <Label Text="دسترسی دریافت پیامک" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#312E81, Dark=#E0E7FF}" />
+                        <Label Text="{Binding PermissionStatusText}" FontSize="12" TextColor="{AppThemeBinding Light=#4F46E5, Dark=#A5B4FC}" />
                     </VerticalStackLayout>
                     <Button Grid.Column="1" Text="{Binding PermissionButtonText}" Clicked="OnPermissionClicked"
-                            Padding="14,8" FontSize="12" BackgroundColor="#4F46E5" TextColor="White" CornerRadius="12" />
+                            Padding="14,8" FontSize="12" Style="{StaticResource PrimaryAction}" />
                 </Grid>
             </Border>
 
-            <Border Stroke="#E2E8F0" BackgroundColor="White" Padding="15" StrokeShape="RoundRectangle 18">
+            <Border Style="{StaticResource Card}" Padding="15" StrokeShape="RoundRectangle 18">
                 <VerticalStackLayout Spacing="10">
-                    <Label Text="افزودن شماره یا نام فرستنده" FontAttributes="Bold" TextColor="#0F172A" />
+                    <Label Text="افزودن شماره یا نام فرستنده" Style="{StaticResource SectionTitle}" />
                     <Label Text="مقداری را وارد کنید که گوشی به‌عنوان فرستنده نمایش می‌دهد؛ مانند 30001234 یا BankName."
-                           FontSize="12" TextColor="#64748B" />
+                           FontSize="12" Style="{StaticResource MutedText}" />
                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                         <Entry x:Name="SenderEntry" Placeholder="شماره یا نام فرستنده" MaxLength="160"
-                               ClearButtonVisibility="WhileEditing" ReturnType="Done" Completed="OnAddSenderClicked"
-                               BackgroundColor="#F8FAFC" TextColor="#0F172A" />
+                               ClearButtonVisibility="WhileEditing" ReturnType="Done" Completed="OnAddSenderClicked" />
                         <Button Grid.Column="1" Text="افزودن" Clicked="OnAddSenderClicked"
-                                BackgroundColor="#059669" TextColor="White" CornerRadius="12" />
+                                Style="{StaticResource SuccessAction}" />
                     </Grid>
                 </VerticalStackLayout>
             </Border>
@@ -47,42 +45,41 @@
 
         <Grid Grid.Row="2" RowDefinitions="Auto,*" RowSpacing="10">
             <Grid ColumnDefinitions="*,Auto">
-                <Label Text="فرستنده‌های تحت مانیتور" FontSize="17" FontAttributes="Bold" TextColor="#0F172A" />
+                <Label Text="فرستنده‌های تحت مانیتور" FontSize="17" Style="{StaticResource SectionTitle}" />
                 <Label Grid.Column="1" Text="{Binding SenderCountText}" FontSize="12"
-                       TextColor="#64748B" VerticalOptions="Center" />
+                       Style="{StaticResource MutedText}" VerticalOptions="Center" />
             </Grid>
 
             <CollectionView Grid.Row="1" ItemsSource="{Binding Senders}" SelectionMode="Single"
                             SelectionChanged="OnSenderSelected">
                 <CollectionView.EmptyView>
-                    <Border Stroke="#CBD5E1" StrokeDashArray="5,4" Padding="24" StrokeShape="RoundRectangle 18">
+                    <Border Stroke="{AppThemeBinding Light=#CBD5E1, Dark=#475569}" StrokeDashArray="5,4" Padding="24" StrokeShape="RoundRectangle 18">
                         <VerticalStackLayout Spacing="8" HorizontalOptions="Center">
                             <Label Text="📨" FontSize="34" HorizontalTextAlignment="Center" />
                             <Label Text="هنوز فرستنده‌ای اضافه نشده است." FontAttributes="Bold"
-                                   TextColor="#334155" HorizontalTextAlignment="Center" />
+                                   HorizontalTextAlignment="Center" />
                             <Label Text="یک شماره یا نام فرستنده اضافه کنید؛ از آن لحظه پیامک‌های جدید ذخیره می‌شوند."
-                                   FontSize="12" TextColor="#64748B" HorizontalTextAlignment="Center" />
+                                   FontSize="12" Style="{StaticResource MutedText}" HorizontalTextAlignment="Center" />
                         </VerticalStackLayout>
                     </Border>
                 </CollectionView.EmptyView>
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="local:SenderItem">
-                        <Border Margin="0,0,0,9" Stroke="#E2E8F0" BackgroundColor="White"
-                                Padding="14" StrokeShape="RoundRectangle 16">
+                        <Border Margin="0,0,0,9" Style="{StaticResource Card}" Padding="14">
                             <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
-                                <Border WidthRequest="44" HeightRequest="44" BackgroundColor="#E0E7FF"
+                                <Border WidthRequest="44" HeightRequest="44" BackgroundColor="{AppThemeBinding Light=#E0E7FF, Dark=#312E81}"
                                         StrokeThickness="0" StrokeShape="RoundRectangle 14">
-                                    <Label Text="✉" FontSize="20" TextColor="#4338CA"
+                                    <Label Text="✉" FontSize="20" TextColor="{AppThemeBinding Light=#4338CA, Dark=#C7D2FE}"
                                            HorizontalOptions="Center" VerticalOptions="Center" />
                                 </Border>
                                 <VerticalStackLayout Grid.Column="1" Spacing="3" VerticalOptions="Center">
-                                    <Label Text="{Binding Address}" FontAttributes="Bold" TextColor="#0F172A"
+                                    <Label Text="{Binding Address}" FontAttributes="Bold"
                                            LineBreakMode="TailTruncation" />
-                                    <Label Text="{Binding Details}" FontSize="12" TextColor="#64748B"
+                                    <Label Text="{Binding Details}" FontSize="12" Style="{StaticResource MutedText}"
                                            LineBreakMode="TailTruncation" />
                                 </VerticalStackLayout>
                                 <Button Grid.Column="2" Text="حذف" FontSize="11" Padding="10,7"
-                                        BackgroundColor="#FFF1F2" TextColor="#BE123C" CornerRadius="10"
+                                        Style="{StaticResource DangerAction}"
                                         CommandParameter="{Binding Id}" Clicked="OnRemoveSenderClicked" />
                             </Grid>
                         </Border>

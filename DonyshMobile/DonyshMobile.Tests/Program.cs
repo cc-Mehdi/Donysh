@@ -55,6 +55,18 @@ try
     var toman = new SmsTemplate { SenderId = summary.Id, Name = "تومان", Pattern = "برداشت: {amount} تومان", Unit = MoneyUnit.Toman };
     Assert(SmsTemplateParser.TryParse(toman, "برداشت: ۲۵۰,۰۰۰ تومان") is { AmountRial: 2_500_000, Kind: TransactionKind.Withdrawal }, "Toman to rial conversion");
 
+    const string bluSample = "بلو\nبرداشت پول\nمهدی عزیز، 1,400,000 ریال از حساب شما پرید.\nموجودی: 7,758,083 ریال\n17:55\n1405.07.19";
+    var analysis = SmsTemplateDraftBuilder.Analyze(bluSample);
+    Assert(analysis.Amounts.Count == 2, "Detect transaction and balance amount candidates");
+    Assert(analysis.Date?.Value == "1405.07.19" && analysis.Time?.Value == "17:55", "Auto detect date and time");
+    Assert(analysis.SuggestedTypePhrase == "برداشت پول" && analysis.SuggestedKind == TransactionKind.Withdrawal, "Suggest transaction mapping");
+    var generated = SmsTemplateDraftBuilder.Build(Guid.NewGuid(), summary.Id, "قالب ساده", bluSample,
+        analysis.Amounts[0], MoneyUnit.Rial, TransactionKind.Withdrawal, analysis.SuggestedTypePhrase);
+    Assert(SmsTemplateParser.TryParse(generated,
+        "بلو\nبرداشت پول\nمهدی عزیز، 2,900,000 ریال از حساب شما پرید.\nموجودی: 5,000,000 ریال\n19:05\n1405.07.20") is { AmountRial: 2_900_000 }, "Generated template parses next SMS");
+    var mellatAnalysis = SmsTemplateDraftBuilder.Analyze("حساب5555555555\nبرداشت50,000,000\nمانده111,111,111\n05/06/15-12:14");
+    Assert(mellatAnalysis.Amounts[0].Value.Trim() == "50,000,000", "Rank transaction amount before account and balance");
+
     Assert(await store.CaptureAsync("+989121234567", "پیام قدیمی", DateTimeOffset.UtcNow.AddDays(-8)), "Accept receiver timestamp");
     var retained = await store.GetMessagesAsync(summary.Id);
     Assert(retained.Count == 1 && retained[0].Body == "پیام آزمایشی", "Prune messages older than seven days");

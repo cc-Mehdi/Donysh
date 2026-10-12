@@ -12,5 +12,6 @@
     <Compile Include="..\DonyshMobile\Core\SmsMonitorStore.cs" Link="Core\SmsMonitorStore.cs" />
     <Compile Include="..\DonyshMobile\Core\SmsTemplateModels.cs" Link="Core\SmsTemplateModels.cs" />
     <Compile Include="..\DonyshMobile\Core\SmsTemplateParser.cs" Link="Core\SmsTemplateParser.cs" />
+    <Compile Include="..\DonyshMobile\Core\SmsTemplateDraftBuilder.cs" Link="Core\SmsTemplateDraftBuilder.cs" />
   </ItemGroup>
 </Project>
