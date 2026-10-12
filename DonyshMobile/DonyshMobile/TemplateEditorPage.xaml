@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="DonyshMobile.TemplateEditorPage"
+             FlowDirection="RightToLeft" BackgroundColor="#F8FAFC" Title="ویرایش قالب">
+    <ScrollView>
+        <VerticalStackLayout Padding="20,18,20,32" Spacing="15">
+            <Label Text="تعریف قالب پیامک" FontSize="24" FontAttributes="Bold" TextColor="#0F172A" />
+            <Label x:Name="SenderLabel" TextColor="#64748B" />
+
+            <Border Padding="14" BackgroundColor="#EEF2FF" Stroke="#C7D2FE" StrokeShape="RoundRectangle 16">
+                <VerticalStackLayout Spacing="7">
+                    <Label Text="راهنمای جای‌نگهدارها" FontAttributes="Bold" TextColor="#312E81" />
+                    <Label Text="{}{amount} مبلغ · {date} تاریخ · {time} ساعت · {type} عبارت نوع تراکنش · {ignore} بخش اضافی"
+                           TextColor="#4338CA" FontSize="13" />
+                    <Label Text="متن‌های ثابت پیام را همان‌طور که هستند بنویسید. هر قالب دقیقاً یک {amount} لازم دارد."
+                           TextColor="#4338CA" FontSize="12" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Label Text="نام قالب" FontAttributes="Bold" TextColor="#0F172A" />
+            <Entry x:Name="NameEntry" Placeholder="مثلاً برداشت بانک ملت" MaxLength="80" />
+            <Label Text="متن قالب" FontAttributes="Bold" TextColor="#0F172A" />
+            <Editor x:Name="PatternEditor" Placeholder="حساب{ignore}&#10;{type}{amount}&#10;مانده{ignore}&#10;{date}-{time}"
+                    HeightRequest="160" MaxLength="2000" AutoSize="TextChanges" BackgroundColor="White" />
+
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                <VerticalStackLayout Spacing="5">
+                    <Label Text="واحد مبلغ پیامک" FontAttributes="Bold" TextColor="#0F172A" />
+                    <Picker x:Name="UnitPicker" Title="واحد پول">
+                        <Picker.Items><x:String>ریال</x:String><x:String>تومان</x:String></Picker.Items>
+                    </Picker>
+                </VerticalStackLayout>
+                <VerticalStackLayout Grid.Column="1" Spacing="5">
+                    <Label Text="نوع پیش‌فرض" FontAttributes="Bold" TextColor="#0F172A" />
+                    <Picker x:Name="KindPicker" Title="نوع تراکنش">
+                        <Picker.Items><x:String>برداشت</x:String><x:String>واریز</x:String></Picker.Items>
+                    </Picker>
+                </VerticalStackLayout>
+            </Grid>
+            <Label Text="اگر {type} در قالب باشد، نوع پیش‌فرض استفاده نمی‌شود و نگاشت زیر لازم است."
+                   FontSize="12" TextColor="#64748B" />
+
+            <Label Text="نگاشت عبارت‌های نوع تراکنش" FontAttributes="Bold" TextColor="#0F172A" />
+            <Label Text="در هر خط: عبارت داخل پیام = برداشت یا واریز" FontSize="12" TextColor="#64748B" />
+            <Editor x:Name="MappingsEditor" HeightRequest="100" BackgroundColor="White"
+                    Placeholder="از حسابت پرید=برداشت&#10;واریز به حساب=واریز" />
+
+            <Label Text="آزمون با متن یک پیام" FontAttributes="Bold" TextColor="#0F172A" />
+            <Picker x:Name="SamplePicker" Title="انتخاب از پیام‌های ذخیره‌شده" SelectedIndexChanged="OnSampleSelected" />
+            <Editor x:Name="SampleEditor" HeightRequest="140" BackgroundColor="White"
+                    Placeholder="پیامی را انتخاب کنید یا متن نمونه را اینجا بنویسید." />
+            <Button Text="آزمون قالب" Clicked="OnTestClicked" BackgroundColor="#E0E7FF"
+                    TextColor="#3730A3" CornerRadius="12" />
+            <Border Padding="13" BackgroundColor="White" Stroke="#CBD5E1" StrokeShape="RoundRectangle 12">
+                <Label x:Name="ResultLabel" Text="نتیجه آزمون اینجا نمایش داده می‌شود." TextColor="#334155" />
+            </Border>
+            <Button Text="ذخیره قالب" Clicked="OnSaveClicked" BackgroundColor="#059669"
+                    TextColor="White" CornerRadius="12" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:local="clr-namespace:DonyshMobile"
+             x:Class="DonyshMobile.MessagesPage"
+             x:DataType="local:MessagesPage"
+             FlowDirection="RightToLeft"
+             BackgroundColor="#F8FAFC">
+    <Grid RowDefinitions="Auto,Auto,*" Padding="20,18" RowSpacing="14">
+        <VerticalStackLayout Spacing="4">
+            <Label Text="{Binding SenderAddress}" FontSize="24" FontAttributes="Bold" TextColor="#0F172A" />
+            <Label Text="پیام‌های دریافت‌شده در هفت روز گذشته" FontSize="13" TextColor="#64748B" />
+        </VerticalStackLayout>
+
+        <Button Grid.Row="1" Text="قالب‌های این فرستنده" Clicked="OnTemplatesClicked"
+                BackgroundColor="#4F46E5" TextColor="White" CornerRadius="12" />
+        <CollectionView Grid.Row="2" ItemsSource="{Binding Messages}" SelectionMode="None">
+            <CollectionView.EmptyView>
+                <Border Stroke="#CBD5E1" StrokeDashArray="5,4" Padding="28" StrokeShape="RoundRectangle 18">
+                    <VerticalStackLayout Spacing="8" HorizontalOptions="Center">
+                        <Label Text="📭" FontSize="36" HorizontalTextAlignment="Center" />
+                        <Label Text="در هفت روز گذشته پیامی ثبت نشده است."
+                               TextColor="#475569" HorizontalTextAlignment="Center" />
+                    </VerticalStackLayout>
+                </Border>
+            </CollectionView.EmptyView>
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="local:MessageItem">
+                    <Border Margin="0,0,0,10" Stroke="#E2E8F0" BackgroundColor="White"
+                            Padding="15" StrokeShape="RoundRectangle 16">
+                        <VerticalStackLayout Spacing="9">
+                            <Label Text="{Binding ReceivedAt}" FontSize="11" TextColor="#6366F1" />
+                            <Label Text="{Binding ParsedSummary}" FontSize="12" TextColor="#047857" />
+                            <Label Text="{Binding Body}" FontSize="14" LineHeight="1.5"
+                                   TextColor="#1E293B" FlowDirection="RightToLeft" />
+                        </VerticalStackLayout>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
+</ContentPage>
