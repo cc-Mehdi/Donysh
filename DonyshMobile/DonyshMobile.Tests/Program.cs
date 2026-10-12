@@ -64,7 +64,16 @@ try
         "بلو\nبرداشت پول\nمهدی عزیز، 2,900,000ریال از حساب شما پرید.\nموجودی: 5,000,000 ریال\n۱۹:۰۵\n۱۴۰۵.۰۷.۲۰") is { AmountRial: 2_900_000, Kind: TransactionKind.Withdrawal }, "Key/value template parses next SMS");
     Assert(SmsKeyValueTemplateBuilder.Build(Guid.NewGuid(), summary.Id, "", bluPreset.SampleMessage,
         bluPreset.Fields.Where(x => x.Key != TemplateFieldKey.Amount).ToList()).Error is not null, "Amount key is required");
-    Assert(SmsTemplatePresets.All.Count >= 2, "Provide multiple bank presets");
+
+    var resalatPreset = SmsTemplatePresets.All.Single(x => x.Id == "resalat-withdrawal");
+    var resalatResult = SmsKeyValueTemplateBuilder.Build(Guid.NewGuid(), summary.Id, string.Empty,
+        resalatPreset.SampleMessage, resalatPreset.Fields);
+    Assert(resalatResult is { Error: null, Template: not null }, "Build Resalat preset");
+    Assert(SmsTemplateParser.TryParse(resalatResult.Template!,
+        "10.98765432.1\n-75,000\n07/21_18:06\nمانده: 269,842,300") is
+        { AmountRial: 75_000, Kind: TransactionKind.Withdrawal, DateText: "07/21", TimeText: "18:06" },
+        "Resalat preset parses a new withdrawal SMS");
+    Assert(SmsTemplatePresets.All.Count >= 3, "Provide multiple bank presets");
 
     Assert(await store.CaptureAsync("+989121234567", "پیام قدیمی", DateTimeOffset.UtcNow.AddDays(-8)), "Accept receiver timestamp");
     var retained = await store.GetMessagesAsync(summary.Id);

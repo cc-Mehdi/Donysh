@@ -31,6 +31,19 @@ public static class SmsTemplatePresets
                 Field(TemplateFieldKey.Unit, "ریال"),
                 Field(TemplateFieldKey.Time, "12:14"),
                 Field(TemplateFieldKey.Date, "05/06/15")
+            ]),
+        new(
+            "resalat-withdrawal",
+            "بانک رسالت — برداشت",
+            "پیام برداشت بانک رسالت شامل شناسه حساب، مبلغ منفی، تاریخ، ساعت و مانده",
+            "10.14178622.1\n-42,500\n07/20_17:05\nمانده: 269,917,300",
+            [
+                Field(TemplateFieldKey.BankName, "بانک رسالت"),
+                Field(TemplateFieldKey.TransactionType, "-"),
+                Field(TemplateFieldKey.Amount, "42,500"),
+                Field(TemplateFieldKey.Unit, "ریال"),
+                Field(TemplateFieldKey.Time, "17:05"),
+                Field(TemplateFieldKey.Date, "07/20")
             ])
     ];
 

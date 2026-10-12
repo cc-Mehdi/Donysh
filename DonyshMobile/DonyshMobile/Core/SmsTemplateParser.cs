@@ -98,7 +98,7 @@ public static class SmsTemplateParser
             builder.Append(placeholder.Groups[1].Value.ToLowerInvariant() switch
             {
                 "amount" => @"(?<amount>[0-9][0-9,٬ ]*)",
-                "date" => @"(?<date>(?:[0-9]{2,4}[./-][0-9]{1,2}[./-][0-9]{1,4}|[0-9]{6,8}))",
+                "date" => @"(?<date>(?:[0-9]{1,4}[./-][0-9]{1,2}(?:[./-][0-9]{1,4})?|[0-9]{6,8}))",
                 "time" => @"(?<time>[0-9]{1,2}[:.][0-9]{2}(?:[:.][0-9]{2})?)",
                 "type" => @"(?<type>.+?)",
                 _ => @"(?:.*?)"
