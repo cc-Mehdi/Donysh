@@ -2,6 +2,7 @@ namespace DonyshMobile.Core;
 
 public enum TransactionKind { Withdrawal, Deposit }
 public enum MoneyUnit { Rial, Toman }
+public enum TemplateFieldKey { BankName, TransactionType, Amount, Unit, Time, Date }
 
 public sealed class SmsTemplate
 {
@@ -12,6 +13,14 @@ public sealed class SmsTemplate
     public MoneyUnit Unit { get; set; } = MoneyUnit.Rial;
     public TransactionKind DefaultKind { get; set; } = TransactionKind.Withdrawal;
     public List<TransactionPhrase> Phrases { get; set; } = [];
+    public string SampleMessage { get; set; } = string.Empty;
+    public List<SmsTemplateField> Fields { get; set; } = [];
+}
+
+public sealed class SmsTemplateField
+{
+    public TemplateFieldKey Key { get; set; }
+    public string Value { get; set; } = string.Empty;
 }
 
 public sealed class TransactionPhrase

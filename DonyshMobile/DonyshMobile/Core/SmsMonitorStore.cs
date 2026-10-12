@@ -271,6 +271,11 @@ public sealed class SmsMonitorStore
         }
 
         state.Templates ??= [];
+        foreach (var template in state.Templates)
+        {
+            template.Phrases ??= [];
+            template.Fields ??= [];
+        }
 
         return state;
     }

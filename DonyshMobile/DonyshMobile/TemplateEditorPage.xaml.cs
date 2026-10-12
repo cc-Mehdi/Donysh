@@ -1,3 +1,6 @@
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using DonyshMobile.Core;
 
 namespace DonyshMobile;
@@ -7,157 +10,179 @@ public partial class TemplateEditorPage : ContentPage
     private readonly SmsMonitorStore _store;
     private readonly Guid _senderId;
     private readonly Guid _templateId;
-    private readonly bool _isExisting;
-    private IReadOnlyList<CapturedSms> _samples = [];
-    private IReadOnlyList<SmsFieldCandidate> _amounts = [];
+    private bool _initializing = true;
+    private IReadOnlyList<CapturedSms> _savedMessages = [];
+
+    public ObservableCollection<TemplateFieldRow> Fields { get; } = [];
 
     public TemplateEditorPage(SmsMonitorStore store, Guid senderId, string senderAddress, SmsTemplate? template = null)
     {
         _store = store;
         _senderId = senderId;
         _templateId = template?.Id ?? Guid.NewGuid();
-        _isExisting = template is not null;
         InitializeComponent();
+        BindingContext = this;
         SenderLabel.Text = senderAddress;
         Title = template is null ? "قالب جدید" : "ویرایش قالب";
-        NameEntry.Text = template?.Name ?? string.Empty;
-        PatternEditor.Text = template?.Pattern ?? string.Empty;
-        UnitPicker.SelectedIndex = template?.Unit == MoneyUnit.Toman ? 1 : 0;
-        KindPicker.SelectedIndex = template?.DefaultKind == TransactionKind.Deposit ? 1 : 0;
-        MappingsEditor.Text = template is null ? string.Empty : string.Join("\n", template.Phrases.Select(p =>
-            $"{p.Text}={(p.Kind == TransactionKind.Withdrawal ? "برداشت" : "واریز")}"));
-        TypePhraseEntry.Text = template?.Phrases.FirstOrDefault()?.Text ?? string.Empty;
-        if (template is not null)
+        foreach (var preset in SmsTemplatePresets.All) PresetPicker.Items.Add(preset.BankName);
+
+        if (template is null)
         {
-            ResultCard.IsVisible = true;
-            ResultLabel.Text = "قالب ذخیره‌شده آماده است. برای بازسازی ساده، یک پیام نمونه انتخاب کنید؛ یا تنظیمات پیشرفته را باز کنید.";
+            LoadFields(DefaultFields());
+            SourcePicker.SelectedIndex = 0;
         }
+        else
+        {
+            NameEntry.Text = template.Name;
+            MessageEditor.Text = string.IsNullOrWhiteSpace(template.SampleMessage) ? template.Pattern : template.SampleMessage;
+            LoadFields(template.Fields.Count > 0 ? template.Fields : DefaultFields());
+            SourcePicker.SelectedIndex = 0;
+            if (template.Fields.Count == 0)
+            {
+                PreviewCard.IsVisible = true;
+                PreviewResultLabel.Text = "این قالب با نسخه قبلی ساخته شده است. مقادیر ردیف‌ها را یک بار تکمیل و دوباره ذخیره کنید.";
+            }
+        }
+        _initializing = false;
     }
 
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        _samples = await _store.GetMessagesAsync(_senderId);
-        SamplePicker.Items.Clear();
-        foreach (var message in _samples)
+        _savedMessages = await _store.GetMessagesAsync(_senderId);
+        SavedMessagePicker.Items.Clear();
+        foreach (var message in _savedMessages)
         {
             var preview = message.Body.Replace('\r', ' ').Replace('\n', ' ').Trim();
-            SamplePicker.Items.Add($"{message.ReceivedAtUtc.ToLocalTime():yyyy/MM/dd HH:mm} · {preview[..Math.Min(45, preview.Length)]}");
-        }
-        if (!_isExisting && _samples.Count > 0 && SamplePicker.SelectedIndex < 0) SamplePicker.SelectedIndex = 0;
-    }
-
-    private void OnSampleSelected(object? sender, EventArgs e)
-    {
-        var index = SamplePicker.SelectedIndex;
-        if (index < 0 || index >= _samples.Count) return;
-        SampleEditor.Text = _samples[index].Body;
-        var analysis = SmsTemplateDraftBuilder.Analyze(SampleEditor.Text);
-        _amounts = analysis.Amounts;
-        AmountPicker.Items.Clear();
-        foreach (var amount in _amounts) AmountPicker.Items.Add(amount.Display);
-        AmountPicker.SelectedIndex = _amounts.Count > 0 ? 0 : -1;
-        TypePhraseEntry.Text = analysis.SuggestedTypePhrase ?? string.Empty;
-        KindPicker.SelectedIndex = analysis.SuggestedKind == TransactionKind.Deposit ? 1 : 0;
-        UnitPicker.SelectedIndex = 0;
-        DetectedFieldsLabel.Text = $"تاریخ: {analysis.Date?.Value ?? "پیدا نشد"}   ·   ساعت: {analysis.Time?.Value ?? "پیدا نشد"}";
-        FieldsSection.IsVisible = true;
-        ResultCard.IsVisible = false;
-        if (_amounts.Count == 0)
-        {
-            ResultCard.IsVisible = true;
-            ResultLabel.Text = "مبلغی در این پیام پیدا نشد. می‌توانید از تنظیمات پیشرفته قالب را دستی وارد کنید.";
+            SavedMessagePicker.Items.Add($"{message.ReceivedAtUtc.ToLocalTime():yyyy/MM/dd HH:mm} · {preview[..Math.Min(40, preview.Length)]}");
         }
     }
 
-    private void OnKindChanged(object? sender, EventArgs e)
+    private void OnSourceChanged(object? sender, EventArgs e)
     {
-        if (string.IsNullOrWhiteSpace(NameEntry.Text))
-            NameEntry.Text = KindPicker.SelectedIndex == 1 ? "واریز خودکار" : "برداشت خودکار";
+        PresetSection.IsVisible = SourcePicker.SelectedIndex == 1;
+        if (!_initializing && SourcePicker.SelectedIndex == 1 && PresetPicker.SelectedIndex < 0)
+            PresetPicker.SelectedIndex = 0;
     }
 
-    private void OnGenerateClicked(object? sender, EventArgs e) => GenerateAndTest();
-
-    private bool GenerateAndTest()
+    private void OnPresetSelected(object? sender, EventArgs e)
     {
-        var amountIndex = AmountPicker.SelectedIndex;
-        if (string.IsNullOrWhiteSpace(SampleEditor.Text) || amountIndex < 0 || amountIndex >= _amounts.Count)
+        if (_initializing || PresetPicker.SelectedIndex < 0 || PresetPicker.SelectedIndex >= SmsTemplatePresets.All.Count) return;
+        var preset = SmsTemplatePresets.All[PresetPicker.SelectedIndex];
+        PresetDescriptionLabel.Text = preset.Description;
+        MessageEditor.Text = preset.SampleMessage;
+        NameEntry.Text = preset.BankName;
+        LoadFields(preset.Fields);
+        ShowPreview();
+    }
+
+    private void OnSavedMessageSelected(object? sender, EventArgs e)
+    {
+        var index = SavedMessagePicker.SelectedIndex;
+        if (index >= 0 && index < _savedMessages.Count)
+            MessageEditor.Text = _savedMessages[index].Body;
+    }
+
+    private async void OnAddFieldClicked(object? sender, EventArgs e)
+    {
+        var used = Fields.Select(x => x.KeyLabel).ToHashSet(StringComparer.Ordinal);
+        var next = TemplateFieldRow.AvailableKeys.FirstOrDefault(x => !used.Contains(x));
+        if (next is null)
         {
-            ResultCard.IsVisible = true;
-            ResultLabel.Text = "یک پیام و مبلغ تراکنش را انتخاب کنید.";
+            await DisplayAlert("همه کلیدها اضافه شده‌اند", "برای هر کلید فقط یک ردیف لازم است.", "باشه");
+            return;
+        }
+        Fields.Add(new TemplateFieldRow(next, string.Empty));
+    }
+
+    private void OnRemoveFieldClicked(object? sender, EventArgs e)
+    {
+        if (sender is Button { CommandParameter: Guid id })
+        {
+            var row = Fields.FirstOrDefault(x => x.Id == id);
+            if (row is not null) Fields.Remove(row);
+        }
+    }
+
+    private void OnReviewClicked(object? sender, EventArgs e) => ShowPreview();
+
+    private SmsTemplate? BuildTemplate(out string? error)
+    {
+        var fields = new List<SmsTemplateField>();
+        foreach (var row in Fields)
+        {
+            var key = SmsKeyValueTemplateBuilder.FromLabel(row.KeyLabel);
+            if (key is null) { error = "کلید یکی از ردیف‌ها را انتخاب کنید."; return null; }
+            fields.Add(new SmsTemplateField { Key = key.Value, Value = row.Value.Trim() });
+        }
+        var result = SmsKeyValueTemplateBuilder.Build(
+            _templateId, _senderId, NameEntry.Text ?? string.Empty, MessageEditor.Text ?? string.Empty, fields);
+        error = result.Error;
+        return result.Template;
+    }
+
+    private bool ShowPreview()
+    {
+        PreviewCard.IsVisible = true;
+        var template = BuildTemplate(out var error);
+        if (template is null)
+        {
+            PreviewResultLabel.Text = error;
+            PatternPreviewLabel.Text = string.Empty;
             return false;
         }
-        if (string.IsNullOrWhiteSpace(NameEntry.Text))
-            NameEntry.Text = KindPicker.SelectedIndex == 1 ? "واریز خودکار" : "برداشت خودکار";
-
-        var template = SmsTemplateDraftBuilder.Build(
-            _templateId, _senderId, NameEntry.Text, SampleEditor.Text, _amounts[amountIndex],
-            UnitPicker.SelectedIndex == 1 ? MoneyUnit.Toman : MoneyUnit.Rial,
-            KindPicker.SelectedIndex == 1 ? TransactionKind.Deposit : TransactionKind.Withdrawal,
-            TypePhraseEntry.Text);
-        PatternEditor.Text = template.Pattern;
-        MappingsEditor.Text = string.Join("\n", template.Phrases.Select(p =>
-            $"{p.Text}={(p.Kind == TransactionKind.Withdrawal ? "برداشت" : "واریز")}"));
-        ShowTestResult(template);
-        return SmsTemplateParser.TryParse(template, SampleEditor.Text) is not null;
-    }
-
-    private void ShowTestResult(SmsTemplate template)
-    {
-        ResultCard.IsVisible = true;
-        var parsed = SmsTemplateParser.TryParse(template, SampleEditor.Text ?? string.Empty);
-        ResultLabel.Text = parsed is null
-            ? "قالب هنوز با پیام مطابقت ندارد. عبارت تشخیص نوع یا مبلغ انتخاب‌شده را بررسی کنید."
-            : $"✓ آماده ذخیره\nنوع: {(parsed.Kind == TransactionKind.Withdrawal ? "برداشت" : "واریز")}\nمبلغ: {parsed.AmountRial:N0} ریال\nتاریخ: {parsed.DateText ?? "در پیام نیست"}\nساعت: {parsed.TimeText ?? "در پیام نیست"}";
-    }
-
-    private void OnAdvancedClicked(object? sender, EventArgs e)
-    {
-        AdvancedSection.IsVisible = !AdvancedSection.IsVisible;
-        AdvancedButton.Text = AdvancedSection.IsVisible ? "بستن تنظیمات پیشرفته" : "تنظیمات پیشرفته";
-    }
-
-    private SmsTemplate? ReadAdvancedTemplate(out string? error)
-    {
-        var phrases = new List<TransactionPhrase>();
-        foreach (var line in (MappingsEditor.Text ?? string.Empty).Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        var parsed = SmsTemplateParser.TryParse(template, MessageEditor.Text ?? string.Empty);
+        if (parsed is null)
         {
-            var divider = line.LastIndexOf('=');
-            if (divider < 1 || divider == line.Length - 1 || line[(divider + 1)..].Trim() is not ("برداشت" or "واریز"))
-            {
-                error = "نگاشت باید به شکل «عبارت=برداشت» یا «عبارت=واریز» باشد.";
-                return null;
-            }
-            var kindText = line[(divider + 1)..].Trim();
-            phrases.Add(new TransactionPhrase { Text = line[..divider].Trim(), Kind = kindText == "برداشت" ? TransactionKind.Withdrawal : TransactionKind.Deposit });
+            PreviewResultLabel.Text = "قالب ساخته شد اما با پیام نمونه تطبیق پیدا نکرد.";
+            PatternPreviewLabel.Text = template.Pattern;
+            return false;
         }
-        var template = new SmsTemplate
-        {
-            Id = _templateId, SenderId = _senderId,
-            Name = NameEntry.Text?.Trim() ?? string.Empty,
-            Pattern = PatternEditor.Text?.Trim() ?? string.Empty,
-            Unit = UnitPicker.SelectedIndex == 1 ? MoneyUnit.Toman : MoneyUnit.Rial,
-            DefaultKind = KindPicker.SelectedIndex == 1 ? TransactionKind.Deposit : TransactionKind.Withdrawal,
-            Phrases = phrases
-        };
-        error = SmsTemplateParser.Validate(template);
-        return error is null ? template : null;
+        PreviewResultLabel.Text = $"✓ نوع: {(parsed.Kind == TransactionKind.Withdrawal ? "برداشت" : "واریز")}   ·   مبلغ: {parsed.AmountRial:N0} ریال\nتاریخ: {parsed.DateText ?? "ثبت نشده"}   ·   ساعت: {parsed.TimeText ?? "ثبت نشده"}";
+        PatternPreviewLabel.Text = "ساختار ذخیره‌شده:\n" + template.Pattern;
+        return true;
     }
 
     private async void OnSaveClicked(object? sender, EventArgs e)
     {
-        if (!AdvancedSection.IsVisible && !string.IsNullOrWhiteSpace(SampleEditor.Text) && !GenerateAndTest()) return;
-        if (string.IsNullOrWhiteSpace(PatternEditor.Text) && !GenerateAndTest()) return;
-        var template = ReadAdvancedTemplate(out var error);
-        if (template is null) { await DisplayAlert("قالب کامل نیست", error, "باشه"); return; }
-        ShowTestResult(template);
-        if (!string.IsNullOrWhiteSpace(SampleEditor.Text) && SmsTemplateParser.TryParse(template, SampleEditor.Text) is null)
+        var template = BuildTemplate(out var error);
+        if (template is null || !ShowPreview())
         {
-            await DisplayAlert("قالب با پیام هماهنگ نیست", "ابتدا مبلغ یا عبارت تشخیص نوع را اصلاح کنید.", "باشه");
+            await DisplayAlert("قالب کامل نیست", error ?? "مقادیر ردیف‌ها را بررسی کنید.", "باشه");
             return;
         }
         error = await _store.SaveTemplateAsync(template);
         if (error is not null) { await DisplayAlert("ذخیره نشد", error, "باشه"); return; }
         await Navigation.PopAsync();
+    }
+
+    private void LoadFields(IEnumerable<SmsTemplateField> fields)
+    {
+        Fields.Clear();
+        foreach (var field in fields)
+            Fields.Add(new TemplateFieldRow(SmsKeyValueTemplateBuilder.GetLabel(field.Key), field.Value));
+    }
+
+    private static IEnumerable<SmsTemplateField> DefaultFields() => Enum.GetValues<TemplateFieldKey>()
+        .Select(key => new SmsTemplateField { Key = key });
+}
+
+public sealed class TemplateFieldRow : INotifyPropertyChanged
+{
+    private string _keyLabel;
+    private string _value;
+    public static IList<string> AvailableKeys { get; } =
+        Enum.GetValues<TemplateFieldKey>().Select(SmsKeyValueTemplateBuilder.GetLabel).ToList();
+    public Guid Id { get; } = Guid.NewGuid();
+    public string KeyLabel { get => _keyLabel; set => SetField(ref _keyLabel, value); }
+    public string Value { get => _value; set => SetField(ref _value, value); }
+
+    public TemplateFieldRow(string keyLabel, string value) => (_keyLabel, _value) = (keyLabel, value);
+    public event PropertyChangedEventHandler? PropertyChanged;
+    private void SetField(ref string field, string value, [CallerMemberName] string? name = null)
+    {
+        if (field == value) return;
+        field = value;
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
 }
