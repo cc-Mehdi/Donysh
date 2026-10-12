@@ -5,6 +5,7 @@ using Donysh.Sms;
 using HesabYar.Web.Data;
 using HesabYar.Web.Domain;
 using HesabYar.Web.Sms;
+using HesabYar.Web.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
@@ -13,6 +14,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
 
 internal static class PostgresChecks
@@ -35,8 +37,34 @@ internal static class PostgresChecks
                 DROP TABLE "MobileDevices", "SmsReceipts";
                 ALTER TABLE "Expenses" DROP COLUMN "SmsText", DROP COLUMN "SmsLocalTime", DROP COLUMN "NeedsReview";
                 """);
-            await MobileSchema.UpgradeAsync(db, default);
-            await MobileSchema.UpgradeAsync(db, default);
+            var initializer = new DatabaseInitializer(db, NullLogger<DatabaseInitializer>.Instance);
+            await initializer.InitializeAsync();
+            await initializer.InitializeAsync();
+
+            var owner = new ApplicationUser { Id = Guid.NewGuid().ToString(), UserName = "owner", NormalizedUserName = "OWNER" };
+            var successor = new ApplicationUser { Id = Guid.NewGuid().ToString(), UserName = "successor", NormalizedUserName = "SUCCESSOR" };
+            var secondMember = new ApplicationUser { Id = Guid.NewGuid().ToString(), UserName = "second", NormalizedUserName = "SECOND" };
+            var outsider = new ApplicationUser { Id = Guid.NewGuid().ToString(), UserName = "outsider", NormalizedUserName = "OUTSIDER" };
+            var sharedWorkspace = new Workspace { Name = "Shared transfer test", OwnerUserId = owner.Id, Type = WorkspaceType.Shared };
+            db.AddRange(owner, successor, secondMember, outsider, sharedWorkspace,
+                new WorkspaceMember { UserId = owner.Id, WorkspaceId = sharedWorkspace.Id, Role = WorkspaceRole.Owner },
+                new WorkspaceMember { UserId = successor.Id, WorkspaceId = sharedWorkspace.Id, Role = WorkspaceRole.Member },
+                new WorkspaceMember { UserId = secondMember.Id, WorkspaceId = sharedWorkspace.Id, Role = WorkspaceRole.Member });
+            await db.SaveChangesAsync();
+            db.ChangeTracker.Clear();
+
+            var ownership = new WorkspaceOwnershipService(db);
+            var transferred = await ownership.TransferAsync(sharedWorkspace.Id, owner.Id, successor.Id);
+            Check(transferred == OwnershipTransferResult.Success, "shared workspace ownership transfer succeeds");
+            Check(await db.Workspaces.AnyAsync(x => x.Id == sharedWorkspace.Id && x.OwnerUserId == successor.Id)
+                  && await db.WorkspaceMembers.AnyAsync(x => x.WorkspaceId == sharedWorkspace.Id && x.UserId == successor.Id && x.Role == WorkspaceRole.Owner)
+                  && await db.WorkspaceMembers.AnyAsync(x => x.WorkspaceId == sharedWorkspace.Id && x.UserId == owner.Id && x.Role == WorkspaceRole.Member),
+                "workspace owner and both membership roles change atomically");
+            Check(await ownership.TransferAsync(sharedWorkspace.Id, owner.Id, secondMember.Id) == OwnershipTransferResult.NotCurrentOwner,
+                "former owner cannot transfer ownership again");
+            Check(await ownership.TransferAsync(sharedWorkspace.Id, successor.Id, outsider.Id) == OwnershipTransferResult.TargetNotMember,
+                "ownership cannot be transferred to a non-member");
+
             var user = new ApplicationUser { Id = Guid.NewGuid().ToString(), UserName = "sms-test", NormalizedUserName = "SMS-TEST" };
             var workspace = new Workspace { Name = "Test destination", OwnerUserId = user.Id, Type = WorkspaceType.Personal };
             var other = new Workspace { Name = "Other workspace", OwnerUserId = user.Id, Type = WorkspaceType.Personal };

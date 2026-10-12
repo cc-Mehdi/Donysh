@@ -107,6 +107,7 @@ builder.Services.AddScoped<AiWorkspaceService>();
 builder.Services.AddScoped<DatabaseInitializer>();
 builder.Services.AddScoped<BudgetRolloverService>();
 builder.Services.AddScoped<BudgetBalanceService>();
+builder.Services.AddScoped<WorkspaceOwnershipService>();
 
 builder.Services
     .AddRazorPages(options =>

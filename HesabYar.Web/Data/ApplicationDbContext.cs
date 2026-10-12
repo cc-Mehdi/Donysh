@@ -46,6 +46,10 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
         builder.Entity<WorkspaceMember>(entity =>
         {
             entity.HasKey(x => new { x.WorkspaceId, x.UserId });
+            entity.HasIndex(x => x.WorkspaceId)
+                .IsUnique()
+                .HasFilter("\"Role\" = 1")
+                .HasDatabaseName("IX_WorkspaceMembers_SingleOwner");
             entity.HasOne(x => x.Workspace)
                 .WithMany(x => x.Members)
                 .HasForeignKey(x => x.WorkspaceId)

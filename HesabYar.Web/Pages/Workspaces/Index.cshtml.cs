@@ -15,7 +15,8 @@ public sealed class IndexModel(
     ApplicationDbContext db,
     IWorkspaceContext workspaceContext,
     UserManager<ApplicationUser> userManager,
-    BudgetRolloverService budgetRolloverService) : PageModel
+    BudgetRolloverService budgetRolloverService,
+    WorkspaceOwnershipService workspaceOwnershipService) : PageModel
 {
     [BindProperty]
     public CreateWorkspaceInput CreateWorkspace { get; set; } = new();
@@ -287,6 +288,44 @@ public sealed class IndexModel(
         }
 
         return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostTransferOwnershipAsync(
+        Guid workspaceId,
+        string targetUserId,
+        CancellationToken cancellationToken)
+    {
+        var currentUserId = workspaceContext.UserId;
+        if (string.IsNullOrWhiteSpace(currentUserId))
+        {
+            return Challenge();
+        }
+
+        var result = await workspaceOwnershipService.TransferAsync(
+            workspaceId,
+            currentUserId,
+            targetUserId,
+            cancellationToken);
+
+        switch (result)
+        {
+            case OwnershipTransferResult.Success:
+                TempData["Success"] = "مالکیت فضای مشترک منتقل شد. شما همچنان به‌عنوان عضو به این فضا دسترسی دارید.";
+                return RedirectToPage();
+            case OwnershipTransferResult.WorkspaceNotFound:
+                return NotFound();
+            case OwnershipTransferResult.NotCurrentOwner:
+                return Forbid();
+            case OwnershipTransferResult.TargetNotMember:
+                TempData["Error"] = "مالکیت فقط به یکی از اعضای فعلی این فضای مشترک قابل انتقال است.";
+                return RedirectToPage();
+            case OwnershipTransferResult.InvalidTarget:
+                TempData["Error"] = "عضو انتخاب‌شده برای انتقال مالکیت معتبر نیست.";
+                return RedirectToPage();
+            default:
+                TempData["Error"] = "وضعیت اعضای فضای مشترک تغییر کرده است. صفحه را تازه کنید و دوباره تلاش کنید.";
+                return RedirectToPage();
+        }
     }
 
     private async Task LoadAsync(CancellationToken cancellationToken)

@@ -37,6 +37,26 @@ public sealed class DatabaseInitializer(ApplicationDbContext db, ILogger<Databas
         // deleting any saved data.
         await db.Database.ExecuteSqlRawAsync(
             """
+            UPDATE "WorkspaceMembers" AS member
+            SET "Role" = CASE
+                WHEN member."UserId" = workspace."OwnerUserId" THEN 1
+                ELSE 2
+            END
+            FROM "Workspaces" AS workspace
+            WHERE member."WorkspaceId" = workspace."Id"
+              AND member."Role" <> CASE
+                  WHEN member."UserId" = workspace."OwnerUserId" THEN 1
+                  ELSE 2
+              END;
+
+            CREATE UNIQUE INDEX IF NOT EXISTS "IX_WorkspaceMembers_SingleOwner"
+            ON "WorkspaceMembers" ("WorkspaceId")
+            WHERE "Role" = 1;
+            """,
+            cancellationToken);
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
             ALTER TABLE "SavingsGoals"
             ADD COLUMN IF NOT EXISTS "Description" character varying(500);
             """,
