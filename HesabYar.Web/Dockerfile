@@ -1,7 +1,7 @@
-FROM node:22-alpine AS assets
+FROM node:22-bookworm-slim AS assets
 WORKDIR /src
-COPY HesabYar.Web/package.json HesabYar.Web/package-lock.json ./
-RUN npm ci --no-audit --no-fund
+COPY HesabYar.Web/package.json HesabYar.Web/package-lock.json HesabYar.Web/.npmrc ./
+RUN npm ci --ignore-scripts --no-audit --no-fund
 COPY HesabYar.Web/Pages ./Pages
 COPY HesabYar.Web/Styles ./Styles
 RUN mkdir -p wwwroot/css && npm run build:css

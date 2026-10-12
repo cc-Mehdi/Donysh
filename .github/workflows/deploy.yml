@@ -41,11 +41,13 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 22.x
+          cache: npm
+          cache-dependency-path: HesabYar.Web/package-lock.json
 
       - name: Install frontend dependencies
         working-directory: HesabYar.Web
-        run: npm ci --no-audit --no-fund
+        run: timeout 180s npm ci --ignore-scripts --no-audit --no-fund
 
       - name: Audit frontend dependencies
         working-directory: HesabYar.Web
