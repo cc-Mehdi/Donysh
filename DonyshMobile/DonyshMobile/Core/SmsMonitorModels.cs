@@ -12,9 +12,14 @@ public sealed class CapturedSms
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid SenderId { get; set; }
+    public string SenderAddress { get; set; } = string.Empty;
     public string DeduplicationKey { get; set; } = string.Empty;
     public string Body { get; set; } = string.Empty;
     public DateTimeOffset ReceivedAtUtc { get; set; }
+    public SmsDeliveryStatus DeliveryStatus { get; set; } = SmsDeliveryStatus.Pending;
+    public int DeliveryAttempts { get; set; }
+    public DateTimeOffset? ConfirmedAtUtc { get; set; }
+    public string? LastDeliveryError { get; set; }
 }
 
 public sealed class SmsMonitorState
@@ -23,7 +28,33 @@ public sealed class SmsMonitorState
     public List<MonitoredSender> Senders { get; set; } = [];
     public List<CapturedSms> Messages { get; set; } = [];
     public List<SmsTemplate> Templates { get; set; } = [];
+    public DateTimeOffset NextSyncAtUtc { get; set; }
+    public int ConsecutiveSyncFailures { get; set; }
+    public string SyncStatus { get; set; } = "هنوز پیامی به API ارسال نشده است.";
 }
+
+public enum SmsDeliveryStatus
+{
+    Pending,
+    Sent,
+    Rejected
+}
+
+public sealed record PendingSms(
+    Guid Id,
+    string Key,
+    string Sender,
+    string Body,
+    long ReceivedAtUnixMs);
+
+public sealed record SmsDeliveryReceipt(string Key, string Status);
+
+public sealed record SmsSyncSummary(
+    int Pending,
+    int Sent,
+    int Rejected,
+    DateTimeOffset NextAttemptAtUtc,
+    string Status);
 
 public sealed record SenderSummary(
     Guid Id,

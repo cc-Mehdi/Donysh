@@ -38,6 +38,7 @@ public partial class MainPage : ContentPage
         }
         await RefreshAsync();
         await RefreshPermissionAsync();
+        SyncPlatform.Schedule();
     }
 
     protected override void OnDisappearing()
@@ -124,6 +125,9 @@ public partial class MainPage : ContentPage
             await Navigation.PushAsync(new MessagesPage(_store, item.Id, item.Address));
         }
     }
+
+    private async void OnConnectionClicked(object? sender, EventArgs e) =>
+        await Navigation.PushAsync(new ConnectionPage(_store));
 
     private void OnMessageStored(object? sender, EventArgs e) =>
         Dispatcher.Dispatch(async () => await RefreshAsync());

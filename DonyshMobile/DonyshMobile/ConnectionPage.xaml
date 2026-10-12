@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="DonyshMobile.ConnectionPage"
+             FlowDirection="RightToLeft"
+             Title="اتصال به Donysh">
+    <ScrollView>
+        <VerticalStackLayout Padding="20,18" Spacing="14">
+            <VerticalStackLayout Spacing="4">
+                <Label Text="ارسال امن به Donysh" Style="{StaticResource PageTitle}" />
+                <Label Text="پیام‌ها ابتدا روی گوشی می‌مانند و فقط پس از تأیید API، ارسال‌شده علامت می‌خورند."
+                       FontSize="13" Style="{StaticResource MutedText}" />
+            </VerticalStackLayout>
+
+            <Border Style="{StaticResource Card}" Padding="15" StrokeShape="RoundRectangle 18">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="اتصال گوشی" Style="{StaticResource SectionTitle}" />
+                    <Label Text="در سایت Donysh وارد «همراه دونیش» شوید، فضای مالی و دسته را انتخاب کنید و یک کد اتصال بسازید."
+                           FontSize="12" Style="{StaticResource MutedText}" />
+                    <Label Text="آدرس سایت" FontAttributes="Bold" />
+                    <Entry x:Name="ServerEntry" Placeholder="https://donysh.ir" Keyboard="Url"
+                           FlowDirection="LeftToRight" HorizontalTextAlignment="Start" />
+                    <Label Text="کد اتصال یک‌بارمصرف" FontAttributes="Bold" />
+                    <Entry x:Name="PairCodeEntry" Placeholder="کد ۳۲ نویسه‌ای" MaxLength="40"
+                           FlowDirection="LeftToRight" HorizontalTextAlignment="Start" />
+                    <Button Text="اتصال امن" Clicked="OnConnectClicked" Style="{StaticResource SuccessAction}" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Style="{StaticResource InfoCard}" Padding="15" StrokeShape="RoundRectangle 18">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="وضعیت همگام‌سازی" Style="{StaticResource SectionTitle}" />
+                    <Label x:Name="ConnectionStatusLabel" FontAttributes="Bold"
+                           TextColor="{AppThemeBinding Light=#312E81, Dark=#E0E7FF}" />
+                    <Label x:Name="QueueStatusLabel" FontSize="13"
+                           TextColor="{AppThemeBinding Light=#4F46E5, Dark=#A5B4FC}" />
+                    <Label x:Name="LastStatusLabel" FontSize="12" Style="{StaticResource MutedText}" />
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                        <Button Text="ارسال آزمایشی صف" Clicked="OnSyncClicked" Style="{StaticResource PrimaryAction}" />
+                        <Button Grid.Column="1" Text="قطع اتصال" Clicked="OnDisconnectClicked" Style="{StaticResource DangerAction}" />
+                    </Grid>
+                    <ActivityIndicator x:Name="BusyIndicator" IsVisible="False" IsRunning="False" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Style="{StaticResource Card}" Padding="15" StrokeShape="RoundRectangle 18">
+                <Label Text="در حالت عادی نیازی به ارسال دستی نیست. Android هنگام وجود اینترنت، هر بار حداکثر ۵ پیام را با فاصله حداقل یک دقیقه می‌فرستد. در خطاهای پی‌درپی فاصله تلاش‌ها تا ۳۰ دقیقه افزایش می‌یابد."
+                       FontSize="12" Style="{StaticResource MutedText}" />
+            </Border>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

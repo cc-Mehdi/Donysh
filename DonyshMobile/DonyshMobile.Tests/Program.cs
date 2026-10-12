@@ -1,4 +1,6 @@
 using DonyshMobile.Core;
+using System.Net;
+using System.Net.Http.Json;
 
 var testDirectory = Path.Combine(Path.GetTempPath(), $"donysh-mobile-tests-{Guid.NewGuid():N}");
 
@@ -22,6 +24,17 @@ try
     Assert(summary.MessageCount == 1, "Summary message count");
     var message = AssertSingle(await store.GetMessagesAsync(summary.Id), "Message list");
     Assert(message.Body == "پیام آزمایشی", "Message body");
+    Assert(message.DeliveryStatus == SmsDeliveryStatus.Pending, "New SMS starts pending");
+    var firstBatch = await store.TakePendingBatchAsync(DateTimeOffset.UtcNow);
+    Assert(firstBatch.Count == 1 && firstBatch[0].Sender == "+989121234567", "Take a bounded pending batch");
+    Assert(firstBatch[0].Key == new SmsEnvelope(firstBatch[0].Sender, firstBatch[0].Body,
+        firstBatch[0].ReceivedAtUnixMs).Key, "Use the same idempotency key as the API contract");
+    await store.ConfirmBatchAsync(firstBatch,
+        [new SmsDeliveryReceipt(firstBatch[0].Key, "created")], DateTimeOffset.UtcNow);
+    Assert(AssertSingle(await store.GetMessagesAsync(summary.Id), "Confirmed message").DeliveryStatus == SmsDeliveryStatus.Sent,
+        "Mark sent only after API receipt");
+    Assert((await store.TakePendingBatchAsync(DateTimeOffset.UtcNow.AddMinutes(2))).Count == 0,
+        "Do not resend confirmed SMS");
 
     var mellat = new SmsTemplate
     {
@@ -78,6 +91,29 @@ try
     Assert(await store.CaptureAsync("+989121234567", "پیام قدیمی", DateTimeOffset.UtcNow.AddDays(-8)), "Accept receiver timestamp");
     var retained = await store.GetMessagesAsync(summary.Id);
     Assert(retained.Count == 1 && retained[0].Body == "پیام آزمایشی", "Prune messages older than seven days");
+    var offlineBatch = await store.TakePendingBatchAsync(DateTimeOffset.UtcNow.AddMinutes(2));
+    Assert(offlineBatch.Count == 1 && offlineBatch[0].Body == "پیام قدیمی", "Keep unsent SMS while offline");
+    await store.RecordSyncFailureAsync(offlineBatch, DateTimeOffset.UtcNow.AddMinutes(2), "offline");
+    var syncSummary = await store.GetSyncSummaryAsync();
+    Assert(syncSummary.Pending == 1 && syncSummary.Sent == 1 && syncSummary.NextAttemptAtUtc > DateTimeOffset.UtcNow,
+        "Back off without losing queued SMS");
+    Assert(MobileApiClient.NormalizeServer("https://donysh.ir/path") == "https://donysh.ir", "Normalize API origin");
+    Assert(MobileApiClient.NormalizeServer("http://donysh.ir") is null, "Require HTTPS API");
+
+    var apiDirectory = Path.Combine(testDirectory, "api-client");
+    var apiStore = new SmsMonitorStore(apiDirectory);
+    Assert(await apiStore.AddSenderAsync("Bank") == AddSenderResult.Added, "Add API test sender");
+    Assert(await apiStore.CaptureAsync("Bank", "API test", DateTimeOffset.UtcNow), "Queue API test SMS");
+    var apiPending = AssertSingle(await apiStore.TakePendingBatchAsync(DateTimeOffset.UtcNow), "API pending batch");
+    var api = new MobileApiClient(() => new HttpClient(new StubHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+    {
+        Content = JsonContent.Create(new SmsBatchResult([new SmsResult(apiPending.Key, "created")]))
+    })));
+    Assert(await api.SendNextBatchAsync(apiStore,
+        new MobileConnection("https://donysh.ir", new string('A', 64), "test"), DateTimeOffset.UtcNow) == SyncRunResult.Sent,
+        "Accept a complete API acknowledgement");
+    Assert(AssertSingle(await apiStore.GetMessagesAsync((await apiStore.GetSenderSummariesAsync()).Single().Id),
+        "API-confirmed SMS").DeliveryStatus == SmsDeliveryStatus.Sent, "API client persists confirmed status");
 
     Assert(await store.RemoveSenderAsync(summary.Id), "Remove sender");
     Assert((await store.GetSenderSummariesAsync()).Count == 0, "Remove sender messages");
@@ -106,4 +142,10 @@ static void Assert(bool condition, string name)
     {
         throw new InvalidOperationException($"Test failed: {name}");
     }
+}
+
+sealed class StubHandler(Func<HttpRequestMessage, HttpResponseMessage> handler) : HttpMessageHandler
+{
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+        Task.FromResult(handler(request));
 }

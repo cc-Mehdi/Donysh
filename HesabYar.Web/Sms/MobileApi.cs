@@ -126,11 +126,11 @@ public static class MobileApi
                 if (!seen.Add(key) || await db.SmsReceipts.AnyAsync(x => x.UserId == device.UserId && x.Key == key, ct)) {
                     results.Add(new(key, "duplicate")); continue;
                 }
-                var parsed = BankSmsParser.Parse(sms.Body);
+                var parsed = BankSmsParser.Parse(sms.Body, DateTimeOffset.FromUnixTimeMilliseconds(sms.SentAtUnixMs));
                 if (parsed is null) { results.Add(new(key, "rejected")); continue; }
                 db.Expenses.Add(new Expense {
                     WorkspaceId = device.WorkspaceId, CategoryId = device.CategoryId, CreatedByUserId = device.UserId,
-                    Reason = $"برداشت پیامکی {(parsed.Bank == "blu" ? "بلو" : "ملت")} {parsed.Account}",
+                    Reason = $"برداشت پیامکی {parsed.Bank switch { "blu" => "بلو", "resalat" => "رسالت", _ => "ملت" }} {parsed.Account}",
                     Amount = parsed.AmountToman, ExpenseDate = DateOnly.FromDateTime(parsed.LocalDateTime),
                     SmsText = sms.Body, SmsLocalTime = parsed.LocalDateTime.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture), NeedsReview = true
                 });

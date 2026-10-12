@@ -30,6 +30,8 @@
                         <VerticalStackLayout Spacing="9">
                             <Label Text="{Binding ReceivedAt}" FontSize="11" TextColor="{AppThemeBinding Light=#4F46E5, Dark=#A5B4FC}" />
                             <Label Text="{Binding ParsedSummary}" FontSize="12" TextColor="{AppThemeBinding Light=#047857, Dark=#6EE7B7}" />
+                            <Label Text="{Binding DeliveryStatus}" FontSize="12" FontAttributes="Bold"
+                                   TextColor="{AppThemeBinding Light=#4338CA, Dark=#C7D2FE}" />
                             <Label Text="{Binding Body}" FontSize="14" LineHeight="1.5"
                                    TextColor="{AppThemeBinding Light=#1E293B, Dark=#E2E8F0}" FlowDirection="RightToLeft" />
                         </VerticalStackLayout>

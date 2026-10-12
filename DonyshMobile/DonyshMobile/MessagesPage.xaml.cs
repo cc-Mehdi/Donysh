@@ -29,6 +29,7 @@ public partial class MessagesPage : ContentPage
         if (!_subscribed)
         {
             SmsReceivedNotifier.MessageStored += OnMessageStored;
+            SmsReceivedNotifier.SyncChanged += OnMessageStored;
             _subscribed = true;
         }
         await RefreshAsync();
@@ -39,6 +40,7 @@ public partial class MessagesPage : ContentPage
         if (_subscribed)
         {
             SmsReceivedNotifier.MessageStored -= OnMessageStored;
+            SmsReceivedNotifier.SyncChanged -= OnMessageStored;
             _subscribed = false;
         }
         base.OnDisappearing();
@@ -57,7 +59,14 @@ public partial class MessagesPage : ContentPage
         {
             var match = matchers.Select(parse => parse!(message.Body)).FirstOrDefault(p => p is not null);
             var summary = match is null ? "" : $"{match.TemplateName} · {(match.Kind == TransactionKind.Withdrawal ? "برداشت" : "واریز")} · {match.AmountRial:N0} ریال";
-            Messages.Add(new MessageItem(message.Body, FormatLocal(message.ReceivedAtUtc), summary));
+            var delivery = message.DeliveryStatus switch
+            {
+                SmsDeliveryStatus.Sent => "✓ ارسال به API تأیید شد",
+                SmsDeliveryStatus.Rejected => "! API دریافت کرد، اما پیام را رد کرد",
+                _ when message.DeliveryAttempts > 0 => $"در انتظار ارسال مجدد · {message.DeliveryAttempts} تلاش",
+                _ => "در انتظار ارسال"
+            };
+            Messages.Add(new MessageItem(message.Body, FormatLocal(message.ReceivedAtUtc), summary, delivery));
         }
     }
 
@@ -73,4 +82,4 @@ public partial class MessagesPage : ContentPage
 
 }
 
-public sealed record MessageItem(string Body, string ReceivedAt, string ParsedSummary);
+public sealed record MessageItem(string Body, string ReceivedAt, string ParsedSummary, string DeliveryStatus);

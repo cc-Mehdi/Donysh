@@ -14,5 +14,7 @@
     <Compile Include="..\DonyshMobile\Core\SmsTemplateParser.cs" Link="Core\SmsTemplateParser.cs" />
     <Compile Include="..\DonyshMobile\Core\SmsKeyValueTemplateBuilder.cs" Link="Core\SmsKeyValueTemplateBuilder.cs" />
     <Compile Include="..\DonyshMobile\Core\SmsTemplatePresets.cs" Link="Core\SmsTemplatePresets.cs" />
+    <Compile Include="..\DonyshMobile\Core\MobileApiContracts.cs" Link="Core\MobileApiContracts.cs" />
+    <Compile Include="..\DonyshMobile\Core\MobileApiClient.cs" Link="Core\MobileApiClient.cs" />
   </ItemGroup>
 </Project>

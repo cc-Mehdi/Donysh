@@ -63,6 +63,7 @@ public sealed class SmsBroadcastReceiver : BroadcastReceiver
                 if (storedAny)
                 {
                     SmsReceivedNotifier.Notify();
+                    SmsSyncJob.Schedule(context);
                 }
             }
             catch (Exception exception)

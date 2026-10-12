@@ -17,6 +17,8 @@
         </VerticalStackLayout>
 
         <VerticalStackLayout Grid.Row="1" Spacing="12">
+            <Button Text="اتصال و همگام‌سازی با Donysh" Clicked="OnConnectionClicked"
+                    Style="{StaticResource PrimaryAction}" />
             <Border Style="{StaticResource InfoCard}" Padding="15" StrokeShape="RoundRectangle 18">
                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
                     <VerticalStackLayout Spacing="3">

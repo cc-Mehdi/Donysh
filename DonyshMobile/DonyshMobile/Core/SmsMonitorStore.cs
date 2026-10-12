@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 
 namespace DonyshMobile.Core;
@@ -7,9 +5,9 @@ namespace DonyshMobile.Core;
 public sealed class SmsMonitorStore
 {
     private const int MaxSenders = 50;
-    private const int MaxMessages = 2000;
+    private const int MaxMessages = 5000;
     private const int MaxAddressLength = 160;
-    private const int MaxBodyLength = 10_000;
+    private const int MaxBodyLength = 2048;
     private const int MaxTemplatesPerSender = 20;
     private static readonly TimeSpan Retention = TimeSpan.FromDays(7);
     private static readonly SemaphoreSlim Gate = new(1, 1);
@@ -137,7 +135,7 @@ public sealed class SmsMonitorStore
             }
 
             return state.Messages
-                .Where(x => x.SenderId == senderId)
+                .Where(x => x.SenderId == senderId && x.ReceivedAtUtc >= DateTimeOffset.UtcNow.Subtract(Retention))
                 .OrderByDescending(x => x.ReceivedAtUtc)
                 .ToList();
         }
@@ -145,6 +143,115 @@ public sealed class SmsMonitorStore
         {
             Gate.Release();
         }
+    }
+
+    public async Task<SmsSyncSummary> GetSyncSummaryAsync(CancellationToken cancellationToken = default)
+    {
+        await Gate.WaitAsync(cancellationToken);
+        try
+        {
+            var state = await LoadUnsafeAsync(cancellationToken);
+            return new SmsSyncSummary(
+                state.Messages.Count(x => x.DeliveryStatus == SmsDeliveryStatus.Pending),
+                state.Messages.Count(x => x.DeliveryStatus == SmsDeliveryStatus.Sent),
+                state.Messages.Count(x => x.DeliveryStatus == SmsDeliveryStatus.Rejected),
+                state.NextSyncAtUtc,
+                state.SyncStatus);
+        }
+        finally { Gate.Release(); }
+    }
+
+    public async Task<IReadOnlyList<PendingSms>> TakePendingBatchAsync(
+        DateTimeOffset nowUtc,
+        int batchSize = 5,
+        CancellationToken cancellationToken = default)
+    {
+        if (batchSize is < 1 or > 5) throw new ArgumentOutOfRangeException(nameof(batchSize));
+        await Gate.WaitAsync(cancellationToken);
+        try
+        {
+            var state = await LoadUnsafeAsync(cancellationToken);
+            if (state.NextSyncAtUtc > nowUtc) return [];
+            var senders = state.Senders.ToDictionary(x => x.Id);
+            return state.Messages
+                .Where(x => x.DeliveryStatus == SmsDeliveryStatus.Pending && senders.ContainsKey(x.SenderId))
+                .OrderBy(x => x.ReceivedAtUtc)
+                .Take(batchSize)
+                .Select(x => new PendingSms(
+                    x.Id,
+                    x.DeduplicationKey,
+                    string.IsNullOrWhiteSpace(x.SenderAddress) ? senders[x.SenderId].Address : x.SenderAddress,
+                    x.Body,
+                    x.ReceivedAtUtc.ToUnixTimeMilliseconds()))
+                .ToList();
+        }
+        finally { Gate.Release(); }
+    }
+
+    public async Task ConfirmBatchAsync(
+        IReadOnlyCollection<PendingSms> batch,
+        IReadOnlyCollection<SmsDeliveryReceipt> receipts,
+        DateTimeOffset nowUtc,
+        CancellationToken cancellationToken = default)
+    {
+        if (batch.Count == 0 || receipts.Count != batch.Count
+            || receipts.Select(x => x.Key).Distinct(StringComparer.Ordinal).Count() != batch.Count
+            || receipts.Any(x => x.Status is not ("created" or "duplicate" or "rejected"))
+            || receipts.Any(x => batch.All(item => item.Key != x.Key)))
+            throw new InvalidDataException("پاسخ API کامل یا معتبر نیست.");
+
+        await Gate.WaitAsync(cancellationToken);
+        try
+        {
+            var state = await LoadUnsafeAsync(cancellationToken);
+            foreach (var receipt in receipts)
+            {
+                var message = state.Messages.SingleOrDefault(x => x.DeduplicationKey == receipt.Key);
+                if (message is null || message.DeliveryStatus != SmsDeliveryStatus.Pending) continue;
+                message.DeliveryStatus = receipt.Status == "rejected"
+                    ? SmsDeliveryStatus.Rejected
+                    : SmsDeliveryStatus.Sent;
+                message.ConfirmedAtUtc = nowUtc;
+                message.LastDeliveryError = receipt.Status == "rejected"
+                    ? "API پیام را دریافت کرد، اما آن را قابل ثبت تشخیص نداد."
+                    : null;
+            }
+            state.ConsecutiveSyncFailures = 0;
+            state.NextSyncAtUtc = nowUtc.AddMinutes(1);
+            state.SyncStatus = receipts.Any(x => x.Status == "rejected")
+                ? "پاسخ API دریافت شد؛ بعضی پیام‌ها برای بررسی روی گوشی نگه داشته شدند."
+                : "آخرین بسته با تأیید API ارسال شد.";
+            await SaveUnsafeAsync(state, cancellationToken);
+        }
+        finally { Gate.Release(); }
+    }
+
+    public async Task RecordSyncFailureAsync(
+        IReadOnlyCollection<PendingSms> batch,
+        DateTimeOffset nowUtc,
+        string error,
+        TimeSpan? retryAfter = null,
+        CancellationToken cancellationToken = default)
+    {
+        await Gate.WaitAsync(cancellationToken);
+        try
+        {
+            var state = await LoadUnsafeAsync(cancellationToken);
+            state.ConsecutiveSyncFailures = Math.Min(10, state.ConsecutiveSyncFailures + 1);
+            var exponentialSeconds = Math.Min(1800, 60 * Math.Pow(2, state.ConsecutiveSyncFailures - 1));
+            var requestedSeconds = Math.Clamp(retryAfter?.TotalSeconds ?? 0, 0, 86400);
+            state.NextSyncAtUtc = nowUtc.AddSeconds(Math.Max(exponentialSeconds, requestedSeconds));
+            state.SyncStatus = error;
+            var keys = batch.Select(x => x.Key).ToHashSet(StringComparer.Ordinal);
+            foreach (var message in state.Messages.Where(x => keys.Contains(x.DeduplicationKey)
+                                                               && x.DeliveryStatus == SmsDeliveryStatus.Pending))
+            {
+                message.DeliveryAttempts++;
+                message.LastDeliveryError = error;
+            }
+            await SaveUnsafeAsync(state, cancellationToken);
+        }
+        finally { Gate.Release(); }
     }
 
     public async Task<IReadOnlyList<SmsTemplate>> GetTemplatesAsync(Guid senderId, CancellationToken cancellationToken = default)
@@ -218,27 +325,36 @@ public sealed class SmsMonitorStore
                 return false;
             }
 
-            var key = CreateKey(normalized, body, receivedAtUtc);
+            var key = CreateKey(senderAddress, body, receivedAtUtc);
             if (state.Messages.Any(x => x.DeduplicationKey == key))
             {
+                return false;
+            }
+
+            if (state.Messages.Count >= MaxMessages)
+            {
+                var oldestConfirmed = state.Messages
+                    .Where(x => x.DeliveryStatus != SmsDeliveryStatus.Pending)
+                    .MinBy(x => x.ReceivedAtUtc);
+                if (oldestConfirmed is not null) state.Messages.Remove(oldestConfirmed);
+            }
+            if (state.Messages.Count >= MaxMessages)
+            {
+                state.SyncStatus = "صف آفلاین گوشی پر است؛ ابتدا اتصال و ارسال پیام‌های منتظر را بررسی کنید.";
+                await SaveUnsafeAsync(state, cancellationToken);
                 return false;
             }
 
             state.Messages.Add(new CapturedSms
             {
                 SenderId = sender.Id,
+                SenderAddress = senderAddress.Trim(),
                 DeduplicationKey = key,
                 Body = body.Trim(),
                 ReceivedAtUtc = receivedAtUtc.ToUniversalTime()
             });
 
-            if (state.Messages.Count > MaxMessages)
-            {
-                state.Messages = state.Messages
-                    .OrderByDescending(x => x.ReceivedAtUtc)
-                    .Take(MaxMessages)
-                    .ToList();
-            }
+            TrimConfirmedMessages(state);
 
             await SaveUnsafeAsync(state, cancellationToken);
             return true;
@@ -271,6 +387,15 @@ public sealed class SmsMonitorStore
         }
 
         state.Templates ??= [];
+        state.Senders ??= [];
+        state.Messages ??= [];
+        var senders = state.Senders.ToDictionary(x => x.Id);
+        foreach (var message in state.Messages.Where(x => string.IsNullOrWhiteSpace(x.SenderAddress)))
+        {
+            if (!senders.TryGetValue(message.SenderId, out var sender)) continue;
+            message.SenderAddress = sender.Address;
+            message.DeduplicationKey = CreateKey(message.SenderAddress, message.Body, message.ReceivedAtUtc);
+        }
         foreach (var template in state.Templates)
         {
             template.Phrases ??= [];
@@ -301,12 +426,25 @@ public sealed class SmsMonitorStore
     private static bool Prune(SmsMonitorState state, DateTimeOffset nowUtc)
     {
         var cutoff = nowUtc.Subtract(Retention);
-        return state.Messages.RemoveAll(x => x.ReceivedAtUtc < cutoff) > 0;
+        var changed = state.Messages.RemoveAll(x => x.ReceivedAtUtc < cutoff
+            && x.DeliveryStatus != SmsDeliveryStatus.Pending) > 0;
+        var count = state.Messages.Count;
+        TrimConfirmedMessages(state);
+        return changed || state.Messages.Count != count;
     }
 
-    private static string CreateKey(string normalizedAddress, string body, DateTimeOffset receivedAtUtc)
+    private static void TrimConfirmedMessages(SmsMonitorState state)
     {
-        var value = $"{normalizedAddress}\n{receivedAtUtc.ToUnixTimeMilliseconds()}\n{body}";
-        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
+        if (state.Messages.Count <= MaxMessages) return;
+        var removable = state.Messages
+            .Where(x => x.DeliveryStatus != SmsDeliveryStatus.Pending)
+            .OrderBy(x => x.ReceivedAtUtc)
+            .Take(state.Messages.Count - MaxMessages)
+            .Select(x => x.Id)
+            .ToHashSet();
+        state.Messages.RemoveAll(x => removable.Contains(x.Id));
     }
+
+    private static string CreateKey(string senderAddress, string body, DateTimeOffset receivedAtUtc)
+        => new SmsEnvelope(senderAddress, body, receivedAtUtc.ToUnixTimeMilliseconds()).Key;
 }

@@ -15,6 +15,13 @@ Test("Blu withdrawal not balance, Persian full date", () => {
     Check(p is { Bank: "blu", Account: null, AmountToman: 1_000_000 });
     Check(p!.LocalDateTime == new DateTime(2026, 9, 6, 12, 18, 0));
 });
+Test("Resalat negative amount and partial Persian date", () => {
+    const string message = "10.14178622.1\n-42,500\n07/20_17:05\nمانده: 269,917,300";
+    var receivedAt = new DateTimeOffset(2026, 10, 12, 14, 0, 0, TimeSpan.Zero);
+    var p = BankSmsParser.Parse(message, receivedAt);
+    Check(p is { Bank: "resalat", Account: "10.14178622.1", AmountToman: 4250 });
+    Check(p!.LocalDateTime == new DateTime(2026, 10, 12, 17, 5, 0));
+});
 Test("Persian digits and grouping", () => Check(BankSmsParser.Parse(mellat.Replace("50,000,000", "۵۰٬۰۰۰٬۰۰۰"))?.AmountToman == 5_000_000));
 Test("Fully Persian Mellat numbers with Arabic comma grouping", () => {
     const string message = "حساب۵۵۵۵۵۵۵۵۵۵\nبرداشت۵۰،۰۰۰،۰۰۰\nمانده۱۱۱،۱۱۱،۱۱۱\n۰۵/۰۶/۱۵-۱۲:۱۴";
