@@ -126,13 +126,32 @@ public static class MobileApi
                 if (!seen.Add(key) || await db.SmsReceipts.AnyAsync(x => x.UserId == device.UserId && x.Key == key, ct)) {
                     results.Add(new(key, "duplicate")); continue;
                 }
-                var parsed = BankSmsParser.Parse(sms.Body, DateTimeOffset.FromUnixTimeMilliseconds(sms.SentAtUnixMs));
-                if (parsed is null) { results.Add(new(key, "rejected")); continue; }
+                var receivedAt = DateTimeOffset.FromUnixTimeMilliseconds(sms.SentAtUnixMs);
+                var parsed = BankSmsParser.Parse(sms.Body, receivedAt);
+                decimal amountToman;
+                DateTime localDateTime;
+                string reason;
+                if (parsed is not null)
+                {
+                    amountToman = parsed.AmountToman;
+                    localDateTime = parsed.LocalDateTime;
+                    reason = $"برداشت پیامکی {parsed.Bank switch { "blu" => "بلو", "resalat" => "رسالت", _ => "ملت" }} {parsed.Account}";
+                }
+                else if (sms.Parsed is { Kind: "withdrawal" } clientParsed)
+                {
+                    amountToman = clientParsed.AmountRial / 10m;
+                    localDateTime = receivedAt.ToOffset(TimeSpan.FromHours(3.5)).DateTime;
+                    reason = $"برداشت پیامکی · {clientParsed.TemplateName.Trim()}";
+                }
+                else
+                {
+                    results.Add(new(key, "rejected"));
+                    continue;
+                }
                 db.Expenses.Add(new Expense {
                     WorkspaceId = device.WorkspaceId, CategoryId = device.CategoryId, CreatedByUserId = device.UserId,
-                    Reason = $"برداشت پیامکی {parsed.Bank switch { "blu" => "بلو", "resalat" => "رسالت", _ => "ملت" }} {parsed.Account}",
-                    Amount = parsed.AmountToman, ExpenseDate = DateOnly.FromDateTime(parsed.LocalDateTime),
-                    SmsText = sms.Body, SmsLocalTime = parsed.LocalDateTime.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture), NeedsReview = true
+                    Reason = reason, Amount = amountToman, ExpenseDate = DateOnly.FromDateTime(localDateTime),
+                    SmsText = sms.Body, SmsLocalTime = localDateTime.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture), NeedsReview = true
                 });
                 db.SmsReceipts.Add(new SmsReceipt { UserId = device.UserId, Key = key });
                 results.Add(new(key, "created"));

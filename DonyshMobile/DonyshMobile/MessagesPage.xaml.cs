@@ -61,8 +61,8 @@ public partial class MessagesPage : ContentPage
             var summary = match is null ? "" : $"{match.TemplateName} · {(match.Kind == TransactionKind.Withdrawal ? "برداشت" : "واریز")} · {match.AmountRial:N0} ریال";
             var delivery = message.DeliveryStatus switch
             {
-                SmsDeliveryStatus.Sent => "✓ ارسال به API تأیید شد",
-                SmsDeliveryStatus.Rejected => "! API دریافت کرد، اما پیام را رد کرد",
+                SmsDeliveryStatus.Sent => "✓ سامانه دریافت پیام را تأیید کرد",
+                SmsDeliveryStatus.Rejected => "سامانه پیام را دریافت کرد، اما قالب آن را نپذیرفت",
                 _ when message.DeliveryAttempts > 0 => $"در انتظار ارسال مجدد · {message.DeliveryAttempts} تلاش",
                 _ => "در انتظار ارسال"
             };

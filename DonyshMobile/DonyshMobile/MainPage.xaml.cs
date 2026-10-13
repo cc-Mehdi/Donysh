@@ -76,10 +76,10 @@ public partial class MainPage : ContentPage
         }
         catch (PermissionException)
         {
-            await DisplayAlert("خطای دسترسی", "مجوز دریافت پیامک در تنظیمات Android برنامه ثبت نشده است.", "باشه");
+            await DisplayAlert("خطای دسترسی", "مجوز دریافت پیامک در تنظیمات اندروید برنامه ثبت نشده است.", "باشه");
         }
 #else
-        await DisplayAlert("فقط Android", "دریافت پیامک در این مرحله فقط روی دستگاه Android فعال است.", "باشه");
+        await DisplayAlert("فقط اندروید", "دریافت پیامک در این مرحله فقط روی دستگاه اندرویدی فعال است.", "باشه");
 #endif
         await RefreshPermissionAsync();
     }
@@ -162,7 +162,7 @@ public partial class MainPage : ContentPage
             : "غیرفعال است؛ برای شروع مانیتور، دسترسی را فعال کنید.";
         PermissionButtonText = status == PermissionStatus.Granted ? "تنظیمات" : "فعال‌سازی";
 #else
-        PermissionStatusText = "دریافت پیامک فقط در نسخه Android در دسترس است.";
+        PermissionStatusText = "دریافت پیامک فقط در نسخه اندروید در دسترس است.";
         PermissionButtonText = "راهنما";
         await Task.CompletedTask;
 #endif

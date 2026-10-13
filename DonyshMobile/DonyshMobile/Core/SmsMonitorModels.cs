@@ -17,6 +17,7 @@ public sealed class CapturedSms
     public string Body { get; set; } = string.Empty;
     public DateTimeOffset ReceivedAtUtc { get; set; }
     public SmsDeliveryStatus DeliveryStatus { get; set; } = SmsDeliveryStatus.Pending;
+    public int DeliveryProtocolVersion { get; set; }
     public int DeliveryAttempts { get; set; }
     public DateTimeOffset? ConfirmedAtUtc { get; set; }
     public string? LastDeliveryError { get; set; }
@@ -30,7 +31,7 @@ public sealed class SmsMonitorState
     public List<SmsTemplate> Templates { get; set; } = [];
     public DateTimeOffset NextSyncAtUtc { get; set; }
     public int ConsecutiveSyncFailures { get; set; }
-    public string SyncStatus { get; set; } = "هنوز پیامی به API ارسال نشده است.";
+    public string SyncStatus { get; set; } = "هنوز پیامی به سامانه ارسال نشده است.";
 }
 
 public enum SmsDeliveryStatus
@@ -45,7 +46,8 @@ public sealed record PendingSms(
     string Key,
     string Sender,
     string Body,
-    long ReceivedAtUnixMs);
+    long ReceivedAtUnixMs,
+    ParsedTransaction? Parsed);
 
 public sealed record SmsDeliveryReceipt(string Key, string Status);
 

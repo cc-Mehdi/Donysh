@@ -60,6 +60,13 @@ Test("Payload guard rejects oversized and future SMS", () => {
     Check(!SyncPolicy.Valid(new("bank", new string('x', 2049), now.ToUnixTimeMilliseconds()), now));
     Check(!SyncPolicy.Valid(new("bank", mellat, now.AddDays(1).ToUnixTimeMilliseconds()), now));
 });
+Test("Payload guard accepts validated client template extraction", () => {
+    var now = DateTimeOffset.UtcNow;
+    var sms = new SmsEnvelope("bank", "custom withdrawal", now.ToUnixTimeMilliseconds(),
+        new ParsedTransaction(120_000, "withdrawal", "قالب آزمایشی"));
+    Check(SyncPolicy.Valid(sms, now));
+    Check(!SyncPolicy.Valid(sms with { Parsed = sms.Parsed! with { Kind = "deposit" } }, now));
+});
 Test("Durable queue does not duplicate after reopening", () => {
     var dir = Path.Combine(Path.GetTempPath(), "donysh-test-" + Guid.NewGuid());
     Directory.CreateDirectory(dir);

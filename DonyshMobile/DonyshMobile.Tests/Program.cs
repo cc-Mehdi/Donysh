@@ -103,8 +103,18 @@ try
     var apiDirectory = Path.Combine(testDirectory, "api-client");
     var apiStore = new SmsMonitorStore(apiDirectory);
     Assert(await apiStore.AddSenderAsync("Bank") == AddSenderResult.Added, "Add API test sender");
-    Assert(await apiStore.CaptureAsync("Bank", "API test", DateTimeOffset.UtcNow), "Queue API test SMS");
+    var apiSender = (await apiStore.GetSenderSummariesAsync()).Single();
+    Assert(await apiStore.SaveTemplateAsync(new SmsTemplate
+    {
+        SenderId = apiSender.Id,
+        Name = "قالب آزمایشی",
+        Pattern = "برداشت: {amount}",
+        Unit = MoneyUnit.Rial
+    }) is null, "Save API test template");
+    Assert(await apiStore.CaptureAsync("Bank", "برداشت: 120,000", DateTimeOffset.UtcNow), "Queue API test SMS");
     var apiPending = AssertSingle(await apiStore.TakePendingBatchAsync(DateTimeOffset.UtcNow), "API pending batch");
+    Assert(apiPending.Parsed is { AmountRial: 120_000, Kind: "withdrawal", TemplateName: "قالب آزمایشی" },
+        "Send locally parsed template data with SMS");
     var api = new MobileApiClient(() => new HttpClient(new StubHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
     {
         Content = JsonContent.Create(new SmsBatchResult([new SmsResult(apiPending.Key, "created")]))

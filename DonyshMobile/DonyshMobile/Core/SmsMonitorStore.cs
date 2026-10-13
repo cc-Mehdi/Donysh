@@ -171,18 +171,45 @@ public sealed class SmsMonitorStore
         try
         {
             var state = await LoadUnsafeAsync(cancellationToken);
+            var migrated = false;
+            foreach (var message in state.Messages.Where(x =>
+                         x.DeliveryStatus == SmsDeliveryStatus.Rejected && x.DeliveryProtocolVersion < 2))
+            {
+                message.DeliveryStatus = SmsDeliveryStatus.Pending;
+                message.DeliveryProtocolVersion = 2;
+                message.ConfirmedAtUtc = null;
+                message.LastDeliveryError = null;
+                migrated = true;
+            }
+            if (migrated)
+            {
+                state.NextSyncAtUtc = nowUtc;
+                state.SyncStatus = "پیام‌های ردشده نسخه قبلی برای بررسی دوباره آماده شدند.";
+                await SaveUnsafeAsync(state, cancellationToken);
+            }
             if (state.NextSyncAtUtc > nowUtc) return [];
             var senders = state.Senders.ToDictionary(x => x.Id);
             return state.Messages
                 .Where(x => x.DeliveryStatus == SmsDeliveryStatus.Pending && senders.ContainsKey(x.SenderId))
                 .OrderBy(x => x.ReceivedAtUtc)
                 .Take(batchSize)
-                .Select(x => new PendingSms(
-                    x.Id,
-                    x.DeduplicationKey,
-                    string.IsNullOrWhiteSpace(x.SenderAddress) ? senders[x.SenderId].Address : x.SenderAddress,
-                    x.Body,
-                    x.ReceivedAtUtc.ToUnixTimeMilliseconds()))
+                .Select(x =>
+                {
+                    var parsed = state.Templates
+                        .Where(template => template.SenderId == x.SenderId)
+                        .Select(template => SmsTemplateParser.TryParse(template, x.Body))
+                        .FirstOrDefault(result => result is not null);
+                    return new PendingSms(
+                        x.Id,
+                        x.DeduplicationKey,
+                        string.IsNullOrWhiteSpace(x.SenderAddress) ? senders[x.SenderId].Address : x.SenderAddress,
+                        x.Body,
+                        x.ReceivedAtUtc.ToUnixTimeMilliseconds(),
+                        parsed is null ? null : new ParsedTransaction(
+                            parsed.AmountRial,
+                            parsed.Kind == TransactionKind.Withdrawal ? "withdrawal" : "deposit",
+                            parsed.TemplateName));
+                })
                 .ToList();
         }
         finally { Gate.Release(); }
@@ -198,7 +225,7 @@ public sealed class SmsMonitorStore
             || receipts.Select(x => x.Key).Distinct(StringComparer.Ordinal).Count() != batch.Count
             || receipts.Any(x => x.Status is not ("created" or "duplicate" or "rejected"))
             || receipts.Any(x => batch.All(item => item.Key != x.Key)))
-            throw new InvalidDataException("پاسخ API کامل یا معتبر نیست.");
+            throw new InvalidDataException("پاسخ سامانه کامل یا معتبر نیست.");
 
         await Gate.WaitAsync(cancellationToken);
         try
@@ -211,16 +238,17 @@ public sealed class SmsMonitorStore
                 message.DeliveryStatus = receipt.Status == "rejected"
                     ? SmsDeliveryStatus.Rejected
                     : SmsDeliveryStatus.Sent;
+                message.DeliveryProtocolVersion = 2;
                 message.ConfirmedAtUtc = nowUtc;
                 message.LastDeliveryError = receipt.Status == "rejected"
-                    ? "API پیام را دریافت کرد، اما آن را قابل ثبت تشخیص نداد."
+                    ? "سامانه پیام را دریافت کرد، اما قالب آن را نپذیرفت."
                     : null;
             }
             state.ConsecutiveSyncFailures = 0;
             state.NextSyncAtUtc = nowUtc.AddMinutes(1);
             state.SyncStatus = receipts.Any(x => x.Status == "rejected")
-                ? "پاسخ API دریافت شد؛ بعضی پیام‌ها برای بررسی روی گوشی نگه داشته شدند."
-                : "آخرین بسته با تأیید API ارسال شد.";
+                ? "پاسخ سامانه دریافت شد؛ بعضی پیام‌ها برای بررسی روی گوشی نگه داشته شدند."
+                : "دریافت آخرین بسته توسط سامانه تأیید شد.";
             await SaveUnsafeAsync(state, cancellationToken);
         }
         finally { Gate.Release(); }
@@ -351,7 +379,8 @@ public sealed class SmsMonitorStore
                 SenderAddress = senderAddress.Trim(),
                 DeduplicationKey = key,
                 Body = body.Trim(),
-                ReceivedAtUtc = receivedAtUtc.ToUniversalTime()
+                ReceivedAtUtc = receivedAtUtc.ToUniversalTime(),
+                DeliveryProtocolVersion = 2
             });
 
             TrimConfirmedMessages(state);

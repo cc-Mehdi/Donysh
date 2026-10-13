@@ -24,7 +24,7 @@ public sealed class MobileApiClient
 
     public async Task<PairResult?> PairAsync(string server, string code, CancellationToken cancellationToken = default)
     {
-        server = NormalizeServer(server) ?? throw new ArgumentException("آدرس سرور باید یک نشانی HTTPS معتبر باشد.", nameof(server));
+        server = NormalizeServer(server) ?? throw new ArgumentException("آدرس سرور باید یک نشانی امن و معتبر باشد.", nameof(server));
         var normalizedCode = new string(code.Where(Uri.IsHexDigit).ToArray()).ToUpperInvariant();
         if (normalizedCode.Length != 32) throw new ArgumentException("کد اتصال باید ۳۲ نویسه هگزادسیمال باشد.", nameof(code));
         using var client = _clientFactory();
@@ -34,7 +34,7 @@ public sealed class MobileApiClient
         var result = await response.Content.ReadFromJsonAsync<PairResult>(JsonOptions, cancellationToken);
         return result is { Token.Length: 64 } && result.Token.All(Uri.IsHexDigit)
             ? result
-            : throw new InvalidDataException("پاسخ اتصال API معتبر نیست.");
+            : throw new InvalidDataException("پاسخ اتصال سامانه معتبر نیست.");
     }
 
     public async Task<SyncRunResult> SendNextBatchAsync(
@@ -67,7 +67,7 @@ public sealed class MobileApiClient
             using var request = new HttpRequestMessage(HttpMethod.Post, server + "/api/mobile/sms")
             {
                 Content = JsonContent.Create(new SmsBatch(batch
-                    .Select(x => new SmsEnvelope(x.Sender, x.Body, x.ReceivedAtUnixMs)).ToList()), options: JsonOptions)
+                    .Select(x => new SmsEnvelope(x.Sender, x.Body, x.ReceivedAtUnixMs, x.Parsed)).ToList()), options: JsonOptions)
             };
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", connection.Token);
             using var response = await client.SendAsync(request, cancellationToken);
@@ -76,7 +76,7 @@ public sealed class MobileApiClient
                 var retryAfter = response.Headers.RetryAfter?.Delta
                     ?? response.Headers.RetryAfter?.Date - nowUtc;
                 var message = response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden
-                    ? "اتصال API معتبر نیست؛ کد اتصال جدید بسازید. پیام‌ها در صف محفوظ‌اند."
+                    ? "اتصال سامانه معتبر نیست؛ کد اتصال جدید بسازید. پیام‌ها در صف محفوظ‌اند."
                     : response.StatusCode == HttpStatusCode.TooManyRequests
                         ? "سرور فعلاً درخواست بیشتری نمی‌پذیرد؛ بعداً خودکار تلاش می‌شود."
                         : "ارسال کامل نشد؛ پیام‌ها محفوظ‌اند و بعداً دوباره تلاش می‌شود.";
@@ -88,7 +88,7 @@ public sealed class MobileApiClient
 
             var result = await response.Content.ReadFromJsonAsync<SmsBatchResult>(JsonOptions, cancellationToken);
             var receipts = result?.Results?.Select(x => new SmsDeliveryReceipt(x.Key, x.Status)).ToList()
-                           ?? throw new InvalidDataException("API تأییدیه‌ای برنگرداند.");
+                           ?? throw new InvalidDataException("سامانه تأییدیه‌ای برنگرداند.");
             await store.ConfirmBatchAsync(batch, receipts, nowUtc, cancellationToken);
             return SyncRunResult.Sent;
         }
@@ -104,7 +104,7 @@ public sealed class MobileApiClient
         }
         catch (Exception exception) when (exception is InvalidDataException or JsonException)
         {
-            await store.RecordSyncFailureAsync(batch, nowUtc, "تأیید API معتبر نبود؛ برای جلوگیری از گم‌شدن پیام دوباره تلاش می‌شود.", cancellationToken: cancellationToken);
+            await store.RecordSyncFailureAsync(batch, nowUtc, "تأیید سامانه معتبر نبود؛ برای جلوگیری از گم‌شدن پیام دوباره تلاش می‌شود.", cancellationToken: cancellationToken);
             return SyncRunResult.RetryScheduled;
         }
     }
