@@ -4,7 +4,7 @@ using System.Text;
 namespace Donysh.Sms;
 
 public sealed record ParsedTransaction(long AmountRial, string Kind, string TemplateName);
-public sealed record SmsEnvelope(string Sender, string Body, long SentAtUnixMs, ParsedTransaction? Parsed = null)
+public sealed record SmsEnvelope(string Sender, string Body, long SentAtUnixMs, ParsedTransaction? Parsed = null, string? Title = null)
 {
     public string Key => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(
         $"{Sender.Trim().ToUpperInvariant()}\n{SentAtUnixMs}\n{Body.Replace("\r", "").Trim()}")));
@@ -28,6 +28,8 @@ public static class SyncPolicy
         && !string.IsNullOrWhiteSpace(sms.Sender) && sms.Sender.Length <= 64
         && !string.IsNullOrWhiteSpace(sms.Body) && sms.Body.Length <= 2048
         && sms.SentAtUnixMs >= 1577836800000L && sms.SentAtUnixMs <= now.AddMinutes(10).ToUnixTimeMilliseconds()
+        && (sms.Title is null || (!string.IsNullOrWhiteSpace(sms.Title) && sms.Title.Length <= 160
+            && !sms.Title.Any(char.IsControl)))
         && (sms.Parsed is null || ValidParsed(sms.Parsed));
 
     private static bool ValidParsed(ParsedTransaction parsed) =>

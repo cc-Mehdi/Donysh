@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:local="clr-namespace:DonyshMobile"
+             x:Class="DonyshMobile.PendingTitlesPage"
+             FlowDirection="RightToLeft" Title="عنوان‌گذاری پیام‌ها">
+    <Grid Padding="20,18" RowDefinitions="Auto,*" RowSpacing="14">
+        <VerticalStackLayout Spacing="5">
+            <Label Text="پیام‌های منتظر عنوان" Style="{StaticResource PageTitle}" />
+            <Label Text="برای هر پیام عنوانی کوتاه بنویسید. تا آن زمان، ارسال خودکار آن انجام نمی‌شود."
+                   FontSize="13" Style="{StaticResource MutedText}" />
+        </VerticalStackLayout>
+        <CollectionView Grid.Row="1" x:Name="PendingList">
+            <CollectionView.EmptyView>
+                <Label Text="همهٔ پیام‌های منتظر عنوان‌گذاری شده‌اند." Style="{StaticResource MutedText}" />
+            </CollectionView.EmptyView>
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="local:PendingTitleItem">
+                    <Border Style="{StaticResource Card}" Padding="15" Margin="0,0,0,10">
+                        <VerticalStackLayout Spacing="8">
+                            <Label Text="{Binding Sender}" FontAttributes="Bold" />
+                            <Label Text="{Binding Body}" MaxLines="4" LineBreakMode="TailTruncation" />
+                            <Button Text="ثبت عنوان" CommandParameter="{Binding Id}"
+                                    Clicked="OnSetTitleClicked" Style="{StaticResource SuccessAction}" />
+                        </VerticalStackLayout>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
+</ContentPage>

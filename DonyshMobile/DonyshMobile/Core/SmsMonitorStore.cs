@@ -73,7 +73,7 @@ public sealed class SmsMonitorStore
         try
         {
             var state = await LoadUnsafeAsync(cancellationToken);
-            if (state.Senders.Any(x => x.NormalizedAddress == normalized))
+            if (state.Senders.Any(x => SenderAddress.Normalize(x.Address) == normalized))
             {
                 return AddSenderResult.Duplicate;
             }
@@ -145,6 +145,37 @@ public sealed class SmsMonitorStore
         }
     }
 
+    public async Task<IReadOnlyList<CapturedSms>> GetUntitledMessagesAsync(CancellationToken cancellationToken = default)
+    {
+        await Gate.WaitAsync(cancellationToken);
+        try
+        {
+            var state = await LoadUnsafeAsync(cancellationToken);
+            return state.Messages
+                .Where(x => x.DeliveryStatus == SmsDeliveryStatus.Pending && string.IsNullOrWhiteSpace(x.Title))
+                .OrderBy(x => x.ReceivedAtUtc)
+                .ToList();
+        }
+        finally { Gate.Release(); }
+    }
+
+    public async Task<bool> SetTitleAsync(Guid messageId, string? title, CancellationToken cancellationToken = default)
+    {
+        title = title?.Trim();
+        if (string.IsNullOrWhiteSpace(title) || title.Length > 160 || title.Any(char.IsControl)) return false;
+        await Gate.WaitAsync(cancellationToken);
+        try
+        {
+            var state = await LoadUnsafeAsync(cancellationToken);
+            var message = state.Messages.SingleOrDefault(x => x.Id == messageId && x.DeliveryStatus == SmsDeliveryStatus.Pending);
+            if (message is null) return false;
+            message.Title = title;
+            await SaveUnsafeAsync(state, cancellationToken);
+            return true;
+        }
+        finally { Gate.Release(); }
+    }
+
     public async Task<SmsSyncSummary> GetSyncSummaryAsync(CancellationToken cancellationToken = default)
     {
         await Gate.WaitAsync(cancellationToken);
@@ -164,6 +195,7 @@ public sealed class SmsMonitorStore
     public async Task<IReadOnlyList<PendingSms>> TakePendingBatchAsync(
         DateTimeOffset nowUtc,
         int batchSize = 5,
+        bool requireTitle = false,
         CancellationToken cancellationToken = default)
     {
         if (batchSize is < 1 or > 5) throw new ArgumentOutOfRangeException(nameof(batchSize));
@@ -190,7 +222,8 @@ public sealed class SmsMonitorStore
             if (state.NextSyncAtUtc > nowUtc) return [];
             var senders = state.Senders.ToDictionary(x => x.Id);
             return state.Messages
-                .Where(x => x.DeliveryStatus == SmsDeliveryStatus.Pending && senders.ContainsKey(x.SenderId))
+                .Where(x => x.DeliveryStatus == SmsDeliveryStatus.Pending && senders.ContainsKey(x.SenderId)
+                    && (!requireTitle || !string.IsNullOrWhiteSpace(x.Title)))
                 .OrderBy(x => x.ReceivedAtUtc)
                 .Take(batchSize)
                 .Select(x =>
@@ -208,7 +241,8 @@ public sealed class SmsMonitorStore
                         parsed is null ? null : new ParsedTransaction(
                             parsed.AmountRial,
                             parsed.Kind == TransactionKind.Withdrawal ? "withdrawal" : "deposit",
-                            parsed.TemplateName));
+                            parsed.TemplateName),
+                        x.Title);
                 })
                 .ToList();
         }
@@ -347,7 +381,7 @@ public sealed class SmsMonitorStore
         {
             var state = await LoadUnsafeAsync(cancellationToken);
             Prune(state, DateTimeOffset.UtcNow);
-            var sender = state.Senders.SingleOrDefault(x => x.NormalizedAddress == normalized);
+            var sender = state.Senders.FirstOrDefault(x => SenderAddress.Normalize(x.Address) == normalized);
             if (sender is null)
             {
                 return false;

@@ -56,9 +56,10 @@ public sealed class SmsSyncJob : JobService
                 var store = new SmsMonitorStore(FileSystem.AppDataDirectory);
                 var connection = await MobileConnectionStore.LoadAsync();
                 var result = await new MobileApiClient().SendNextBatchAsync(
-                    store, connection, DateTimeOffset.UtcNow, cancellation.Token);
+                    store, connection, DateTimeOffset.UtcNow, cancellation.Token,
+                    requireTitle: SmsSyncSettings.RequireTitle);
                 var summary = await store.GetSyncSummaryAsync(cancellation.Token);
-                shouldRetry = summary.Pending > 0 && result != SyncRunResult.ConnectionRequired;
+                shouldRetry = summary.Pending > 0 && result is SyncRunResult.Sent or SyncRunResult.RetryScheduled;
                 nextDelayMs = Math.Max(60_000, (long)(summary.NextAttemptAtUtc - DateTimeOffset.UtcNow).TotalMilliseconds);
                 SmsReceivedNotifier.NotifySyncChanged();
             }

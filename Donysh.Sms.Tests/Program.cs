@@ -66,6 +66,9 @@ Test("Payload guard accepts validated client template extraction", () => {
         new ParsedTransaction(120_000, "withdrawal", "قالب آزمایشی"));
     Check(SyncPolicy.Valid(sms, now));
     Check(!SyncPolicy.Valid(sms with { Parsed = sms.Parsed! with { Kind = "deposit" } }, now));
+    Check(SyncPolicy.Valid(sms with { Title = "خرید روزانه" }, now));
+    Check(!SyncPolicy.Valid(sms with { Title = " " }, now));
+    Check(!SyncPolicy.Valid(sms with { Title = new string('x', 161) }, now));
 });
 Test("Durable queue does not duplicate after reopening", () => {
     var dir = Path.Combine(Path.GetTempPath(), "donysh-test-" + Guid.NewGuid());

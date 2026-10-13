@@ -63,6 +63,7 @@ public sealed class SmsBroadcastReceiver : BroadcastReceiver
                 if (storedAny)
                 {
                     SmsReceivedNotifier.Notify();
+                    await TitleReminderNotifier.RefreshAsync(context);
                     SmsSyncJob.Schedule(context);
                 }
             }

@@ -41,10 +41,12 @@ public sealed class MobileApiClient
         SmsMonitorStore store,
         MobileConnection? connection,
         DateTimeOffset nowUtc,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        bool manualSend = false,
+        bool requireTitle = false)
     {
         await SyncGate.WaitAsync(cancellationToken);
-        try { return await SendNextBatchCoreAsync(store, connection, nowUtc, cancellationToken); }
+        try { return await SendNextBatchCoreAsync(store, connection, nowUtc, cancellationToken, manualSend, requireTitle); }
         finally { SyncGate.Release(); }
     }
 
@@ -52,13 +54,16 @@ public sealed class MobileApiClient
         SmsMonitorStore store,
         MobileConnection? connection,
         DateTimeOffset nowUtc,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool manualSend,
+        bool requireTitle)
     {
         if (connection is null) return SyncRunResult.ConnectionRequired;
         var server = NormalizeServer(connection.Server);
         if (server is null || connection.Token.Length != 64 || !connection.Token.All(Uri.IsHexDigit))
             return SyncRunResult.ConnectionRequired;
-        var batch = await store.TakePendingBatchAsync(nowUtc, cancellationToken: cancellationToken);
+        var batch = await store.TakePendingBatchAsync(nowUtc,
+            requireTitle: !manualSend && requireTitle, cancellationToken: cancellationToken);
         if (batch.Count == 0) return SyncRunResult.NothingToSend;
 
         try
@@ -67,7 +72,7 @@ public sealed class MobileApiClient
             using var request = new HttpRequestMessage(HttpMethod.Post, server + "/api/mobile/sms")
             {
                 Content = JsonContent.Create(new SmsBatch(batch
-                    .Select(x => new SmsEnvelope(x.Sender, x.Body, x.ReceivedAtUnixMs, x.Parsed)).ToList()), options: JsonOptions)
+                    .Select(x => new SmsEnvelope(x.Sender, x.Body, x.ReceivedAtUnixMs, x.Parsed, x.Title)).ToList()), options: JsonOptions)
             };
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", connection.Token);
             using var response = await client.SendAsync(request, cancellationToken);

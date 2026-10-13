@@ -8,11 +8,21 @@ try
 {
     Assert(SenderAddress.Normalize("۰۹۱۲ ۱۲۳ ۴۵۶۷") == "9121234567", "Persian digits");
     Assert(SenderAddress.Normalize("+98 (912) 123-4567") == "9121234567", "Iran phone variants");
+    Assert(SenderAddress.Normalize("+989999987641") == SenderAddress.Normalize("0989999987641"),
+        "International and 098 mobile addresses match");
+    Assert(SenderAddress.Normalize("00989999987641") == SenderAddress.Normalize("09999987641"),
+        "International and domestic mobile addresses match");
+    Assert(SenderAddress.Normalize("0981234") == "0981234", "Do not rewrite short sender IDs");
     Assert(SenderAddress.Normalize(" بانک-ملت ") == "بانکملت", "Alphanumeric sender");
 
     var store = new SmsMonitorStore(testDirectory);
     Assert(await store.AddSenderAsync("۰۹۱۲۱۲۳۴۵۶۷") == AddSenderResult.Added, "Add sender");
     Assert(await store.AddSenderAsync("+98 912 123 4567") == AddSenderResult.Duplicate, "Reject duplicate");
+    var variantStore = new SmsMonitorStore(Path.Combine(testDirectory, "variants"));
+    Assert(await variantStore.AddSenderAsync("0989999987641") == AddSenderResult.Added, "Add 098 mobile sender");
+    Assert(await variantStore.AddSenderAsync("+989999987641") == AddSenderResult.Duplicate, "Reject equivalent mobile sender");
+    Assert(await variantStore.CaptureAsync("+989999987641", "پیامک از فرستنده دوم", DateTimeOffset.UtcNow),
+        "Match 098 sender with international incoming SMS");
     Assert(!await store.CaptureAsync("30001234", "unmatched", DateTimeOffset.UtcNow), "Ignore unmatched sender");
 
     var receivedAt = DateTimeOffset.UtcNow.AddMinutes(-1);
@@ -20,21 +30,25 @@ try
     Assert(!await store.CaptureAsync("+989121234567", "پیام آزمایشی", receivedAt), "Deduplicate SMS");
 
     store = new SmsMonitorStore(testDirectory);
-    var summary = AssertSingle(await store.GetSenderSummariesAsync(), "Persist sender after store reload");
+    var summary = (await store.GetSenderSummariesAsync()).Single(x => x.Address == "۰۹۱۲۱۲۳۴۵۶۷");
     Assert(summary.MessageCount == 1, "Summary message count");
     var message = AssertSingle(await store.GetMessagesAsync(summary.Id), "Message list");
     Assert(message.Body == "پیام آزمایشی", "Message body");
     Assert(message.DeliveryStatus == SmsDeliveryStatus.Pending, "New SMS starts pending");
-    var firstBatch = await store.TakePendingBatchAsync(DateTimeOffset.UtcNow);
-    Assert(firstBatch.Count == 1 && firstBatch[0].Sender == "+989121234567", "Take a bounded pending batch");
+    Assert((await store.TakePendingBatchAsync(DateTimeOffset.UtcNow, requireTitle: true)).Count == 0,
+        "Automatic batch waits for a title");
+    Assert(await store.SetTitleAsync(message.Id, "خرید روزانه"), "Set a pending message title");
+    var firstBatch = await store.TakePendingBatchAsync(DateTimeOffset.UtcNow, requireTitle: true);
+    Assert(firstBatch.Count == 1 && firstBatch[0].Sender == "+989121234567"
+        && firstBatch[0].Title == "خرید روزانه", "Title-gated batch includes title");
     Assert(firstBatch[0].Key == new SmsEnvelope(firstBatch[0].Sender, firstBatch[0].Body,
         firstBatch[0].ReceivedAtUnixMs).Key, "Use the same idempotency key as the API contract");
     await store.ConfirmBatchAsync(firstBatch,
         [new SmsDeliveryReceipt(firstBatch[0].Key, "created")], DateTimeOffset.UtcNow);
     Assert(AssertSingle(await store.GetMessagesAsync(summary.Id), "Confirmed message").DeliveryStatus == SmsDeliveryStatus.Sent,
         "Mark sent only after API receipt");
-    Assert((await store.TakePendingBatchAsync(DateTimeOffset.UtcNow.AddMinutes(2))).Count == 0,
-        "Do not resend confirmed SMS");
+    Assert((await store.TakePendingBatchAsync(DateTimeOffset.UtcNow.AddMinutes(2), requireTitle: true)).Count == 0,
+        "Do not resend confirmed SMS or untitled SMS automatically");
 
     var mellat = new SmsTemplate
     {
@@ -115,15 +129,41 @@ try
     var apiPending = AssertSingle(await apiStore.TakePendingBatchAsync(DateTimeOffset.UtcNow), "API pending batch");
     Assert(apiPending.Parsed is { AmountRial: 120_000, Kind: "withdrawal", TemplateName: "قالب آزمایشی" },
         "Send locally parsed template data with SMS");
-    var api = new MobileApiClient(() => new HttpClient(new StubHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+    var api = new MobileApiClient(() => new HttpClient(new StubHandler(request =>
     {
-        Content = JsonContent.Create(new SmsBatchResult([new SmsResult(apiPending.Key, "created")]))
+        var payload = request.Content!.ReadFromJsonAsync<SmsBatch>().GetAwaiter().GetResult();
+        Assert(payload?.Messages.Single().Title == "خرید روزانه", "Send selected title to API");
+        return new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = JsonContent.Create(new SmsBatchResult([new SmsResult(apiPending.Key, "created")]))
+        };
     })));
+    var apiConnection = new MobileConnection("https://donysh.ir", new string('A', 64), "test");
+    Assert(await api.SendNextBatchAsync(apiStore, apiConnection, DateTimeOffset.UtcNow, requireTitle: true)
+        == SyncRunResult.NothingToSend, "Automatic sending blocks untitled messages");
+    Assert(await apiStore.SetTitleAsync((await apiStore.GetMessagesAsync(apiSender.Id)).Single().Id, "خرید روزانه"),
+        "Set API message title");
     Assert(await api.SendNextBatchAsync(apiStore,
-        new MobileConnection("https://donysh.ir", new string('A', 64), "test"), DateTimeOffset.UtcNow) == SyncRunResult.Sent,
+        apiConnection, DateTimeOffset.UtcNow, requireTitle: true) == SyncRunResult.Sent,
         "Accept a complete API acknowledgement");
     Assert(AssertSingle(await apiStore.GetMessagesAsync((await apiStore.GetSenderSummariesAsync()).Single().Id),
         "API-confirmed SMS").DeliveryStatus == SmsDeliveryStatus.Sent, "API client persists confirmed status");
+
+    var manualStore = new SmsMonitorStore(Path.Combine(testDirectory, "manual-send"));
+    Assert(await manualStore.AddSenderAsync("Bank") == AddSenderResult.Added, "Add manual sender");
+    Assert(await manualStore.CaptureAsync("Bank", "برداشت: 80,000", DateTimeOffset.UtcNow), "Queue manual SMS");
+    var manualKey = (await manualStore.TakePendingBatchAsync(DateTimeOffset.UtcNow)).Single().Key;
+    var manualApi = new MobileApiClient(() => new HttpClient(new StubHandler(request =>
+    {
+        var payload = request.Content!.ReadFromJsonAsync<SmsBatch>().GetAwaiter().GetResult();
+        Assert(payload?.Messages.Single().Title is null, "Manual sending may omit title");
+        return new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = JsonContent.Create(new SmsBatchResult([new SmsResult(manualKey, "created")]))
+        };
+    })));
+    Assert(await manualApi.SendNextBatchAsync(manualStore, apiConnection, DateTimeOffset.UtcNow,
+        manualSend: true, requireTitle: true) == SyncRunResult.Sent, "Manual sending bypasses title requirement");
 
     Assert(await store.RemoveSenderAsync(summary.Id), "Remove sender");
     Assert((await store.GetSenderSummariesAsync()).Count == 0, "Remove sender messages");

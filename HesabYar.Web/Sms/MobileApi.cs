@@ -148,6 +148,7 @@ public static class MobileApi
                     results.Add(new(key, "rejected"));
                     continue;
                 }
+                if (!string.IsNullOrWhiteSpace(sms.Title)) reason = sms.Title.Trim();
                 db.Expenses.Add(new Expense {
                     WorkspaceId = device.WorkspaceId, CategoryId = device.CategoryId, CreatedByUserId = device.UserId,
                     Reason = reason, Amount = amountToman, ExpenseDate = DateOnly.FromDateTime(localDateTime),

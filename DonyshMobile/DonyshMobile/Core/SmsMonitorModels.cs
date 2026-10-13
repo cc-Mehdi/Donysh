@@ -15,6 +15,7 @@ public sealed class CapturedSms
     public string SenderAddress { get; set; } = string.Empty;
     public string DeduplicationKey { get; set; } = string.Empty;
     public string Body { get; set; } = string.Empty;
+    public string? Title { get; set; }
     public DateTimeOffset ReceivedAtUtc { get; set; }
     public SmsDeliveryStatus DeliveryStatus { get; set; } = SmsDeliveryStatus.Pending;
     public int DeliveryProtocolVersion { get; set; }
@@ -47,7 +48,8 @@ public sealed record PendingSms(
     string Sender,
     string Body,
     long ReceivedAtUnixMs,
-    ParsedTransaction? Parsed);
+    ParsedTransaction? Parsed,
+    string? Title);
 
 public sealed record SmsDeliveryReceipt(string Key, string Status);
 

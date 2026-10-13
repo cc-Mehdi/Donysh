@@ -6,7 +6,7 @@ namespace DonyshMobile.Core;
 public sealed record PairRequest(string Code);
 public sealed record PairResult(string Token, string WorkspaceName, string CategoryName);
 public sealed record ParsedTransaction(long AmountRial, string Kind, string TemplateName);
-public sealed record SmsEnvelope(string Sender, string Body, long SentAtUnixMs, ParsedTransaction? Parsed = null)
+public sealed record SmsEnvelope(string Sender, string Body, long SentAtUnixMs, ParsedTransaction? Parsed = null, string? Title = null)
 {
     public string Key => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(
         $"{Sender.Trim().ToUpperInvariant()}\n{SentAtUnixMs}\n{Body.Replace("\r", "").Trim()}")));

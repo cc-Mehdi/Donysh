@@ -12,6 +12,9 @@ namespace DonyshMobile;
 
 public partial class MainPage : ContentPage
 {
+    private static int _pendingTitlesRequested;
+    public static void RequestPendingTitles() => Interlocked.Exchange(ref _pendingTitlesRequested, 1);
+    public static bool ConsumePendingTitlesRequest() => Interlocked.Exchange(ref _pendingTitlesRequested, 0) == 1;
     private readonly SmsMonitorStore _store = new(FileSystem.AppDataDirectory);
     private bool _subscribed;
     private string _permissionStatusText = "در حال بررسی…";
@@ -39,6 +42,17 @@ public partial class MainPage : ContentPage
         await RefreshAsync();
         await RefreshPermissionAsync();
         SyncPlatform.Schedule();
+        if (ConsumePendingTitlesRequest()) await Navigation.PushAsync(new PendingTitlesPage(_store, promptFirstMessage: true));
+#if ANDROID
+        if (SmsSyncSettings.RequireTitle && OperatingSystem.IsAndroidVersionAtLeast(33)
+            && !Preferences.Default.Get("title-notification-permission-asked", false))
+        {
+            Preferences.Default.Set("title-notification-permission-asked", true);
+            try { await Permissions.RequestAsync<PostNotificationsPermission>(); }
+            catch (PermissionException) { /* Title entry remains available inside the app. */ }
+        }
+        await TitleReminderNotifier.RefreshAsync(global::Android.App.Application.Context);
+#endif
     }
 
     protected override void OnDisappearing()
@@ -105,6 +119,37 @@ public partial class MainPage : ContentPage
         }
     }
 
+    private async void OnPickSenderClicked(object? sender, EventArgs e)
+    {
+#if ANDROID
+        try
+        {
+            var permission = await Permissions.RequestAsync<ReadSmsPermission>();
+            if (permission != PermissionStatus.Granted)
+            {
+                await DisplayAlert("اجازه لازم است", "برای نمایش فرستنده‌های پیامک، اجازه خواندن پیامک‌ها را بدهید.", "باشه");
+                return;
+            }
+            var addresses = SmsConversationCatalog.RecentSenders(global::Android.App.Application.Context);
+            await Navigation.PushAsync(new SenderPickerPage(addresses, async address =>
+            {
+                var result = await _store.AddSenderAsync(address);
+                if (result == AddSenderResult.Added) await RefreshAsync();
+                else if (result == AddSenderResult.Duplicate)
+                    await DisplayAlert("تکراری", "این فرستنده قبلاً ثبت شده است.", "باشه");
+                else
+                    await DisplayAlert("ثبت نشد", "افزودن فرستنده ممکن نشد؛ فهرست را بررسی کنید.", "باشه");
+            }));
+        }
+        catch (Exception)
+        {
+            await DisplayAlert("انتخاب فرستنده", "خواندن فهرست پیامک‌ها ممکن نشد. شماره را دستی وارد کنید.", "باشه");
+        }
+#else
+        await DisplayAlert("فقط اندروید", "انتخاب از پیامک‌ها فقط در اندروید در دسترس است.", "باشه");
+#endif
+    }
+
     private async void OnRemoveSenderClicked(object? sender, EventArgs e)
     {
         if (sender is not Button { CommandParameter: Guid senderId }) return;
@@ -128,6 +173,9 @@ public partial class MainPage : ContentPage
 
     private async void OnConnectionClicked(object? sender, EventArgs e) =>
         await Navigation.PushAsync(new ConnectionPage(_store));
+
+    private async void OnPendingTitlesClicked(object? sender, EventArgs e) =>
+        await Navigation.PushAsync(new PendingTitlesPage(_store));
 
     private void OnMessageStored(object? sender, EventArgs e) =>
         Dispatcher.Dispatch(async () => await RefreshAsync());

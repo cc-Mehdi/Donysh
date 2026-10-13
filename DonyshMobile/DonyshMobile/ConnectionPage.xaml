@@ -36,10 +36,21 @@
                            TextColor="{AppThemeBinding Light=#4F46E5, Dark=#A5B4FC}" />
                     <Label x:Name="LastStatusLabel" FontSize="12" Style="{StaticResource MutedText}" />
                     <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
-                        <Button Text="ارسال آزمایشی صف" Clicked="OnSyncClicked" Style="{StaticResource PrimaryAction}" />
+                        <Button Text="ارسال دستی پیام‌های منتظر" Clicked="OnSyncClicked" Style="{StaticResource PrimaryAction}" />
                         <Button Grid.Column="1" Text="قطع اتصال" Clicked="OnDisconnectClicked" Style="{StaticResource DangerAction}" />
                     </Grid>
                     <ActivityIndicator x:Name="BusyIndicator" IsVisible="False" IsRunning="False" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Style="{StaticResource Card}" Padding="15" StrokeShape="RoundRectangle 18">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="عنوان پیش از ارسال خودکار" Style="{StaticResource SectionTitle}" />
+                    <Label Text="در حالت روشن، پیام تازه تا زمان ثبت عنوان خودکار ارسال نمی‌شود. پس از بازکردن قفل گوشی، یادآوری عنوان‌گذاری نمایش داده می‌شود. ارسال دستی می‌تواند بدون عنوان باشد."
+                           FontSize="12" Style="{StaticResource MutedText}" />
+                    <Switch x:Name="RequireTitleSwitch" Toggled="OnRequireTitleToggled" HorizontalOptions="Start" />
+                    <Button x:Name="NotificationSettingsButton" Text="تنظیمات اعلان‌های گوشی"
+                            Clicked="OnNotificationSettingsClicked" Style="{StaticResource PrimaryAction}" />
                 </VerticalStackLayout>
             </Border>
 

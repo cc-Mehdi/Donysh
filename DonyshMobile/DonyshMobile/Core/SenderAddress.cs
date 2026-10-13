@@ -30,16 +30,22 @@ public static class SenderAddress
         var result = builder.ToString();
         if (result.All(char.IsDigit))
         {
-            if (result.StartsWith("0098", StringComparison.Ordinal) && result.Length > 4)
+            // Mobile numbers may be shown with +98, 0098, 098, 09, or no prefix.
+            // Restrict the rewrite to a ten-digit mobile subscriber number.
+            if (result.StartsWith("00989", StringComparison.Ordinal) && result.Length == 14)
             {
                 result = result[4..];
             }
-            else if (result.StartsWith("98", StringComparison.Ordinal) && result.Length > 10)
+            else if (result.StartsWith("0989", StringComparison.Ordinal) && result.Length == 13)
+            {
+                result = result[1..];
+            }
+
+            if (result.StartsWith("989", StringComparison.Ordinal) && result.Length == 12)
             {
                 result = result[2..];
             }
-
-            if (result.StartsWith('0') && result.Length > 1)
+            else if (result.StartsWith("09", StringComparison.Ordinal) && result.Length == 11)
             {
                 result = result[1..];
             }

@@ -7,12 +7,16 @@ public partial class ConnectionPage : ContentPage
     private readonly SmsMonitorStore _store;
     private readonly MobileApiClient _api = new();
     private bool _busy;
+    private bool _settingsLoaded;
 
     public ConnectionPage(SmsMonitorStore store)
     {
         _store = store;
         InitializeComponent();
         ServerEntry.Text = MobileConnectionStore.Server;
+        RequireTitleSwitch.IsToggled = SmsSyncSettings.RequireTitle;
+        NotificationSettingsButton.IsVisible = DeviceInfo.Platform == DevicePlatform.Android;
+        _settingsLoaded = true;
     }
 
     protected override async void OnAppearing()
@@ -30,6 +34,18 @@ public partial class ConnectionPage : ContentPage
 
     private void OnSyncChanged(object? sender, EventArgs e) =>
         Dispatcher.Dispatch(async () => await RefreshAsync());
+
+    private void OnRequireTitleToggled(object? sender, ToggledEventArgs e)
+    {
+        if (!_settingsLoaded) return;
+        SmsSyncSettings.RequireTitle = e.Value;
+        SyncPlatform.Schedule();
+#if ANDROID
+        _ = DonyshMobile.Platforms.Android.TitleReminderNotifier.RefreshAsync(global::Android.App.Application.Context);
+#endif
+    }
+
+    private void OnNotificationSettingsClicked(object? sender, EventArgs e) => AppInfo.ShowSettingsUI();
 
     private async void OnConnectClicked(object? sender, EventArgs e)
     {
@@ -65,7 +81,7 @@ public partial class ConnectionPage : ContentPage
         await RunBusyAsync(async () =>
         {
             var connection = await MobileConnectionStore.LoadAsync();
-            var result = await _api.SendNextBatchAsync(_store, connection, DateTimeOffset.UtcNow);
+            var result = await _api.SendNextBatchAsync(_store, connection, DateTimeOffset.UtcNow, manualSend: true);
             if (result == SyncRunResult.ConnectionRequired)
                 await DisplayAlert("اتصال لازم است", "کد اتصال جدیدی از سایت Donysh دریافت و وارد کنید.", "باشه");
             else if (result == SyncRunResult.NothingToSend)
