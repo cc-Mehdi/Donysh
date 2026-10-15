@@ -12,7 +12,11 @@ public partial class MainPage : ContentPage
     private static int _pendingTitlesRequested;
     public static void RequestPendingTitles() => Interlocked.Exchange(ref _pendingTitlesRequested, 1);
     public static bool ConsumePendingTitlesRequest() => Interlocked.Exchange(ref _pendingTitlesRequested, 0) == 1;
+#if DEBUG && WINDOWS
+    private readonly SmsMonitorStore _store = WinUI.StartupSmokeCheck.CreateStore();
+#else
     private readonly SmsMonitorStore _store = new(FileSystem.AppDataDirectory);
+#endif
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
     private readonly List<SenderItem> _allSenders = [];
     private bool _subscribed, _hasPermission, _entered, _busy, _isRefreshing;
@@ -53,7 +57,12 @@ public partial class MainPage : ContentPage
         if (!_entered) { _entered = true; await UiMotion.EnterAsync(PageContent); }
         if (ConsumePendingTitlesRequest())
         {
-            await Navigation.PushAsync(new PendingTitlesPage(_store, promptFirstMessage: true));
+            try { await Navigation.PushAsync(new PendingTitlesPage(_store, promptFirstMessage: true)); }
+            catch (Exception)
+            {
+                RequestPendingTitles();
+                await DisplayAlert("صفحه باز نشد", "عنوان‌گذاری پیام‌ها را دوباره از صفحهٔ اصلی باز کنید.", "باشه");
+            }
             return;
         }
 #if ANDROID

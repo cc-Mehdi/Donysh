@@ -21,12 +21,14 @@ public partial class PendingTitlesPage : ContentPage
     {
         base.OnAppearing();
         SmsReceivedNotifier.MessageStored += OnMessageStored;
-        await RefreshAsync();
+        var refreshed = await RefreshAsync();
         if (!_entered) { _entered = true; await UiMotion.EnterAsync(TitlesContent); }
         if (_promptFirstMessage)
         {
             _promptFirstMessage = false;
-            var first = (await _store.GetUntitledMessagesAsync()).FirstOrDefault();
+            // Refresh already handles an unreadable encrypted queue. Do not read it
+            // again outside that error boundary when opened from a notification.
+            var first = refreshed ? _drafts.Values.FirstOrDefault() : null;
             if (first is not null) Dispatcher.Dispatch(async () => await PromptForTitleAsync(first.Id));
         }
     }
@@ -77,7 +79,7 @@ public partial class PendingTitlesPage : ContentPage
         finally { _saving = false; }
     }
 
-    private async Task RefreshAsync()
+    private async Task<bool> RefreshAsync()
     {
         try
         {
@@ -88,8 +90,13 @@ public partial class PendingTitlesPage : ContentPage
                 _drafts.TryAdd(message.Id, new PendingTitleItem(message.Id, message.SenderAddress, message.Body, UiText.Date(message.ReceivedAtUtc)));
             PendingList.ItemsSource = messages.Select(x => _drafts[x.Id]).ToList();
             RemainingLabel.Text = messages.Count == 0 ? "همهٔ عنوان‌ها ثبت شده‌اند" : $"{UiText.Digits(messages.Count)} پیام باقی مانده است";
+            return true;
         }
-        catch (Exception) { RemainingLabel.Text = "خواندن پیام‌ها کامل نشد؛ دوباره وارد این صفحه شوید."; }
+        catch (Exception)
+        {
+            RemainingLabel.Text = "خواندن پیام‌ها کامل نشد؛ دوباره وارد این صفحه شوید.";
+            return false;
+        }
     }
 }
 

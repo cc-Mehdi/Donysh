@@ -9,6 +9,7 @@ namespace DonyshMobile
     [Activity(Theme = "@style/Maui.SplashTheme", MainLauncher = true, LaunchMode = LaunchMode.SingleTop, ConfigurationChanges = ConfigChanges.ScreenSize | ConfigChanges.Orientation | ConfigChanges.UiMode | ConfigChanges.ScreenLayout | ConfigChanges.SmallestScreenSize | ConfigChanges.Density)]
     public class MainActivity : MauiAppCompatActivity
     {
+        private bool _openingTitles;
         protected override void OnCreate(Bundle? savedInstanceState)
         {
             if (Intent?.GetBooleanExtra(Platforms.Android.TitleReminderNotifier.OpenTitlesExtra, false) == true)
@@ -25,9 +26,25 @@ namespace DonyshMobile
             MainPage.RequestPendingTitles();
             MainThread.BeginInvokeOnMainThread(async () =>
             {
-                if (Shell.Current is null || !MainPage.ConsumePendingTitlesRequest()) return;
-                await Shell.Current.Navigation.PushAsync(new PendingTitlesPage(
-                    new SmsMonitorStore(FileSystem.AppDataDirectory), promptFirstMessage: true));
+                if (Shell.Current is not { } shell) return;
+                if (_openingTitles || shell.CurrentPage is PendingTitlesPage)
+                {
+                    MainPage.ConsumePendingTitlesRequest();
+                    return;
+                }
+                if (!MainPage.ConsumePendingTitlesRequest()) return;
+                _openingTitles = true;
+                try
+                {
+                    await shell.Navigation.PushAsync(new PendingTitlesPage(
+                        new SmsMonitorStore(FileSystem.AppDataDirectory), promptFirstMessage: true));
+                }
+                catch (Exception exception)
+                {
+                    MainPage.RequestPendingTitles();
+                    global::Android.Util.Log.Warn("DonyshTitle", $"Title navigation failed: {exception.GetType().Name}");
+                }
+                finally { _openingTitles = false; }
             });
         }
     }

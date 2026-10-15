@@ -17,6 +17,9 @@
             window.MinimumWidth = 360;
             window.MinimumHeight = 600;
 #endif
+#if DEBUG && WINDOWS
+            WinUI.StartupSmokeCheck.Attach(window);
+#endif
             return window;
         }
     }

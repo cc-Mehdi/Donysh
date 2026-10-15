@@ -5,4 +5,12 @@
     xmlns:maui="using:Microsoft.Maui"
     xmlns:local="using:DonyshMobile.WinUI">
 
+    <maui:MauiWinUIApplication.Resources>
+        <ResourceDictionary>
+            <!-- Declare native resources before controls are created. Do not replace
+                 WinUI theme resources from the application constructor. -->
+            <FontFamily x:Key="ContentControlThemeFontFamily">ms-appx:///YekanBakh-Regular.ttf#Yekan Bakh</FontFamily>
+            <FontFamily x:Key="TextControlThemeFontFamily">ms-appx:///YekanBakh-Regular.ttf#Yekan Bakh</FontFamily>
+        </ResourceDictionary>
+    </maui:MauiWinUIApplication.Resources>
 </maui:MauiWinUIApplication>

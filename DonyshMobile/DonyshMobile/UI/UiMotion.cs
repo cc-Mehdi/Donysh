@@ -34,16 +34,25 @@ public static class UiMotion
     public static async Task EnterAsync(VisualElement view)
     {
         if (!CanAnimate) return;
-        view.Opacity = 0.65;
-        view.TranslationY = 10;
-        await Task.WhenAll(view.FadeTo(1, 180, Easing.CubicOut), view.TranslateTo(0, 0, 180, Easing.CubicOut));
+        try
+        {
+            view.Opacity = 0.65;
+            view.TranslationY = 10;
+            await Task.WhenAll(view.FadeTo(1, 180, Easing.CubicOut), view.TranslateTo(0, 0, 180, Easing.CubicOut));
+        }
+        catch (Exception)
+        {
+            // A detached native view must not turn an optional transition into a crash.
+            view.Opacity = 1;
+            view.TranslationY = 0;
+        }
     }
 
     public static async Task PressAsync(VisualElement view)
     {
         if (!CanAnimate) return;
-        await view.ScaleTo(0.97, 65, Easing.CubicOut);
-        await view.ScaleTo(1, 100, Easing.CubicOut);
+        await ScaleSafelyAsync(view, 0.97, 65);
+        await ScaleSafelyAsync(view, 1, 100);
     }
 
     public static void Feedback()
@@ -71,11 +80,17 @@ public static class UiMotion
 
     private static async void OnPressed(object? sender, EventArgs e)
     {
-        if (sender is Button button && CanAnimate) await button.ScaleTo(0.97, 65, Easing.CubicOut);
+        if (sender is Button button && CanAnimate) await ScaleSafelyAsync(button, 0.97, 65);
     }
 
     private static async void OnReleased(object? sender, EventArgs e)
     {
-        if (sender is Button button) await button.ScaleTo(1, CanAnimate ? 100u : 1u, Easing.CubicOut);
+        if (sender is Button button) await ScaleSafelyAsync(button, 1, CanAnimate ? 100u : 1u);
+    }
+
+    private static async Task ScaleSafelyAsync(VisualElement view, double scale, uint duration)
+    {
+        try { await view.ScaleTo(scale, duration, Easing.CubicOut); }
+        catch (Exception) { view.Scale = 1; }
     }
 }
