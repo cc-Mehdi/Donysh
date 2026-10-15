@@ -8,21 +8,40 @@ public partial class MessagesPage : ContentPage
 {
     private readonly SmsMonitorStore _store;
     private readonly Guid _senderId;
+    private readonly Action _scheduleSync;
+    private readonly Func<string, string, string, string, Task<bool>> _confirmAsync;
     private readonly List<MessageItem> _allMessages = [];
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
-    private bool _subscribed, _entered, _editing;
+    private bool _subscribed, _entered, _editing, _retrying;
     private string _search = string.Empty;
     public string SenderAddress { get; }
     public ObservableCollection<MessageItem> Messages { get; } = [];
     public string MessageCountText => $"{UiText.Digits(Messages.Count)} پیام";
+    public bool HasRetryableMessages => Messages.Any(x => x.CanRetry);
 
     public MessagesPage(SmsMonitorStore store, Guid senderId, string senderAddress)
+        : this(store, senderId, senderAddress, ScheduleDeliveryWork)
+    {
+    }
+
+    internal MessagesPage(SmsMonitorStore store, Guid senderId, string senderAddress, Action scheduleSync,
+        Func<string, string, string, string, Task<bool>>? confirm = null)
     {
         _store = store;
         _senderId = senderId;
+        _scheduleSync = scheduleSync;
+        _confirmAsync = confirm ?? DisplayAlert;
         SenderAddress = senderAddress;
         InitializeComponent();
         BindingContext = this;
+    }
+
+    private static void ScheduleDeliveryWork()
+    {
+        SyncPlatform.Schedule();
+#if ANDROID
+        _ = Platforms.Android.TitleReminderNotifier.RefreshAsync(global::Android.App.Application.Context);
+#endif
     }
 
     protected override async void OnAppearing()
@@ -67,11 +86,13 @@ public partial class MessagesPage : ContentPage
                         || x.Title.Contains(_search, StringComparison.OrdinalIgnoreCase))))
             Messages.Add(item);
         OnPropertyChanged(nameof(MessageCountText));
+        OnPropertyChanged(nameof(HasRetryableMessages));
     }
 
-    private async Task RefreshAsync()
+    private async Task RefreshAsync(bool waitForCurrent = false)
     {
-        if (!await _refreshGate.WaitAsync(0)) return;
+        if (waitForCurrent) await _refreshGate.WaitAsync();
+        else if (!await _refreshGate.WaitAsync(0)) return;
         try
         {
             var stored = await _store.GetMessagesAsync(_senderId);
@@ -94,20 +115,69 @@ public partial class MessagesPage : ContentPage
                     };
                     return new MessageItem(message.Id, untitled ? "بدون عنوان" : message.Title!, message.Body,
                         UiText.Date(message.ReceivedAtUtc), summary, delivery, message.DeliveryStatus,
-                        message.DeliveryStatus == SmsDeliveryStatus.Pending, untitled);
+                        message.DeliveryStatus == SmsDeliveryStatus.Pending, untitled, message.LastDeliveryError is not null);
                 }).ToList();
             });
             _allMessages.Clear();
             _allMessages.AddRange(items);
             FilterMessages();
         }
-        catch (Exception) { await DisplayAlert("پیام‌ها باز نشد", "خواندن اطلاعات کامل نشد. برنامه را دوباره باز کنید؛ پیام‌ها حذف نشده‌اند.", "باشه"); }
+        catch (Exception exception)
+        {
+            UiSafety.Log(exception);
+            await UiSafety.AlertAsync(this, "پیام‌ها باز نشد", "خواندن اطلاعات کامل نشد. برنامه را دوباره باز کنید؛ پیام‌ها حذف نشده‌اند.");
+        }
         finally { _refreshGate.Release(); }
+    }
+
+    private async void OnRetryMessageClicked(object? sender, EventArgs e)
+    {
+        if (sender is Button { CommandParameter: Guid id } && _allMessages.Any(x => x.Id == id && x.CanRetry))
+            await RequeueAsync([id], confirm: false);
+    }
+
+    private async void OnRetryVisibleClicked(object? sender, EventArgs e) =>
+        await RequeueAsync(Messages.Where(x => x.CanRetry).Select(x => x.Id).ToArray(), confirm: true);
+
+    private async Task RequeueAsync(IReadOnlyCollection<Guid> ids, bool confirm)
+    {
+        if (_retrying || _editing || ids.Count == 0) return;
+        _retrying = true;
+        RetryVisibleMessagesButton.IsEnabled = false;
+        RetryStatusLabel.IsVisible = false;
+        try
+        {
+            if (confirm && !await _confirmAsync("بازگرداندن به صف",
+                    $"{UiText.Digits(ids.Count)} پیام ارسال‌نشده در همین فهرست دوباره در صف قرار بگیرند؟ پیام‌های تأییدشده تغییری نمی‌کنند. ارسال در نوبت بعد و مطابق تنظیمات عنوان انجام می‌شود.",
+                    "بازگرداندن به صف", "انصراف")) return;
+            var changed = 0;
+            // Wait for any in-flight receipt and recheck stored status; never replay a delivered SMS.
+            await MobileApiClient.RunWithSyncLockAsync(async () =>
+                changed = await _store.RequeueMessagesAsync(_senderId, ids));
+            await RefreshAsync(waitForCurrent: true);
+            RetryStatusLabel.Text = changed > 0
+                ? $"{UiText.Digits(changed)} پیام دوباره در صف قرار گرفت. فاصلهٔ ارسال و تنظیم عنوان همچنان رعایت می‌شوند."
+                : "پیام‌ها از قبل در صف‌اند یا وضعیت آن‌ها تغییر کرده است؛ پیام تأییدشده دوباره ارسال نمی‌شود.";
+            RetryStatusLabel.IsVisible = true;
+            if (changed > 0)
+            {
+                UiMotion.Feedback();
+                SmsReceivedNotifier.NotifySyncChanged();
+                _scheduleSync();
+            }
+        }
+        catch (Exception exception)
+        {
+            UiSafety.Log(exception);
+            RetryStatusLabel.Text = "بازگرداندن به صف کامل نشد؛ پیام‌ها محفوظ‌اند. دوباره تلاش کنید.";
+            RetryStatusLabel.IsVisible = true;
+        }
+        finally { _retrying = false; RetryVisibleMessagesButton.IsEnabled = true; }
     }
 
     private async void OnSetTitleClicked(object? sender, EventArgs e)
     {
-        if (_editing || sender is not Button { CommandParameter: Guid id }) return;
+        if (_editing || _retrying || sender is not Button { CommandParameter: Guid id }) return;
         _editing = true;
         try
         {
@@ -123,10 +193,7 @@ public partial class MessagesPage : ContentPage
             }
             UiMotion.Feedback();
             await RefreshAsync();
-            SyncPlatform.Schedule();
-#if ANDROID
-            await Platforms.Android.TitleReminderNotifier.RefreshAsync(global::Android.App.Application.Context);
-#endif
+            _scheduleSync();
         }
         catch (Exception) { await DisplayAlert("ثبت کامل نشد", "پیام روی گوشی باقی است. دوباره تلاش کنید.", "باشه"); }
         finally { _editing = false; }
@@ -142,4 +209,7 @@ public partial class MessagesPage : ContentPage
 }
 
 public sealed record MessageItem(Guid Id, string Title, string Body, string ReceivedAt, string ParsedSummary,
-    string DeliveryStatus, SmsDeliveryStatus Status, bool CanEditTitle, bool Untitled);
+    string DeliveryStatus, SmsDeliveryStatus Status, bool CanEditTitle, bool Untitled, bool HasDeliveryError = false)
+{
+    public bool CanRetry => Status == SmsDeliveryStatus.Rejected || (Status == SmsDeliveryStatus.Pending && HasDeliveryError);
+}

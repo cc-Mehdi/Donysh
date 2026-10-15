@@ -182,6 +182,38 @@ public sealed class SmsMonitorStore
         finally { Gate.Release(); }
     }
 
+    public async Task<int> RequeueMessagesAsync(Guid senderId, IReadOnlyCollection<Guid> messageIds,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(messageIds);
+        if (messageIds.Count == 0) return 0;
+        var ids = messageIds.ToHashSet();
+        await Gate.WaitAsync(cancellationToken);
+        try
+        {
+            var state = await LoadUnsafeAsync(cancellationToken);
+            if (!state.Senders.Any(x => x.Id == senderId)) return 0;
+            var changed = 0;
+            foreach (var message in state.Messages.Where(x => x.SenderId == senderId && ids.Contains(x.Id)
+                         && x.DeliveryStatus is SmsDeliveryStatus.Pending or SmsDeliveryStatus.Rejected))
+            {
+                if (message.DeliveryStatus == SmsDeliveryStatus.Pending && message.LastDeliveryError is null
+                    && message.ConfirmedAtUtc is null) continue;
+                message.DeliveryStatus = SmsDeliveryStatus.Pending;
+                message.DeliveryProtocolVersion = 2;
+                message.ConfirmedAtUtc = null;
+                message.LastDeliveryError = null;
+                changed++;
+            }
+            if (changed == 0) return 0;
+            // Preserve titles, idempotency keys, attempt history, cooldown and failure backoff.
+            state.SyncStatus = "پیام‌های انتخاب‌شده دوباره در صف ارسال قرار گرفتند.";
+            await SaveUnsafeAsync(state, cancellationToken);
+            return changed;
+        }
+        finally { Gate.Release(); }
+    }
+
     public async Task<SmsSyncSummary> GetSyncSummaryAsync(CancellationToken cancellationToken = default)
     {
         await Gate.WaitAsync(cancellationToken);
