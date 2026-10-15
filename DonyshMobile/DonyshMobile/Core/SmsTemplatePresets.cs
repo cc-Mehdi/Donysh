@@ -1,6 +1,7 @@
 namespace DonyshMobile.Core;
 
-public sealed record SmsTemplatePreset(string Id, string BankName, string Description, string SampleMessage, IReadOnlyList<SmsTemplateField> Fields);
+public sealed record SmsTemplatePreset(string Id, string BankName, string Description, string SampleMessage,
+    IReadOnlyList<SmsTemplateField> Fields, string Pattern);
 
 public static class SmsTemplatePresets
 {
@@ -18,7 +19,7 @@ public static class SmsTemplatePresets
                 Field(TemplateFieldKey.Unit, "ریال"),
                 Field(TemplateFieldKey.Time, "17:55"),
                 Field(TemplateFieldKey.Date, "1405.07.19")
-            ]),
+            ], "بلو\n{type} پول\n{ignore}عزیز، {amount}ریال از حساب شما پرید.\nموجودی: {ignore} ریال\n{time}\n{date}"),
         new(
             "mellat-withdrawal",
             "بانک ملت — برداشت",
@@ -31,7 +32,7 @@ public static class SmsTemplatePresets
                 Field(TemplateFieldKey.Unit, "ریال"),
                 Field(TemplateFieldKey.Time, "12:14"),
                 Field(TemplateFieldKey.Date, "05/06/15")
-            ]),
+            ], "حساب{ignore}\n{type}{amount}\nمانده{ignore}\n{date}-{time}"),
         new(
             "resalat-withdrawal",
             "بانک رسالت — برداشت",
@@ -44,8 +45,30 @@ public static class SmsTemplatePresets
                 Field(TemplateFieldKey.Unit, "ریال"),
                 Field(TemplateFieldKey.Time, "17:05"),
                 Field(TemplateFieldKey.Date, "07/20")
-            ])
+            ], "{ignore}\n{type}{amount}\n{date}_{time}\nمانده: {ignore}")
     ];
+
+    public static TemplateBuildResult Build(SmsTemplatePreset preset, Guid id, Guid senderId, string? name, string message)
+    {
+        if (string.IsNullOrWhiteSpace(message) || message.Length > 2048)
+            return new(null, "متن کامل پیام نمونه را وارد کنید؛ حداکثر ۲۰۴۸ نویسه مجاز است.");
+        var template = new SmsTemplate
+        {
+            Id = id, SenderId = senderId, PresetId = preset.Id,
+            Name = string.IsNullOrWhiteSpace(name) ? preset.BankName : name.Trim(),
+            Pattern = preset.Pattern, Unit = MoneyUnit.Rial, DefaultKind = TransactionKind.Withdrawal,
+            Phrases = [new() { Text = preset.Fields.Single(x => x.Key == TemplateFieldKey.TransactionType).Value,
+                Kind = TransactionKind.Withdrawal }],
+            SampleMessage = message.Trim()
+        };
+        var fields = SmsTemplateParser.TryReadFields(template, message);
+        if (fields is null)
+            return new(null, "این پیام با قالب آمادهٔ بانک انتخاب‌شده سازگار نیست. بانک را بررسی کنید یا روش «از پیامک خودم می‌سازم» را انتخاب کنید.");
+        template.Fields = [Field(TemplateFieldKey.BankName, preset.Fields.Single(x => x.Key == TemplateFieldKey.BankName).Value),
+            .. fields, Field(TemplateFieldKey.Unit, "ریال")];
+        var error = SmsTemplateParser.Validate(template);
+        return new(error is null ? template : null, error);
+    }
 
     private static SmsTemplateField Field(TemplateFieldKey key, string value) => new() { Key = key, Value = value };
 }

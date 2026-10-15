@@ -9,6 +9,7 @@ var testDirectory = Path.Combine(Path.GetTempPath(), $"donysh-mobile-tests-{Guid
 
 try
 {
+    await TemplatePresetRegressionTests.RunAsync(Path.Combine(testDirectory, "template-retry"));
     using var manifestStream = typeof(Program).Assembly.GetManifestResourceStream("DonyshMobile.Tests.AndroidManifest.xml")
         ?? throw new InvalidOperationException("The Android manifest must be embedded for permission regression checks.");
     var manifest = XDocument.Load(manifestStream);

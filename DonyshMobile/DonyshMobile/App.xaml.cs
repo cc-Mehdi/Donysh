@@ -10,6 +10,9 @@
 
         protected override Window CreateWindow(IActivationState? activationState)
         {
+#if DEBUG && ANDROID
+            if (Diagnostics.TemplateFlowSmokeCheck.IsRequested) return Diagnostics.TemplateFlowSmokeCheck.CreateWindow();
+#endif
             var window = new Window(new AppShell());
 #if WINDOWS
             window.Width = 520;

@@ -37,6 +37,7 @@ public static class SmsTemplateParser
                 p is null || string.IsNullOrWhiteSpace(p.Text) || p.Text.Length > 100 || !Enum.IsDefined(p.Kind)))
             return "نگاشت نوع تراکنش نامعتبر است (حداکثر ۳۰ عبارت، هرکدام حداکثر ۱۰۰ نویسه).";
         if (template.SampleMessage?.Length > 2048 || template.Fields is null || template.Fields.Count > 6
+            || template.PresetId?.Length > 64
             || template.Fields.Any(field => field is null || !Enum.IsDefined(field.Key)
                 || string.IsNullOrWhiteSpace(field.Value) || field.Value.Length > 200)
             || template.Fields.Select(field => field.Key).Distinct().Count() != template.Fields.Count)
@@ -50,6 +51,25 @@ public static class SmsTemplateParser
     }
 
     public static ParsedSms? TryParse(SmsTemplate template, string body) => CreateMatcher(template)?.Invoke(body);
+
+    public static IReadOnlyList<SmsTemplateField>? TryReadFields(SmsTemplate template, string body)
+    {
+        if (body.Length > 2048 || Validate(template) is not null) return null;
+        var regex = BuildRegex(template.Pattern);
+        if (Parse(template, regex, body) is null) return null;
+        try
+        {
+            var match = regex.Match(NormalizeText(body));
+            return new[]
+            {
+                (TemplateFieldKey.TransactionType, "type"), (TemplateFieldKey.Amount, "amount"),
+                (TemplateFieldKey.Time, "time"), (TemplateFieldKey.Date, "date")
+            }.Where(field => match.Groups[field.Item2].Success)
+                .Select(field => new SmsTemplateField { Key = field.Item1, Value = match.Groups[field.Item2].Value.Trim() })
+                .ToList();
+        }
+        catch (RegexMatchTimeoutException) { return null; }
+    }
 
     public static Func<string, ParsedSms?>? CreateMatcher(SmsTemplate template)
     {

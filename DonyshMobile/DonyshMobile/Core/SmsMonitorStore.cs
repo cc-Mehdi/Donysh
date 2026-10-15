@@ -351,6 +351,22 @@ public sealed class SmsMonitorStore
                 state.Templates.Add(template);
             }
             else state.Templates[existing] = template;
+            // A rejection is not a delivery receipt. Only retry this sender's messages that
+            // the corrected template can now read as an expense; preserve keys/titles and pacing.
+            var matcher = SmsTemplateParser.CreateMatcher(template)!;
+            var requeued = 0;
+            foreach (var message in state.Messages.Where(x => x.SenderId == template.SenderId
+                         && x.DeliveryStatus == SmsDeliveryStatus.Rejected))
+            {
+                if (matcher(message.Body) is not { Kind: TransactionKind.Withdrawal }) continue;
+                message.DeliveryStatus = SmsDeliveryStatus.Pending;
+                message.DeliveryProtocolVersion = 2;
+                message.ConfirmedAtUtc = null;
+                message.LastDeliveryError = null;
+                requeued++;
+            }
+            if (requeued > 0)
+                state.SyncStatus = "پیام‌های ردشدهٔ سازگار با قالب ذخیره‌شده دوباره منتظر ارسال‌اند.";
             await SaveUnsafeAsync(state, cancellationToken);
             return null;
         }

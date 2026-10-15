@@ -10,7 +10,7 @@
             <VerticalStackLayout Spacing="5">
                 <Label Text="خواندن خودکار پیامک" Style="{StaticResource PageTitle}" />
                 <Label x:Name="SenderLabel" Style="{StaticResource MutedText}" />
-                <Label Text="فقط مبلغ را از پیام مشخص کنید. تاریخ، ساعت و اطلاعات دیگر را در صورت نیاز اضافه کنید."
+                <Label x:Name="IntroLabel" Text="فقط مبلغ را از پیام مشخص کنید. تاریخ، ساعت و اطلاعات دیگر را در صورت نیاز اضافه کنید."
                        Style="{StaticResource MutedText}" />
             </VerticalStackLayout>
 
@@ -28,7 +28,10 @@
                         <Picker x:Name="PresetPicker" Title="انتخاب بانک"
                                 SelectedIndexChanged="OnPresetSelected" />
                         <Label x:Name="PresetDescriptionLabel" Style="{StaticResource MutedText}" FontSize="12" />
-                        <Label Text="بانک را انتخاب کنید تا یک نمونه پیام آماده ببینید. اگر پیام شما فرق دارد، متن و مقدارها را تغییر دهید."
+                        <Button x:Name="BankSampleButton" Text="نمایش نمونهٔ بانک" Clicked="OnToggleBankSampleClicked"
+                                Style="{StaticResource QuietAction}" />
+                        <Label x:Name="BankSampleLabel" IsVisible="False" Style="{StaticResource MutedText}" />
+                        <Label Text="بانک را انتخاب کنید، سپس پیام خودتان را بررسی کنید. مبلغ، تاریخ و ساعت خودکار خوانده می‌شوند؛ نمونهٔ بانک هم برای مقایسه نمایش داده می‌شود."
                                Style="{StaticResource MutedText}" FontSize="12" />
                     </VerticalStackLayout>
                 </VerticalStackLayout>
@@ -49,9 +52,12 @@
 
             <Border Style="{StaticResource Card}" Padding="16">
                 <VerticalStackLayout Spacing="12">
-                    <Label Text="۳ · بخش‌های پیام را مشخص کنید" Style="{StaticResource SectionTitle}" />
-                    <Label Text="سمت راست نام بخش و سمت چپ مقدار آن را بنویسید. مبلغ را با موجودی حساب اشتباه نگیرید."
+                    <Label x:Name="FieldsTitleLabel" Text="۳ · بخش‌های پیام را مشخص کنید" Style="{StaticResource SectionTitle}" />
+                    <Label x:Name="FieldsHelpLabel" Text="سمت راست نام بخش و سمت چپ مقدار آن را بنویسید. مبلغ را با موجودی حساب اشتباه نگیرید."
                            Style="{StaticResource MutedText}" FontSize="12" />
+                    <Button x:Name="EditFieldsButton" Text="می‌خواهم بخش‌ها را دستی تغییر دهم" Clicked="OnEditFieldsClicked"
+                            IsVisible="False" Style="{StaticResource QuietAction}" />
+                    <VerticalStackLayout x:Name="ManualFieldsPanel" Spacing="12">
                     <Grid ColumnDefinitions="0.9*,1.35*,48" ColumnSpacing="8">
                         <Label Text="بخش پیام" FontAttributes="Bold" />
                         <Label Grid.Column="1" Text="مقدار پیامک" FontAttributes="Bold" />
@@ -88,6 +94,7 @@
                             Style="{StaticResource SecondaryAction}" />
                     <Label Text="لازم نیست ردیف‌های خالی را پر کنید. اگر واحد و نوع را ننویسید، مبلغ ریال و تراکنش برداشت است. برای پیام واریز، «نوع تراکنش» را اضافه کنید."
                            Style="{StaticResource MutedText}" FontSize="12" />
+                    </VerticalStackLayout>
                     <Label Text="نام قالب · اختیاری" Style="{StaticResource SectionTitle}" Margin="0,6,0,0" />
                     <Entry x:Name="NameEntry" Placeholder="مثلاً برداشت از بلو" MaxLength="80"
                            TextChanged="OnInputChanged" />

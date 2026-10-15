@@ -12,6 +12,11 @@ namespace DonyshMobile
         private bool _openingTitles;
         protected override void OnCreate(Bundle? savedInstanceState)
         {
+#if DEBUG
+            // Only a separately installed QA package can enter the synthetic-data test flow.
+            Diagnostics.TemplateFlowSmokeCheck.IsRequested = PackageName == "ir.donysh.mobile.qa"
+                && Intent?.GetBooleanExtra("donysh_template_check", false) == true;
+#endif
             if (Intent?.GetBooleanExtra(Platforms.Android.TitleReminderNotifier.OpenTitlesExtra, false) == true)
                 MainPage.RequestPendingTitles();
             base.OnCreate(savedInstanceState);

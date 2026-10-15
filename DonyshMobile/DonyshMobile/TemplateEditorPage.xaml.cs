@@ -11,17 +11,26 @@ public partial class TemplateEditorPage : ContentPage
     private readonly SmsMonitorStore _store;
     private readonly Guid _senderId;
     private readonly Guid _templateId;
+    private readonly Action _scheduleSync;
     private bool _initializing = true;
     private bool _messagesLoaded;
     private bool _saving;
     private bool _entered;
+    private bool _updatingPreset;
+    private SmsTemplatePreset? _previousPreset;
     private IReadOnlyList<CapturedSms> _savedMessages = [];
 
     public ObservableCollection<TemplateFieldRow> Fields { get; } = [];
 
     public TemplateEditorPage(SmsMonitorStore store, Guid senderId, string senderAddress, SmsTemplate? template = null)
+        : this(store, senderId, senderAddress, template, SyncPlatform.Schedule)
+    {
+    }
+
+    internal TemplateEditorPage(SmsMonitorStore store, Guid senderId, string senderAddress, SmsTemplate? template, Action scheduleSync)
     {
         _store = store;
+        _scheduleSync = scheduleSync;
         _senderId = senderId;
         _templateId = template?.Id ?? Guid.NewGuid();
         InitializeComponent();
@@ -41,6 +50,15 @@ public partial class TemplateEditorPage : ContentPage
             MessageEditor.Text = string.IsNullOrWhiteSpace(template.SampleMessage) ? template.Pattern : template.SampleMessage;
             LoadFields(template.Fields.Count > 0 ? template.Fields : DefaultFields());
             SourcePicker.SelectedIndex = 0;
+            var preset = SmsTemplatePresets.All.FirstOrDefault(x => x.Id == template.PresetId);
+            if (preset is not null)
+            {
+                _previousPreset = preset;
+                SourcePicker.SelectedIndex = 1;
+                PresetPicker.SelectedIndex = SmsTemplatePresets.All.ToList().IndexOf(preset);
+                PresetDescriptionLabel.Text = preset.Description;
+                BankSampleLabel.Text = preset.SampleMessage;
+            }
             if (template.Fields.Count == 0)
             {
                 PreviewCard.IsVisible = true;
@@ -48,6 +66,8 @@ public partial class TemplateEditorPage : ContentPage
             }
         }
         _initializing = false;
+        UpdateSourceMode();
+        if (!IsPresetMode && Fields.Count == 0) LoadFields(DefaultFields());
     }
 
     protected override async void OnAppearing()
@@ -83,17 +103,45 @@ public partial class TemplateEditorPage : ContentPage
 
     private void OnSourceChanged(object? sender, EventArgs e)
     {
-        PresetSection.IsVisible = SourcePicker.SelectedIndex == 1;
+        UpdateSourceMode();
+        if (!IsPresetMode && Fields.Count == 0) LoadFields(DefaultFields());
+        InvalidatePreview();
+        if (!_initializing && IsPresetMode && PresetPicker.SelectedIndex >= 0) ShowPreview();
     }
+
+    private bool IsPresetMode => SourcePicker.SelectedIndex == 1;
+
+    private void UpdateSourceMode()
+    {
+        PresetSection.IsVisible = IsPresetMode;
+        ManualFieldsPanel.IsVisible = !IsPresetMode;
+        EditFieldsButton.IsVisible = IsPresetMode;
+        FieldsTitleLabel.Text = IsPresetMode ? "۳ · بخش‌ها خودکار خوانده می‌شوند" : "۳ · بخش‌های پیام را مشخص کنید";
+        FieldsHelpLabel.Text = IsPresetMode
+            ? "مبلغ، تاریخ، ساعت و نوع تراکنش از پیام نمونه خوانده می‌شوند. نیازی به پرکردن دستی بخش‌ها نیست؛ نتیجهٔ پایین صفحه را بررسی کنید."
+            : "سمت راست نام بخش و سمت چپ مقدار آن را بنویسید. مبلغ را با موجودی حساب اشتباه نگیرید.";
+        IntroLabel.Text = IsPresetMode ? "بانک را انتخاب کنید و یک پیام واقعی را بررسی کنید؛ بخش‌ها خودکار تشخیص داده می‌شوند."
+            : "فقط مبلغ را از پیام مشخص کنید. تاریخ، ساعت و اطلاعات دیگر را در صورت نیاز اضافه کنید.";
+    }
+
+    private void OnEditFieldsClicked(object? sender, EventArgs e) => SourcePicker.SelectedIndex = 0;
 
     private void OnPresetSelected(object? sender, EventArgs e)
     {
         if (_initializing || PresetPicker.SelectedIndex < 0 || PresetPicker.SelectedIndex >= SmsTemplatePresets.All.Count) return;
         var preset = SmsTemplatePresets.All[PresetPicker.SelectedIndex];
-        PresetDescriptionLabel.Text = preset.Description;
-        MessageEditor.Text = preset.SampleMessage;
-        NameEntry.Text = preset.BankName;
-        LoadFields(preset.Fields);
+        _updatingPreset = true;
+        try
+        {
+            PresetDescriptionLabel.Text = preset.Description;
+            BankSampleLabel.Text = preset.SampleMessage;
+            if (string.IsNullOrWhiteSpace(MessageEditor.Text) || MessageEditor.Text == _previousPreset?.SampleMessage)
+                MessageEditor.Text = preset.SampleMessage;
+            if (string.IsNullOrWhiteSpace(NameEntry.Text) || NameEntry.Text == _previousPreset?.BankName)
+                NameEntry.Text = preset.BankName;
+            _previousPreset = preset;
+        }
+        finally { _updatingPreset = false; }
         ShowPreview();
     }
 
@@ -101,7 +149,10 @@ public partial class TemplateEditorPage : ContentPage
     {
         var index = SavedMessagePicker.SelectedIndex;
         if (index >= 0 && index < _savedMessages.Count)
+        {
             MessageEditor.Text = _savedMessages[index].Body;
+            if (IsPresetMode) ShowPreview();
+        }
     }
 
     private async void OnAddFieldClicked(object? sender, EventArgs e)
@@ -136,17 +187,26 @@ public partial class TemplateEditorPage : ContentPage
 
     private async void OnReviewClicked(object? sender, EventArgs e)
     {
-        ShowPreview();
-        await EditorScroll.ScrollToAsync(PreviewCard, ScrollToPosition.MakeVisible, true);
+        try
+        {
+            ShowPreview();
+            await EditorScroll.ScrollToAsync(PreviewCard, ScrollToPosition.MakeVisible, true);
+        }
+        catch (Exception exception) { UiSafety.Log(exception); }
     }
 
-    private void OnInputChanged(object? sender, TextChangedEventArgs e) => InvalidatePreview();
+    private void OnInputChanged(object? sender, TextChangedEventArgs e)
+    {
+        if (_initializing || _updatingPreset) return;
+        InvalidatePreview();
+        if (IsPresetMode && sender == MessageEditor) LoadFields([]);
+    }
 
     private void OnFieldChanged(object? sender, PropertyChangedEventArgs e) => InvalidatePreview();
 
     private void InvalidatePreview()
     {
-        if (_initializing || PreviewCard is null) return;
+        if (_initializing || _updatingPreset || PreviewCard is null) return;
         PreviewCard.IsVisible = false;
         PatternPreviewLabel.IsVisible = false;
         DetailsButton.Text = "نمایش الگوی پیام";
@@ -158,8 +218,28 @@ public partial class TemplateEditorPage : ContentPage
         DetailsButton.Text = PatternPreviewLabel.IsVisible ? "بستن الگوی پیام" : "نمایش الگوی پیام";
     }
 
+    private void OnToggleBankSampleClicked(object? sender, EventArgs e)
+    {
+        BankSampleLabel.IsVisible = !BankSampleLabel.IsVisible;
+        BankSampleButton.Text = BankSampleLabel.IsVisible ? "بستن نمونهٔ بانک" : "نمایش نمونهٔ بانک";
+    }
+
     private SmsTemplate? BuildTemplate(out string? error)
     {
+        if (IsPresetMode)
+        {
+            var index = PresetPicker.SelectedIndex;
+            if (index < 0 || index >= SmsTemplatePresets.All.Count)
+            {
+                error = "ابتدا بانک را از فهرست قالب‌های آماده انتخاب کنید.";
+                return null;
+            }
+            var ready = SmsTemplatePresets.Build(SmsTemplatePresets.All[index], _templateId, _senderId,
+                NameEntry.Text, MessageEditor.Text ?? string.Empty);
+            LoadFields(ready.Template?.Fields ?? []);
+            error = ready.Error;
+            return ready.Template;
+        }
         var fields = new List<SmsTemplateField>();
         foreach (var row in Fields)
         {
@@ -197,7 +277,7 @@ public partial class TemplateEditorPage : ContentPage
             return false;
         }
         SetPreviewState(true);
-        PreviewResultLabel.Text = $"{(parsed.Kind == TransactionKind.Withdrawal ? "برداشت" : "واریز")} · {UiText.Digits(parsed.AmountRial.ToString("N0"))} ریال\nتاریخ: {UiText.Digits(parsed.DateText ?? "از زمان دریافت پیام")}\nساعت: {UiText.Digits(parsed.TimeText ?? "از زمان دریافت پیام")}\n\nنتیجه را بررسی کنید. پس از ذخیره، پیام‌های بعدی هم با همین قالب خوانده می‌شوند.";
+        PreviewResultLabel.Text = $"{(parsed.Kind == TransactionKind.Withdrawal ? "برداشت" : "واریز")} · {UiText.Digits(parsed.AmountRial.ToString("N0"))} ریال\nتاریخ: {UiText.Digits(parsed.DateText ?? "از زمان دریافت پیام")}\nساعت: {UiText.Digits(parsed.TimeText ?? "از زمان دریافت پیام")}\n\nنتیجه را بررسی کنید. پس از ذخیره، پیام‌های بعدی با همین قالب خوانده می‌شوند و پیام‌های ردشدهٔ سازگار هم دوباره منتظر ارسال قرار می‌گیرند.";
         PatternPreviewLabel.Text = "بخش‌های متغیر پیام:\n" + ReadablePattern(template.Pattern);
         DetailsButton.IsVisible = true;
         return true;
@@ -232,14 +312,18 @@ public partial class TemplateEditorPage : ContentPage
         SaveButton.Text = "در حال ذخیره…";
         try
         {
-            error = await _store.SaveTemplateAsync(template);
+            // Finish any in-flight receipt first so a late rejection cannot undo the retry reset.
+            await MobileApiClient.RunWithSyncLockAsync(async () => error = await _store.SaveTemplateAsync(template));
             if (error is not null) { await DisplayAlert("ذخیره نشد", ReadablePattern(error), "باشه"); return; }
+            SmsReceivedNotifier.NotifySyncChanged();
+            _scheduleSync();
             UiMotion.Feedback();
             await Navigation.PopAsync();
         }
-        catch (Exception)
+        catch (Exception exception)
         {
-            await DisplayAlert("ذخیره نشد", "ذخیره قالب کامل نشد. دوباره تلاش کنید.", "باشه");
+            UiSafety.Log(exception);
+            await UiSafety.AlertAsync(this, "ذخیره نشد", "ذخیره قالب کامل نشد. دوباره تلاش کنید.");
         }
         finally
         {
@@ -251,10 +335,16 @@ public partial class TemplateEditorPage : ContentPage
 
     private void LoadFields(IEnumerable<SmsTemplateField> fields)
     {
-        foreach (var row in Fields) row.PropertyChanged -= OnFieldChanged;
-        Fields.Clear();
-        foreach (var field in fields)
-            AddField(new TemplateFieldRow(SmsKeyValueTemplateBuilder.GetLabel(field.Key), field.Value));
+        var previous = _updatingPreset;
+        _updatingPreset = true;
+        try
+        {
+            foreach (var row in Fields) row.PropertyChanged -= OnFieldChanged;
+            Fields.Clear();
+            foreach (var field in fields)
+                AddField(new TemplateFieldRow(SmsKeyValueTemplateBuilder.GetLabel(field.Key), field.Value));
+        }
+        finally { _updatingPreset = previous; }
     }
 
     private void AddField(TemplateFieldRow row)

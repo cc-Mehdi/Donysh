@@ -15,6 +15,7 @@ public sealed class SmsTemplate
     public List<TransactionPhrase> Phrases { get; set; } = [];
     public string SampleMessage { get; set; } = string.Empty;
     public List<SmsTemplateField> Fields { get; set; } = [];
+    public string? PresetId { get; set; }
 }
 
 public sealed class SmsTemplateField

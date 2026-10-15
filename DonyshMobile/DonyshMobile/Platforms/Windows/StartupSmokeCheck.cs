@@ -149,6 +149,7 @@ internal static class StartupSmokeCheck
 
         await ExerciseConnectionButtonsAsync(shell, home, store, address, preset.SampleMessage);
         await ExerciseFailureBoundariesAsync(shell, store, address, preset.SampleMessage);
+        foreach (var check in await Diagnostics.TemplateFlowSmokeCheck.RunAsync(shell.Navigation)) Check(true, check);
         await VisitAsync(shell, new MessagesPage(store, sender.Id, address), async page =>
         {
             await WaitUntilAsync(() => page.Messages.Count == 1, "The message list did not load its isolated SMS.");
