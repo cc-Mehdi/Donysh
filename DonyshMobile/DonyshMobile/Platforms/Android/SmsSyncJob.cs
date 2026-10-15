@@ -18,6 +18,17 @@ public sealed class SmsSyncJob : JobService
 
     private static void Schedule(Context context, int? previousJobId, long minimumLatencyMs)
     {
+        try { ScheduleCore(context, previousJobId, minimumLatencyMs); }
+        catch (Exception exception)
+        {
+            // Scheduling is optional platform work. A missing/restricted platform capability
+            // must leave the durable queue intact instead of terminating a page event handler.
+            global::Android.Util.Log.Warn("DonyshSync", $"Background scheduling failed: {exception.GetType().Name}");
+        }
+    }
+
+    private static void ScheduleCore(Context context, int? previousJobId, long minimumLatencyMs)
+    {
         var scheduler = (JobScheduler?)context.GetSystemService(JobSchedulerService);
         if (scheduler is null) return;
         var component = new ComponentName(context, Java.Lang.Class.FromType(typeof(SmsSyncJob)));

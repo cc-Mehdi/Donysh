@@ -19,7 +19,7 @@ public partial class MainPage : ContentPage
 #endif
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
     private readonly List<SenderItem> _allSenders = [];
-    private bool _subscribed, _hasPermission, _entered, _busy, _isRefreshing;
+    private bool _subscribed, _hasPermission, _entered, _busy, _isRefreshing, _openingPage, _requestingPermission;
     private string _search = string.Empty;
     private int _nextStep;
 
@@ -45,6 +45,16 @@ public partial class MainPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        try { await ActivateAsync(); }
+        catch (Exception exception)
+        {
+            UiSafety.Log(exception);
+            await UiSafety.AlertAsync(this, "صفحه کامل آماده نشد", "پیام‌ها محفوظ‌اند؛ دوباره صفحه را باز کنید.");
+        }
+    }
+
+    private async Task ActivateAsync()
+    {
         if (!_subscribed)
         {
             SmsReceivedNotifier.MessageStored += OnMessageStored;
@@ -61,7 +71,7 @@ public partial class MainPage : ContentPage
             catch (Exception)
             {
                 RequestPendingTitles();
-                await DisplayAlert("صفحه باز نشد", "عنوان‌گذاری پیام‌ها را دوباره از صفحهٔ اصلی باز کنید.", "باشه");
+                await UiSafety.AlertAsync(this, "صفحه باز نشد", "عنوان‌گذاری پیام‌ها را دوباره از صفحهٔ اصلی باز کنید.");
             }
             return;
         }
@@ -84,25 +94,29 @@ public partial class MainPage : ContentPage
 
     private async void OnPermissionClicked(object? sender, EventArgs e)
     {
-#if ANDROID
+        if (_requestingPermission) return;
+        _requestingPermission = true;
         try
         {
+#if ANDROID
             var status = await Permissions.CheckStatusAsync<ReceiveSmsPermission>();
             if (status == PermissionStatus.Granted) AppInfo.ShowSettingsUI();
             else status = await Permissions.RequestAsync<ReceiveSmsPermission>();
             if (status != PermissionStatus.Granted)
-                await DisplayAlert("اجازهٔ دریافت پیامک", "در تنظیمات گوشی، اجازهٔ دریافت پیامک را برای دونیش فعال کنید.", "باشه");
+                await UiSafety.AlertAsync(this, "اجازهٔ دریافت پیامک", "در تنظیمات گوشی، اجازهٔ دریافت پیامک را برای دونیش فعال کنید.");
             else await RequestNotificationPermissionAsync();
-        }
-        catch (PermissionException)
-        {
-            await DisplayAlert("دسترسی فعال نشد", "اجازهٔ دریافت پیامک را در تنظیمات گوشی بررسی کنید.", "باشه");
-        }
 #else
-        await DisplayAlert("دریافت روی گوشی", "دریافت پیامک به گوشی اندرویدی نیاز دارد. روی ویندوز می‌توانید قالب‌ها و تنظیمات را بررسی کنید.", "باشه");
+            await UiSafety.AlertAsync(this, "دریافت روی گوشی", "دریافت پیامک به گوشی اندرویدی نیاز دارد. روی ویندوز می‌توانید قالب‌ها و تنظیمات را بررسی کنید.");
 #endif
-        await RefreshPermissionAsync();
-        await RefreshAsync();
+            await RefreshPermissionAsync();
+            await RefreshAsync();
+        }
+        catch (Exception exception)
+        {
+            UiSafety.Log(exception);
+            await UiSafety.AlertAsync(this, "دسترسی فعال نشد", "از تنظیمات گوشی، بخش برنامه‌ها و سپس اجازه‌های دونیش را بررسی کنید.");
+        }
+        finally { _requestingPermission = false; }
     }
 
 #if ANDROID
@@ -205,11 +219,31 @@ public partial class MainPage : ContentPage
     {
         if (sender is CollectionView list) list.SelectedItem = null;
         if (e.CurrentSelection.FirstOrDefault() is SenderItem item)
-            await Navigation.PushAsync(new MessagesPage(_store, item.Id, item.Address));
+            await OpenPageAsync(() => new MessagesPage(_store, item.Id, item.Address));
     }
 
-    private async void OnConnectionClicked(object? sender, EventArgs e) => await Navigation.PushAsync(new ConnectionPage(_store));
-    private async void OnPendingTitlesClicked(object? sender, EventArgs e) => await Navigation.PushAsync(new PendingTitlesPage(_store));
+    private async void OnConnectionClicked(object? sender, EventArgs e) => await OpenPageAsync(() =>
+    {
+#if DEBUG && WINDOWS
+        return WinUI.StartupSmokeCheck.CreateConnectionPage(_store);
+#else
+        return new ConnectionPage(_store);
+#endif
+    });
+    private async void OnPendingTitlesClicked(object? sender, EventArgs e) => await OpenPageAsync(() => new PendingTitlesPage(_store));
+
+    private async Task OpenPageAsync(Func<Page> createPage)
+    {
+        if (_openingPage || (Shell.Current is { } shell && shell.CurrentPage != this)) return;
+        _openingPage = true;
+        try { await Navigation.PushAsync(createPage()); }
+        catch (Exception exception)
+        {
+            UiSafety.Log(exception);
+            await UiSafety.AlertAsync(this, "صفحه باز نشد", "دوباره تلاش کنید؛ پیام‌های ذخیره‌شده تغییری نکرده‌اند.");
+        }
+        finally { _openingPage = false; }
+    }
     private void OnNextStepClicked(object? sender, EventArgs e)
     {
         switch (_nextStep)
@@ -233,7 +267,16 @@ public partial class MainPage : ContentPage
             Senders.Add(item);
     }
 
-    private async void OnRefreshing(object? sender, EventArgs e) { await RefreshPermissionAsync(); await RefreshAsync(); }
+    private async void OnRefreshing(object? sender, EventArgs e)
+    {
+        try { await RefreshPermissionAsync(); await RefreshAsync(); }
+        catch (Exception exception)
+        {
+            UiSafety.Log(exception);
+            await UiSafety.AlertAsync(this, "به‌روزرسانی کامل نشد", "دوباره تلاش کنید؛ پیام‌های ذخیره‌شده تغییری نکرده‌اند.");
+        }
+        finally { IsRefreshing = false; }
+    }
     private void OnMessageStored(object? sender, EventArgs e) => Dispatcher.Dispatch(async () => await RefreshAsync());
 
     private async Task RefreshAsync()
@@ -244,7 +287,11 @@ public partial class MainPage : ContentPage
             var summaries = await _store.GetSenderSummariesAsync();
             var sync = await _store.GetSyncSummaryAsync();
             var untitled = await _store.GetUntitledMessagesAsync();
+#if DEBUG && WINDOWS
+            var connection = await WinUI.StartupSmokeCheck.LoadConnectionAsync();
+#else
             var connection = await MobileConnectionStore.LoadAsync();
+#endif
             _allSenders.Clear();
             _allSenders.AddRange(summaries.Select(x => new SenderItem(x.Id, x.Address,
                 x.MessageCount == 0 ? "منتظر اولین پیامک" : $"{UiText.Digits(x.MessageCount)} پیام · {UiText.Date(x.LastMessageAtUtc!.Value)}")));
@@ -264,7 +311,7 @@ public partial class MainPage : ContentPage
         }
         catch (Exception)
         {
-            await DisplayAlert("اطلاعات باز نشد", "اطلاعات ذخیره‌شده قابل خواندن نیست. داده‌ها پاک نشده‌اند؛ برنامه را دوباره باز کنید.", "باشه");
+            await UiSafety.AlertAsync(this, "اطلاعات باز نشد", "اطلاعات ذخیره‌شده قابل خواندن نیست. داده‌ها پاک نشده‌اند؛ برنامه را دوباره باز کنید.");
         }
         finally { _refreshGate.Release(); IsRefreshing = false; }
     }
@@ -276,7 +323,11 @@ public partial class MainPage : ContentPage
         PermissionStatusText = _hasPermission ? "فعال؛ پیام‌های تازه ذخیره می‌شوند." : "برای شروع، اجازهٔ دریافت را فعال کنید.";
         PermissionButtonText = _hasPermission ? "تنظیمات" : "فعال‌سازی";
 #else
+#if DEBUG && WINDOWS
+        _hasPermission = WinUI.StartupSmokeCheck.IsEnabled;
+#else
         _hasPermission = false;
+#endif
         PermissionStatusText = "دریافت پیامک روی گوشی اندرویدی فعال می‌شود.";
         PermissionButtonText = "راهنما";
         await Task.CompletedTask;

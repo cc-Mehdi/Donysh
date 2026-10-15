@@ -3,11 +3,21 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Security.Cryptography;
+using System.Xml.Linq;
 
 var testDirectory = Path.Combine(Path.GetTempPath(), $"donysh-mobile-tests-{Guid.NewGuid():N}");
 
 try
 {
+    using var manifestStream = typeof(Program).Assembly.GetManifestResourceStream("DonyshMobile.Tests.AndroidManifest.xml")
+        ?? throw new InvalidOperationException("The Android manifest must be embedded for permission regression checks.");
+    var manifest = XDocument.Load(manifestStream);
+    XNamespace android = "http://schemas.android.com/apk/res/android";
+    var permissions = manifest.Root!.Elements("uses-permission")
+        .Select(element => (string?)element.Attribute(android + "name")).ToHashSet(StringComparer.Ordinal);
+    Assert(permissions.Contains("android.permission.INTERNET"), "Android manifest permits API network requests");
+    Assert(permissions.Contains("android.permission.ACCESS_NETWORK_STATE"), "Android manifest permits connectivity checks and network-constrained jobs");
+
     Assert(SenderAddress.Normalize("۰۹۱۲ ۱۲۳ ۴۵۶۷") == "9121234567", "Persian digits");
     Assert(SenderAddress.Normalize("+98 (912) 123-4567") == "9121234567", "Iran phone variants");
     Assert(SenderAddress.Normalize("+989999987641") == SenderAddress.Normalize("0989999987641"),

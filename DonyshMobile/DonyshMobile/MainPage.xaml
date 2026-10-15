@@ -11,7 +11,7 @@
                 <Label Text="دونیش همراه" FontSize="21" FontFamily="YekanBakhBold" />
                 <Label Text="همراهِ خرج‌های روزانه" Style="{StaticResource Caption}" />
             </VerticalStackLayout>
-            <Button Grid.Column="2" Text="تنظیمات" Clicked="OnConnectionClicked" Style="{StaticResource QuietAction}"
+            <Button x:Name="SettingsButton" Grid.Column="2" Text="تنظیمات" Clicked="OnConnectionClicked" Style="{StaticResource QuietAction}"
                     SemanticProperties.Hint="اتصال به سامانه، ظاهر و تنظیمات ارسال" />
         </Grid>
         <RefreshView Grid.Row="1" IsRefreshing="{Binding IsRefreshing}" Refreshing="OnRefreshing">
@@ -29,7 +29,7 @@
                                 <Label Text="{Binding ConnectionText}" FontSize="12" TextColor="#DDEBFF" />
                                 <Label Text="پیامک‌ها، مرتب و آماده" FontSize="23" FontAttributes="Bold" TextColor="White" />
                                 <Label Text="{Binding NextStepText}" FontSize="14" LineHeight="1.35" TextColor="#E0EAFF" />
-                                <Button Text="{Binding NextStepAction}" Clicked="OnNextStepClicked" BackgroundColor="White"
+                                <Button x:Name="NextStepButton" Text="{Binding NextStepAction}" Clicked="OnNextStepClicked" BackgroundColor="White"
                                         TextColor="#37328E" HorizontalOptions="Start" Margin="0,4,0,0" />
                             </VerticalStackLayout>
                         </Border>

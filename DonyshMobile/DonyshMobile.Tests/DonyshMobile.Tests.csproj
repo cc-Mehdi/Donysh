@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="..\DonyshMobile\Platforms\Android\AndroidManifest.xml" LogicalName="DonyshMobile.Tests.AndroidManifest.xml" />
     <Compile Include="..\DonyshMobile\Core\SenderAddress.cs" Link="Core\SenderAddress.cs" />
     <Compile Include="..\DonyshMobile\Core\SmsMonitorModels.cs" Link="Core\SmsMonitorModels.cs" />
     <Compile Include="..\DonyshMobile\Core\SmsMonitorStore.cs" Link="Core\SmsMonitorStore.cs" />
