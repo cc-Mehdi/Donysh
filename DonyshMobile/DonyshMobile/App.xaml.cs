@@ -5,11 +5,19 @@
         public App()
         {
             InitializeComponent();
+            UI.UiPreferences.ApplyTheme();
         }
 
         protected override Window CreateWindow(IActivationState? activationState)
         {
-            return new Window(new AppShell());
+            var window = new Window(new AppShell());
+#if WINDOWS
+            window.Width = 520;
+            window.Height = 900;
+            window.MinimumWidth = 360;
+            window.MinimumHeight = 600;
+#endif
+            return window;
         }
     }
 }

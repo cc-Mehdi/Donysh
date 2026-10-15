@@ -5,82 +5,108 @@
              x:Class="DonyshMobile.TemplateEditorPage"
              x:DataType="local:TemplateEditorPage"
              FlowDirection="RightToLeft" Title="تعریف قالب">
-    <ScrollView>
-        <VerticalStackLayout Padding="20,18,20,36" Spacing="15">
-            <Label Text="تعریف قالب پیامک" Style="{StaticResource PageTitle}" />
-            <Label x:Name="SenderLabel" Style="{StaticResource MutedText}" />
-
-            <Label Text="روش ساخت" Style="{StaticResource SectionTitle}" />
-            <Picker x:Name="SourcePicker" SelectedIndexChanged="OnSourceChanged">
-                <Picker.Items>
-                    <x:String>قالب شخصی</x:String>
-                    <x:String>انتخاب از بانک‌های پیش‌فرض</x:String>
-                </Picker.Items>
-            </Picker>
-
-            <Border x:Name="PresetSection" Style="{StaticResource InfoCard}" Padding="14" IsVisible="False">
-                <VerticalStackLayout Spacing="8">
-                    <Label Text="بانک پیش‌فرض" FontAttributes="Bold"
-                           TextColor="{AppThemeBinding Light=#312E81, Dark=#E0E7FF}" />
-                    <Picker x:Name="PresetPicker" Title="بانک را انتخاب کنید"
-                            SelectedIndexChanged="OnPresetSelected" />
-                    <Label x:Name="PresetDescriptionLabel" FontSize="12"
-                           TextColor="{AppThemeBinding Light=#4338CA, Dark=#C7D2FE}" />
-                    <Label Text="متن و مقادیر این قالب پایین نمایش داده شده‌اند و قابل ویرایش هستند."
-                           FontSize="12" TextColor="{AppThemeBinding Light=#4338CA, Dark=#C7D2FE}" />
-                </VerticalStackLayout>
-            </Border>
-
-            <Label Text="متن کامل پیام" Style="{StaticResource SectionTitle}" />
-            <Picker x:Name="SavedMessagePicker" Title="یا یک پیام ثبت‌شده را انتخاب کنید"
-                    SelectedIndexChanged="OnSavedMessageSelected" />
-            <Editor x:Name="MessageEditor" HeightRequest="190" MaxLength="10000"
-                    Placeholder="کل پیامک را اینجا قرار دهید..." />
-
-            <Grid ColumnDefinitions="0.9*,1.25*,Auto" ColumnSpacing="8">
-                <Label Text="کلید" Style="{StaticResource SectionTitle}" HorizontalTextAlignment="Center" />
-                <Label Grid.Column="1" Text="مقدار داخل پیام" Style="{StaticResource SectionTitle}" />
-            </Grid>
-            <VerticalStackLayout x:Name="FieldsLayout" Spacing="8"
-                                 BindableLayout.ItemsSource="{Binding Fields}">
-                <BindableLayout.ItemTemplate>
-                    <DataTemplate x:DataType="local:TemplateFieldRow">
-                        <Grid ColumnDefinitions="0.9*,1.25*,Auto" ColumnSpacing="8">
-                            <Picker SelectedItem="{Binding KeyLabel, Mode=TwoWay}">
-                                <Picker.Items>
-                                    <x:String>نام بانک</x:String>
-                                    <x:String>نوع تراکنش</x:String>
-                                    <x:String>مبلغ</x:String>
-                                    <x:String>واحد</x:String>
-                                    <x:String>ساعت</x:String>
-                                    <x:String>تاریخ</x:String>
-                                </Picker.Items>
-                            </Picker>
-                            <Entry Grid.Column="1" Text="{Binding Value, Mode=TwoWay}"
-                                   Placeholder="مقدار را بنویسید" />
-                            <Button Grid.Column="2" Text="×" FontSize="18" Padding="10,4"
-                                    CommandParameter="{Binding Id}" Clicked="OnRemoveFieldClicked"
-                                    Style="{StaticResource DangerAction}" />
-                        </Grid>
-                    </DataTemplate>
-                </BindableLayout.ItemTemplate>
+    <ScrollView x:Name="EditorScroll">
+        <VerticalStackLayout x:Name="EditorContent" Padding="20,18,20,36" Spacing="16">
+            <VerticalStackLayout Spacing="5">
+                <Label Text="خواندن خودکار پیامک" Style="{StaticResource PageTitle}" />
+                <Label x:Name="SenderLabel" Style="{StaticResource MutedText}" />
+                <Label Text="فقط مبلغ را از پیام مشخص کنید. تاریخ، ساعت و اطلاعات دیگر را در صورت نیاز اضافه کنید."
+                       Style="{StaticResource MutedText}" />
             </VerticalStackLayout>
-            <Button Text="+ افزودن ردیف" Clicked="OnAddFieldClicked" Style="{StaticResource SecondaryAction}" />
 
-            <Label Text="نام قالب (اختیاری)" Style="{StaticResource SectionTitle}" />
-            <Entry x:Name="NameEntry" Placeholder="مثلاً بلو بانک — برداشت" MaxLength="80" />
-
-            <Button Text="بررسی قالب" Clicked="OnReviewClicked" Style="{StaticResource PrimaryAction}" />
-            <Border x:Name="PreviewCard" Style="{StaticResource Card}" Padding="14" IsVisible="False">
-                <VerticalStackLayout Spacing="7">
-                    <Label Text="پیش‌نمایش قالب" Style="{StaticResource SectionTitle}" />
-                    <Label x:Name="PreviewResultLabel"
-                           TextColor="{AppThemeBinding Light=#047857, Dark=#6EE7B7}" />
-                    <Label x:Name="PatternPreviewLabel" FontSize="12" Style="{StaticResource MutedText}" />
+            <Border Style="{StaticResource Card}" Padding="16">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="۱ · از کجا شروع کنیم؟" Style="{StaticResource SectionTitle}" />
+                    <Picker x:Name="SourcePicker" SelectedIndexChanged="OnSourceChanged"
+                            SemanticProperties.Description="روش شروع ساخت قالب">
+                        <Picker.Items>
+                            <x:String>از پیامک خودم می‌سازم</x:String>
+                            <x:String>از قالب آماده بانک شروع می‌کنم</x:String>
+                        </Picker.Items>
+                    </Picker>
+                    <VerticalStackLayout x:Name="PresetSection" Spacing="8" IsVisible="False">
+                        <Picker x:Name="PresetPicker" Title="انتخاب بانک"
+                                SelectedIndexChanged="OnPresetSelected" />
+                        <Label x:Name="PresetDescriptionLabel" Style="{StaticResource MutedText}" FontSize="12" />
+                        <Label Text="بانک را انتخاب کنید تا یک نمونه پیام آماده ببینید. اگر پیام شما فرق دارد، متن و مقدارها را تغییر دهید."
+                               Style="{StaticResource MutedText}" FontSize="12" />
+                    </VerticalStackLayout>
                 </VerticalStackLayout>
             </Border>
 
-            <Button Text="ذخیره قالب" Clicked="OnSaveClicked" Style="{StaticResource SuccessAction}" />
+            <Border Style="{StaticResource Card}" Padding="16">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="۲ · پیام نمونه را وارد کنید" Style="{StaticResource SectionTitle}" />
+                    <Picker x:Name="SavedMessagePicker" Title="انتخاب از پیام‌های این فرستنده"
+                            SelectedIndexChanged="OnSavedMessageSelected" />
+                    <Label x:Name="SavedMessageHint" Style="{StaticResource MutedText}" FontSize="12" />
+                    <Editor x:Name="MessageEditor" HeightRequest="175" MaxLength="2048"
+                            Placeholder="کل پیامک را اینجا بچسبانید…" TextChanged="OnInputChanged"
+                            IsSpellCheckEnabled="False" IsTextPredictionEnabled="False"
+                            SemanticProperties.Description="متن کامل پیامک نمونه" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Style="{StaticResource Card}" Padding="16">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="۳ · بخش‌های پیام را مشخص کنید" Style="{StaticResource SectionTitle}" />
+                    <Label Text="سمت راست نام بخش و سمت چپ مقدار آن را بنویسید. مبلغ را با موجودی حساب اشتباه نگیرید."
+                           Style="{StaticResource MutedText}" FontSize="12" />
+                    <Grid ColumnDefinitions="0.9*,1.35*,48" ColumnSpacing="8">
+                        <Label Text="بخش پیام" FontAttributes="Bold" />
+                        <Label Grid.Column="1" Text="مقدار پیامک" FontAttributes="Bold" />
+                    </Grid>
+                    <VerticalStackLayout x:Name="FieldsLayout" Spacing="12"
+                                         BindableLayout.ItemsSource="{Binding Fields}">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate x:DataType="local:TemplateFieldRow">
+                                <Grid ColumnDefinitions="0.9*,1.35*,48" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="4">
+                                    <Picker SelectedItem="{Binding KeyLabel, Mode=TwoWay}">
+                                        <Picker.Items>
+                                            <x:String>نام بانک</x:String>
+                                            <x:String>نوع تراکنش</x:String>
+                                            <x:String>مبلغ</x:String>
+                                            <x:String>واحد</x:String>
+                                            <x:String>ساعت</x:String>
+                                            <x:String>تاریخ</x:String>
+                                        </Picker.Items>
+                                    </Picker>
+                                    <Entry Grid.Column="1" Text="{Binding Value, Mode=TwoWay}" MaxLength="200"
+                                           Placeholder="{Binding Example}" IsSpellCheckEnabled="False"
+                                           IsTextPredictionEnabled="False" />
+                                    <Button Grid.Column="2" Text="×" FontSize="20" Padding="0"
+                                            CommandParameter="{Binding Id}" Clicked="OnRemoveFieldClicked"
+                                            SemanticProperties.Description="حذف این ردیف"
+                                            Style="{StaticResource DangerAction}" />
+                                    <Label Grid.Row="1" Grid.ColumnSpan="3" Text="{Binding Hint}" FontSize="12"
+                                           Style="{StaticResource MutedText}" />
+                                </Grid>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
+                    <Button Text="افزودن تاریخ، ساعت یا اطلاعات دیگر" Clicked="OnAddFieldClicked"
+                            Style="{StaticResource SecondaryAction}" />
+                    <Label Text="لازم نیست ردیف‌های خالی را پر کنید. اگر واحد و نوع را ننویسید، مبلغ ریال و تراکنش برداشت است. برای پیام واریز، «نوع تراکنش» را اضافه کنید."
+                           Style="{StaticResource MutedText}" FontSize="12" />
+                    <Label Text="نام قالب · اختیاری" Style="{StaticResource SectionTitle}" Margin="0,6,0,0" />
+                    <Entry x:Name="NameEntry" Placeholder="مثلاً برداشت از بلو" MaxLength="80"
+                           TextChanged="OnInputChanged" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Button x:Name="ReviewButton" Text="بررسی با همین پیام نمونه" Clicked="OnReviewClicked"
+                    Style="{StaticResource SecondaryAction}" />
+            <Border x:Name="PreviewCard" Style="{StaticResource InfoCard}" Padding="16" IsVisible="False">
+                <VerticalStackLayout Spacing="10">
+                    <Label x:Name="PreviewTitleLabel" Text="نتیجه بررسی" Style="{StaticResource SectionTitle}" />
+                    <Label x:Name="PreviewResultLabel" SemanticProperties.Description="نتیجه خواندن پیام نمونه" />
+                    <Button x:Name="DetailsButton" Text="نمایش الگوی پیام" Clicked="OnToggleDetailsClicked"
+                            Style="{StaticResource SecondaryAction}" IsVisible="False" />
+                    <Label x:Name="PatternPreviewLabel" FontSize="12" Style="{StaticResource MutedText}" IsVisible="False" />
+                </VerticalStackLayout>
+            </Border>
+            <Button x:Name="SaveButton" Text="بررسی و ذخیره قالب" Clicked="OnSaveClicked"
+                    Style="{StaticResource PrimaryAction}" />
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

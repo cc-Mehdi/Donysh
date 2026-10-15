@@ -1,4 +1,5 @@
 using System.Net;
+using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -25,28 +26,80 @@ public sealed class MobileApiClient
     public async Task<PairResult?> PairAsync(string server, string code, CancellationToken cancellationToken = default)
     {
         server = NormalizeServer(server) ?? throw new ArgumentException("آدرس سرور باید یک نشانی امن و معتبر باشد.", nameof(server));
-        var normalizedCode = new string(code.Where(Uri.IsHexDigit).ToArray()).ToUpperInvariant();
-        if (normalizedCode.Length != 32) throw new ArgumentException("کد اتصال باید ۳۲ نویسه هگزادسیمال باشد.", nameof(code));
+        var normalizedCode = NormalizePairingCode(code)
+            ?? throw new ArgumentException("کد اتصال باید همان کد ۳۲ نویسه‌ای نمایش‌داده‌شده در سامانه باشد.", nameof(code));
         using var client = _clientFactory();
         using var response = await client.PostAsJsonAsync(server + "/api/mobile/pair", new PairRequest(normalizedCode), JsonOptions, cancellationToken);
         if (response.StatusCode == HttpStatusCode.Unauthorized) return null;
         response.EnsureSuccessStatusCode();
         var result = await response.Content.ReadFromJsonAsync<PairResult>(JsonOptions, cancellationToken);
-        return result is { Token.Length: 64 } && result.Token.All(Uri.IsHexDigit)
+        return result is { Token.Length: 64, WorkspaceName.Length: > 0 and <= 160, CategoryName.Length: > 0 and <= 160 }
+            && result.Token.All(Uri.IsHexDigit)
             ? result
             : throw new InvalidDataException("پاسخ اتصال سامانه معتبر نیست.");
     }
 
-    public async Task<SyncRunResult> SendNextBatchAsync(
+    public static string? NormalizePairingCode(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value) || value.Length > 256) return null;
+        var result = new System.Text.StringBuilder(32);
+        foreach (var input in value)
+        {
+            var character = input switch
+            {
+                >= '۰' and <= '۹' => (char)('0' + input - '۰'),
+                >= '٠' and <= '٩' => (char)('0' + input - '٠'),
+                _ => input
+            };
+            if (char.IsWhiteSpace(character) || character == '-') continue;
+            if (!Uri.IsHexDigit(character) || result.Length >= 32) return null;
+            result.Append(char.ToUpperInvariant(character));
+        }
+        return result.Length == 32 ? result.ToString() : null;
+    }
+
+    /// <summary>Serializes destination changes with sending, including credential loading and receipts.</summary>
+    public static async Task RunWithSyncLockAsync(Func<Task> action, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        await SyncGate.WaitAsync(cancellationToken);
+        try { await action(); }
+        finally { SyncGate.Release(); }
+    }
+
+    public Task<SyncRunResult> SendNextBatchAsync(
         SmsMonitorStore store,
         MobileConnection? connection,
         DateTimeOffset nowUtc,
         CancellationToken cancellationToken = default,
         bool manualSend = false,
-        bool requireTitle = false)
+        bool requireTitle = false) => SendNextBatchAsync(store, () => Task.FromResult(connection),
+            nowUtc, cancellationToken, manualSend, requireTitle);
+
+    public async Task<SyncRunResult> SendNextBatchAsync(
+        SmsMonitorStore store,
+        Func<Task<MobileConnection?>> connectionProvider,
+        DateTimeOffset nowUtc,
+        CancellationToken cancellationToken = default,
+        bool manualSend = false,
+        bool requireTitle = false,
+        Func<bool>? requireTitleProvider = null)
     {
+        ArgumentNullException.ThrowIfNull(connectionProvider);
+        var waitingSince = Stopwatch.GetTimestamp();
         await SyncGate.WaitAsync(cancellationToken);
-        try { return await SendNextBatchCoreAsync(store, connection, nowUtc, cancellationToken, manualSend, requireTitle); }
+        try
+        {
+            // Read credentials inside the gate: a queued worker must observe a completed
+            // workspace change/disconnection rather than reuse its previous destination.
+            var connection = await connectionProvider();
+            cancellationToken.ThrowIfCancellationRequested();
+            // A user may keep the destination confirmation open for minutes. Preserve
+            // queue rate limits using the send time, not the time this worker began waiting.
+            nowUtc = nowUtc.Add(Stopwatch.GetElapsedTime(waitingSince));
+            return await SendNextBatchCoreAsync(store, connection, nowUtc, cancellationToken, manualSend,
+                requireTitleProvider?.Invoke() ?? requireTitle);
+        }
         finally { SyncGate.Release(); }
     }
 
@@ -60,7 +113,7 @@ public sealed class MobileApiClient
     {
         if (connection is null) return SyncRunResult.ConnectionRequired;
         var server = NormalizeServer(connection.Server);
-        if (server is null || connection.Token.Length != 64 || !connection.Token.All(Uri.IsHexDigit))
+        if (server is null || connection.Token is not { Length: 64 } || !connection.Token.All(Uri.IsHexDigit))
             return SyncRunResult.ConnectionRequired;
         var batch = await store.TakePendingBatchAsync(nowUtc,
             requireTitle: !manualSend && requireTitle, cancellationToken: cancellationToken);
@@ -92,7 +145,9 @@ public sealed class MobileApiClient
             }
 
             var result = await response.Content.ReadFromJsonAsync<SmsBatchResult>(JsonOptions, cancellationToken);
-            var receipts = result?.Results?.Select(x => new SmsDeliveryReceipt(x.Key, x.Status)).ToList()
+            if (result?.Results is null || result.Results.Any(x => x is null))
+                throw new InvalidDataException("سامانه تأییدیه معتبری برنگرداند.");
+            var receipts = result.Results.Select(x => new SmsDeliveryReceipt(x.Key, x.Status)).ToList()
                            ?? throw new InvalidDataException("سامانه تأییدیه‌ای برنگرداند.");
             await store.ConfirmBatchAsync(batch, receipts, nowUtc, cancellationToken);
             return SyncRunResult.Sent;

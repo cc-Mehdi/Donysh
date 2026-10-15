@@ -14,6 +14,8 @@ public static class MobileApi
 {
     public static string Hash(string value) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
     public static string NewSecret() => Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+    private static bool IsHexSecret(string? value, int length) =>
+        value is not null && value.Length == length && value.All(Uri.IsHexDigit);
 
     public static void AddMobileApi(this IServiceCollection services)
     {
@@ -60,18 +62,26 @@ public static class MobileApi
         if (!ctx.Request.HasJsonContentType()) return default;
         using var buffer = new MemoryStream();
         var chunk = new byte[4096];
-        int count;
-        while ((count = await ctx.Request.Body.ReadAsync(chunk, ct)) != 0)
+        try
         {
-            if (buffer.Length + count > 32768)
+            int count;
+            while ((count = await ctx.Request.Body.ReadAsync(chunk, ct)) != 0)
             {
-                if (ctx.Request.Protocol == "HTTP/1.1") ctx.Response.Headers.Connection = "close";
-                return default;
+                if (buffer.Length + count > 32768)
+                {
+                    if (ctx.Request.Protocol == "HTTP/1.1") ctx.Response.Headers.Connection = "close";
+                    return default;
+                }
+                buffer.Write(chunk, 0, count);
             }
-            buffer.Write(chunk, 0, count);
+            return JsonSerializer.Deserialize<T>(buffer.ToArray(), new JsonSerializerOptions(JsonSerializerDefaults.Web) { MaxDepth = 8 });
         }
-        try { return JsonSerializer.Deserialize<T>(buffer.ToArray(), new JsonSerializerOptions(JsonSerializerDefaults.Web) { MaxDepth = 8 }); }
         catch (JsonException) { return default; }
+        catch (BadHttpRequestException ex) when (ex.StatusCode == StatusCodes.Status413PayloadTooLarge)
+        {
+            if (ctx.Request.Protocol == "HTTP/1.1") ctx.Response.Headers.Connection = "close";
+            return default;
+        }
     }
 
     private static async Task<IResult> PairAsync(HttpContext ctx, ApplicationDbContext db, CancellationToken ct)
@@ -79,14 +89,19 @@ public static class MobileApi
         ctx.Response.Headers.CacheControl = "no-store";
         if (!ctx.Request.IsHttps) return Results.BadRequest(new { error = "HTTPS required" });
         var input = await ReadAsync<PairRequest>(ctx, ct);
-        if (input?.Code is not { Length: 32 }) return Results.BadRequest(new { error = "Invalid pairing code" });
-        var hash = Hash(input.Code.ToUpperInvariant());
+        if (!IsHexSecret(input?.Code, 32)) return Results.BadRequest(new { error = "Invalid pairing code" });
+        var hash = Hash(input!.Code.ToUpperInvariant());
         var now = DateTime.UtcNow;
         var device = await db.MobileDevices.AsNoTracking().Include(x => x.Workspace).Include(x => x.Category)
             .SingleOrDefaultAsync(x => x.PairCodeHash == hash && !x.Revoked && x.PairExpiresAtUtc > now && x.TokenHash == null, ct);
         if (device is null || !await HasAccessAsync(db, device, ct)) return Results.Unauthorized();
         var token = NewSecret();
-        var changed = await db.MobileDevices.Where(x => x.Id == device.Id && x.PairCodeHash == hash && !x.Revoked && x.TokenHash == null)
+        // Recheck expiry and destination in the atomic consume, not only the earlier lookup.
+        now = DateTime.UtcNow;
+        var changed = await db.MobileDevices.Where(x => x.Id == device.Id && x.PairCodeHash == hash && !x.Revoked
+                && x.TokenHash == null && x.PairExpiresAtUtc > now
+                && db.WorkspaceMembers.Any(m => m.UserId == x.UserId && m.WorkspaceId == x.WorkspaceId)
+                && db.ExpenseCategories.Any(c => c.Id == x.CategoryId && c.WorkspaceId == x.WorkspaceId && !c.IsArchived))
             .ExecuteUpdateAsync(s => s.SetProperty(x => x.TokenHash, Hash(token)).SetProperty(x => x.PairCodeHash, (string?)null), ct);
         return changed == 1 ? Results.Ok(new PairResult(token, device.Workspace.Name, device.Category.Name)) : Results.Unauthorized();
     }
@@ -99,7 +114,7 @@ public static class MobileApi
         ctx.Response.Headers.CacheControl = "no-store";
         if (!ctx.Request.IsHttps) return Results.BadRequest();
         var auth = ctx.Request.Headers.Authorization.ToString();
-        if (!auth.StartsWith("Bearer ", StringComparison.Ordinal) || auth.Length != 71) return Results.Unauthorized();
+        if (!auth.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) || !IsHexSecret(auth[7..], 64)) return Results.Unauthorized();
         var tokenHash = Hash(auth[7..]);
         var device = await db.MobileDevices.AsNoTracking().SingleOrDefaultAsync(x => x.TokenHash == tokenHash && !x.Revoked, ct);
         if (device is null) return Results.Unauthorized();

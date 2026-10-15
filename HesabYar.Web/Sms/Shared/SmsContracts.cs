@@ -26,6 +26,7 @@ public static class SyncPolicy
     }
     public static bool Valid(SmsEnvelope? sms, DateTimeOffset now) => sms is not null
         && !string.IsNullOrWhiteSpace(sms.Sender) && sms.Sender.Length <= 64
+        && !sms.Sender.Any(char.IsControl)
         && !string.IsNullOrWhiteSpace(sms.Body) && sms.Body.Length <= 2048
         && sms.SentAtUnixMs >= 1577836800000L && sms.SentAtUnixMs <= now.AddMinutes(10).ToUnixTimeMilliseconds()
         && (sms.Title is null || (!string.IsNullOrWhiteSpace(sms.Title) && sms.Title.Length <= 160
@@ -37,5 +38,6 @@ public static class SyncPolicy
         && parsed.AmountRial % 10 == 0
         && parsed.Kind == "withdrawal"
         && !string.IsNullOrWhiteSpace(parsed.TemplateName)
-        && parsed.TemplateName.Length <= 80;
+        && parsed.TemplateName.Length <= 80
+        && !parsed.TemplateName.Any(char.IsControl);
 }

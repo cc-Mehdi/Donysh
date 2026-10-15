@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Security.Claims;
 using Donysh.Sms;
 using HesabYar.Web.Data;
 using HesabYar.Web.Domain;
@@ -15,6 +16,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.AspNetCore.Mvc.RazorPages;
 using Npgsql;
 
 internal static class PostgresChecks
@@ -86,11 +88,39 @@ internal static class PostgresChecks
             app.MapMobileApi(); await app.StartAsync();
             using var client = new HttpClient { BaseAddress = new(app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.Single()) };
             void Check(bool value, string name) { if (!value) throw new Exception("FAIL PostgreSQL: " + name); Console.WriteLine("PASS PostgreSQL: " + name); }
+            await db.ExpenseCategories.Where(x => x.Id == category.Id).ExecuteUpdateAsync(s => s.SetProperty(x => x.IsArchived, true));
+            using var archivedPair = await client.PostAsJsonAsync("/api/mobile/pair", new PairRequest(code));
+            Check(archivedPair.StatusCode == HttpStatusCode.Unauthorized
+                && await db.MobileDevices.AnyAsync(x => x.Id == device.Id && x.PairCodeHash != null && x.TokenHash == null),
+                "archived pairing destination rejected without consuming code");
+            await db.ExpenseCategories.Where(x => x.Id == category.Id).ExecuteUpdateAsync(s => s.SetProperty(x => x.IsArchived, false).SetProperty(x => x.WorkspaceId, other.Id));
+            using var wrongScopePair = await client.PostAsJsonAsync("/api/mobile/pair", new PairRequest(code));
+            Check(wrongScopePair.StatusCode == HttpStatusCode.Unauthorized, "pairing category cannot belong to another workspace");
+            await db.ExpenseCategories.Where(x => x.Id == category.Id).ExecuteUpdateAsync(s => s.SetProperty(x => x.WorkspaceId, workspace.Id));
+            await db.MobileDevices.Where(x => x.Id == device.Id).ExecuteUpdateAsync(s => s.SetProperty(x => x.PairExpiresAtUtc, DateTime.UtcNow.AddMinutes(-1)));
+            using var expiredPair = await client.PostAsJsonAsync("/api/mobile/pair", new PairRequest(code));
+            Check(expiredPair.StatusCode == HttpStatusCode.Unauthorized, "expired pairing code rejected");
+            await db.MobileDevices.Where(x => x.Id == device.Id).ExecuteUpdateAsync(s => s.SetProperty(x => x.PairExpiresAtUtc, DateTime.UtcNow.AddMinutes(10)));
             using var paired = await client.PostAsJsonAsync("/api/mobile/pair", new PairRequest(code));
             Check(paired.StatusCode == HttpStatusCode.OK, "pairing");
             var pair = (await paired.Content.ReadFromJsonAsync<PairResult>())!;
             using var replay = await client.PostAsJsonAsync("/api/mobile/pair", new PairRequest(code));
             Check(replay.StatusCode == HttpStatusCode.Unauthorized, "pairing code is single-use");
+            var pendingPairings = await Task.WhenAll(Enumerable.Range(0, 6).Select(async i => {
+                await using var pairingDb = new ApplicationDbContext(options);
+                var http = new DefaultHttpContext {
+                    User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, user.Id)], "test"))
+                };
+                var context = new WorkspaceContext(pairingDb, new HttpContextAccessor { HttpContext = http });
+                var page = new HesabYar.Web.Pages.Mobile.IndexModel(pairingDb, context) {
+                    DeviceName = "Concurrent connection " + i, CategoryId = category.Id,
+                    PageContext = new PageContext { HttpContext = http }
+                };
+                await page.OnPostAsync(CancellationToken.None);
+                return page.PairCode;
+            }));
+            Check(pendingPairings.Count(x => x is not null) == 2 && await db.MobileDevices.CountAsync(x => x.UserId == user.Id) == 3,
+                "concurrent pairing submissions cannot bypass three-device limit");
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", pair.Token);
             var sms = new SmsEnvelope("Mellat", "حساب5555555555\nبرداشت50,000,000\nمانده111,111,111\n05/06/15-12:14", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
             using var oversized = await client.PostAsJsonAsync("/api/mobile/sms", new SmsBatch(Enumerable.Repeat(sms, 6).ToList()));

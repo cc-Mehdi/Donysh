@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Security.Cryptography;
 
 namespace DonyshMobile.Core;
 
@@ -6,9 +7,10 @@ public sealed class SmsMonitorStore
 {
     private const int MaxSenders = 50;
     private const int MaxMessages = 5000;
-    private const int MaxAddressLength = 160;
+    private const int MaxAddressLength = 64;
     private const int MaxBodyLength = 2048;
     private const int MaxTemplatesPerSender = 20;
+    private const long MaxStateBytes = 128L * 1024 * 1024;
     private static readonly TimeSpan Retention = TimeSpan.FromDays(7);
     private static readonly SemaphoreSlim Gate = new(1, 1);
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
@@ -17,12 +19,15 @@ public sealed class SmsMonitorStore
     };
 
     private readonly string _statePath;
+    private readonly Func<CancellationToken, Task<byte[]>>? _storageKeyProvider;
+    private bool _requiresExistingKey;
 
-    public SmsMonitorStore(string appDataDirectory)
+    public SmsMonitorStore(string appDataDirectory, Func<CancellationToken, Task<byte[]>>? storageKeyProvider = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(appDataDirectory);
         Directory.CreateDirectory(appDataDirectory);
         _statePath = Path.Combine(appDataDirectory, "sms-monitor-state.json");
+        _storageKeyProvider = storageKeyProvider;
     }
 
     public async Task<IReadOnlyList<SenderSummary>> GetSenderSummariesAsync(
@@ -41,7 +46,8 @@ public sealed class SmsMonitorStore
             return state.Senders
                 .Select(sender =>
                 {
-                    var messages = state.Messages.Where(x => x.SenderId == sender.Id).ToList();
+                    var messages = state.Messages.Where(x => x.SenderId == sender.Id
+                        && x.ReceivedAtUtc >= DateTimeOffset.UtcNow.Subtract(Retention)).ToList();
                     return new SenderSummary(
                         sender.Id,
                         sender.Address,
@@ -64,7 +70,7 @@ public sealed class SmsMonitorStore
     {
         var trimmed = address?.Trim() ?? string.Empty;
         var normalized = SenderAddress.Normalize(trimmed);
-        if (trimmed.Length is 0 or > MaxAddressLength || normalized.Length == 0)
+        if (trimmed.Length is 0 or > MaxAddressLength || normalized.Length == 0 || trimmed.Any(char.IsControl))
         {
             return AddSenderResult.Invalid;
         }
@@ -371,7 +377,8 @@ public sealed class SmsMonitorStore
         CancellationToken cancellationToken = default)
     {
         var normalized = SenderAddress.Normalize(senderAddress);
-        if (normalized.Length == 0 || string.IsNullOrWhiteSpace(body) || body.Length > MaxBodyLength)
+        if (normalized.Length == 0 || senderAddress.Length > MaxAddressLength
+            || string.IsNullOrWhiteSpace(body) || body.Length > MaxBodyLength)
         {
             return false;
         }
@@ -435,15 +442,28 @@ public sealed class SmsMonitorStore
             return new SmsMonitorState();
         }
 
-        await using var stream = new FileStream(
-            _statePath,
-            FileMode.Open,
-            FileAccess.Read,
-            FileShare.Read,
-            4096,
-            FileOptions.Asynchronous | FileOptions.SequentialScan);
-        var state = await JsonSerializer.DeserializeAsync<SmsMonitorState>(stream, JsonOptions, cancellationToken)
-            ?? throw new InvalidDataException("فایل اطلاعات پیامک قابل خواندن نیست.");
+        if (new FileInfo(_statePath).Length > MaxStateBytes)
+            throw new InvalidDataException("حجم فایل پیامک‌ها از حد مجاز بیشتر است. داده‌های موجود حفظ شدند.");
+        var data = await File.ReadAllBytesAsync(_statePath, cancellationToken);
+        var isEncrypted = SmsStateProtection.IsEncrypted(data);
+        _requiresExistingKey = isEncrypted;
+        byte[]? key = null;
+        SmsMonitorState state;
+        try
+        {
+            if (isEncrypted)
+            {
+                key = await GetStorageKeyAsync(cancellationToken);
+                data = SmsStateProtection.Decrypt(data, key);
+            }
+            state = JsonSerializer.Deserialize<SmsMonitorState>(data, JsonOptions)
+                ?? throw new InvalidDataException("فایل اطلاعات پیامک قابل خواندن نیست.");
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(data);
+            if (key is not null) CryptographicOperations.ZeroMemory(key);
+        }
         if (state.Version != 1)
         {
             throw new InvalidDataException("نسخه فایل اطلاعات پیامک پشتیبانی نمی‌شود.");
@@ -465,26 +485,47 @@ public sealed class SmsMonitorStore
             template.Fields ??= [];
         }
 
+        // Upgrade existing installs only after the original state was read successfully.
+        if (!isEncrypted) await SaveUnsafeAsync(state, cancellationToken);
         return state;
     }
 
     private async Task SaveUnsafeAsync(SmsMonitorState state, CancellationToken cancellationToken)
     {
         var temporaryPath = _statePath + ".tmp";
-        await using (var stream = new FileStream(
+        var data = JsonSerializer.SerializeToUtf8Bytes(state, JsonOptions);
+        byte[]? key = null;
+        try
+        {
+            if (data.LongLength > MaxStateBytes - 64)
+                throw new InvalidDataException("حجم داده‌های پیامک از حد مجاز بیشتر است. داده‌های قبلی حفظ شدند.");
+            key = await GetStorageKeyAsync(cancellationToken);
+            var encrypted = SmsStateProtection.Encrypt(data, key);
+            await using (var stream = new FileStream(
                          temporaryPath,
                          FileMode.Create,
                          FileAccess.Write,
                          FileShare.None,
                          4096,
                          FileOptions.Asynchronous | FileOptions.WriteThrough))
-        {
-            await JsonSerializer.SerializeAsync(stream, state, JsonOptions, cancellationToken);
-            await stream.FlushAsync(cancellationToken);
+            {
+                await stream.WriteAsync(encrypted, cancellationToken);
+                await stream.FlushAsync(cancellationToken);
+            }
+            File.Move(temporaryPath, _statePath, true);
+            _requiresExistingKey = true;
         }
-
-        File.Move(temporaryPath, _statePath, true);
+        finally
+        {
+            CryptographicOperations.ZeroMemory(data);
+            if (key is not null) CryptographicOperations.ZeroMemory(key);
+        }
     }
+
+    private Task<byte[]> GetStorageKeyAsync(CancellationToken cancellationToken) =>
+        _storageKeyProvider is not null
+            ? _storageKeyProvider(cancellationToken)
+            : SmsStateProtection.GetKeyAsync(cancellationToken, createIfMissing: !_requiresExistingKey);
 
     private static bool Prune(SmsMonitorState state, DateTimeOffset nowUtc)
     {

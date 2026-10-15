@@ -17,6 +17,9 @@ namespace DonyshMobile.WinUI
         public App()
         {
             this.InitializeComponent();
+            var bodyFont = new Microsoft.UI.Xaml.Media.FontFamily("ms-appx:///YekanBakh-Regular.ttf#Yekan Bakh");
+            Resources["ContentControlThemeFontFamily"] = bodyFont;
+            Resources["TextControlThemeFontFamily"] = bodyFont;
         }
 
         protected override MauiApp CreateMauiApp() => MauiProgram.CreateMauiApp();

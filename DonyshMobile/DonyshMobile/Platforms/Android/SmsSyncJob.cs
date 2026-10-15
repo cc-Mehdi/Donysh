@@ -54,10 +54,9 @@ public sealed class SmsSyncJob : JobService
             try
             {
                 var store = new SmsMonitorStore(FileSystem.AppDataDirectory);
-                var connection = await MobileConnectionStore.LoadAsync();
                 var result = await new MobileApiClient().SendNextBatchAsync(
-                    store, connection, DateTimeOffset.UtcNow, cancellation.Token,
-                    requireTitle: SmsSyncSettings.RequireTitle);
+                    store, MobileConnectionStore.LoadAsync, DateTimeOffset.UtcNow, cancellation.Token,
+                    requireTitleProvider: () => SmsSyncSettings.RequireTitle);
                 var summary = await store.GetSyncSummaryAsync(cancellation.Token);
                 shouldRetry = summary.Pending > 0 && result is SyncRunResult.Sent or SyncRunResult.RetryScheduled;
                 nextDelayMs = Math.Max(60_000, (long)(summary.NextAttemptAtUtc - DateTimeOffset.UtcNow).TotalMilliseconds);
@@ -66,7 +65,7 @@ public sealed class SmsSyncJob : JobService
             catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
             catch (Exception exception)
             {
-                global::Android.Util.Log.Error("DonyshSync", exception.ToString());
+                global::Android.Util.Log.Error("DonyshSync", $"SMS synchronization failed: {exception.GetType().Name}");
                 shouldRetry = true;
             }
             finally
@@ -105,6 +104,7 @@ public sealed class SyncRestartReceiver : BroadcastReceiver
 {
     public override void OnReceive(Context? context, Intent? intent)
     {
-        if (context is not null) SmsSyncJob.Schedule(context);
+        if (context is not null && intent?.Action is Intent.ActionBootCompleted or Intent.ActionMyPackageReplaced)
+            SmsSyncJob.Schedule(context);
     }
 }

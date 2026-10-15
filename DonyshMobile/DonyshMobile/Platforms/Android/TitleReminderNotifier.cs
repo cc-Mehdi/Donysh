@@ -14,7 +14,7 @@ public static class TitleReminderNotifier
     public static async Task RefreshAsync(Context context)
     {
         try { await RefreshCoreAsync(context); }
-        catch (Exception exception) { global::Android.Util.Log.Warn("DonyshTitle", exception.ToString()); }
+        catch (Exception exception) { global::Android.Util.Log.Warn("DonyshTitle", $"Title reminder failed: {exception.GetType().Name}"); }
     }
 
     private static async Task RefreshCoreAsync(Context context)
@@ -61,6 +61,7 @@ public static class TitleReminderNotifier
         builder.SetContentIntent(pending);
         builder.SetAutoCancel(false);
         builder.SetVisibility((int)NotificationVisibility.Private);
+        builder.SetOnlyAlertOnce(true);
         builder.SetPriority((int)NotificationPriority.High);
         var notification = builder.Build();
         if (notification is not null) manager.Notify(NotificationId, notification);
@@ -78,7 +79,7 @@ public sealed class SmsUnlockReminderReceiver : BroadcastReceiver
         _ = Task.Run(async () =>
         {
             try { await TitleReminderNotifier.RefreshAsync(context); }
-            catch (Exception exception) { global::Android.Util.Log.Error("DonyshTitle", exception.ToString()); }
+            catch (Exception exception) { global::Android.Util.Log.Error("DonyshTitle", $"Title reminder failed: {exception.GetType().Name}"); }
             finally { pending?.Finish(); }
         });
     }

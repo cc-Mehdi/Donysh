@@ -16,16 +16,28 @@ public static class MobileConnectionStore
 
     public static async Task<MobileConnection?> LoadAsync()
     {
-        var json = await SecureStorage.Default.GetAsync(ConnectionKey);
-        if (string.IsNullOrWhiteSpace(json)) return null;
-        try { return JsonSerializer.Deserialize<MobileConnection>(json, JsonOptions); }
-        catch (JsonException) { return null; }
+        try
+        {
+            var json = await SecureStorage.Default.GetAsync(ConnectionKey);
+            if (string.IsNullOrWhiteSpace(json)) return null;
+            var connection = JsonSerializer.Deserialize<MobileConnection>(json, JsonOptions);
+            return connection is not null && MobileApiClient.NormalizeServer(connection.Server) is not null
+                && connection.Token is { Length: 64 } && connection.Token.All(Uri.IsHexDigit)
+                ? connection : null;
+        }
+        // Restored or temporarily unavailable platform credentials must never crash SMS capture.
+        // Leave the secure record untouched so unlocking/restoring the key can recover it.
+        catch (Exception) { return null; }
     }
 
     public static async Task SaveAsync(MobileConnection connection)
     {
-        Server = connection.Server;
-        await SecureStorage.Default.SetAsync(ConnectionKey, JsonSerializer.Serialize(connection, JsonOptions));
+        var server = MobileApiClient.NormalizeServer(connection.Server)
+            ?? throw new ArgumentException("آدرس سامانه باید امن و معتبر باشد.", nameof(connection));
+        if (connection.Token is not { Length: 64 } || !connection.Token.All(Uri.IsHexDigit))
+            throw new ArgumentException("کد دسترسی سامانه معتبر نیست.", nameof(connection));
+        await SecureStorage.Default.SetAsync(ConnectionKey, JsonSerializer.Serialize(connection with { Server = server }, JsonOptions));
+        Server = server;
     }
 
     public static void Remove() => SecureStorage.Default.Remove(ConnectionKey);

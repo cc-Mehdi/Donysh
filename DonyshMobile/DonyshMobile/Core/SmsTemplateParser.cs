@@ -12,7 +12,7 @@ public static class SmsTemplateParser
 
     public static string? Validate(SmsTemplate template)
     {
-        if (string.IsNullOrWhiteSpace(template.Name) || template.Name.Length > 80)
+        if (string.IsNullOrWhiteSpace(template.Name) || template.Name.Length > 80 || template.Name.Any(char.IsControl))
             return "نام قالب باید بین ۱ تا ۸۰ نویسه باشد.";
         if (string.IsNullOrWhiteSpace(template.Pattern) || template.Pattern.Length > 2000)
             return "متن قالب باید بین ۱ تا ۲۰۰۰ نویسه باشد.";
@@ -20,25 +20,32 @@ public static class SmsTemplateParser
             return "واحد پول یا نوع تراکنش معتبر نیست.";
 
         var matches = Placeholder.Matches(template.Pattern);
+        if (matches.Count > 32)
+            return "تعداد بخش‌های متغیر قالب بیش از حد مجاز است.";
         if (matches.Count == 0 || matches.Cast<Match>().Count(m => m.Groups[1].Value.Equals("amount", StringComparison.OrdinalIgnoreCase)) != 1)
-            return "هر قالب باید دقیقاً یک {amount} داشته باشد.";
+            return "در هر قالب باید دقیقاً یک بخش برای مبلغ مشخص شود.";
         foreach (var field in new[] { "date", "time", "type" })
             if (matches.Cast<Match>().Count(m => m.Groups[1].Value.Equals(field, StringComparison.OrdinalIgnoreCase)) > 1)
-                return $"{{{field}}} فقط یک بار مجاز است.";
+                return "تاریخ، ساعت و نوع تراکنش هرکدام فقط یک بار در قالب مجاز هستند.";
         var remainder = Placeholder.Replace(template.Pattern, string.Empty);
         if (AnyPlaceholder.IsMatch(remainder) || remainder.Contains('{') || remainder.Contains('}'))
-            return "جای‌نگهدار ناشناخته در قالب وجود دارد.";
+            return "یکی از بخش‌های متغیر قالب شناخته‌شده نیست. قالب را از روی پیام نمونه دوباره بسازید.";
         if (remainder.Trim().Length < 2)
             return "برای جلوگیری از تشخیص اشتباه، بخشی از متن ثابت پیام را هم در قالب بگذارید.";
 
-        if (template.Phrases.Count > 30 || template.Phrases.Any(p =>
-                string.IsNullOrWhiteSpace(p.Text) || p.Text.Length > 100 || !Enum.IsDefined(p.Kind)))
+        if (template.Phrases is null || template.Phrases.Count > 30 || template.Phrases.Any(p =>
+                p is null || string.IsNullOrWhiteSpace(p.Text) || p.Text.Length > 100 || !Enum.IsDefined(p.Kind)))
             return "نگاشت نوع تراکنش نامعتبر است (حداکثر ۳۰ عبارت، هرکدام حداکثر ۱۰۰ نویسه).";
+        if (template.SampleMessage?.Length > 2048 || template.Fields is null || template.Fields.Count > 6
+            || template.Fields.Any(field => field is null || !Enum.IsDefined(field.Key)
+                || string.IsNullOrWhiteSpace(field.Value) || field.Value.Length > 200)
+            || template.Fields.Select(field => field.Key).Distinct().Count() != template.Fields.Count)
+            return "نمونه پیام یا کلیدهای قالب معتبر نیستند.";
         var normalizedPhrases = template.Phrases.Select(p => NormalizeText(p.Text)).ToList();
         if (normalizedPhrases.Distinct(StringComparer.OrdinalIgnoreCase).Count() != normalizedPhrases.Count)
             return "عبارت تکراری در نگاشت نوع تراکنش وجود دارد.";
         if (matches.Cast<Match>().Any(m => m.Groups[1].Value.Equals("type", StringComparison.OrdinalIgnoreCase)) && template.Phrases.Count == 0)
-            return "برای {type} حداقل یک نگاشت عبارت به برداشت یا واریز تعریف کنید.";
+            return "برای تشخیص نوع تراکنش، عبارت مربوط به برداشت یا واریز را مشخص کنید.";
         return null;
     }
 

@@ -2,39 +2,49 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:local="clr-namespace:DonyshMobile"
-             x:Class="DonyshMobile.MessagesPage"
-             x:DataType="local:MessagesPage"
-             FlowDirection="RightToLeft"
-             >
-    <Grid RowDefinitions="Auto,Auto,*" Padding="20,18" RowSpacing="14">
-        <VerticalStackLayout Spacing="4">
+             x:Class="DonyshMobile.MessagesPage" x:DataType="local:MessagesPage" Title="پیام‌های فرستنده">
+    <Grid x:Name="MessagesContent" RowDefinitions="Auto,Auto,*" Padding="18,12" RowSpacing="12">
+        <VerticalStackLayout Spacing="5">
             <Label Text="{Binding SenderAddress}" Style="{StaticResource PageTitle}" />
-            <Label Text="پیام‌های دریافت‌شده در هفت روز گذشته" FontSize="13" Style="{StaticResource MutedText}" />
+            <Label Text="پیام‌های هفت روز گذشته؛ وضعیت ارسال هر پیام جداگانه مشخص است." Style="{StaticResource MutedText}" />
+            <Button Text="قالب‌های این فرستنده" Clicked="OnTemplatesClicked" Style="{StaticResource SecondaryAction}" />
         </VerticalStackLayout>
-
-        <Button Grid.Row="1" Text="قالب‌های این فرستنده" Clicked="OnTemplatesClicked"
-                Style="{StaticResource PrimaryAction}" />
+        <VerticalStackLayout Grid.Row="1" Spacing="7">
+            <Border Style="{StaticResource FieldCard}">
+                <SearchBar Placeholder="جست‌وجو در عنوان و متن پیام" TextChanged="OnSearchChanged" />
+            </Border>
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                <Picker x:Name="StatusPicker" Title="وضعیت پیام" SelectedIndexChanged="OnFilterChanged" SelectedIndex="0">
+                    <Picker.Items><x:String>همهٔ پیام‌ها</x:String><x:String>منتظر ارسال</x:String><x:String>ارسال‌شده</x:String><x:String>نیازمند بررسی</x:String><x:String>منتظر عنوان</x:String></Picker.Items>
+                </Picker>
+                <Label Grid.Column="1" Text="{Binding MessageCountText}" Style="{StaticResource Caption}" VerticalOptions="Center" />
+            </Grid>
+        </VerticalStackLayout>
         <CollectionView Grid.Row="2" ItemsSource="{Binding Messages}" SelectionMode="None">
             <CollectionView.EmptyView>
-                <Border Stroke="{AppThemeBinding Light=#CBD5E1, Dark=#475569}" StrokeDashArray="5,4" Padding="28" StrokeShape="RoundRectangle 18">
-                    <VerticalStackLayout Spacing="8" HorizontalOptions="Center">
-                        <Label Text="📭" FontSize="36" HorizontalTextAlignment="Center" />
-                        <Label Text="در هفت روز گذشته پیامی ثبت نشده است."
-                               Style="{StaticResource MutedText}" HorizontalTextAlignment="Center" />
+                <Border Style="{StaticResource Card}" Padding="26">
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="پیامی در این فهرست نیست" FontAttributes="Bold" HorizontalTextAlignment="Center" />
+                        <Label Text="فیلتر را تغییر دهید یا منتظر پیامک تازهٔ این فرستنده باشید." Style="{StaticResource MutedText}" HorizontalTextAlignment="Center" />
                     </VerticalStackLayout>
                 </Border>
             </CollectionView.EmptyView>
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="local:MessageItem">
-                    <Border Margin="0,0,0,10" Style="{StaticResource Card}" Padding="15">
+                    <Border Style="{StaticResource Card}" Margin="0,0,0,12" Padding="16">
                         <VerticalStackLayout Spacing="9">
-                            <Label Text="{Binding ReceivedAt}" FontSize="11" TextColor="{AppThemeBinding Light=#4F46E5, Dark=#A5B4FC}" />
-                            <Label Text="{Binding ParsedSummary}" FontSize="12" TextColor="{AppThemeBinding Light=#047857, Dark=#6EE7B7}" />
-                            <Label Text="{Binding DeliveryStatus}" FontSize="12" FontAttributes="Bold"
-                                   FlowDirection="RightToLeft" HorizontalTextAlignment="Start" HorizontalOptions="Fill"
-                                   TextColor="{AppThemeBinding Light=#4338CA, Dark=#C7D2FE}" />
-                            <Label Text="{Binding Body}" FontSize="14" LineHeight="1.5"
-                                   TextColor="{AppThemeBinding Light=#1E293B, Dark=#E2E8F0}" FlowDirection="RightToLeft" />
+                            <Label Text="{Binding ReceivedAt}" Style="{StaticResource Caption}" />
+                            <Label Text="{Binding Title}" FontSize="18" FontAttributes="Bold" />
+                            <Label Text="{Binding ParsedSummary}" Style="{StaticResource StatusBadge}" />
+                            <Border Style="{StaticResource InfoCard}" Padding="10,7" StrokeThickness="0">
+                                <Label Text="{Binding DeliveryStatus}" FontSize="12" FontAttributes="Bold" />
+                            </Border>
+                            <Label Text="{Binding Body}" LineHeight="1.35" MaxLines="6" LineBreakMode="TailTruncation" />
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="6">
+                                <Button Text="عنوان پیام" IsVisible="{Binding CanEditTitle}" CommandParameter="{Binding Id}"
+                                        Clicked="OnSetTitleClicked" Style="{StaticResource SecondaryAction}" />
+                                <Button Grid.Column="1" Text="متن کامل" CommandParameter="{Binding Id}" Clicked="OnDetailsClicked" Style="{StaticResource QuietAction}" />
+                            </Grid>
                         </VerticalStackLayout>
                     </Border>
                 </DataTemplate>

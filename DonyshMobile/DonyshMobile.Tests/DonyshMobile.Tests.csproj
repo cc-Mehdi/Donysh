@@ -10,6 +10,7 @@
     <Compile Include="..\DonyshMobile\Core\SenderAddress.cs" Link="Core\SenderAddress.cs" />
     <Compile Include="..\DonyshMobile\Core\SmsMonitorModels.cs" Link="Core\SmsMonitorModels.cs" />
     <Compile Include="..\DonyshMobile\Core\SmsMonitorStore.cs" Link="Core\SmsMonitorStore.cs" />
+    <Compile Include="..\DonyshMobile\Core\SmsStateProtection.cs" Link="Core\SmsStateProtection.cs" />
     <Compile Include="..\DonyshMobile\Core\SmsTemplateModels.cs" Link="Core\SmsTemplateModels.cs" />
     <Compile Include="..\DonyshMobile\Core\SmsTemplateParser.cs" Link="Core\SmsTemplateParser.cs" />
     <Compile Include="..\DonyshMobile\Core\SmsKeyValueTemplateBuilder.cs" Link="Core\SmsKeyValueTemplateBuilder.cs" />

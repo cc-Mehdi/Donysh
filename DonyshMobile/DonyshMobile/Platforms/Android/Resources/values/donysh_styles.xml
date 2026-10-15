@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<resources>
+    <style name="DonyshFontOverlay">
+        <item name="android:fontFamily">@font/donysh_yekan</item>
+        <item name="fontFamily">@font/donysh_yekan</item>
+        <item name="alertDialogTheme">@style/DonyshDialogTheme</item>
+    </style>
+    <style name="DonyshDialogTheme" parent="MauiAlertDialogTheme">
+        <item name="android:fontFamily">@font/donysh_yekan</item>
+        <item name="fontFamily">@font/donysh_yekan</item>
+    </style>
+</resources>

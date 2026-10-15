@@ -1,62 +1,94 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             x:Class="DonyshMobile.ConnectionPage"
-             FlowDirection="RightToLeft"
-             Title="اتصال به Donysh">
+             x:Class="DonyshMobile.ConnectionPage" Title="تنظیمات و اتصال">
     <ScrollView>
-        <VerticalStackLayout Padding="20,18" Spacing="14">
+        <VerticalStackLayout x:Name="ConnectionContent" Padding="18,12,18,28" Spacing="14" MaximumWidthRequest="800" HorizontalOptions="Fill">
             <VerticalStackLayout Spacing="4">
-                <Label Text="ارسال امن به Donysh" Style="{StaticResource PageTitle}" />
-                <Label Text="پیام‌ها ابتدا روی گوشی می‌مانند و فقط پس از تأیید سامانه، ارسال‌شده علامت می‌خورند."
-                       FontSize="13" Style="{StaticResource MutedText}" />
+                <Label Text="همه‌چیز تحت کنترل شما" Style="{StaticResource PageTitle}" />
+                <Label Text="مقصد ارسال، عنوان پیام‌ها و ظاهر برنامه را تنظیم کنید." Style="{StaticResource MutedText}" />
             </VerticalStackLayout>
-
-            <Border Style="{StaticResource Card}" Padding="15" StrokeShape="RoundRectangle 18">
+            <Border Style="{StaticResource InfoCard}" Padding="18">
                 <VerticalStackLayout Spacing="10">
-                    <Label Text="اتصال گوشی" Style="{StaticResource SectionTitle}" />
-                    <Label Text="در سایت Donysh وارد «همراه دونیش» شوید، فضای مالی و دسته را انتخاب کنید و یک کد اتصال بسازید."
-                           FontSize="12" Style="{StaticResource MutedText}" />
-                    <Label Text="آدرس سایت" FontAttributes="Bold" />
-                    <Entry x:Name="ServerEntry" Placeholder="https://donysh.ir" Keyboard="Url"
-                           FlowDirection="LeftToRight" HorizontalTextAlignment="Start" />
-                    <Label Text="کد اتصال یک‌بارمصرف" FontAttributes="Bold" />
-                    <Entry x:Name="PairCodeEntry" Placeholder="کد ۳۲ نویسه‌ای" MaxLength="40"
-                           FlowDirection="LeftToRight" HorizontalTextAlignment="Start" />
-                    <Button Text="اتصال امن" Clicked="OnConnectClicked" Style="{StaticResource SuccessAction}" />
-                </VerticalStackLayout>
-            </Border>
-
-            <Border Style="{StaticResource InfoCard}" Padding="15" StrokeShape="RoundRectangle 18">
-                <VerticalStackLayout Spacing="8">
-                    <Label Text="وضعیت همگام‌سازی" Style="{StaticResource SectionTitle}" />
-                    <Label x:Name="ConnectionStatusLabel" FontAttributes="Bold"
-                           TextColor="{AppThemeBinding Light=#312E81, Dark=#E0E7FF}" />
-                    <Label x:Name="QueueStatusLabel" FontSize="13"
-                           TextColor="{AppThemeBinding Light=#4F46E5, Dark=#A5B4FC}" />
-                    <Label x:Name="LastStatusLabel" FontSize="12" Style="{StaticResource MutedText}" />
+                    <Label Text="اتصال و وضعیت ارسال" Style="{StaticResource SectionTitle}" />
+                    <Label x:Name="ConnectionStatusLabel" FontSize="16" FontAttributes="Bold" />
+                    <Label x:Name="NetworkStatusLabel" Style="{StaticResource Caption}" />
+                    <Label x:Name="QueueStatusLabel" Style="{StaticResource StatusBadge}" />
+                    <Label x:Name="LastStatusLabel" Style="{StaticResource MutedText}" />
+                    <Button x:Name="ManualSyncButton" Text="ارسال دستی یک نوبت" Clicked="OnSyncClicked" Style="{StaticResource PrimaryAction}" />
+                    <Label Text="در هر نوبت تا ۵ پیام فرستاده می‌شود. پیام‌ها فقط پس از تأیید سامانه، ارسال‌شده می‌شوند." Style="{StaticResource Caption}" />
                     <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
-                        <Button Text="ارسال دستی پیام‌های منتظر" Clicked="OnSyncClicked" Style="{StaticResource PrimaryAction}" />
-                        <Button Grid.Column="1" Text="قطع اتصال" Clicked="OnDisconnectClicked" Style="{StaticResource DangerAction}" />
+                        <Button x:Name="ChangeConnectionButton" Text="تغییر مقصد" Clicked="OnChangeConnectionClicked" Style="{StaticResource QuietAction}" />
+                        <Button x:Name="DisconnectButton" Grid.Column="1" Text="قطع اتصال" Clicked="OnDisconnectClicked" Style="{StaticResource DangerAction}" />
                     </Grid>
-                    <ActivityIndicator x:Name="BusyIndicator" IsVisible="False" IsRunning="False" />
                 </VerticalStackLayout>
             </Border>
-
-            <Border Style="{StaticResource Card}" Padding="15" StrokeShape="RoundRectangle 18">
-                <VerticalStackLayout Spacing="8">
-                    <Label Text="عنوان پیش از ارسال خودکار" Style="{StaticResource SectionTitle}" />
-                    <Label Text="در حالت روشن، پیام تازه تا زمان ثبت عنوان خودکار ارسال نمی‌شود. پس از بازکردن قفل گوشی، یادآوری عنوان‌گذاری نمایش داده می‌شود. ارسال دستی می‌تواند بدون عنوان باشد."
-                           FontSize="12" Style="{StaticResource MutedText}" />
-                    <Switch x:Name="RequireTitleSwitch" Toggled="OnRequireTitleToggled" HorizontalOptions="Start" />
-                    <Button x:Name="NotificationSettingsButton" Text="تنظیمات اعلان‌های گوشی"
-                            Clicked="OnNotificationSettingsClicked" Style="{StaticResource PrimaryAction}" />
+            <Border x:Name="PairingCard" Style="{StaticResource Card}" Padding="18">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="وصل‌کردن گوشی به دونیش" Style="{StaticResource SectionTitle}" />
+                    <Label Text="۱. در سایت، «همراه دونیش» را باز کنید و فضای مالی و دستهٔ مقصد را انتخاب کنید.&#10;۲. کد اتصال بسازید و همین‌جا وارد کنید." Style="{StaticResource MutedText}" />
+                    <Label Text="کد اتصال یک‌بارمصرف" FontAttributes="Bold" />
+                    <Border Style="{StaticResource FieldCard}">
+                        <Entry x:Name="PairCodeEntry" Placeholder="کد را از سایت کپی کنید" MaxLength="40" IsPassword="True"
+                               IsTextPredictionEnabled="False" IsSpellCheckEnabled="False" ReturnType="Done"
+                               Completed="OnConnectClicked" FlowDirection="LeftToRight" HorizontalTextAlignment="Start" />
+                    </Border>
+                    <Button Text="آدرس سایت متفاوت است؟" Clicked="OnToggleServerClicked" Style="{StaticResource QuietAction}" />
+                    <VerticalStackLayout x:Name="ServerPanel" IsVisible="False" Spacing="6">
+                        <Label Text="آدرس سایت مورد اعتماد شما" FontAttributes="Bold" />
+                        <Border Style="{StaticResource FieldCard}">
+                            <Entry x:Name="ServerEntry" Placeholder="https://donysh.ir" Keyboard="Url" MaxLength="200"
+                                   IsTextPredictionEnabled="False" IsSpellCheckEnabled="False" FlowDirection="LeftToRight" HorizontalTextAlignment="Start" />
+                        </Border>
+                    </VerticalStackLayout>
+                    <Button x:Name="ConnectButton" Text="اتصال امن به سامانه" Clicked="OnConnectClicked" Style="{StaticResource SuccessAction}" />
                 </VerticalStackLayout>
             </Border>
-
-            <Border Style="{StaticResource Card}" Padding="15" StrokeShape="RoundRectangle 18">
-                <Label Text="در حالت عادی نیازی به ارسال دستی نیست. اندروید هنگام وجود اینترنت، هر بار حداکثر ۵ پیام را با فاصله حداقل یک دقیقه می‌فرستد. در خطاهای پی‌درپی فاصله تلاش‌ها تا ۳۰ دقیقه افزایش می‌یابد."
-                       FontSize="12" Style="{StaticResource MutedText}" />
+            <Border x:Name="BusyCard" IsVisible="False" Style="{StaticResource AccentCard}" Padding="15">
+                <HorizontalStackLayout Spacing="12">
+                    <ActivityIndicator x:Name="BusyIndicator" IsRunning="False" />
+                    <Label Text="در حال انجام درخواست…" VerticalOptions="Center" />
+                </HorizontalStackLayout>
+            </Border>
+            <Border Style="{StaticResource Card}" Padding="18">
+                <VerticalStackLayout Spacing="12">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                        <VerticalStackLayout Spacing="5">
+                            <Label Text="عنوان پیش از ارسال" Style="{StaticResource SectionTitle}" />
+                            <Label Text="پیام‌های تازه تا نوشتن عنوان منتظر می‌مانند. با خاموش‌کردن این گزینه، ارسال خودکار بدون عنوان هم انجام می‌شود." Style="{StaticResource MutedText}" />
+                        </VerticalStackLayout>
+                        <Switch Grid.Column="1" x:Name="RequireTitleSwitch" Toggled="OnRequireTitleToggled" SemanticProperties.Description="عنوان برای ارسال خودکار الزامی باشد" />
+                    </Grid>
+                    <Button Text="عنوان‌گذاری پیام‌های منتظر" Clicked="OnPendingTitlesClicked" Style="{StaticResource SecondaryAction}" />
+                    <Button x:Name="NotificationSettingsButton" Text="تنظیمات اعلان‌های گوشی" Clicked="OnNotificationSettingsClicked" Style="{StaticResource QuietAction}" />
+                </VerticalStackLayout>
+            </Border>
+            <Border Style="{StaticResource Card}" Padding="18">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="ظاهر و حس برنامه" Style="{StaticResource SectionTitle}" />
+                    <Border Style="{StaticResource FieldCard}">
+                        <Picker x:Name="ThemePicker" Title="رنگ‌بندی برنامه" SelectedIndexChanged="OnThemeChanged">
+                            <Picker.Items><x:String>هماهنگ با گوشی</x:String><x:String>روشن</x:String><x:String>تیره</x:String></Picker.Items>
+                        </Picker>
+                    </Border>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <VerticalStackLayout Spacing="3">
+                            <Label Text="حرکت‌های نرم رابط" FontAttributes="Bold" />
+                            <Label Text="کوتاه و بدون حرکت‌های تکرارشونده" Style="{StaticResource Caption}" />
+                        </VerticalStackLayout>
+                        <Switch Grid.Column="1" x:Name="MotionSwitch" Toggled="OnMotionToggled" SemanticProperties.Description="حرکت‌های رابط" />
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="بازخورد لمسی هنگام ثبت" FontAttributes="Bold" VerticalOptions="Center" />
+                        <Switch Grid.Column="1" x:Name="HapticsSwitch" Toggled="OnHapticsToggled" SemanticProperties.Description="بازخورد لمسی" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+            <Border Style="{StaticResource AccentCard}" Padding="18">
+                <VerticalStackLayout Spacing="6">
+                    <Label Text="حریم خصوصی پیام‌های شما" Style="{StaticResource SectionTitle}" />
+                    <Label Text="داده‌های پیامکی روی گوشی رمزگذاری می‌شوند. فقط پیام‌های فرستنده‌های انتخابی به مقصد اتصال شما ارسال می‌شوند. پیام‌های تأییدشده پس از هفت روز از گوشی پاک می‌شوند؛ پیام‌های ارسال‌نشده در صف می‌مانند." Style="{StaticResource MutedText}" />
+                </VerticalStackLayout>
             </Border>
         </VerticalStackLayout>
     </ScrollView>

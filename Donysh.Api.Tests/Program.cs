@@ -83,10 +83,22 @@ await Check("Pairing requires HTTPS", "/api/mobile/pair", "{}", HttpStatusCode.B
 await Check("SMS requires HTTPS", "/api/mobile/sms", "{}", HttpStatusCode.BadRequest, false);
 await Check("SMS requires device token, cookie is not enough", "/api/mobile/sms", "{}", HttpStatusCode.Unauthorized);
 await Check("Short device token rejected without database work", "/api/mobile/sms", "{}", HttpStatusCode.Unauthorized, token: "Bearer invalid");
+await Check("Non-hex device token rejected without database work", "/api/mobile/sms", "{}", HttpStatusCode.Unauthorized, token: "Bearer " + new string('Z', 64));
 await Check("Pairing missing code", "/api/mobile/pair", "{}", HttpStatusCode.BadRequest);
 await Check("Pairing null payload", "/api/mobile/pair", "null", HttpStatusCode.BadRequest);
+await Check("Non-hex pairing code rejected without database work", "/api/mobile/pair", "{\"code\":\"" + new string('Z', 32) + "\"}", HttpStatusCode.BadRequest);
 await Check("Malformed JSON", "/api/mobile/pair", "{", HttpStatusCode.BadRequest);
 await Check("Oversized pairing request", "/api/mobile/pair", "{\"code\":\"" + new string('a', 33000) + "\"}", HttpStatusCode.BadRequest);
+using (var chunked = new HttpRequestMessage(HttpMethod.Post, "/api/mobile/pair")
+       { Content = new StringContent("{\"code\":\"" + new string('a', 33000) + "\"}", Encoding.UTF8, "application/json") })
+{
+    chunked.Headers.Add("Test-Https", "1");
+    chunked.Headers.TransferEncodingChunked = true;
+    using var oversizedChunked = await client.SendAsync(chunked);
+    var bounded = oversizedChunked.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.RequestEntityTooLarge;
+    if (!bounded) failed++;
+    Console.WriteLine($"{(bounded ? "PASS" : "FAIL")} Chunked body cap rejects without a server error");
+}
 bool limited = false;
 for (int i = 0; i < 61; i++) {
     using var response = await client.PostAsync("/api/mobile/sms", new StringContent("{}"));

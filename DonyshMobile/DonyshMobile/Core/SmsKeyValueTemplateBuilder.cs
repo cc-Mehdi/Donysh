@@ -11,11 +11,11 @@ public static partial class SmsKeyValueTemplateBuilder
         Guid id, Guid senderId, string name, string message, IReadOnlyList<SmsTemplateField> fields)
     {
         message = message?.Trim() ?? string.Empty;
-        if (message.Length is 0 or > 10_000)
-            return Failed("متن کامل پیام را وارد کنید.");
+        if (message.Length is 0 or > 2048)
+            return Failed("متن کامل پیام را وارد کنید؛ حداکثر ۲۰۴۸ نویسه مجاز است.");
         if (fields.Count is 0 or > 12)
             return Failed("حداقل یک ردیف کلید و مقدار لازم است.");
-        if (fields.Any(x => string.IsNullOrWhiteSpace(x.Value) || x.Value.Length > 200))
+        if (fields.Any(x => x is null || !Enum.IsDefined(x.Key) || string.IsNullOrWhiteSpace(x.Value) || x.Value.Length > 200))
             return Failed("مقدار همه ردیف‌ها را وارد کنید.");
         if (fields.GroupBy(x => x.Key).Any(group => group.Count() > 1))
             return Failed("هر کلید فقط یک بار قابل استفاده است.");

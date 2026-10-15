@@ -14,6 +14,8 @@ namespace DonyshMobile
             if (Intent?.GetBooleanExtra(Platforms.Android.TitleReminderNotifier.OpenTitlesExtra, false) == true)
                 MainPage.RequestPendingTitles();
             base.OnCreate(savedInstanceState);
+            // Native prompts inherit the same Persian font as the MAUI screens.
+            Theme?.ApplyStyle(Resource.Style.DonyshFontOverlay, true);
         }
 
         protected override void OnNewIntent(Intent? intent)

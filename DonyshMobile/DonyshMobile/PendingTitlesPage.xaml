@@ -4,9 +4,10 @@
              xmlns:local="clr-namespace:DonyshMobile"
              x:Class="DonyshMobile.PendingTitlesPage"
              FlowDirection="RightToLeft" Title="عنوان‌گذاری پیام‌ها">
-    <Grid Padding="20,18" RowDefinitions="Auto,*" RowSpacing="14">
+    <Grid x:Name="TitlesContent" Padding="18,12" RowDefinitions="Auto,*" RowSpacing="14">
         <VerticalStackLayout Spacing="5">
             <Label Text="پیام‌های منتظر عنوان" Style="{StaticResource PageTitle}" />
+            <Label x:Name="RemainingLabel" Style="{StaticResource StatusBadge}" />
             <Label Text="برای هر پیام عنوانی کوتاه بنویسید. تا آن زمان، ارسال خودکار آن انجام نمی‌شود."
                    FontSize="13" Style="{StaticResource MutedText}" />
         </VerticalStackLayout>
@@ -19,8 +20,12 @@
                     <Border Style="{StaticResource Card}" Padding="15" Margin="0,0,0,10">
                         <VerticalStackLayout Spacing="8">
                             <Label Text="{Binding Sender}" FontAttributes="Bold" />
+                            <Label Text="{Binding ReceivedAt}" Style="{StaticResource Caption}" />
                             <Label Text="{Binding Body}" MaxLines="4" LineBreakMode="TailTruncation" />
-                            <Button Text="ثبت عنوان" CommandParameter="{Binding Id}"
+                            <Border Style="{StaticResource FieldCard}">
+                                <Entry Text="{Binding DraftTitle, Mode=TwoWay}" Placeholder="این خرج برای چه بود؟" MaxLength="160" ReturnType="Done" Completed="OnSetTitleClicked" />
+                            </Border>
+                            <Button Text="ذخیرهٔ عنوان و آماده‌سازی ارسال" CommandParameter="{Binding Id}"
                                     Clicked="OnSetTitleClicked" Style="{StaticResource SuccessAction}" />
                         </VerticalStackLayout>
                     </Border>

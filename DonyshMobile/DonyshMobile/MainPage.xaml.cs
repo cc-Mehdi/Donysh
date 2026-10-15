@@ -1,9 +1,6 @@
 using System.Collections.ObjectModel;
-using System.Globalization;
-using System.Runtime.CompilerServices;
 using DonyshMobile.Core;
-using Microsoft.Maui.ApplicationModel;
-
+using DonyshMobile.UI;
 #if ANDROID
 using DonyshMobile.Platforms.Android;
 #endif
@@ -16,14 +13,24 @@ public partial class MainPage : ContentPage
     public static void RequestPendingTitles() => Interlocked.Exchange(ref _pendingTitlesRequested, 1);
     public static bool ConsumePendingTitlesRequest() => Interlocked.Exchange(ref _pendingTitlesRequested, 0) == 1;
     private readonly SmsMonitorStore _store = new(FileSystem.AppDataDirectory);
-    private bool _subscribed;
-    private string _permissionStatusText = "در حال بررسی…";
-    private string _permissionButtonText = "فعال‌سازی";
+    private readonly SemaphoreSlim _refreshGate = new(1, 1);
+    private readonly List<SenderItem> _allSenders = [];
+    private bool _subscribed, _hasPermission, _entered, _busy, _isRefreshing;
+    private string _search = string.Empty;
+    private int _nextStep;
 
     public ObservableCollection<SenderItem> Senders { get; } = [];
-    public string PermissionStatusText { get => _permissionStatusText; private set => SetField(ref _permissionStatusText, value); }
-    public string PermissionButtonText { get => _permissionButtonText; private set => SetField(ref _permissionButtonText, value); }
-    public string SenderCountText => $"{Senders.Count} فرستنده";
+    public bool IsRefreshing { get => _isRefreshing; set { _isRefreshing = value; OnPropertyChanged(); } }
+    public string PermissionStatusText { get; private set; } = "در حال بررسی…";
+    public string PermissionButtonText { get; private set; } = "فعال‌سازی";
+    public string SenderCount => UiText.Digits(_allSenders.Count);
+    public string PendingCount { get; private set; } = "۰";
+    public string SentCount { get; private set; } = "۰";
+    public string ConnectionText { get; private set; } = "در حال بررسی اتصال";
+    public string NextStepText { get; private set; } = "فرستنده‌های بانکی خود را انتخاب کنید.";
+    public string NextStepAction { get; private set; } = "شروع کنیم";
+    public string UntitledText { get; private set; } = string.Empty;
+    public bool HasUntitled { get; private set; }
 
     public MainPage()
     {
@@ -37,20 +44,20 @@ public partial class MainPage : ContentPage
         if (!_subscribed)
         {
             SmsReceivedNotifier.MessageStored += OnMessageStored;
+            SmsReceivedNotifier.SyncChanged += OnMessageStored;
             _subscribed = true;
         }
-        await RefreshAsync();
         await RefreshPermissionAsync();
+        await RefreshAsync();
         SyncPlatform.Schedule();
-        if (ConsumePendingTitlesRequest()) await Navigation.PushAsync(new PendingTitlesPage(_store, promptFirstMessage: true));
-#if ANDROID
-        if (SmsSyncSettings.RequireTitle && OperatingSystem.IsAndroidVersionAtLeast(33)
-            && !Preferences.Default.Get("title-notification-permission-asked", false))
+        if (!_entered) { _entered = true; await UiMotion.EnterAsync(PageContent); }
+        if (ConsumePendingTitlesRequest())
         {
-            Preferences.Default.Set("title-notification-permission-asked", true);
-            try { await Permissions.RequestAsync<PostNotificationsPermission>(); }
-            catch (PermissionException) { /* Title entry remains available inside the app. */ }
+            await Navigation.PushAsync(new PendingTitlesPage(_store, promptFirstMessage: true));
+            return;
         }
+#if ANDROID
+        if (_hasPermission) await RequestNotificationPermissionAsync();
         await TitleReminderNotifier.RefreshAsync(global::Android.App.Application.Context);
 #endif
     }
@@ -60,6 +67,7 @@ public partial class MainPage : ContentPage
         if (_subscribed)
         {
             SmsReceivedNotifier.MessageStored -= OnMessageStored;
+            SmsReceivedNotifier.SyncChanged -= OnMessageStored;
             _subscribed = false;
         }
         base.OnDisappearing();
@@ -71,165 +79,202 @@ public partial class MainPage : ContentPage
         try
         {
             var status = await Permissions.CheckStatusAsync<ReceiveSmsPermission>();
-            if (status == PermissionStatus.Granted)
-            {
-                AppInfo.ShowSettingsUI();
-            }
-            else
-            {
-                status = await Permissions.RequestAsync<ReceiveSmsPermission>();
-            }
-
-            if (status != PermissionStatus.Granted
-                && await DisplayAlert("دسترسی داده نشد",
-                    "برای دریافت پیامک‌های جدید باید دسترسی SMS را از تنظیمات برنامه فعال کنید.",
-                    "بازکردن تنظیمات", "بعداً"))
-            {
-                AppInfo.ShowSettingsUI();
-            }
+            if (status == PermissionStatus.Granted) AppInfo.ShowSettingsUI();
+            else status = await Permissions.RequestAsync<ReceiveSmsPermission>();
+            if (status != PermissionStatus.Granted)
+                await DisplayAlert("اجازهٔ دریافت پیامک", "در تنظیمات گوشی، اجازهٔ دریافت پیامک را برای دونیش فعال کنید.", "باشه");
+            else await RequestNotificationPermissionAsync();
         }
         catch (PermissionException)
         {
-            await DisplayAlert("خطای دسترسی", "مجوز دریافت پیامک در تنظیمات اندروید برنامه ثبت نشده است.", "باشه");
+            await DisplayAlert("دسترسی فعال نشد", "اجازهٔ دریافت پیامک را در تنظیمات گوشی بررسی کنید.", "باشه");
         }
 #else
-        await DisplayAlert("فقط اندروید", "دریافت پیامک در این مرحله فقط روی دستگاه اندرویدی فعال است.", "باشه");
+        await DisplayAlert("دریافت روی گوشی", "دریافت پیامک به گوشی اندرویدی نیاز دارد. روی ویندوز می‌توانید قالب‌ها و تنظیمات را بررسی کنید.", "باشه");
 #endif
         await RefreshPermissionAsync();
+        await RefreshAsync();
+    }
+
+#if ANDROID
+    private static async Task RequestNotificationPermissionAsync()
+    {
+        if (!SmsSyncSettings.RequireTitle || !OperatingSystem.IsAndroidVersionAtLeast(33)
+            || Preferences.Default.Get("title-notification-permission-asked", false)) return;
+        Preferences.Default.Set("title-notification-permission-asked", true);
+        try { await Permissions.RequestAsync<PostNotificationsPermission>(); }
+        catch (PermissionException) { }
+    }
+#endif
+
+    private void OnToggleManualClicked(object? sender, EventArgs e)
+    {
+        ManualPanel.IsVisible = !ManualPanel.IsVisible;
+        if (ManualPanel.IsVisible) SenderEntry.Focus();
     }
 
     private async void OnAddSenderClicked(object? sender, EventArgs e)
     {
-        var result = await _store.AddSenderAsync(SenderEntry.Text ?? string.Empty);
-        switch (result)
+        if (_busy) return;
+        _busy = true;
+        try
         {
-            case AddSenderResult.Added:
-                SenderEntry.Text = string.Empty;
-                await RefreshAsync();
-                break;
-            case AddSenderResult.Duplicate:
-                await DisplayAlert("تکراری", "این فرستنده قبلاً در فهرست مانیتور قرار دارد.", "باشه");
-                break;
-            case AddSenderResult.LimitReached:
-                await DisplayAlert("محدودیت فهرست", "در این نسخه حداکثر ۵۰ فرستنده قابل مانیتور است.", "باشه");
-                break;
-            default:
-                await DisplayAlert("فرستنده نامعتبر", "شماره یا نام فرستنده را به‌درستی وارد کنید.", "باشه");
-                break;
+            await AddSenderAsync(SenderEntry.Text ?? string.Empty);
         }
+        catch (Exception)
+        {
+            await DisplayAlert("ثبت نشد", "اطلاعات روی گوشی قابل خواندن یا ذخیره‌کردن نیست. برنامه را دوباره باز کنید؛ داده‌ها حذف نشده‌اند.", "باشه");
+        }
+        finally { _busy = false; }
+    }
+
+    private async Task AddSenderAsync(string address)
+    {
+        var result = await _store.AddSenderAsync(address);
+        if (result == AddSenderResult.Added)
+        {
+            SenderEntry.Text = string.Empty;
+            ManualPanel.IsVisible = false;
+            UiMotion.Feedback();
+            await RefreshAsync();
+            return;
+        }
+        var message = result switch
+        {
+            AddSenderResult.Duplicate => "این فرستنده قبلاً در فهرست شما ثبت شده است.",
+            AddSenderResult.LimitReached => "حداکثر ۵۰ فرستنده قابل ثبت است.",
+            _ => "شماره یا نام فرستنده را به‌درستی وارد کنید."
+        };
+        await DisplayAlert("فرستنده ثبت نشد", message, "باشه");
     }
 
     private async void OnPickSenderClicked(object? sender, EventArgs e)
     {
 #if ANDROID
+        if (_busy) return;
+        _busy = true;
         try
         {
             var permission = await Permissions.RequestAsync<ReadSmsPermission>();
             if (permission != PermissionStatus.Granted)
             {
-                await DisplayAlert("اجازه لازم است", "برای نمایش فرستنده‌های پیامک، اجازه خواندن پیامک‌ها را بدهید.", "باشه");
+                await DisplayAlert("انتخاب از پیامک‌ها", "برای نمایش فرستنده‌ها اجازهٔ خواندن پیامک لازم است. می‌توانید شماره را هم دستی وارد کنید.", "باشه");
                 return;
             }
-            var addresses = SmsConversationCatalog.RecentSenders(global::Android.App.Application.Context);
-            await Navigation.PushAsync(new SenderPickerPage(addresses, async address =>
-            {
-                var result = await _store.AddSenderAsync(address);
-                if (result == AddSenderResult.Added) await RefreshAsync();
-                else if (result == AddSenderResult.Duplicate)
-                    await DisplayAlert("تکراری", "این فرستنده قبلاً ثبت شده است.", "باشه");
-                else
-                    await DisplayAlert("ثبت نشد", "افزودن فرستنده ممکن نشد؛ فهرست را بررسی کنید.", "باشه");
-            }));
+            var addresses = await Task.Run(() => SmsConversationCatalog.RecentSenders(global::Android.App.Application.Context));
+            await Navigation.PushAsync(new SenderPickerPage(addresses, AddSenderAsync));
         }
         catch (Exception)
         {
-            await DisplayAlert("انتخاب فرستنده", "خواندن فهرست پیامک‌ها ممکن نشد. شماره را دستی وارد کنید.", "باشه");
+            await DisplayAlert("فهرست باز نشد", "خواندن فهرست پیامک‌ها ممکن نشد. شماره را دستی وارد کنید.", "باشه");
         }
+        finally { _busy = false; }
 #else
-        await DisplayAlert("فقط اندروید", "انتخاب از پیامک‌ها فقط در اندروید در دسترس است.", "باشه");
+        ManualPanel.IsVisible = true;
+        SenderEntry.Focus();
+        await Task.CompletedTask;
 #endif
     }
 
-    private async void OnRemoveSenderClicked(object? sender, EventArgs e)
+    private async void OnSenderActionsClicked(object? sender, EventArgs e)
     {
-        if (sender is not Button { CommandParameter: Guid senderId }) return;
-        var item = Senders.SingleOrDefault(x => x.Id == senderId);
-        if (item is null || !await DisplayAlert("حذف فرستنده",
-                $"«{item.Address}» و تمام پیامک‌های ذخیره‌شده آن از این گوشی حذف شوند؟",
-                "حذف", "انصراف")) return;
-
-        await _store.RemoveSenderAsync(senderId);
-        await RefreshAsync();
+        if (sender is not Button { CommandParameter: Guid id }) return;
+        var item = _allSenders.Find(x => x.Id == id);
+        if (item is null) return;
+        var action = await DisplayActionSheet(item.Address, "انصراف", "حذف فرستنده", "پیام‌ها", "قالب‌های پیامک");
+        if (action == "پیام‌ها") await Navigation.PushAsync(new MessagesPage(_store, id, item.Address));
+        else if (action == "قالب‌های پیامک") await Navigation.PushAsync(new TemplatesPage(_store, id, item.Address));
+        else if (action == "حذف فرستنده" && await DisplayAlert("حذف از گوشی",
+                     $"«{item.Address}» و همهٔ پیام‌هایش روی گوشی، حتی پیام‌های ارسال‌نشده، حذف شوند؟ خرج‌های ثبت‌شده در سامانه باقی می‌مانند.", "حذف", "انصراف"))
+        {
+            try { await _store.RemoveSenderAsync(id); await RefreshAsync(); }
+            catch (Exception) { await DisplayAlert("حذف نشد", "امکان ذخیرهٔ تغییر وجود ندارد. دوباره تلاش کنید.", "باشه"); }
+        }
     }
 
     private async void OnSenderSelected(object? sender, SelectionChangedEventArgs e)
     {
-        if (sender is CollectionView collectionView) collectionView.SelectedItem = null;
+        if (sender is CollectionView list) list.SelectedItem = null;
         if (e.CurrentSelection.FirstOrDefault() is SenderItem item)
-        {
             await Navigation.PushAsync(new MessagesPage(_store, item.Id, item.Address));
+    }
+
+    private async void OnConnectionClicked(object? sender, EventArgs e) => await Navigation.PushAsync(new ConnectionPage(_store));
+    private async void OnPendingTitlesClicked(object? sender, EventArgs e) => await Navigation.PushAsync(new PendingTitlesPage(_store));
+    private void OnNextStepClicked(object? sender, EventArgs e)
+    {
+        switch (_nextStep)
+        {
+            case 0: OnPickSenderClicked(sender, e); break;
+            case 1: OnPermissionClicked(sender, e); break;
+            case 2: OnConnectionClicked(sender, e); break;
+            case 3: OnPendingTitlesClicked(sender, e); break;
+            default: OnConnectionClicked(sender, e); break;
         }
     }
 
-    private async void OnConnectionClicked(object? sender, EventArgs e) =>
-        await Navigation.PushAsync(new ConnectionPage(_store));
+    private void OnSenderSearchChanged(object? sender, TextChangedEventArgs e) { _search = e.NewTextValue ?? string.Empty; FilterSenders(); }
+    private void FilterSenders()
+    {
+        var normalized = SenderAddress.Normalize(_search);
+        Senders.Clear();
+        foreach (var item in _allSenders.Where(x => string.IsNullOrWhiteSpace(_search)
+                     || x.Address.Contains(_search, StringComparison.OrdinalIgnoreCase)
+                     || (normalized.Length > 0 && SenderAddress.Normalize(x.Address).Contains(normalized, StringComparison.Ordinal))))
+            Senders.Add(item);
+    }
 
-    private async void OnPendingTitlesClicked(object? sender, EventArgs e) =>
-        await Navigation.PushAsync(new PendingTitlesPage(_store));
-
-    private void OnMessageStored(object? sender, EventArgs e) =>
-        Dispatcher.Dispatch(async () => await RefreshAsync());
+    private async void OnRefreshing(object? sender, EventArgs e) { await RefreshPermissionAsync(); await RefreshAsync(); }
+    private void OnMessageStored(object? sender, EventArgs e) => Dispatcher.Dispatch(async () => await RefreshAsync());
 
     private async Task RefreshAsync()
     {
+        if (!await _refreshGate.WaitAsync(0)) { IsRefreshing = false; return; }
         try
         {
             var summaries = await _store.GetSenderSummariesAsync();
-            Senders.Clear();
-            foreach (var summary in summaries)
-            {
-                Senders.Add(new SenderItem(summary.Id, summary.Address,
-                    summary.MessageCount == 0
-                        ? "هنوز پیام جدیدی ثبت نشده"
-                        : $"{summary.MessageCount} پیام · آخرین: {FormatLocal(summary.LastMessageAtUtc!.Value)}"));
-            }
-            OnPropertyChanged(nameof(SenderCountText));
+            var sync = await _store.GetSyncSummaryAsync();
+            var untitled = await _store.GetUntitledMessagesAsync();
+            var connection = await MobileConnectionStore.LoadAsync();
+            _allSenders.Clear();
+            _allSenders.AddRange(summaries.Select(x => new SenderItem(x.Id, x.Address,
+                x.MessageCount == 0 ? "منتظر اولین پیامک" : $"{UiText.Digits(x.MessageCount)} پیام · {UiText.Date(x.LastMessageAtUtc!.Value)}")));
+            FilterSenders();
+            PendingCount = UiText.Digits(sync.Pending);
+            SentCount = UiText.Digits(sync.Sent);
+            HasUntitled = SmsSyncSettings.RequireTitle && untitled.Count > 0;
+            UntitledText = $"{UiText.Digits(untitled.Count)} پیام، منتظر عنوان شما";
+            ConnectionText = connection is null ? "هنوز به سامانه متصل نشده‌اید" : $"متصل به {connection.Destination}";
+            (_nextStep, NextStepText, NextStepAction) = summaries.Count == 0
+                ? (0, "بانک یا شماره‌ای را انتخاب کنید تا پیامک‌های تازه‌اش اینجا ثبت شود.", "انتخاب اولین فرستنده")
+                : !_hasPermission ? (1, "برای ثبت پیام‌های تازه، اجازهٔ دریافت پیامک را فعال کنید.", "فعال‌سازی دریافت")
+                : connection is null ? (2, "پیام‌ها روی گوشی ذخیره می‌شوند. برای ثبت خرج، گوشی را به سامانه وصل کنید.", "اتصال به دونیش")
+                : HasUntitled ? (3, "چند پیام تازه دارید؛ با نوشتن عنوان، آن‌ها را آمادهٔ ارسال کنید.", "ثبت عنوان پیام‌ها")
+                : (4, "دریافت و ارسال آماده است. پیام‌های تازه طبق تنظیمات شما بررسی می‌شوند.", "وضعیت ارسال و تنظیمات");
+            OnPropertyChanged(string.Empty);
         }
-        catch (Exception exception)
+        catch (Exception)
         {
-            await DisplayAlert("خطای ذخیره‌سازی", exception.Message, "باشه");
+            await DisplayAlert("اطلاعات باز نشد", "اطلاعات ذخیره‌شده قابل خواندن نیست. داده‌ها پاک نشده‌اند؛ برنامه را دوباره باز کنید.", "باشه");
         }
+        finally { _refreshGate.Release(); IsRefreshing = false; }
     }
 
     private async Task RefreshPermissionAsync()
     {
 #if ANDROID
-        var status = await Permissions.CheckStatusAsync<ReceiveSmsPermission>();
-        PermissionStatusText = status == PermissionStatus.Granted
-            ? "فعال است؛ پیامک‌های جدید فرستنده‌های فهرست ذخیره می‌شوند."
-            : "غیرفعال است؛ برای شروع مانیتور، دسترسی را فعال کنید.";
-        PermissionButtonText = status == PermissionStatus.Granted ? "تنظیمات" : "فعال‌سازی";
+        _hasPermission = await Permissions.CheckStatusAsync<ReceiveSmsPermission>() == PermissionStatus.Granted;
+        PermissionStatusText = _hasPermission ? "فعال؛ پیام‌های تازه ذخیره می‌شوند." : "برای شروع، اجازهٔ دریافت را فعال کنید.";
+        PermissionButtonText = _hasPermission ? "تنظیمات" : "فعال‌سازی";
 #else
-        PermissionStatusText = "دریافت پیامک فقط در نسخه اندروید در دسترس است.";
+        _hasPermission = false;
+        PermissionStatusText = "دریافت پیامک روی گوشی اندرویدی فعال می‌شود.";
         PermissionButtonText = "راهنما";
         await Task.CompletedTask;
 #endif
+        OnPropertyChanged(nameof(PermissionStatusText));
+        OnPropertyChanged(nameof(PermissionButtonText));
     }
-
-    private static string FormatLocal(DateTimeOffset value)
-    {
-        var local = value.ToLocalTime();
-        var calendar = new PersianCalendar();
-        return $"{calendar.GetYear(local.DateTime):0000}/{calendar.GetMonth(local.DateTime):00}/{calendar.GetDayOfMonth(local.DateTime):00} {local:HH:mm}";
-    }
-
-    private void SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
-    {
-        if (EqualityComparer<T>.Default.Equals(field, value)) return;
-        field = value;
-        OnPropertyChanged(propertyName);
-    }
-
 }
 
 public sealed record SenderItem(Guid Id, string Address, string Details);

@@ -11,8 +11,10 @@ namespace DonyshMobile
                 .UseMauiApp<App>()
                 .ConfigureFonts(fonts =>
                 {
-                    fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
-                    fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
+                    fonts.AddFont("YekanBakh-Regular.ttf", "YekanBakh");
+                    fonts.AddFont("YekanBakh-SemiBold.ttf", "YekanBakhMedium");
+                    fonts.AddFont("YekanBakh-Bold.ttf", "YekanBakhBold");
+                    fonts.AddFont("YekanBakh-ExtraBold.ttf", "YekanBakhDisplay");
                 });
 
 #if DEBUG

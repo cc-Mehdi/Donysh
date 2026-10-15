@@ -69,7 +69,7 @@ public sealed class SmsBroadcastReceiver : BroadcastReceiver
             }
             catch (Exception exception)
             {
-                global::Android.Util.Log.Error("DonyshSms", exception.ToString());
+                global::Android.Util.Log.Error("DonyshSms", $"SMS capture failed: {exception.GetType().Name}");
             }
             finally
             {

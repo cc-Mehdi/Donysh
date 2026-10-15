@@ -5,31 +5,40 @@
              x:Class="DonyshMobile.TemplatesPage"
              x:DataType="local:TemplatesPage"
              FlowDirection="RightToLeft" Title="قالب‌های پیامک">
-    <Grid Padding="20,18" RowDefinitions="Auto,Auto,*" RowSpacing="15">
+    <Grid x:Name="TemplateContent" Padding="20,18" RowDefinitions="Auto,Auto,*" RowSpacing="15">
         <VerticalStackLayout Spacing="6">
             <Label Text="قالب‌های این فرستنده" Style="{StaticResource PageTitle}" />
             <Label Text="{Binding SenderAddress}" Style="{StaticResource MutedText}" />
-            <Label Text="هر قالب فقط روی پیام‌های همین فرستنده امتحان می‌شود." FontSize="12" Style="{StaticResource MutedText}" />
+            <Label Text="با قالب مشخص می‌کنید مبلغ، تاریخ و نوع تراکنش از کجای پیام خوانده شود. برای پیام‌های متفاوت، قالب جدا بسازید."
+                   FontSize="13" Style="{StaticResource MutedText}" />
+            <Label x:Name="TemplateCountLabel" Style="{StaticResource MutedText}" FontSize="12" />
         </VerticalStackLayout>
         <Button Grid.Row="1" Text="افزودن قالب تازه" Clicked="OnAddClicked"
                 Style="{StaticResource PrimaryAction}" />
         <CollectionView Grid.Row="2" ItemsSource="{Binding Templates}" SelectionMode="None">
             <CollectionView.EmptyView>
-                <Label Text="هنوز قالبی ثبت نشده است. یک قالب بسازید و آن را روی پیام واقعی آزمایش کنید."
-                       Style="{StaticResource MutedText}" HorizontalTextAlignment="Center" Margin="10,30" />
+                <VerticalStackLayout Spacing="10" Padding="20,32">
+                    <Label Text="اولین قالب را بسازید" Style="{StaticResource SectionTitle}" HorizontalTextAlignment="Center" />
+                    <Label Text="از قالب آماده بانک شروع کنید یا یک پیام واقعی را بچسبانید و مبلغ آن را مشخص کنید."
+                           Style="{StaticResource MutedText}" HorizontalTextAlignment="Center" />
+                </VerticalStackLayout>
             </CollectionView.EmptyView>
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="local:TemplateItem">
                     <Border Padding="14" Margin="0,0,0,10" Style="{StaticResource Card}">
-                        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
-                            <VerticalStackLayout Spacing="4" VerticalOptions="Center">
-                                <Label Text="{Binding Name}" FontAttributes="Bold" />
+                        <Grid RowDefinitions="Auto,Auto" RowSpacing="12">
+                            <VerticalStackLayout Spacing="6">
+                                <Label Text="{Binding Name}" FontSize="17" FontAttributes="Bold" />
                                 <Label Text="{Binding Details}" FontSize="12" Style="{StaticResource MutedText}" />
+                                <Label Text="{Binding Sample}" FontSize="13" MaxLines="3" LineBreakMode="TailTruncation"
+                                       IsVisible="{Binding HasSample}" Style="{StaticResource MutedText}" />
                             </VerticalStackLayout>
-                            <Button Grid.Column="1" Text="ویرایش" CommandParameter="{Binding Id}" Clicked="OnEditClicked"
-                                    Style="{StaticResource SecondaryAction}" FontSize="12" CornerRadius="10" />
-                            <Button Grid.Column="2" Text="حذف" CommandParameter="{Binding Id}" Clicked="OnDeleteClicked"
-                                    Style="{StaticResource DangerAction}" FontSize="12" />
+                            <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                <Button Text="مشاهده و ویرایش" CommandParameter="{Binding Id}" Clicked="OnEditClicked"
+                                        Style="{StaticResource SecondaryAction}" />
+                                <Button Grid.Column="1" Text="حذف" CommandParameter="{Binding Id}" Clicked="OnDeleteClicked"
+                                        Style="{StaticResource DangerAction}" />
+                            </Grid>
                         </Grid>
                     </Border>
                 </DataTemplate>

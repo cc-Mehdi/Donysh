@@ -1,6 +1,8 @@
 using DonyshMobile.Core;
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
+using System.Security.Cryptography;
 
 var testDirectory = Path.Combine(Path.GetTempPath(), $"donysh-mobile-tests-{Guid.NewGuid():N}");
 
@@ -15,10 +17,10 @@ try
     Assert(SenderAddress.Normalize("0981234") == "0981234", "Do not rewrite short sender IDs");
     Assert(SenderAddress.Normalize(" بانک-ملت ") == "بانکملت", "Alphanumeric sender");
 
-    var store = new SmsMonitorStore(testDirectory);
+    var store = CreateStore(testDirectory);
     Assert(await store.AddSenderAsync("۰۹۱۲۱۲۳۴۵۶۷") == AddSenderResult.Added, "Add sender");
     Assert(await store.AddSenderAsync("+98 912 123 4567") == AddSenderResult.Duplicate, "Reject duplicate");
-    var variantStore = new SmsMonitorStore(Path.Combine(testDirectory, "variants"));
+    var variantStore = CreateStore(Path.Combine(testDirectory, "variants"));
     Assert(await variantStore.AddSenderAsync("0989999987641") == AddSenderResult.Added, "Add 098 mobile sender");
     Assert(await variantStore.AddSenderAsync("+989999987641") == AddSenderResult.Duplicate, "Reject equivalent mobile sender");
     Assert(await variantStore.CaptureAsync("+989999987641", "پیامک از فرستنده دوم", DateTimeOffset.UtcNow),
@@ -29,7 +31,7 @@ try
     Assert(await store.CaptureAsync("+989121234567", "پیام آزمایشی", receivedAt), "Capture matching SMS");
     Assert(!await store.CaptureAsync("+989121234567", "پیام آزمایشی", receivedAt), "Deduplicate SMS");
 
-    store = new SmsMonitorStore(testDirectory);
+    store = CreateStore(testDirectory);
     var summary = (await store.GetSenderSummariesAsync()).Single(x => x.Address == "۰۹۱۲۱۲۳۴۵۶۷");
     Assert(summary.MessageCount == 1, "Summary message count");
     var message = AssertSingle(await store.GetMessagesAsync(summary.Id), "Message list");
@@ -57,7 +59,7 @@ try
         Phrases = [new TransactionPhrase { Text = "برداشت", Kind = TransactionKind.Withdrawal }]
     };
     Assert(await store.SaveTemplateAsync(mellat) is null, "Save template");
-    store = new SmsMonitorStore(testDirectory);
+    store = CreateStore(testDirectory);
     Assert((await store.GetTemplatesAsync(summary.Id)).Count == 1, "Persist template");
     var mellatResult = SmsTemplateParser.TryParse(mellat, "حساب5555555555\nبرداشت۵۰,۰۰۰,۰۰۰\nمانده111,111,111\n05/06/15-12:14");
     Assert(mellatResult is { AmountRial: 50_000_000, Kind: TransactionKind.Withdrawal, DateText: "05/06/15", TimeText: "12:14" }, "Mellat SMS extraction");
@@ -115,7 +117,7 @@ try
     Assert(MobileApiClient.NormalizeServer("http://donysh.ir") is null, "Require HTTPS API");
 
     var apiDirectory = Path.Combine(testDirectory, "api-client");
-    var apiStore = new SmsMonitorStore(apiDirectory);
+    var apiStore = CreateStore(apiDirectory);
     Assert(await apiStore.AddSenderAsync("Bank") == AddSenderResult.Added, "Add API test sender");
     var apiSender = (await apiStore.GetSenderSummariesAsync()).Single();
     Assert(await apiStore.SaveTemplateAsync(new SmsTemplate
@@ -149,7 +151,7 @@ try
     Assert(AssertSingle(await apiStore.GetMessagesAsync((await apiStore.GetSenderSummariesAsync()).Single().Id),
         "API-confirmed SMS").DeliveryStatus == SmsDeliveryStatus.Sent, "API client persists confirmed status");
 
-    var manualStore = new SmsMonitorStore(Path.Combine(testDirectory, "manual-send"));
+    var manualStore = CreateStore(Path.Combine(testDirectory, "manual-send"));
     Assert(await manualStore.AddSenderAsync("Bank") == AddSenderResult.Added, "Add manual sender");
     Assert(await manualStore.CaptureAsync("Bank", "برداشت: 80,000", DateTimeOffset.UtcNow), "Queue manual SMS");
     var manualKey = (await manualStore.TakePendingBatchAsync(DateTimeOffset.UtcNow)).Single().Key;
@@ -164,6 +166,144 @@ try
     })));
     Assert(await manualApi.SendNextBatchAsync(manualStore, apiConnection, DateTimeOffset.UtcNow,
         manualSend: true, requireTitle: true) == SyncRunResult.Sent, "Manual sending bypasses title requirement");
+
+    var titleRuleStore = CreateStore(Path.Combine(testDirectory, "title-rule-race"));
+    await titleRuleStore.AddSenderAsync("Bank");
+    await titleRuleStore.CaptureAsync("Bank", "برداشت: 90,000", DateTimeOffset.UtcNow);
+    var allowTitleRuleChange = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+    var titleRuleChangeStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+    var requireTitlesNow = false;
+    var titleRuleChange = MobileApiClient.RunWithSyncLockAsync(async () =>
+    {
+        titleRuleChangeStarted.SetResult();
+        await allowTitleRuleChange.Task;
+        requireTitlesNow = true;
+    });
+    await titleRuleChangeStarted.Task.WaitAsync(TimeSpan.FromSeconds(10));
+    var titleRuleApi = new MobileApiClient(() => throw new InvalidOperationException("Untitled SMS must not be posted"));
+    var titleRuleSend = titleRuleApi.SendNextBatchAsync(titleRuleStore,
+        () => Task.FromResult<MobileConnection?>(apiConnection), DateTimeOffset.UtcNow,
+        requireTitleProvider: () => requireTitlesNow);
+    allowTitleRuleChange.SetResult();
+    await titleRuleChange.WaitAsync(TimeSpan.FromSeconds(10));
+    Assert(await titleRuleSend.WaitAsync(TimeSpan.FromSeconds(10)) == SyncRunResult.NothingToSend,
+        "A queued automatic sender obeys the latest title setting after acquiring the gate");
+
+    var destinationStore = CreateStore(Path.Combine(testDirectory, "destination-race"));
+    Assert(await destinationStore.AddSenderAsync("Bank") == AddSenderResult.Added, "Add destination race sender");
+    Assert(await destinationStore.CaptureAsync("Bank", "برداشت: 95,000", DateTimeOffset.UtcNow), "Queue destination race SMS");
+    var destinationKey = (await destinationStore.TakePendingBatchAsync(DateTimeOffset.UtcNow)).Single().Key;
+    var newConnection = apiConnection with { Token = new string('B', 64), Destination = "New workspace" };
+    MobileConnection? selectedConnection = apiConnection;
+    var destinationChangeStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+    var allowDestinationChange = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+    var destinationChange = MobileApiClient.RunWithSyncLockAsync(async () =>
+    {
+        destinationChangeStarted.SetResult();
+        await allowDestinationChange.Task;
+        selectedConnection = newConnection;
+    });
+    await destinationChangeStarted.Task.WaitAsync(TimeSpan.FromSeconds(10));
+    var connectionProviderCalled = false;
+    var destinationApi = new MobileApiClient(() => new HttpClient(new StubHandler(request =>
+    {
+        Assert(request.Headers.Authorization?.Parameter == newConnection.Token,
+            "Queued sender uses the newly selected workspace credentials");
+        return new HttpResponseMessage(HttpStatusCode.OK)
+            { Content = JsonContent.Create(new SmsBatchResult([new SmsResult(destinationKey, "created")])) };
+    })));
+    var waitingSend = destinationApi.SendNextBatchAsync(destinationStore, () =>
+    {
+        connectionProviderCalled = true;
+        return Task.FromResult<MobileConnection?>(selectedConnection);
+    }, DateTimeOffset.UtcNow);
+    Assert(!connectionProviderCalled && !waitingSend.IsCompleted, "Load destination only after the change lock is released");
+    allowDestinationChange.SetResult();
+    await destinationChange.WaitAsync(TimeSpan.FromSeconds(10));
+    Assert(await waitingSend.WaitAsync(TimeSpan.FromSeconds(10)) == SyncRunResult.Sent,
+        "Send resumes after workspace change completes");
+
+    var inflightStore = CreateStore(Path.Combine(testDirectory, "inflight-disconnect"));
+    Assert(await inflightStore.AddSenderAsync("Bank") == AddSenderResult.Added, "Add inflight race sender");
+    Assert(await inflightStore.CaptureAsync("Bank", "برداشت: 110,000", DateTimeOffset.UtcNow), "Queue inflight race SMS");
+    var inflightKey = (await inflightStore.TakePendingBatchAsync(DateTimeOffset.UtcNow)).Single().Key;
+    var requestStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+    var allowResponse = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+    var inflightApi = new MobileApiClient(() => new HttpClient(new AsyncStubHandler(async (_, cancellationToken) =>
+    {
+        requestStarted.SetResult();
+        await allowResponse.Task.WaitAsync(cancellationToken);
+        return new HttpResponseMessage(HttpStatusCode.OK)
+            { Content = JsonContent.Create(new SmsBatchResult([new SmsResult(inflightKey, "created")])) };
+    })));
+    var inflightSend = inflightApi.SendNextBatchAsync(inflightStore, () => Task.FromResult<MobileConnection?>(selectedConnection), DateTimeOffset.UtcNow);
+    await requestStarted.Task.WaitAsync(TimeSpan.FromSeconds(10));
+    var disconnected = false;
+    var disconnect = MobileApiClient.RunWithSyncLockAsync(() =>
+    {
+        selectedConnection = null;
+        disconnected = true;
+        return Task.CompletedTask;
+    });
+    Assert(!disconnected && !disconnect.IsCompleted, "Disconnect waits until the current request and receipt complete");
+    allowResponse.SetResult();
+    Assert(await inflightSend.WaitAsync(TimeSpan.FromSeconds(10)) == SyncRunResult.Sent, "Current delivery is acknowledged before disconnect");
+    await disconnect.WaitAsync(TimeSpan.FromSeconds(10));
+    Assert(disconnected && selectedConnection is null, "Complete disconnect under the sending gate");
+    Assert(await inflightApi.SendNextBatchAsync(inflightStore, () => Task.FromResult<MobileConnection?>(selectedConnection), DateTimeOffset.UtcNow.AddMinutes(2))
+        == SyncRunResult.ConnectionRequired, "A later worker observes disconnect without sending");
+
+    Assert(MobileApiClient.NormalizePairingCode(new string('a', 32)) == new string('A', 32), "Normalize pairing hex code");
+    Assert(MobileApiClient.NormalizePairingCode("ABCD-EF۰۱-۲۳۴۵-۶۷۸۹-ABCD-EF01-2345-6789") == "ABCDEF0123456789ABCDEF0123456789",
+        "Pairing accepts Persian digits and visual separators");
+    Assert(MobileApiClient.NormalizePairingCode(new string('A', 32) + " غیرمجاز") is null,
+        "Reject unexpected pairing text instead of silently deleting it");
+    Assert(MobileApiClient.NormalizeServer("https://user:secret@donysh.ir") is null, "Reject credentials in server URLs");
+    Assert(MobileApiClient.NormalizeServer("https://donysh.ir?token=value") is null, "Reject query-bearing API origins");
+
+    var encryptedPath = Path.Combine(testDirectory, "sms-monitor-state.json");
+    var encrypted = await File.ReadAllBytesAsync(encryptedPath);
+    Assert(SmsStateProtection.IsEncrypted(encrypted), "Protect SMS data at rest");
+    var wrongKeyStore = new SmsMonitorStore(testDirectory, _ => Task.FromResult(new byte[32]));
+    await AssertThrowsAsync<InvalidDataException>(() => wrongKeyStore.GetSenderSummariesAsync(), "Wrong key cannot open SMS state");
+    Assert(encrypted.SequenceEqual(await File.ReadAllBytesAsync(encryptedPath)), "Wrong key never resets original queue");
+    var missingKeyStore = new SmsMonitorStore(testDirectory, _ => throw new InvalidDataException("Key unavailable"));
+    await AssertThrowsAsync<InvalidDataException>(() => missingKeyStore.AddSenderAsync("AnotherBank"), "Unavailable key prevents writes");
+    Assert(encrypted.SequenceEqual(await File.ReadAllBytesAsync(encryptedPath)), "Key failure preserves original queue");
+
+    var corruptDirectory = Path.Combine(testDirectory, "corrupt-encrypted");
+    Directory.CreateDirectory(corruptDirectory);
+    var tampered = encrypted.ToArray();
+    tampered[^1] ^= 1;
+    var corruptPath = Path.Combine(corruptDirectory, "sms-monitor-state.json");
+    await File.WriteAllBytesAsync(corruptPath, tampered);
+    await AssertThrowsAsync<InvalidDataException>(() => CreateStore(corruptDirectory).GetSenderSummariesAsync(),
+        "Reject altered encrypted data");
+    Assert(tampered.SequenceEqual(await File.ReadAllBytesAsync(corruptPath)), "Corrupt state is preserved for recovery");
+
+    var legacyDirectory = Path.Combine(testDirectory, "legacy");
+    Directory.CreateDirectory(legacyDirectory);
+    var legacySender = new MonitoredSender { Address = "Bank", NormalizedAddress = "BANK" };
+    var legacyMessage = new CapturedSms { SenderId = legacySender.Id, SenderAddress = "Bank", Body = "private banking text",
+        ReceivedAtUtc = DateTimeOffset.UtcNow, DeduplicationKey = "legacy-message-key" };
+    var legacyPath = Path.Combine(legacyDirectory, "sms-monitor-state.json");
+    await File.WriteAllTextAsync(legacyPath, JsonSerializer.Serialize(new SmsMonitorState
+        { Senders = [legacySender], Messages = [legacyMessage] }, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+    var upgradedStore = CreateStore(legacyDirectory);
+    Assert((await upgradedStore.GetSenderSummariesAsync()).Single().MessageCount == 1, "Migrate existing sender and queued SMS");
+    var upgradedBytes = await File.ReadAllBytesAsync(legacyPath);
+    Assert(SmsStateProtection.IsEncrypted(upgradedBytes), "Migrate plaintext legacy store to authenticated encryption");
+    Assert(!System.Text.Encoding.UTF8.GetString(upgradedBytes).Contains("private banking text", StringComparison.Ordinal),
+        "SMS text is no longer present in the saved file");
+    Assert(!File.Exists(legacyPath + ".tmp"), "Migration does not leave a plaintext temporary file");
+    Assert((await CreateStore(legacyDirectory).GetMessagesAsync(legacySender.Id)).Single().Body == legacyMessage.Body,
+        "Reload encrypted state without losing legacy messages");
+
+    var malformedApi = new MobileApiClient(() => new HttpClient(new StubHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        { Content = new StringContent("{\"results\":[null]}", System.Text.Encoding.UTF8, "application/json") })));
+    Assert(await malformedApi.SendNextBatchAsync(upgradedStore, apiConnection, DateTimeOffset.UtcNow) == SyncRunResult.RetryScheduled,
+        "Malformed acknowledgement schedules a safe retry");
+    Assert((await upgradedStore.GetSyncSummaryAsync()).Pending == 1, "Malformed response cannot mark an SMS as delivered");
 
     Assert(await store.RemoveSenderAsync(summary.Id), "Remove sender");
     Assert((await store.GetSenderSummariesAsync()).Count == 0, "Remove sender messages");
@@ -186,6 +326,16 @@ static T AssertSingle<T>(IReadOnlyList<T> values, string name)
     return values[0];
 }
 
+static SmsMonitorStore CreateStore(string directory) => new(directory,
+    _ => Task.FromResult(Enumerable.Range(1, 32).Select(x => (byte)x).ToArray()));
+
+static async Task AssertThrowsAsync<T>(Func<Task> action, string name) where T : Exception
+{
+    try { await action(); }
+    catch (T) { return; }
+    throw new InvalidOperationException($"Test failed: {name}");
+}
+
 static void Assert(bool condition, string name)
 {
     if (!condition)
@@ -198,4 +348,10 @@ sealed class StubHandler(Func<HttpRequestMessage, HttpResponseMessage> handler) 
 {
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
         Task.FromResult(handler(request));
+}
+
+sealed class AsyncStubHandler(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> handler) : HttpMessageHandler
+{
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+        handler(request, cancellationToken);
 }

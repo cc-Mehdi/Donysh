@@ -1,4 +1,5 @@
 using DonyshMobile.Core;
+using DonyshMobile.UI;
 
 namespace DonyshMobile;
 
@@ -6,6 +7,8 @@ public partial class PendingTitlesPage : ContentPage
 {
     private readonly SmsMonitorStore _store;
     private bool _promptFirstMessage;
+    private bool _saving, _entered;
+    private readonly Dictionary<Guid, PendingTitleItem> _drafts = [];
 
     public PendingTitlesPage(SmsMonitorStore store, bool promptFirstMessage = false)
     {
@@ -17,7 +20,9 @@ public partial class PendingTitlesPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        SmsReceivedNotifier.MessageStored += OnMessageStored;
         await RefreshAsync();
+        if (!_entered) { _entered = true; await UiMotion.EnterAsync(TitlesContent); }
         if (_promptFirstMessage)
         {
             _promptFirstMessage = false;
@@ -26,34 +31,69 @@ public partial class PendingTitlesPage : ContentPage
         }
     }
 
+    protected override void OnDisappearing()
+    {
+        SmsReceivedNotifier.MessageStored -= OnMessageStored;
+        base.OnDisappearing();
+    }
+
+    private void OnMessageStored(object? sender, EventArgs e) => Dispatcher.Dispatch(async () => await RefreshAsync());
+
     private async void OnSetTitleClicked(object? sender, EventArgs e)
     {
-        if (sender is not Button { CommandParameter: Guid id }) return;
-        await PromptForTitleAsync(id);
+        if (_saving || sender is not BindableObject { BindingContext: PendingTitleItem item }) return;
+        await SaveTitleAsync(item.Id, item.DraftTitle);
     }
 
     private async Task PromptForTitleAsync(Guid id)
     {
-        var title = await DisplayPromptAsync("عنوان پیامک", "برای این تراکنش چه عنوانی ثبت شود؟",
+        if (_saving || !_drafts.TryGetValue(id, out var message)) return;
+        var excerpt = message.Body.Length > 110 ? message.Body[..110] + "…" : message.Body;
+        var title = await DisplayPromptAsync("عنوان پیامک", $"{message.Sender}\n{excerpt}\n\nاین خرج برای چه بود؟",
             "ثبت", "انصراف", "مانند خرید روزانه", 160);
         if (title is null) return;
-        if (!await _store.SetTitleAsync(id, title))
+        await SaveTitleAsync(id, title);
+    }
+
+    private async Task SaveTitleAsync(Guid id, string? title)
+    {
+        if (_saving) return;
+        _saving = true;
+        try
         {
-            await DisplayAlert("عنوان ثبت نشد", "عنوان باید بین ۱ تا ۱۶۰ نویسه باشد و پیام هنوز منتظر ارسال باشد.", "باشه");
-            return;
-        }
-        await RefreshAsync();
-        SyncPlatform.Schedule();
+            if (!await _store.SetTitleAsync(id, title))
+            {
+                await DisplayAlert("عنوان ثبت نشد", "یک عنوان کوتاه، غیرخالی و تک‌خطی بنویسید. پیام باید هنوز منتظر ارسال باشد.", "باشه");
+                return;
+            }
+            UiMotion.Feedback();
+            await RefreshAsync();
+            SyncPlatform.Schedule();
 #if ANDROID
-        await DonyshMobile.Platforms.Android.TitleReminderNotifier.RefreshAsync(global::Android.App.Application.Context);
+            await Platforms.Android.TitleReminderNotifier.RefreshAsync(global::Android.App.Application.Context);
 #endif
+        }
+        catch (Exception) { await DisplayAlert("ذخیره کامل نشد", "پیام روی گوشی باقی است. دوباره تلاش کنید.", "باشه"); }
+        finally { _saving = false; }
     }
 
     private async Task RefreshAsync()
     {
-        var messages = await _store.GetUntitledMessagesAsync();
-        PendingList.ItemsSource = messages.Select(x => new PendingTitleItem(x.Id, x.SenderAddress, x.Body)).ToList();
+        try
+        {
+            var messages = await _store.GetUntitledMessagesAsync();
+            var ids = messages.Select(x => x.Id).ToHashSet();
+            foreach (var key in _drafts.Keys.Where(x => !ids.Contains(x)).ToArray()) _drafts.Remove(key);
+            foreach (var message in messages)
+                _drafts.TryAdd(message.Id, new PendingTitleItem(message.Id, message.SenderAddress, message.Body, UiText.Date(message.ReceivedAtUtc)));
+            PendingList.ItemsSource = messages.Select(x => _drafts[x.Id]).ToList();
+            RemainingLabel.Text = messages.Count == 0 ? "همهٔ عنوان‌ها ثبت شده‌اند" : $"{UiText.Digits(messages.Count)} پیام باقی مانده است";
+        }
+        catch (Exception) { RemainingLabel.Text = "خواندن پیام‌ها کامل نشد؛ دوباره وارد این صفحه شوید."; }
     }
 }
 
-public sealed record PendingTitleItem(Guid Id, string Sender, string Body);
+public sealed record PendingTitleItem(Guid Id, string Sender, string Body, string ReceivedAt)
+{
+    public string DraftTitle { get; set; } = string.Empty;
+}

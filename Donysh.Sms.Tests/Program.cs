@@ -70,6 +70,13 @@ Test("Payload guard accepts validated client template extraction", () => {
     Check(!SyncPolicy.Valid(sms with { Title = " " }, now));
     Check(!SyncPolicy.Valid(sms with { Title = new string('x', 161) }, now));
 });
+Test("Payload guard rejects control characters in sender, title and template name", () => {
+    var now = DateTimeOffset.UtcNow;
+    var sms = new SmsEnvelope("bank", mellat, now.ToUnixTimeMilliseconds());
+    Check(!SyncPolicy.Valid(sms with { Sender = "bank\nforged" }, now));
+    Check(!SyncPolicy.Valid(sms with { Title = "خرید\0روزانه" }, now));
+    Check(!SyncPolicy.Valid(sms with { Parsed = new(100, "withdrawal", "قالب\nجعلی") }, now));
+});
 Test("Durable queue does not duplicate after reopening", () => {
     var dir = Path.Combine(Path.GetTempPath(), "donysh-test-" + Guid.NewGuid());
     Directory.CreateDirectory(dir);

@@ -2,96 +2,125 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:local="clr-namespace:DonyshMobile"
-             x:Class="DonyshMobile.MainPage"
-             x:DataType="local:MainPage"
-             FlowDirection="RightToLeft"
-             Title="مانیتور پیامک">
-    <Grid RowDefinitions="Auto,Auto,*" Padding="20,18" RowSpacing="16">
-        <VerticalStackLayout Grid.Row="0" Spacing="4">
-            <HorizontalStackLayout Spacing="10">
-                <Image Source="donysh_logo.svg" WidthRequest="38" HeightRequest="38" />
-                <Label Text="Donysh Mobile" FontSize="27" Style="{StaticResource PageTitle}" VerticalOptions="Center" />
-            </HorizontalStackLayout>
-            <Label Text="فقط پیامک‌های جدیدِ فرستنده‌های انتخاب‌شده، روی همین گوشی نگهداری می‌شوند."
-                   FontSize="13" Style="{StaticResource MutedText}" />
-        </VerticalStackLayout>
-
-        <VerticalStackLayout Grid.Row="1" Spacing="12">
-            <Button Text="اتصال و همگام‌سازی با Donysh" Clicked="OnConnectionClicked"
-                    Style="{StaticResource PrimaryAction}" />
-            <Button Text="عنوان‌گذاری پیام‌های منتظر" Clicked="OnPendingTitlesClicked"
-                    Style="{StaticResource PrimaryAction}" />
-            <Border Style="{StaticResource InfoCard}" Padding="15" StrokeShape="RoundRectangle 18">
-                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
-                    <VerticalStackLayout Spacing="3">
-                        <Label Text="دسترسی دریافت پیامک" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#312E81, Dark=#E0E7FF}" />
-                        <Label Text="{Binding PermissionStatusText}" FontSize="12" TextColor="{AppThemeBinding Light=#4F46E5, Dark=#A5B4FC}" />
+             x:Class="DonyshMobile.MainPage" x:DataType="local:MainPage"
+             Title="دونیش" Shell.NavBarIsVisible="False">
+    <Grid x:Name="PageContent" Padding="18,12" RowDefinitions="Auto,*" RowSpacing="14">
+        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+            <Image Source="donysh_logo.svg" WidthRequest="42" HeightRequest="42" SemanticProperties.Description="نشان دونیش" />
+            <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="1">
+                <Label Text="دونیش همراه" FontSize="21" FontFamily="YekanBakhBold" />
+                <Label Text="همراهِ خرج‌های روزانه" Style="{StaticResource Caption}" />
+            </VerticalStackLayout>
+            <Button Grid.Column="2" Text="تنظیمات" Clicked="OnConnectionClicked" Style="{StaticResource QuietAction}"
+                    SemanticProperties.Hint="اتصال به سامانه، ظاهر و تنظیمات ارسال" />
+        </Grid>
+        <RefreshView Grid.Row="1" IsRefreshing="{Binding IsRefreshing}" Refreshing="OnRefreshing">
+            <CollectionView ItemsSource="{Binding Senders}" SelectionMode="Single" SelectionChanged="OnSenderSelected">
+                <CollectionView.Header>
+                    <VerticalStackLayout Spacing="14" Padding="0,0,0,12">
+                        <Border Padding="20" StrokeThickness="0" StrokeShape="RoundRectangle 26">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="1,0" EndPoint="0,1">
+                                    <GradientStop Color="#4038A5" Offset="0" />
+                                    <GradientStop Color="#145E78" Offset="1" />
+                                </LinearGradientBrush>
+                            </Border.Background>
+                            <VerticalStackLayout Spacing="9">
+                                <Label Text="{Binding ConnectionText}" FontSize="12" TextColor="#DDEBFF" />
+                                <Label Text="پیامک‌ها، مرتب و آماده" FontSize="23" FontAttributes="Bold" TextColor="White" />
+                                <Label Text="{Binding NextStepText}" FontSize="14" LineHeight="1.35" TextColor="#E0EAFF" />
+                                <Button Text="{Binding NextStepAction}" Clicked="OnNextStepClicked" BackgroundColor="White"
+                                        TextColor="#37328E" HorizontalOptions="Start" Margin="0,4,0,0" />
+                            </VerticalStackLayout>
+                        </Border>
+                        <Grid ColumnDefinitions="*,*,*" ColumnSpacing="9">
+                            <Border Style="{StaticResource Card}" Padding="10,14">
+                                <VerticalStackLayout Spacing="3">
+                                    <Label Text="{Binding SenderCount}" FontSize="25" FontAttributes="Bold" />
+                                    <Label Text="فرستنده" Style="{StaticResource Caption}" />
+                                </VerticalStackLayout>
+                            </Border>
+                            <Border Grid.Column="1" Style="{StaticResource Card}" Padding="10,14">
+                                <VerticalStackLayout Spacing="3">
+                                    <Label Text="{Binding PendingCount}" FontSize="25" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#4338CA, Dark=#C7D2FE}" />
+                                    <Label Text="در انتظار" Style="{StaticResource Caption}" />
+                                </VerticalStackLayout>
+                            </Border>
+                            <Border Grid.Column="2" Style="{StaticResource Card}" Padding="10,14">
+                                <VerticalStackLayout Spacing="3">
+                                    <Label Text="{Binding SentCount}" FontSize="25" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#087E70, Dark=#77DDC5}" />
+                                    <Label Text="ارسال‌شده" Style="{StaticResource Caption}" />
+                                </VerticalStackLayout>
+                            </Border>
+                        </Grid>
+                        <Border Style="{StaticResource AccentCard}" Padding="16" IsVisible="{Binding HasUntitled}">
+                            <VerticalStackLayout Spacing="9">
+                                <Label Text="{Binding UntitledText}" Style="{StaticResource SectionTitle}" />
+                                <Label Text="عنوان را بنویسید تا پیام برای ارسال خودکار آماده شود." Style="{StaticResource MutedText}" />
+                                <Button Text="عنوان‌گذاری پیام‌ها" Clicked="OnPendingTitlesClicked" Style="{StaticResource SuccessAction}" />
+                            </VerticalStackLayout>
+                        </Border>
+                        <Border Style="{StaticResource InfoCard}" Padding="16">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                                <VerticalStackLayout Spacing="4">
+                                    <Label Text="دریافت پیامک‌های جدید" FontAttributes="Bold" />
+                                    <Label Text="{Binding PermissionStatusText}" Style="{StaticResource Caption}" />
+                                </VerticalStackLayout>
+                                <Button Grid.Column="1" Text="{Binding PermissionButtonText}" Clicked="OnPermissionClicked"
+                                        Style="{StaticResource SecondaryAction}" VerticalOptions="Center" />
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource Card}" Padding="16">
+                            <VerticalStackLayout Spacing="10">
+                                <Label Text="یک فرستنده اضافه کنید" Style="{StaticResource SectionTitle}" />
+                                <Label Text="فقط پیام‌های تازهٔ فرستنده‌های انتخاب‌شده نگهداری می‌شوند." Style="{StaticResource MutedText}" />
+                                <Button Text="انتخاب از پیامک‌های گوشی" Clicked="OnPickSenderClicked" Style="{StaticResource PrimaryAction}" />
+                                <Button Text="ورود دستی شماره یا نام" Clicked="OnToggleManualClicked" Style="{StaticResource QuietAction}" />
+                                <VerticalStackLayout x:Name="ManualPanel" IsVisible="False" Spacing="8">
+                                    <Border Style="{StaticResource FieldCard}">
+                                        <Entry x:Name="SenderEntry" Placeholder="مثلاً ۰۹۱۲۱۲۳۴۵۶۷ یا نام بانک" MaxLength="64"
+                                               IsTextPredictionEnabled="False" IsSpellCheckEnabled="False" ReturnType="Done" Completed="OnAddSenderClicked" />
+                                    </Border>
+                                    <Label Text="شماره با پیش‌شمارهٔ ایران و ارقام فارسی هم شناخته می‌شود." Style="{StaticResource Caption}" />
+                                    <Button Text="ثبت فرستنده" Clicked="OnAddSenderClicked" Style="{StaticResource SuccessAction}" />
+                                </VerticalStackLayout>
+                            </VerticalStackLayout>
+                        </Border>
+                        <Label Text="فرستنده‌های من" Style="{StaticResource SectionTitle}" Margin="2,5,0,0" />
+                        <Border Style="{StaticResource FieldCard}">
+                            <SearchBar Placeholder="جست‌وجوی فرستنده" TextChanged="OnSenderSearchChanged" />
+                        </Border>
                     </VerticalStackLayout>
-                    <Button Grid.Column="1" Text="{Binding PermissionButtonText}" Clicked="OnPermissionClicked"
-                            Padding="14,8" FontSize="12" Style="{StaticResource PrimaryAction}" />
-                </Grid>
-            </Border>
-
-            <Border Style="{StaticResource Card}" Padding="15" StrokeShape="RoundRectangle 18">
-                <VerticalStackLayout Spacing="10">
-                    <Label Text="افزودن شماره یا نام فرستنده" Style="{StaticResource SectionTitle}" />
-                    <Label Text="با انتخاب فرستنده از پیامک‌ها، همان لحظه به فهرست افزوده می‌شود؛ ورود دستی هم ممکن است."
-                           FontSize="12" Style="{StaticResource MutedText}" />
-                    <Button Text="انتخاب از پیامک‌های دریافتی" Clicked="OnPickSenderClicked"
-                            Style="{StaticResource PrimaryAction}" />
-                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                        <Entry x:Name="SenderEntry" Placeholder="شماره یا نام فرستنده" MaxLength="160"
-                               ClearButtonVisibility="WhileEditing" ReturnType="Done" Completed="OnAddSenderClicked" />
-                        <Button Grid.Column="1" Text="افزودن" Clicked="OnAddSenderClicked"
-                                Style="{StaticResource SuccessAction}" />
-                    </Grid>
-                </VerticalStackLayout>
-            </Border>
-        </VerticalStackLayout>
-
-        <Grid Grid.Row="2" RowDefinitions="Auto,*" RowSpacing="10">
-            <Grid ColumnDefinitions="*,Auto">
-                <Label Text="فرستنده‌های تحت مانیتور" FontSize="17" Style="{StaticResource SectionTitle}" />
-                <Label Grid.Column="1" Text="{Binding SenderCountText}" FontSize="12"
-                       Style="{StaticResource MutedText}" VerticalOptions="Center" />
-            </Grid>
-
-            <CollectionView Grid.Row="1" ItemsSource="{Binding Senders}" SelectionMode="Single"
-                            SelectionChanged="OnSenderSelected">
+                </CollectionView.Header>
                 <CollectionView.EmptyView>
-                    <Border Stroke="{AppThemeBinding Light=#CBD5E1, Dark=#475569}" StrokeDashArray="5,4" Padding="24" StrokeShape="RoundRectangle 18">
-                        <VerticalStackLayout Spacing="8" HorizontalOptions="Center">
-                            <Label Text="📨" FontSize="34" HorizontalTextAlignment="Center" />
-                            <Label Text="هنوز فرستنده‌ای اضافه نشده است." FontAttributes="Bold"
-                                   HorizontalTextAlignment="Center" />
-                            <Label Text="یک شماره یا نام فرستنده اضافه کنید؛ از آن لحظه پیامک‌های جدید ذخیره می‌شوند."
-                                   FontSize="12" Style="{StaticResource MutedText}" HorizontalTextAlignment="Center" />
+                    <Border Style="{StaticResource Card}" Padding="26">
+                        <VerticalStackLayout Spacing="8">
+                            <Label Text="هنوز فرستنده‌ای در این فهرست نیست" FontAttributes="Bold" HorizontalTextAlignment="Center" />
+                            <Label Text="یک فرستنده اضافه کنید یا عبارت جست‌وجو را تغییر دهید." Style="{StaticResource MutedText}" HorizontalTextAlignment="Center" />
                         </VerticalStackLayout>
                     </Border>
                 </CollectionView.EmptyView>
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="local:SenderItem">
-                        <Border Margin="0,0,0,9" Style="{StaticResource Card}" Padding="14">
+                        <Border Style="{StaticResource Card}" Margin="0,0,0,10" Padding="14">
                             <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
-                                <Border WidthRequest="44" HeightRequest="44" BackgroundColor="{AppThemeBinding Light=#E0E7FF, Dark=#312E81}"
-                                        StrokeThickness="0" StrokeShape="RoundRectangle 14">
-                                    <Label Text="✉" FontSize="20" TextColor="{AppThemeBinding Light=#4338CA, Dark=#C7D2FE}"
-                                           HorizontalOptions="Center" VerticalOptions="Center" />
+                                <Border Style="{StaticResource InfoCard}" WidthRequest="44" HeightRequest="44" StrokeThickness="0">
+                                    <Label Text="✉" FontSize="22" HorizontalOptions="Center" VerticalOptions="Center" />
                                 </Border>
-                                <VerticalStackLayout Grid.Column="1" Spacing="3" VerticalOptions="Center">
-                                    <Label Text="{Binding Address}" FontAttributes="Bold"
-                                           LineBreakMode="TailTruncation" />
-                                    <Label Text="{Binding Details}" FontSize="12" Style="{StaticResource MutedText}"
-                                           LineBreakMode="TailTruncation" />
+                                <VerticalStackLayout Grid.Column="1" Spacing="5" VerticalOptions="Center">
+                                    <Label Text="{Binding Address}" FontAttributes="Bold" LineBreakMode="TailTruncation" />
+                                    <Label Text="{Binding Details}" Style="{StaticResource Caption}" />
                                 </VerticalStackLayout>
-                                <Button Grid.Column="2" Text="حذف" FontSize="11" Padding="10,7"
-                                        Style="{StaticResource DangerAction}"
-                                        CommandParameter="{Binding Id}" Clicked="OnRemoveSenderClicked" />
+                                <Button Grid.Column="2" Text="⋯" FontSize="24" Style="{StaticResource QuietAction}"
+                                        CommandParameter="{Binding Id}" Clicked="OnSenderActionsClicked" SemanticProperties.Description="گزینه‌های فرستنده" />
                             </Grid>
                         </Border>
                     </DataTemplate>
                 </CollectionView.ItemTemplate>
+                <CollectionView.Footer>
+                    <Label Text="برای به‌روزکردن وضعیت، صفحه را به پایین بکشید." Style="{StaticResource Caption}" Padding="8,14" HorizontalTextAlignment="Center" />
+                </CollectionView.Footer>
             </CollectionView>
-        </Grid>
+        </RefreshView>
     </Grid>
 </ContentPage>
