@@ -131,6 +131,9 @@ internal static class StartupSmokeCheck
         var iconButton = new DonyshButton { Glyph = AppIcons.Settings, Text = "تنظیمات" };
         Check(iconButton.ImageSource is FontImageSource { FontFamily: "MaterialIconsRound" },
             "Material icon font is wired to action buttons");
+        iconButton.SetValue(DonyshButton.GlyphProperty, null);
+        Check(iconButton.Glyph == string.Empty,
+            "Icon buttons tolerate a temporarily empty data binding");
 
         var store = CreateStore();
         const string address = "+989123456789";

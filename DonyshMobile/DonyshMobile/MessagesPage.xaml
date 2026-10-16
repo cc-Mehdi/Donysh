@@ -53,7 +53,7 @@
                                     <Label Text="{x:Static ui:AppIcons.Sync}" Style="{StaticResource SectionIcon}" FontSize="17" WidthRequest="22" />
                                     <Label Grid.Column="1" Text="{Binding DeliveryStatus}" Style="{StaticResource Caption}" VerticalOptions="Center" />
                                 </Grid>
-                                <ui:DonyshButton AutomationId="MessageDetailsButton" Glyph="{Binding DetailsIcon}" Text="{Binding DetailsAction}" CommandParameter="{Binding Id}"
+                                <ui:DonyshButton AutomationId="MessageDetailsButton" Glyph="{x:Static ui:AppIcons.ExpandMore}" Text="{Binding DetailsAction}" CommandParameter="{Binding Id}"
                                                  Clicked="OnDetailsClicked" Style="{StaticResource QuietAction}" />
 
                                 <VerticalStackLayout IsVisible="{Binding IsExpanded}" Spacing="10">

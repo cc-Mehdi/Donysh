@@ -4,7 +4,8 @@ public sealed class DonyshButton : Button
 {
     public static readonly BindableProperty GlyphProperty = BindableProperty.Create(
         nameof(Glyph), typeof(string), typeof(DonyshButton), string.Empty,
-        propertyChanged: static (bindable, _, value) => ((DonyshButton)bindable)._icon.Glyph = (string)value);
+        propertyChanged: static (bindable, _, value) =>
+            ((DonyshButton)bindable)._icon.Glyph = value as string ?? string.Empty);
 
     private readonly FontImageSource _icon;
 
@@ -13,6 +14,7 @@ public sealed class DonyshButton : Button
         _icon = new FontImageSource
         {
             FontFamily = "MaterialIconsRound",
+            Glyph = string.Empty,
             Size = 19
         };
         _icon.SetBinding(FontImageSource.ColorProperty, new Binding(nameof(TextColor), source: this));
@@ -22,7 +24,7 @@ public sealed class DonyshButton : Button
 
     public string Glyph
     {
-        get => (string)GetValue(GlyphProperty);
-        set => SetValue(GlyphProperty, value);
+        get => GetValue(GlyphProperty) as string ?? string.Empty;
+        set => SetValue(GlyphProperty, value ?? string.Empty);
     }
 }
