@@ -2,6 +2,7 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:local="clr-namespace:DonyshMobile"
+             xmlns:ui="clr-namespace:DonyshMobile.UI"
              x:Class="DonyshMobile.MainPage" x:DataType="local:MainPage"
              Title="دونیش" Shell.NavBarIsVisible="False">
     <Grid x:Name="PageContent" Padding="18,12" RowDefinitions="Auto,*" RowSpacing="14">
@@ -11,7 +12,7 @@
                 <Label Text="دونیش همراه" FontSize="21" FontFamily="YekanBakhBold" />
                 <Label Text="همراهِ خرج‌های روزانه" Style="{StaticResource Caption}" />
             </VerticalStackLayout>
-            <Button x:Name="SettingsButton" Grid.Column="2" Text="تنظیمات" Clicked="OnConnectionClicked" Style="{StaticResource QuietAction}"
+            <ui:DonyshButton x:Name="SettingsButton" Grid.Column="2" Glyph="{x:Static ui:AppIcons.Settings}" Text="تنظیمات" Clicked="OnConnectionClicked" Style="{StaticResource QuietAction}"
                     SemanticProperties.Hint="اتصال به سامانه، ظاهر و تنظیمات ارسال" />
         </Grid>
         <RefreshView Grid.Row="1" IsRefreshing="{Binding IsRefreshing}" Refreshing="OnRefreshing">
@@ -29,7 +30,7 @@
                                 <Label Text="{Binding ConnectionText}" FontSize="12" TextColor="#DDEBFF" />
                                 <Label Text="پیامک‌ها، مرتب و آماده" FontSize="23" FontAttributes="Bold" TextColor="White" />
                                 <Label Text="{Binding NextStepText}" FontSize="14" LineHeight="1.35" TextColor="#E0EAFF" />
-                                <Button x:Name="NextStepButton" Text="{Binding NextStepAction}" Clicked="OnNextStepClicked" BackgroundColor="White"
+                                <ui:DonyshButton x:Name="NextStepButton" Glyph="{x:Static ui:AppIcons.Back}" Text="{Binding NextStepAction}" Clicked="OnNextStepClicked" BackgroundColor="White"
                                         TextColor="#37328E" HorizontalOptions="Start" Margin="0,4,0,0"
                                         IsVisible="{Binding HasNextStep}" />
                             </VerticalStackLayout>
@@ -58,7 +59,7 @@
                             <VerticalStackLayout Spacing="9">
                                 <Label Text="{Binding UntitledText}" Style="{StaticResource SectionTitle}" />
                                 <Label Text="عنوان را بنویسید تا پیام برای ارسال خودکار آماده شود." Style="{StaticResource MutedText}" />
-                                <Button Text="عنوان‌گذاری پیام‌ها" Clicked="OnPendingTitlesClicked" Style="{StaticResource SuccessAction}" />
+                                <ui:DonyshButton Glyph="{x:Static ui:AppIcons.Title}" Text="عنوان‌گذاری پیام‌ها" Clicked="OnPendingTitlesClicked" Style="{StaticResource SuccessAction}" />
                             </VerticalStackLayout>
                         </Border>
                         <Border Style="{StaticResource InfoCard}" Padding="16" IsVisible="{Binding NeedsPermissionAttention}">
@@ -73,7 +74,7 @@
                         </Border>
                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Margin="2,5,0,0">
                             <Label Text="فرستنده‌های زیر نظر" Style="{StaticResource SectionTitle}" VerticalOptions="Center" />
-                            <Button Grid.Column="1" Text="افزودن" Clicked="OnAddSenderMenuClicked" Style="{StaticResource SecondaryAction}" />
+                            <ui:DonyshButton Grid.Column="1" Glyph="{x:Static ui:AppIcons.Add}" Text="افزودن" Clicked="OnAddSenderMenuClicked" Style="{StaticResource SecondaryAction}" />
                         </Grid>
                         <VerticalStackLayout x:Name="ManualPanel" IsVisible="False" Spacing="8">
                             <Border Style="{StaticResource FieldCard}">
@@ -100,13 +101,13 @@
                         <Border Style="{StaticResource Card}" Margin="0,0,0,10" Padding="14">
                             <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
                                 <Border Style="{StaticResource InfoCard}" WidthRequest="44" HeightRequest="44" StrokeThickness="0">
-                                    <Label Text="✉" FontSize="22" HorizontalOptions="Center" VerticalOptions="Center" />
+                                    <Label Text="{x:Static ui:AppIcons.Sms}" FontFamily="MaterialIconsRound" FontSize="22" HorizontalOptions="Center" VerticalOptions="Center" />
                                 </Border>
                                 <VerticalStackLayout Grid.Column="1" Spacing="5" VerticalOptions="Center">
                                     <Label Text="{Binding Address}" FontAttributes="Bold" LineBreakMode="TailTruncation" />
                                     <Label Text="{Binding Details}" Style="{StaticResource Caption}" />
                                 </VerticalStackLayout>
-                                <Button Grid.Column="2" Text="⋯" FontSize="24" Style="{StaticResource QuietAction}"
+                                <Button Grid.Column="2" Text="{x:Static ui:AppIcons.More}" FontFamily="MaterialIconsRound" FontSize="24" Style="{StaticResource QuietAction}"
                                         CommandParameter="{Binding Id}" Clicked="OnSenderActionsClicked" SemanticProperties.Description="گزینه‌های فرستنده" />
                             </Grid>
                         </Border>

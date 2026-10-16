@@ -36,9 +36,9 @@ public static class UiMotion
         if (!CanAnimate) return;
         try
         {
-            view.Opacity = 0.65;
-            view.TranslationY = 10;
-            await Task.WhenAll(view.FadeTo(1, 180, Easing.CubicOut), view.TranslateTo(0, 0, 180, Easing.CubicOut));
+            view.Opacity = 0.78;
+            view.TranslationY = 6;
+            await Task.WhenAll(view.FadeTo(1, 120, Easing.CubicOut), view.TranslateTo(0, 0, 120, Easing.CubicOut));
         }
         catch (Exception)
         {
@@ -51,8 +51,8 @@ public static class UiMotion
     public static async Task PressAsync(VisualElement view)
     {
         if (!CanAnimate) return;
-        await ScaleSafelyAsync(view, 0.97, 65);
-        await ScaleSafelyAsync(view, 1, 100);
+        await ScaleSafelyAsync(view, 0.98, 45);
+        await ScaleSafelyAsync(view, 1, 70);
     }
 
     public static void Feedback()
@@ -80,12 +80,12 @@ public static class UiMotion
 
     private static async void OnPressed(object? sender, EventArgs e)
     {
-        if (sender is Button button && CanAnimate) await ScaleSafelyAsync(button, 0.97, 65);
+        if (sender is Button button && CanAnimate) await ScaleSafelyAsync(button, 0.98, 45);
     }
 
     private static async void OnReleased(object? sender, EventArgs e)
     {
-        if (sender is Button button) await ScaleSafelyAsync(button, 1, CanAnimate ? 100u : 1u);
+        if (sender is Button button) await ScaleSafelyAsync(button, 1, CanAnimate ? 70u : 1u);
     }
 
     private static async Task ScaleSafelyAsync(VisualElement view, double scale, uint duration)

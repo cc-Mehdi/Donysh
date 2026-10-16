@@ -155,10 +155,14 @@ public partial class MainPage : ContentPage
     private async void OnAddSenderMenuClicked(object? sender, EventArgs e)
     {
         if (_busy) return;
-        var choice = await DisplayActionSheet("افزودن فرستنده", "انصراف", null,
-            "انتخاب از پیامک‌های گوشی", "ورود دستی شماره یا نام");
-        if (choice == "انتخاب از پیامک‌های گوشی") OnPickSenderClicked(sender, e);
-        else if (choice == "ورود دستی شماره یا نام") OnToggleManualClicked(sender, e);
+        var choice = await DonyshSelectionSheet.ShowAsync(this, "افزودن فرستنده",
+        new DonyshSelectionOption[]
+        {
+            new("انتخاب از پیامک‌های گوشی", AppIcons.Search),
+            new("ورود دستی شماره یا نام", AppIcons.Edit)
+        });
+        if (choice == 0) OnPickSenderClicked(sender, e);
+        else if (choice == 1) OnToggleManualClicked(sender, e);
     }
 
     private async void OnAddSenderClicked(object? sender, EventArgs e)
@@ -229,10 +233,16 @@ public partial class MainPage : ContentPage
         if (sender is not Button { CommandParameter: Guid id }) return;
         var item = _allSenders.Find(x => x.Id == id);
         if (item is null) return;
-        var action = await DisplayActionSheet(item.Address, "انصراف", "حذف فرستنده", "پیام‌ها", "قالب‌های پیامک");
-        if (action == "پیام‌ها") await Navigation.PushAsync(new MessagesPage(_store, id, item.Address));
-        else if (action == "قالب‌های پیامک") await Navigation.PushAsync(new TemplatesPage(_store, id, item.Address));
-        else if (action == "حذف فرستنده" && await DisplayAlert("حذف از گوشی",
+        var action = await DonyshSelectionSheet.ShowAsync(this, item.Address,
+        new DonyshSelectionOption[]
+        {
+            new("پیام‌ها", AppIcons.Message),
+            new("قالب‌های پیامک", AppIcons.Template),
+            new("حذف فرستنده", AppIcons.Delete, true)
+        });
+        if (action == 0) await Navigation.PushAsync(new MessagesPage(_store, id, item.Address));
+        else if (action == 1) await Navigation.PushAsync(new TemplatesPage(_store, id, item.Address));
+        else if (action == 2 && await DisplayAlert("حذف از گوشی",
                      $"«{item.Address}» و همهٔ پیام‌هایش روی گوشی، حتی پیام‌های ارسال‌نشده، حذف شوند؟ خرج‌های ثبت‌شده در سامانه باقی می‌مانند.", "حذف", "انصراف"))
         {
             try { await _store.RemoveSenderAsync(id); await RefreshAsync(); }

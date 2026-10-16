@@ -2,6 +2,7 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:local="clr-namespace:DonyshMobile"
+             xmlns:ui="clr-namespace:DonyshMobile.UI"
              x:Class="DonyshMobile.SetupWizardPage"
              x:DataType="local:SetupWizardPage"
              FlowDirection="RightToLeft"
@@ -33,11 +34,11 @@
             <Border x:Name="ConnectionStepCard" Style="{StaticResource Card}" Padding="20" IsVisible="{Binding IsConnectionStep}">
                 <VerticalStackLayout Spacing="14">
                     <Border Style="{StaticResource InfoCard}" WidthRequest="54" HeightRequest="54" HorizontalOptions="Start" StrokeThickness="0">
-                        <Label Text="۱" FontSize="22" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center" />
+                        <Label Text="{x:Static ui:AppIcons.Link}" FontFamily="MaterialIconsRound" FontSize="24" HorizontalOptions="Center" VerticalOptions="Center" />
                     </Border>
                     <Label Text="گوشی را به دونیش وصل کنید" Style="{StaticResource SectionTitle}" FontSize="20" />
                     <Label Text="در سایت دونیش، بخش «همراه دونیش» را باز کنید؛ فضای مالی و دستهٔ مقصد را انتخاب کنید و یک کد اتصال بسازید." Style="{StaticResource MutedText}" LineHeight="1.35" />
-                    <Button x:Name="OpenConnectionButton" Text="واردکردن کد اتصال" Clicked="OnConnectionClicked"
+                    <ui:DonyshButton x:Name="OpenConnectionButton" Glyph="{x:Static ui:AppIcons.Security}" Text="واردکردن کد اتصال" Clicked="OnConnectionClicked"
                             Style="{StaticResource PrimaryAction}" AutomationId="SetupConnectionButton" />
                     <Label Text="کد فقط برای وصل‌کردن امن همین گوشی استفاده می‌شود." Style="{StaticResource Caption}" HorizontalTextAlignment="Center" />
                 </VerticalStackLayout>
@@ -46,11 +47,11 @@
             <Border x:Name="SenderStepCard" Style="{StaticResource Card}" Padding="20" IsVisible="{Binding IsSenderStep}">
                 <VerticalStackLayout Spacing="14">
                     <Border Style="{StaticResource InfoCard}" WidthRequest="54" HeightRequest="54" HorizontalOptions="Start" StrokeThickness="0">
-                        <Label Text="۲" FontSize="22" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center" />
+                        <Label Text="{x:Static ui:AppIcons.Sms}" FontFamily="MaterialIconsRound" FontSize="24" HorizontalOptions="Center" VerticalOptions="Center" />
                     </Border>
                     <Label Text="فرستندهٔ بانکی را انتخاب کنید" Style="{StaticResource SectionTitle}" FontSize="20" />
                     <Label Text="از فهرست پیامک‌های گوشی انتخاب کنید تا نام یا شمارهٔ فرستنده بدون خطای نوشتاری ثبت شود." Style="{StaticResource MutedText}" LineHeight="1.35" />
-                    <Button x:Name="PickSenderButton" Text="انتخاب از پیامک‌های گوشی" Clicked="OnPickSenderClicked"
+                    <ui:DonyshButton x:Name="PickSenderButton" Glyph="{x:Static ui:AppIcons.Search}" Text="انتخاب از پیامک‌های گوشی" Clicked="OnPickSenderClicked"
                             Style="{StaticResource PrimaryAction}" AutomationId="SetupSenderButton" />
                     <Button Text="شماره یا نام را دستی وارد می‌کنم" Clicked="OnToggleManualClicked" Style="{StaticResource QuietAction}" />
                     <VerticalStackLayout x:Name="ManualSenderPanel" IsVisible="False" Spacing="9">
@@ -67,11 +68,11 @@
             <Border x:Name="PermissionStepCard" Style="{StaticResource Card}" Padding="20" IsVisible="{Binding IsPermissionStep}">
                 <VerticalStackLayout Spacing="14">
                     <Border Style="{StaticResource InfoCard}" WidthRequest="54" HeightRequest="54" HorizontalOptions="Start" StrokeThickness="0">
-                        <Label Text="۲" FontSize="22" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center" />
+                        <Label Text="{x:Static ui:AppIcons.Security}" FontFamily="MaterialIconsRound" FontSize="24" HorizontalOptions="Center" VerticalOptions="Center" />
                     </Border>
                     <Label Text="دریافت پیامک را فعال کنید" Style="{StaticResource SectionTitle}" FontSize="20" />
                     <Label Text="دونیش فقط پیام‌های فرستنده‌هایی را که خودتان انتخاب کرده‌اید نگه می‌دارد. پیام‌های دیگر خوانده یا ارسال نمی‌شوند." Style="{StaticResource MutedText}" LineHeight="1.35" />
-                    <Button x:Name="PermissionButton" Text="فعال‌کردن دریافت پیامک" Clicked="OnPermissionClicked"
+                    <ui:DonyshButton x:Name="PermissionButton" Glyph="{x:Static ui:AppIcons.Notification}" Text="فعال‌کردن دریافت پیامک" Clicked="OnPermissionClicked"
                             Style="{StaticResource PrimaryAction}" AutomationId="SetupPermissionButton" />
                     <Label Text="فرستنده ثبت شد؛ پس از دادن اجازه، خودکار به قدم بعد می‌روید." Style="{StaticResource Caption}" HorizontalTextAlignment="Center" />
                 </VerticalStackLayout>
@@ -80,24 +81,24 @@
             <Border x:Name="TemplateStepCard" Style="{StaticResource Card}" Padding="20" IsVisible="{Binding IsTemplateStep}">
                 <VerticalStackLayout Spacing="14">
                     <Border Style="{StaticResource InfoCard}" WidthRequest="54" HeightRequest="54" HorizontalOptions="Start" StrokeThickness="0">
-                        <Label Text="۳" FontSize="22" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center" />
+                        <Label Text="{x:Static ui:AppIcons.Template}" FontFamily="MaterialIconsRound" FontSize="24" HorizontalOptions="Center" VerticalOptions="Center" />
                     </Border>
                     <Label Text="روش خواندن پیام را مشخص کنید" Style="{StaticResource SectionTitle}" FontSize="20" />
                     <Label Text="با یک پیام نمونه مشخص می‌کنید مبلغ، تاریخ و نوع تراکنش از کدام بخش پیام خوانده شود. برای بانک‌های آماده، بیشتر بخش‌ها خودکار تکمیل می‌شوند." Style="{StaticResource MutedText}" LineHeight="1.35" />
                     <Border Style="{StaticResource InfoCard}" Padding="12">
                         <Label Text="{Binding SelectedSenderText}" FontAttributes="Bold" />
                     </Border>
-                    <Button x:Name="CreateTemplateButton" Text="ساخت نخستین قالب" Clicked="OnTemplateClicked"
+                    <ui:DonyshButton x:Name="CreateTemplateButton" Glyph="{x:Static ui:AppIcons.Add}" Text="ساخت نخستین قالب" Clicked="OnTemplateClicked"
                             Style="{StaticResource PrimaryAction}" AutomationId="SetupTemplateButton" />
                 </VerticalStackLayout>
             </Border>
 
             <Border x:Name="CompleteStepCard" Style="{StaticResource AccentCard}" Padding="22" IsVisible="{Binding IsCompleteStep}">
                 <VerticalStackLayout Spacing="14">
-                    <Label Text="✓" FontSize="40" TextColor="#059669" HorizontalTextAlignment="Center" />
+                    <Label Text="{x:Static ui:AppIcons.CheckCircle}" FontFamily="MaterialIconsRound" FontSize="40" TextColor="#059669" HorizontalTextAlignment="Center" />
                     <Label Text="دونیش آماده است" Style="{StaticResource PageTitle}" HorizontalTextAlignment="Center" />
                     <Label Text="اتصال، فرستنده و قالب ثبت شدند. از این پس پیام‌های تازه طبق انتخاب شما بررسی می‌شوند." Style="{StaticResource MutedText}" HorizontalTextAlignment="Center" LineHeight="1.35" />
-                    <Button x:Name="FinishButton" Text="ورود به برنامه" Clicked="OnFinishClicked"
+                    <ui:DonyshButton x:Name="FinishButton" Glyph="{x:Static ui:AppIcons.Check}" Text="ورود به برنامه" Clicked="OnFinishClicked"
                             Style="{StaticResource SuccessAction}" AutomationId="SetupFinishButton" />
                 </VerticalStackLayout>
             </Border>

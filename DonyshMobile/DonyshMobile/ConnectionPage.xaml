@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:ui="clr-namespace:DonyshMobile.UI"
              x:Class="DonyshMobile.ConnectionPage" Title="تنظیمات و اتصال">
     <ScrollView>
         <VerticalStackLayout x:Name="ConnectionContent" Padding="18,12,18,28" Spacing="14" MaximumWidthRequest="800" HorizontalOptions="Fill">
@@ -10,12 +11,15 @@
             </VerticalStackLayout>
             <Border x:Name="ConnectionStatusCard" Style="{StaticResource InfoCard}" Padding="18">
                 <VerticalStackLayout Spacing="10">
-                    <Label Text="اتصال و وضعیت ارسال" Style="{StaticResource SectionTitle}" />
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                        <Label Text="{x:Static ui:AppIcons.Sync}" Style="{StaticResource SectionIcon}" />
+                        <Label Grid.Column="1" Text="اتصال و وضعیت ارسال" Style="{StaticResource SectionTitle}" />
+                    </Grid>
                     <Label x:Name="ConnectionStatusLabel" FontSize="16" FontAttributes="Bold" />
                     <Label x:Name="NetworkStatusLabel" Style="{StaticResource Caption}" />
                     <Label x:Name="QueueStatusLabel" Style="{StaticResource StatusBadge}" />
                     <Label x:Name="LastStatusLabel" Style="{StaticResource MutedText}" />
-                    <Button x:Name="ManualSyncButton" Text="ارسال دستی یک نوبت" Clicked="OnSyncClicked" Style="{StaticResource PrimaryAction}" />
+                    <ui:DonyshButton x:Name="ManualSyncButton" Glyph="{x:Static ui:AppIcons.Send}" Text="ارسال دستی یک نوبت" Clicked="OnSyncClicked" Style="{StaticResource PrimaryAction}" />
                     <Label Text="در هر نوبت تا ۵ پیام فرستاده می‌شود. پیام‌ها فقط پس از تأیید سامانه، ارسال‌شده می‌شوند." Style="{StaticResource Caption}" />
                     <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
                         <Button x:Name="ChangeConnectionButton" Text="تغییر مقصد" Clicked="OnChangeConnectionClicked" Style="{StaticResource QuietAction}" />
@@ -25,7 +29,10 @@
             </Border>
             <Border x:Name="PairingCard" Style="{StaticResource Card}" Padding="18">
                 <VerticalStackLayout Spacing="10">
-                    <Label Text="وصل‌کردن گوشی به دونیش" Style="{StaticResource SectionTitle}" />
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                        <Label Text="{x:Static ui:AppIcons.Link}" Style="{StaticResource SectionIcon}" />
+                        <Label Grid.Column="1" Text="وصل‌کردن گوشی به دونیش" Style="{StaticResource SectionTitle}" />
+                    </Grid>
                     <Label Text="۱. در سایت، «همراه دونیش» را باز کنید و فضای مالی و دستهٔ مقصد را انتخاب کنید.&#10;۲. کد اتصال بسازید و همین‌جا وارد کنید." Style="{StaticResource MutedText}" />
                     <Label Text="کد اتصال یک‌بارمصرف" FontAttributes="Bold" />
                     <Border Style="{StaticResource FieldCard}">
@@ -41,7 +48,7 @@
                                    IsTextPredictionEnabled="False" IsSpellCheckEnabled="False" FlowDirection="LeftToRight" HorizontalTextAlignment="Start" />
                         </Border>
                     </VerticalStackLayout>
-                    <Button x:Name="ConnectButton" Text="اتصال امن به سامانه" Clicked="OnConnectClicked" Style="{StaticResource SuccessAction}" />
+                    <ui:DonyshButton x:Name="ConnectButton" Glyph="{x:Static ui:AppIcons.Security}" Text="اتصال امن به سامانه" Clicked="OnConnectClicked" Style="{StaticResource SuccessAction}" />
                 </VerticalStackLayout>
             </Border>
             <Border x:Name="BusyCard" IsVisible="False" Style="{StaticResource AccentCard}" Padding="15">
@@ -54,7 +61,10 @@
                 <VerticalStackLayout Spacing="12">
                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
                         <VerticalStackLayout Spacing="5">
-                            <Label Text="عنوان پیش از ارسال" Style="{StaticResource SectionTitle}" />
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                                <Label Text="{x:Static ui:AppIcons.Title}" Style="{StaticResource SectionIcon}" />
+                                <Label Grid.Column="1" Text="عنوان پیش از ارسال" Style="{StaticResource SectionTitle}" />
+                            </Grid>
                             <Label Text="پیام‌های تازه تا نوشتن عنوان منتظر می‌مانند. با خاموش‌کردن این گزینه، ارسال خودکار بدون عنوان هم انجام می‌شود." Style="{StaticResource MutedText}" />
                         </VerticalStackLayout>
                         <Switch Grid.Column="1" x:Name="RequireTitleSwitch" Toggled="OnRequireTitleToggled" SemanticProperties.Description="عنوان برای ارسال خودکار الزامی باشد" />
@@ -65,12 +75,13 @@
             </Border>
             <Border x:Name="AppearanceCard" Style="{StaticResource Card}" Padding="18">
                 <VerticalStackLayout Spacing="12">
-                    <Label Text="ظاهر و حس برنامه" Style="{StaticResource SectionTitle}" />
-                    <Border Style="{StaticResource FieldCard}">
-                        <Picker x:Name="ThemePicker" Title="رنگ‌بندی برنامه" SelectedIndexChanged="OnThemeChanged">
-                            <Picker.Items><x:String>هماهنگ با گوشی</x:String><x:String>روشن</x:String><x:String>تیره</x:String></Picker.Items>
-                        </Picker>
-                    </Border>
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                        <Label Text="{x:Static ui:AppIcons.Palette}" Style="{StaticResource SectionIcon}" />
+                        <Label Grid.Column="1" Text="ظاهر و حس برنامه" Style="{StaticResource SectionTitle}" />
+                    </Grid>
+                    <ui:DonyshPicker x:Name="ThemePicker" Title="رنگ‌بندی برنامه" SelectedIndexChanged="OnThemeChanged">
+                        <ui:DonyshPicker.Items><x:String>هماهنگ با گوشی</x:String><x:String>روشن</x:String><x:String>تیره</x:String></ui:DonyshPicker.Items>
+                    </ui:DonyshPicker>
                     <Grid ColumnDefinitions="*,Auto">
                         <VerticalStackLayout Spacing="3">
                             <Label Text="حرکت‌های نرم رابط" FontAttributes="Bold" />
@@ -86,7 +97,10 @@
             </Border>
             <Border x:Name="PrivacyCard" Style="{StaticResource AccentCard}" Padding="18">
                 <VerticalStackLayout Spacing="6">
-                    <Label Text="حریم خصوصی پیام‌های شما" Style="{StaticResource SectionTitle}" />
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                        <Label Text="{x:Static ui:AppIcons.Security}" Style="{StaticResource SectionIcon}" />
+                        <Label Grid.Column="1" Text="حریم خصوصی پیام‌های شما" Style="{StaticResource SectionTitle}" />
+                    </Grid>
                     <Label Text="داده‌های پیامکی روی گوشی رمزگذاری می‌شوند. فقط پیام‌های فرستنده‌های انتخابی به مقصد اتصال شما ارسال می‌شوند. پیام‌های تأییدشده پس از هفت روز از گوشی پاک می‌شوند؛ پیام‌های ارسال‌نشده در صف می‌مانند." Style="{StaticResource MutedText}" />
                 </VerticalStackLayout>
             </Border>

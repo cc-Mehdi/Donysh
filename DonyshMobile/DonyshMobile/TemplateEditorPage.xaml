@@ -2,6 +2,7 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:local="clr-namespace:DonyshMobile"
+             xmlns:ui="clr-namespace:DonyshMobile.UI"
              x:Class="DonyshMobile.TemplateEditorPage"
              x:DataType="local:TemplateEditorPage"
              FlowDirection="RightToLeft" Title="تعریف قالب">
@@ -17,15 +18,15 @@
             <Border Style="{StaticResource Card}" Padding="16">
                 <VerticalStackLayout Spacing="10">
                     <Label Text="۱ · از کجا شروع کنیم؟" Style="{StaticResource SectionTitle}" />
-                    <Picker x:Name="SourcePicker" SelectedIndexChanged="OnSourceChanged"
+                    <ui:DonyshPicker x:Name="SourcePicker" Title="روش ساخت قالب" SelectedIndexChanged="OnSourceChanged"
                             SemanticProperties.Description="روش شروع ساخت قالب">
-                        <Picker.Items>
+                        <ui:DonyshPicker.Items>
                             <x:String>از پیامک خودم می‌سازم</x:String>
                             <x:String>از قالب آماده بانک شروع می‌کنم</x:String>
-                        </Picker.Items>
-                    </Picker>
+                        </ui:DonyshPicker.Items>
+                    </ui:DonyshPicker>
                     <VerticalStackLayout x:Name="PresetSection" Spacing="8" IsVisible="False">
-                        <Picker x:Name="PresetPicker" Title="انتخاب بانک"
+                        <ui:DonyshPicker x:Name="PresetPicker" Title="انتخاب بانک"
                                 SelectedIndexChanged="OnPresetSelected" />
                         <Label x:Name="PresetDescriptionLabel" Style="{StaticResource MutedText}" FontSize="12" />
                         <Button x:Name="BankSampleButton" Text="نمایش نمونهٔ بانک" Clicked="OnToggleBankSampleClicked"
@@ -40,7 +41,7 @@
             <Border Style="{StaticResource Card}" Padding="16">
                 <VerticalStackLayout Spacing="10">
                     <Label Text="۲ · پیام نمونه را وارد کنید" Style="{StaticResource SectionTitle}" />
-                    <Picker x:Name="SavedMessagePicker" Title="انتخاب از پیام‌های این فرستنده"
+                    <ui:DonyshPicker x:Name="SavedMessagePicker" Title="انتخاب از پیام‌های این فرستنده"
                             SelectedIndexChanged="OnSavedMessageSelected" />
                     <Label x:Name="SavedMessageHint" Style="{StaticResource MutedText}" FontSize="12" />
                     <Editor x:Name="MessageEditor" HeightRequest="175" MaxLength="2048"
@@ -67,20 +68,20 @@
                         <BindableLayout.ItemTemplate>
                             <DataTemplate x:DataType="local:TemplateFieldRow">
                                 <Grid ColumnDefinitions="0.9*,1.35*,48" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="4">
-                                    <Picker SelectedItem="{Binding KeyLabel, Mode=TwoWay}">
-                                        <Picker.Items>
+                                    <ui:DonyshPicker SelectedItem="{Binding KeyLabel, Mode=TwoWay}" Title="بخش پیام">
+                                        <ui:DonyshPicker.Items>
                                             <x:String>نام بانک</x:String>
                                             <x:String>نوع تراکنش</x:String>
                                             <x:String>مبلغ</x:String>
                                             <x:String>واحد</x:String>
                                             <x:String>ساعت</x:String>
                                             <x:String>تاریخ</x:String>
-                                        </Picker.Items>
-                                    </Picker>
+                                        </ui:DonyshPicker.Items>
+                                    </ui:DonyshPicker>
                                     <Entry Grid.Column="1" Text="{Binding Value, Mode=TwoWay}" MaxLength="200"
                                            Placeholder="{Binding Example}" IsSpellCheckEnabled="False"
                                            IsTextPredictionEnabled="False" />
-                                    <Button Grid.Column="2" Text="×" FontSize="20" Padding="0"
+                                    <ui:DonyshButton Grid.Column="2" Glyph="{x:Static ui:AppIcons.Delete}" Text="" FontSize="20" Padding="0"
                                             CommandParameter="{Binding Id}" Clicked="OnRemoveFieldClicked"
                                             SemanticProperties.Description="حذف این ردیف"
                                             Style="{StaticResource DangerAction}" />
@@ -90,7 +91,7 @@
                             </DataTemplate>
                         </BindableLayout.ItemTemplate>
                     </VerticalStackLayout>
-                    <Button Text="افزودن تاریخ، ساعت یا اطلاعات دیگر" Clicked="OnAddFieldClicked"
+                    <ui:DonyshButton Glyph="{x:Static ui:AppIcons.Add}" Text="افزودن تاریخ، ساعت یا اطلاعات دیگر" Clicked="OnAddFieldClicked"
                             Style="{StaticResource SecondaryAction}" />
                     <Label Text="لازم نیست ردیف‌های خالی را پر کنید. اگر واحد و نوع را ننویسید، مبلغ ریال و تراکنش برداشت است. برای پیام واریز، «نوع تراکنش» را اضافه کنید."
                            Style="{StaticResource MutedText}" FontSize="12" />
@@ -101,7 +102,7 @@
                 </VerticalStackLayout>
             </Border>
 
-            <Button x:Name="ReviewButton" Text="بررسی با همین پیام نمونه" Clicked="OnReviewClicked"
+            <ui:DonyshButton x:Name="ReviewButton" Glyph="{x:Static ui:AppIcons.Search}" Text="بررسی با همین پیام نمونه" Clicked="OnReviewClicked"
                     Style="{StaticResource SecondaryAction}" />
             <Border x:Name="PreviewCard" Style="{StaticResource InfoCard}" Padding="16" IsVisible="False">
                 <VerticalStackLayout Spacing="10">
@@ -112,7 +113,7 @@
                     <Label x:Name="PatternPreviewLabel" FontSize="12" Style="{StaticResource MutedText}" IsVisible="False" />
                 </VerticalStackLayout>
             </Border>
-            <Button x:Name="SaveButton" Text="بررسی و ذخیره قالب" Clicked="OnSaveClicked"
+            <ui:DonyshButton x:Name="SaveButton" Glyph="{x:Static ui:AppIcons.CheckCircle}" Text="بررسی و ذخیره قالب" Clicked="OnSaveClicked"
                     Style="{StaticResource PrimaryAction}" />
         </VerticalStackLayout>
     </ScrollView>

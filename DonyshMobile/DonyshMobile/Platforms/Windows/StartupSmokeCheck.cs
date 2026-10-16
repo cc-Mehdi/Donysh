@@ -5,6 +5,7 @@ using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text.Json;
 using DonyshMobile.Core;
+using DonyshMobile.UI;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Networking;
 using MauiApplication = Microsoft.Maui.Controls.Application;
@@ -119,6 +120,18 @@ internal static class StartupSmokeCheck
                 $"Native font resource: {name}");
         }
 
+        var themedPicker = new DonyshPicker { Title = "آزمون انتخاب" };
+        themedPicker.SelectedIndex = 1; // XAML can set the index before adding child items.
+        themedPicker.Items.Add("گزینهٔ یک");
+        themedPicker.Items.Add("گزینهٔ دو");
+        Check(themedPicker.SelectedItem?.ToString() == "گزینهٔ دو", "Themed picker keeps index and item synchronized");
+        themedPicker.SelectedItem = "گزینهٔ یک";
+        Check(themedPicker.SelectedIndex == 0, "Themed picker accepts item selection");
+
+        var iconButton = new DonyshButton { Glyph = AppIcons.Settings, Text = "تنظیمات" };
+        Check(iconButton.ImageSource is FontImageSource { FontFamily: "MaterialIconsRound" },
+            "Material icon font is wired to action buttons");
+
         var store = CreateStore();
         const string address = "+989123456789";
         Check(await store.AddSenderAsync(address) == AddSenderResult.Added, "Isolated sender registered");
@@ -161,7 +174,7 @@ internal static class StartupSmokeCheck
         });
         await VisitAsync(shell, new TemplateEditorPage(store, sender.Id, address), async page =>
         {
-            await WaitUntilAsync(() => page.FindByName<Picker>("SavedMessagePicker").Items.Count == 1,
+            await WaitUntilAsync(() => page.FindByName<DonyshPicker>("SavedMessagePicker").Items.Count == 1,
                 "The new-template editor did not load the sample message.");
         });
         await VisitAsync(shell, new TemplateEditorPage(store, sender.Id, address, built.Template), async page =>

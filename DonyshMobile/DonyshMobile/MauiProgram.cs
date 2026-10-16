@@ -15,6 +15,7 @@ namespace DonyshMobile
                     fonts.AddFont("YekanBakh-SemiBold.ttf", "YekanBakhMedium");
                     fonts.AddFont("YekanBakh-Bold.ttf", "YekanBakhBold");
                     fonts.AddFont("YekanBakh-ExtraBold.ttf", "YekanBakhDisplay");
+                    fonts.AddFont("MaterialIconsRound-Regular.otf", "MaterialIconsRound");
                 });
 
 #if DEBUG

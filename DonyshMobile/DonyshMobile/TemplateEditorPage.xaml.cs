@@ -165,8 +165,9 @@ public partial class TemplateEditorPage : ContentPage
             return;
         }
         var choices = TemplateFieldRow.AvailableKeys.Where(x => !used.Contains(x)).ToArray();
-        var selected = await DisplayActionSheet("چه بخشی اضافه شود؟", "انصراف", null, choices);
-        if (selected is null || !choices.Contains(selected)) return;
+        var selectedIndex = await DonyshSelectionSheet.ShowAsync(this, "چه بخشی اضافه شود؟", choices);
+        if (!selectedIndex.HasValue || selectedIndex.Value < 0 || selectedIndex.Value >= choices.Length) return;
+        var selected = choices[selectedIndex.Value];
         AddField(new TemplateFieldRow(selected, selected == "واحد" ? "ریال" : string.Empty));
         InvalidatePreview();
     }

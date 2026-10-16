@@ -2,6 +2,7 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:local="clr-namespace:DonyshMobile"
+             xmlns:ui="clr-namespace:DonyshMobile.UI"
              x:Class="DonyshMobile.TemplatesPage"
              x:DataType="local:TemplatesPage"
              FlowDirection="RightToLeft" Title="قالب‌های پیامک">
@@ -13,7 +14,7 @@
                    FontSize="13" Style="{StaticResource MutedText}" />
             <Label x:Name="TemplateCountLabel" Style="{StaticResource MutedText}" FontSize="12" />
         </VerticalStackLayout>
-        <Button Grid.Row="1" Text="افزودن قالب تازه" Clicked="OnAddClicked"
+        <ui:DonyshButton Grid.Row="1" Glyph="{x:Static ui:AppIcons.Add}" Text="افزودن قالب تازه" Clicked="OnAddClicked"
                 Style="{StaticResource PrimaryAction}" />
         <CollectionView Grid.Row="2" ItemsSource="{Binding Templates}" SelectionMode="None">
             <CollectionView.EmptyView>
@@ -34,9 +35,9 @@
                                        IsVisible="{Binding HasSample}" Style="{StaticResource MutedText}" />
                             </VerticalStackLayout>
                             <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="10">
-                                <Button Text="مشاهده و ویرایش" CommandParameter="{Binding Id}" Clicked="OnEditClicked"
+                                <ui:DonyshButton Glyph="{x:Static ui:AppIcons.Edit}" Text="مشاهده و ویرایش" CommandParameter="{Binding Id}" Clicked="OnEditClicked"
                                         Style="{StaticResource SecondaryAction}" />
-                                <Button Grid.Column="1" Text="حذف" CommandParameter="{Binding Id}" Clicked="OnDeleteClicked"
+                                <ui:DonyshButton Grid.Column="1" Glyph="{x:Static ui:AppIcons.Delete}" Text="حذف" CommandParameter="{Binding Id}" Clicked="OnDeleteClicked"
                                         Style="{StaticResource DangerAction}" />
                             </Grid>
                         </Grid>

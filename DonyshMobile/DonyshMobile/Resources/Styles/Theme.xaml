@@ -35,6 +35,15 @@
         </Setter>
     </Style>
     <Style TargetType="Button" BasedOn="{StaticResource ButtonBase}" />
+    <Style TargetType="ui:DonyshButton" BasedOn="{StaticResource ButtonBase}" />
+    <Style x:Key="SectionIcon" TargetType="Label">
+        <Setter Property="FontFamily" Value="MaterialIconsRound" />
+        <Setter Property="FontSize" Value="21" />
+        <Setter Property="TextColor" Value="{AppThemeBinding Light=#4F46E5, Dark=#C7D2FE}" />
+        <Setter Property="VerticalOptions" Value="Center" />
+        <Setter Property="HorizontalTextAlignment" Value="Center" />
+        <Setter Property="WidthRequest" Value="30" />
+    </Style>
     <Style TargetType="Entry">
         <Setter Property="FontFamily" Value="YekanBakh" />
         <Setter Property="TextColor" Value="{AppThemeBinding Light=#15243C, Dark=#F1F5FF}" />

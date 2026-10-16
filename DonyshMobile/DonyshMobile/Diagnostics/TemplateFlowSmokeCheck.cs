@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text.Json;
 using DonyshMobile.Core;
+using DonyshMobile.UI;
 using Microsoft.Maui;
 
 namespace DonyshMobile.Diagnostics;
@@ -62,12 +63,12 @@ internal static class TemplateFlowSmokeCheck
         var editor = new TemplateEditorPage(store, sender.Id, address, null, () => scheduled++);
         var depth = navigation.NavigationStack.Count;
         await navigation.PushAsync(editor, animated: false);
-        await WaitAsync(() => editor.IsLoaded && editor.FindByName<Picker>("SavedMessagePicker").Items.Count == 2);
-        editor.FindByName<Picker>("SourcePicker").SelectedIndex = 1;
-        editor.FindByName<Picker>("PresetPicker").SelectedIndex = 0;
+        await WaitAsync(() => editor.IsLoaded && editor.FindByName<DonyshPicker>("SavedMessagePicker").Items.Count == 2);
+        editor.FindByName<DonyshPicker>("SourcePicker").SelectedIndex = 1;
+        editor.FindByName<DonyshPicker>("PresetPicker").SelectedIndex = 0;
         Check(editor.Fields.Count == 6 && !editor.FindByName<VerticalStackLayout>("ManualFieldsPanel").IsVisible,
             "Ready preset fills all fields and hides manual mapping");
-        editor.FindByName<Picker>("SavedMessagePicker").SelectedIndex = actualIndex;
+        editor.FindByName<DonyshPicker>("SavedMessagePicker").SelectedIndex = actualIndex;
         editor.FindByName<Button>("ReviewButton").SendClicked();
         await WaitAsync(() => editor.FindByName<Border>("PreviewCard").IsVisible);
         Check(editor.Fields.Single(x => x.KeyLabel == "مبلغ").Value == "2٬500٬000"
@@ -75,19 +76,19 @@ internal static class TemplateFlowSmokeCheck
             && editor.Fields.Single(x => x.KeyLabel == "ساعت").Value == "19:45",
             "Choosing a saved SMS reads its actual amount, date and time");
         Check(editor.FindByName<Label>("PreviewTitleLabel").Text.StartsWith("✓"), "Actual preset preview is successful");
-        editor.FindByName<Picker>("SavedMessagePicker").SelectedIndex = sampleIndex;
+        editor.FindByName<DonyshPicker>("SavedMessagePicker").SelectedIndex = sampleIndex;
         Check(editor.Fields.Single(x => x.KeyLabel == "مبلغ").Value == "1,400,000",
             "Changing the selected SMS replaces stale preset values");
         editor.FindByName<Editor>("MessageEditor").Text = "پیام ناسازگار";
         editor.FindByName<Button>("ReviewButton").SendClicked();
         Check(editor.Fields.Count == 0 && !editor.FindByName<Label>("PreviewTitleLabel").Text.StartsWith("✓"),
             "Incompatible bank messages do not retain a stale green preview or fields");
-        editor.FindByName<Picker>("SavedMessagePicker").SelectedIndex = actualIndex;
+        editor.FindByName<DonyshPicker>("SavedMessagePicker").SelectedIndex = actualIndex;
         editor.FindByName<Button>("EditFieldsButton").SendClicked();
-        Check(editor.FindByName<Picker>("SourcePicker").SelectedIndex == 0
+        Check(editor.FindByName<DonyshPicker>("SourcePicker").SelectedIndex == 0
             && editor.FindByName<VerticalStackLayout>("ManualFieldsPanel").IsVisible && editor.Fields.Count == 6,
             "Custom mapping remains available with the extracted fields");
-        editor.FindByName<Picker>("SourcePicker").SelectedIndex = 1;
+        editor.FindByName<DonyshPicker>("SourcePicker").SelectedIndex = 1;
         editor.FindByName<Button>("SaveButton").SendClicked();
         await WaitAsync(() => navigation.NavigationStack.Count == depth);
         var saved = (await store.GetTemplatesAsync(sender.Id)).Single();
@@ -99,7 +100,7 @@ internal static class TemplateFlowSmokeCheck
         var reopened = new TemplateEditorPage(store, sender.Id, address, saved, () => scheduled++);
         await navigation.PushAsync(reopened, animated: false);
         await WaitAsync(() => reopened.IsLoaded);
-        Check(reopened.FindByName<Picker>("SourcePicker").SelectedIndex == 1
+        Check(reopened.FindByName<DonyshPicker>("SourcePicker").SelectedIndex == 1
             && !reopened.FindByName<VerticalStackLayout>("ManualFieldsPanel").IsVisible,
             "Editing a saved ready template keeps the automatic flow");
         await navigation.PopAsync(animated: false);
@@ -147,7 +148,7 @@ internal static class TemplateFlowSmokeCheck
             && !page.Messages.Single(message => message.Id == delivered.Id).CanRetry,
             "Manual retry is offered for rejected SMS but never confirmed deliveries");
 
-        var filter = page.FindByName<Picker>("StatusPicker");
+        var filter = page.FindByName<DonyshPicker>("StatusPicker");
         filter.SelectedIndex = 2;
         await WaitAsync(() => page.Messages.Count == 1 && page.Messages[0].Id == delivered.Id);
         Check(!page.HasRetryableMessages, "The sent-only filter hides bulk retry");
@@ -210,7 +211,7 @@ internal static class TemplateFlowSmokeCheck
         });
         await navigation.PushAsync(bulkPage, animated: false);
         await WaitAsync(() => bulkPage.IsLoaded && bulkPage.Messages.Count == 3);
-        bulkPage.FindByName<Picker>("StatusPicker").SelectedIndex = 3;
+        bulkPage.FindByName<DonyshPicker>("StatusPicker").SelectedIndex = 3;
         await WaitAsync(() => bulkPage.Messages.Count == 2);
         var search = bulkPage.FindByName<SearchBar>("MessageSearchBar");
         search.Text = "خرید روزانه";

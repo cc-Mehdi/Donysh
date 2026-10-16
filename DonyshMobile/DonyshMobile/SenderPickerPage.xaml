@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:ui="clr-namespace:DonyshMobile.UI"
              x:Class="DonyshMobile.SenderPickerPage"
              FlowDirection="RightToLeft" Title="انتخاب فرستنده">
     <Grid x:Name="PickerContent" Padding="20,18" RowDefinitions="Auto,Auto,Auto,*,Auto" RowSpacing="12">
@@ -37,8 +38,10 @@
                         </VisualStateManager.VisualStateGroups>
                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
                             <Label Text="{Binding .}" FontSize="17" VerticalOptions="Center" />
-                            <Label Grid.Column="1" Text="انتخاب" Style="{StaticResource MutedText}" FontSize="12"
-                                   VerticalOptions="Center" />
+                            <HorizontalStackLayout Grid.Column="1" Spacing="4" VerticalOptions="Center">
+                                <Label Text="{x:Static ui:AppIcons.CheckCircle}" Style="{StaticResource SectionIcon}" FontSize="17" WidthRequest="22" />
+                                <Label Text="انتخاب" Style="{StaticResource MutedText}" FontSize="12" VerticalOptions="Center" />
+                            </HorizontalStackLayout>
                         </Grid>
                     </Border>
                 </DataTemplate>
@@ -48,7 +51,7 @@
             <VerticalStackLayout Spacing="10">
                 <Label x:Name="SelectionLabel" Text="یک فرستنده از فهرست انتخاب کنید."
                        Style="{StaticResource MutedText}" />
-                <Button x:Name="ConfirmButton" Text="افزودن به فرستنده‌های تحت نظر" IsEnabled="False"
+                <ui:DonyshButton x:Name="ConfirmButton" Glyph="{x:Static ui:AppIcons.Add}" Text="افزودن به فرستنده‌های تحت نظر" IsEnabled="False"
                         Clicked="OnConfirmClicked" Style="{StaticResource PrimaryAction}" />
                 <Label Text="پیامک‌های قدیمی وارد نمی‌شوند؛ از این پس پیام‌های جدید این فرستنده ثبت می‌شوند."
                        FontSize="12" Style="{StaticResource MutedText}" />

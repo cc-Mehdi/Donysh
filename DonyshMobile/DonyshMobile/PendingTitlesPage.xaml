@@ -2,6 +2,7 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:local="clr-namespace:DonyshMobile"
+             xmlns:ui="clr-namespace:DonyshMobile.UI"
              x:Class="DonyshMobile.PendingTitlesPage"
              FlowDirection="RightToLeft" Title="عنوان‌گذاری پیام‌ها">
     <Grid x:Name="TitlesContent" Padding="18,12" RowDefinitions="Auto,*" RowSpacing="14">
@@ -25,7 +26,7 @@
                             <Border Style="{StaticResource FieldCard}">
                                 <Entry Text="{Binding DraftTitle, Mode=TwoWay}" Placeholder="این خرج برای چه بود؟" MaxLength="160" ReturnType="Done" Completed="OnSetTitleClicked" />
                             </Border>
-                            <Button Text="ذخیرهٔ عنوان و آماده‌سازی ارسال" CommandParameter="{Binding Id}"
+                            <ui:DonyshButton Glyph="{x:Static ui:AppIcons.CheckCircle}" Text="ذخیرهٔ عنوان و آماده‌سازی ارسال" CommandParameter="{Binding Id}"
                                     Clicked="OnSetTitleClicked" Style="{StaticResource SuccessAction}" />
                         </VerticalStackLayout>
                     </Border>

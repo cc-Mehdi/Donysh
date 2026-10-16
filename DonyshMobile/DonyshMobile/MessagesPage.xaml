@@ -2,24 +2,25 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:local="clr-namespace:DonyshMobile"
+             xmlns:ui="clr-namespace:DonyshMobile.UI"
              x:Class="DonyshMobile.MessagesPage" x:DataType="local:MessagesPage" Title="پیام‌های فرستنده">
     <Grid x:Name="MessagesContent" RowDefinitions="Auto,Auto,*" Padding="18,12" RowSpacing="12">
         <VerticalStackLayout Spacing="5">
             <Label Text="{Binding SenderAddress}" Style="{StaticResource PageTitle}" />
             <Label Text="پیام‌های هفت روز گذشته؛ وضعیت ارسال هر پیام جداگانه مشخص است." Style="{StaticResource MutedText}" />
-            <Button Text="قالب‌های این فرستنده" Clicked="OnTemplatesClicked" Style="{StaticResource SecondaryAction}" />
+            <ui:DonyshButton Glyph="{x:Static ui:AppIcons.Template}" Text="قالب‌های این فرستنده" Clicked="OnTemplatesClicked" Style="{StaticResource SecondaryAction}" />
         </VerticalStackLayout>
         <VerticalStackLayout Grid.Row="1" Spacing="7">
             <Border Style="{StaticResource FieldCard}">
                 <SearchBar x:Name="MessageSearchBar" Placeholder="جست‌وجو در عنوان و متن پیام" TextChanged="OnSearchChanged" />
             </Border>
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
-                <Picker x:Name="StatusPicker" Title="وضعیت پیام" SelectedIndexChanged="OnFilterChanged" SelectedIndex="0">
-                    <Picker.Items><x:String>همهٔ پیام‌ها</x:String><x:String>منتظر ارسال</x:String><x:String>ارسال‌شده</x:String><x:String>نیازمند بررسی</x:String><x:String>منتظر عنوان</x:String></Picker.Items>
-                </Picker>
+                <ui:DonyshPicker x:Name="StatusPicker" Title="وضعیت پیام" SelectedIndexChanged="OnFilterChanged" SelectedIndex="0">
+                    <ui:DonyshPicker.Items><x:String>همهٔ پیام‌ها</x:String><x:String>منتظر ارسال</x:String><x:String>ارسال‌شده</x:String><x:String>نیازمند بررسی</x:String><x:String>منتظر عنوان</x:String></ui:DonyshPicker.Items>
+                </ui:DonyshPicker>
                 <Label Grid.Column="1" Text="{Binding MessageCountText}" Style="{StaticResource Caption}" VerticalOptions="Center" />
             </Grid>
-            <Button x:Name="RetryVisibleMessagesButton" Text="بازگرداندن پیام‌های این فهرست به صف"
+            <ui:DonyshButton x:Name="RetryVisibleMessagesButton" Glyph="{x:Static ui:AppIcons.Refresh}" Text="بازگرداندن پیام‌های این فهرست به صف"
                     IsVisible="{Binding HasRetryableMessages}" Clicked="OnRetryVisibleClicked" Style="{StaticResource SecondaryAction}" />
             <Label x:Name="RetryStatusLabel" IsVisible="False" Style="{StaticResource MutedText}" />
         </VerticalStackLayout>
@@ -44,11 +45,11 @@
                             </Border>
                             <Label Text="{Binding Body}" LineHeight="1.35" MaxLines="6" LineBreakMode="TailTruncation" />
                             <Grid ColumnDefinitions="*,*" ColumnSpacing="6">
-                                <Button Text="عنوان پیام" IsVisible="{Binding CanEditTitle}" CommandParameter="{Binding Id}"
+                                <ui:DonyshButton Glyph="{x:Static ui:AppIcons.Edit}" Text="عنوان پیام" IsVisible="{Binding CanEditTitle}" CommandParameter="{Binding Id}"
                                         Clicked="OnSetTitleClicked" Style="{StaticResource SecondaryAction}" />
                                 <Button Grid.Column="1" Text="متن کامل" CommandParameter="{Binding Id}" Clicked="OnDetailsClicked" Style="{StaticResource QuietAction}" />
                             </Grid>
-                            <Button x:Name="RetryMessageButton" AutomationId="RetryMessageButton" Text="بازگرداندن به صف ارسال" IsVisible="{Binding CanRetry}"
+                            <ui:DonyshButton x:Name="RetryMessageButton" Glyph="{x:Static ui:AppIcons.Refresh}" AutomationId="RetryMessageButton" Text="بازگرداندن به صف ارسال" IsVisible="{Binding CanRetry}"
                                     CommandParameter="{Binding Id}" Clicked="OnRetryMessageClicked" Style="{StaticResource SecondaryAction}" />
                         </VerticalStackLayout>
                     </Border>
