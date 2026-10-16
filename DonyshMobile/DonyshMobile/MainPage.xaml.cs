@@ -7,7 +7,7 @@ using DonyshMobile.Platforms.Android;
 
 namespace DonyshMobile;
 
-public partial class MainPage : ContentPage
+public partial class MainPage : DonyshPage
 {
     private static int _pendingTitlesRequested;
     public static void RequestPendingTitles() => Interlocked.Exchange(ref _pendingTitlesRequested, 1);
@@ -59,6 +59,7 @@ public partial class MainPage : ContentPage
             UiSafety.Log(exception);
             await UiSafety.AlertAsync(this, "صفحه کامل آماده نشد", "پیام‌ها محفوظ‌اند؛ دوباره صفحه را باز کنید.");
         }
+        finally { await CompletePageLoadingAsync(); }
     }
 
     private async Task ActivateAsync()

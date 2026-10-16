@@ -24,6 +24,7 @@ public static class AppIcons
     public const string Receipt = "\uef6e";
     public const string Refresh = "\ue5d5";
     public const string Search = "\ue8b6";
+    public const string Schedule = "\ue8b5";
     public const string Security = "\ue32a";
     public const string Send = "\ue163";
     public const string Settings = "\ue8b8";

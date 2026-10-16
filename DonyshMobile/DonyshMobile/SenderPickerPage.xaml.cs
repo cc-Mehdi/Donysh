@@ -3,7 +3,7 @@ using DonyshMobile.UI;
 
 namespace DonyshMobile;
 
-public partial class SenderPickerPage : ContentPage
+public partial class SenderPickerPage : DonyshPage
 {
     private readonly IReadOnlyList<string> _senders;
     private readonly Func<string, Task> _selected;
@@ -25,7 +25,8 @@ public partial class SenderPickerPage : ContentPage
         base.OnAppearing();
         if (_entered) return;
         _entered = true;
-        await UiMotion.EnterAsync(PickerContent);
+        try { await UiMotion.EnterAsync(PickerContent); }
+        finally { await CompletePageLoadingAsync(); }
     }
 
     private void OnSearchChanged(object? sender, TextChangedEventArgs e)

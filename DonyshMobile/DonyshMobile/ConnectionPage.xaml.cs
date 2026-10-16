@@ -3,7 +3,7 @@ using DonyshMobile.UI;
 
 namespace DonyshMobile;
 
-public partial class ConnectionPage : ContentPage
+public partial class ConnectionPage : DonyshPage
 {
     private readonly SmsMonitorStore _store;
     private readonly MobileApiClient _api;
@@ -84,6 +84,7 @@ public partial class ConnectionPage : ContentPage
             if (!_entered) { _entered = true; await UiMotion.EnterAsync(ConnectionContent); }
         }
         catch (Exception exception) { UiSafety.Log(exception); }
+        finally { await CompletePageLoadingAsync(); }
     }
 
     protected override void OnDisappearing()

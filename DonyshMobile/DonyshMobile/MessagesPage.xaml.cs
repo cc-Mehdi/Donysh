@@ -5,7 +5,7 @@ using DonyshMobile.UI;
 
 namespace DonyshMobile;
 
-public partial class MessagesPage : ContentPage
+public partial class MessagesPage : DonyshPage
 {
     private readonly SmsMonitorStore _store;
     private readonly Guid _senderId;
@@ -48,14 +48,19 @@ public partial class MessagesPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        if (!_subscribed)
+        try
         {
-            SmsReceivedNotifier.MessageStored += OnMessageStored;
-            SmsReceivedNotifier.SyncChanged += OnMessageStored;
-            _subscribed = true;
+            if (!_subscribed)
+            {
+                SmsReceivedNotifier.MessageStored += OnMessageStored;
+                SmsReceivedNotifier.SyncChanged += OnMessageStored;
+                _subscribed = true;
+            }
+            await RefreshAsync();
+            if (!_entered) { _entered = true; await UiMotion.EnterAsync(MessagesContent); }
         }
-        await RefreshAsync();
-        if (!_entered) { _entered = true; await UiMotion.EnterAsync(MessagesContent); }
+        catch (Exception exception) { UiSafety.Log(exception); }
+        finally { await CompletePageLoadingAsync(); }
     }
 
     protected override void OnDisappearing()

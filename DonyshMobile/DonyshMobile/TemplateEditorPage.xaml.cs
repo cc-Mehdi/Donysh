@@ -6,7 +6,7 @@ using DonyshMobile.UI;
 
 namespace DonyshMobile;
 
-public partial class TemplateEditorPage : ContentPage
+public partial class TemplateEditorPage : DonyshPage
 {
     private readonly SmsMonitorStore _store;
     private readonly Guid _senderId;
@@ -99,6 +99,7 @@ public partial class TemplateEditorPage : ContentPage
             SavedMessagePicker.IsVisible = false;
             SavedMessageHint.Text = "فهرست پیام‌ها خوانده نشد. می‌توانید متن پیام را در کادر زیر قرار دهید.";
         }
+        finally { await CompletePageLoadingAsync(); }
     }
 
     private void OnSourceChanged(object? sender, EventArgs e)

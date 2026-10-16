@@ -3,7 +3,7 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
                     xmlns:ui="clr-namespace:DonyshMobile.UI">
     <Style TargetType="ContentPage" ApplyToDerivedTypes="True">
-        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=#F4F7FC, Dark=#0B1120}" />
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=#F5F7FB, Dark=#09111F}" />
         <Setter Property="FlowDirection" Value="RightToLeft" />
     </Style>
     <Style TargetType="Label">
@@ -17,7 +17,7 @@
         <Setter Property="FontSize" Value="14" />
         <Setter Property="FontAttributes" Value="Bold" />
         <Setter Property="TextColor" Value="White" />
-        <Setter Property="BackgroundColor" Value="#4F46E5" />
+        <Setter Property="BackgroundColor" Value="#5B4CF0" />
         <Setter Property="CornerRadius" Value="16" />
         <Setter Property="Padding" Value="16,12" />
         <Setter Property="MinimumHeightRequest" Value="48" />
@@ -39,7 +39,7 @@
     <Style x:Key="SectionIcon" TargetType="Label">
         <Setter Property="FontFamily" Value="MaterialIconsRound" />
         <Setter Property="FontSize" Value="21" />
-        <Setter Property="TextColor" Value="{AppThemeBinding Light=#4F46E5, Dark=#C7D2FE}" />
+        <Setter Property="TextColor" Value="{AppThemeBinding Light=#5145D8, Dark=#C9C5FF}" />
         <Setter Property="VerticalOptions" Value="Center" />
         <Setter Property="HorizontalTextAlignment" Value="Center" />
         <Setter Property="WidthRequest" Value="30" />
@@ -73,13 +73,13 @@
         <Setter Property="FontFamily" Value="YekanBakh" />
         <Setter Property="TextColor" Value="{AppThemeBinding Light=#15243C, Dark=#ECF2FF}" />
         <Setter Property="PlaceholderColor" Value="{AppThemeBinding Light=#67768C, Dark=#A0AFC6}" />
-        <Setter Property="CancelButtonColor" Value="{AppThemeBinding Light=#4F46E5, Dark=#A5B4FC}" />
+        <Setter Property="CancelButtonColor" Value="{AppThemeBinding Light=#5B4CF0, Dark=#B9B4FF}" />
         <Setter Property="BackgroundColor" Value="Transparent" />
         <Setter Property="FontSize" Value="15" />
         <Setter Property="MinimumHeightRequest" Value="50" />
     </Style>
     <Style TargetType="Switch">
-        <Setter Property="OnColor" Value="#4F46E5" />
+        <Setter Property="OnColor" Value="#5B4CF0" />
         <Setter Property="ThumbColor" Value="{AppThemeBinding Light=White, Dark=#C7D2FE}" />
         <Setter Property="MinimumHeightRequest" Value="48" />
     </Style>
@@ -116,25 +116,25 @@
         <Setter Property="Padding" Value="12,2" />
     </Style>
     <Style x:Key="InfoCard" TargetType="Border" BasedOn="{StaticResource Card}">
-        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=#ECEFFE, Dark=#202B4B}" />
-        <Setter Property="Stroke" Value="{AppThemeBinding Light=#D8DDFB, Dark=#3A4770}" />
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=#EAF5FC, Dark=#132B3D}" />
+        <Setter Property="Stroke" Value="{AppThemeBinding Light=#C7E4F4, Dark=#25506A}" />
     </Style>
     <Style x:Key="AccentCard" TargetType="Border" BasedOn="{StaticResource Card}">
-        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=#E8F8F2, Dark=#102F2E}" />
-        <Setter Property="Stroke" Value="{AppThemeBinding Light=#BCE5D8, Dark=#23524E}" />
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=#E9F8F2, Dark=#102F2B}" />
+        <Setter Property="Stroke" Value="{AppThemeBinding Light=#B9E6D6, Dark=#246056}" />
     </Style>
     <Style x:Key="StatusBadge" TargetType="Label">
         <Setter Property="FontFamily" Value="YekanBakhMedium" />
         <Setter Property="FontSize" Value="12" />
         <Setter Property="FontAttributes" Value="Bold" />
-        <Setter Property="TextColor" Value="{AppThemeBinding Light=#4338CA, Dark=#C7D2FE}" />
+        <Setter Property="TextColor" Value="{AppThemeBinding Light=#5145D8, Dark=#C9C5FF}" />
     </Style>
     <Style x:Key="SuggestionChip" TargetType="Button" BasedOn="{StaticResource ButtonBase}">
         <Setter Property="FontFamily" Value="YekanBakhMedium" />
         <Setter Property="FontSize" Value="12" />
         <Setter Property="FontAttributes" Value="None" />
-        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=#ECEFFE, Dark=#283658}" />
-        <Setter Property="TextColor" Value="{AppThemeBinding Light=#38329B, Dark=#D6DEFF}" />
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=#EEEFFD, Dark=#292C56}" />
+        <Setter Property="TextColor" Value="{AppThemeBinding Light=#453BB7, Dark=#DDD9FF}" />
         <Setter Property="CornerRadius" Value="18" />
         <Setter Property="Padding" Value="12,5" />
         <Setter Property="MinimumHeightRequest" Value="36" />
@@ -142,11 +142,11 @@
     </Style>
     <Style x:Key="PrimaryAction" TargetType="Button" BasedOn="{StaticResource ButtonBase}" />
     <Style x:Key="SuccessAction" TargetType="Button" BasedOn="{StaticResource ButtonBase}">
-        <Setter Property="BackgroundColor" Value="#087E70" />
+        <Setter Property="BackgroundColor" Value="#078675" />
     </Style>
     <Style x:Key="SecondaryAction" TargetType="Button" BasedOn="{StaticResource ButtonBase}">
-        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=#E8ECFC, Dark=#283658}" />
-        <Setter Property="TextColor" Value="{AppThemeBinding Light=#38329B, Dark=#D6DEFF}" />
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=#EEEFFD, Dark=#292C56}" />
+        <Setter Property="TextColor" Value="{AppThemeBinding Light=#453BB7, Dark=#DDD9FF}" />
     </Style>
     <Style x:Key="QuietAction" TargetType="Button" BasedOn="{StaticResource SecondaryAction}">
         <Setter Property="BackgroundColor" Value="Transparent" />
@@ -156,8 +156,32 @@
         <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=#FFF0F1, Dark=#412336}" />
         <Setter Property="TextColor" Value="{AppThemeBinding Light=#A91D46, Dark=#FFC0CE}" />
     </Style>
+    <Style x:Key="StatCard" TargetType="Border" BasedOn="{StaticResource Card}">
+        <Setter Property="Padding" Value="10,12" />
+        <Setter Property="StrokeShape" Value="RoundRectangle 20" />
+    </Style>
+    <Style x:Key="StatInfoCard" TargetType="Border" BasedOn="{StaticResource StatCard}">
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=#EDF7FD, Dark=#112A3D}" />
+        <Setter Property="Stroke" Value="{AppThemeBinding Light=#C9E7F6, Dark=#28516B}" />
+    </Style>
+    <Style x:Key="StatWarningCard" TargetType="Border" BasedOn="{StaticResource StatCard}">
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=#FFF7E8, Dark=#342816}" />
+        <Setter Property="Stroke" Value="{AppThemeBinding Light=#F3D7A2, Dark=#6B4C20}" />
+    </Style>
+    <Style x:Key="StatSuccessCard" TargetType="Border" BasedOn="{StaticResource StatCard}">
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=#EAF9F3, Dark=#102F2A}" />
+        <Setter Property="Stroke" Value="{AppThemeBinding Light=#BDE8D9, Dark=#255D52}" />
+    </Style>
+    <Style x:Key="StatIcon" TargetType="Label">
+        <Setter Property="FontFamily" Value="MaterialIconsRound" />
+        <Setter Property="FontSize" Value="20" />
+        <Setter Property="HorizontalTextAlignment" Value="Center" />
+        <Setter Property="VerticalTextAlignment" Value="Center" />
+        <Setter Property="WidthRequest" Value="28" />
+        <Setter Property="HeightRequest" Value="28" />
+    </Style>
     <Style TargetType="Shell" ApplyToDerivedTypes="True">
-        <Setter Property="Shell.BackgroundColor" Value="{AppThemeBinding Light=#F4F7FC, Dark=#0B1120}" />
+        <Setter Property="Shell.BackgroundColor" Value="{AppThemeBinding Light=#F5F7FB, Dark=#09111F}" />
         <Setter Property="Shell.ForegroundColor" Value="{AppThemeBinding Light=#15243C, Dark=#ECF2FF}" />
         <Setter Property="Shell.TitleColor" Value="{AppThemeBinding Light=#15243C, Dark=#ECF2FF}" />
         <Setter Property="Shell.NavBarHasShadow" Value="False" />

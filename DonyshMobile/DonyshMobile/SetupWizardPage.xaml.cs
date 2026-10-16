@@ -6,7 +6,7 @@ using DonyshMobile.Platforms.Android;
 
 namespace DonyshMobile;
 
-public partial class SetupWizardPage : ContentPage
+public partial class SetupWizardPage : DonyshPage
 {
     private const string FinishedKey = "setup-wizard-finished-v1";
     private readonly SmsMonitorStore _store;
@@ -76,6 +76,7 @@ public partial class SetupWizardPage : ContentPage
             UiSafety.Log(exception);
             ShowStatus("خواندن وضعیت راه‌اندازی کامل نشد. دوباره تلاش کنید.");
         }
+        finally { await CompletePageLoadingAsync(); }
     }
 
     private async Task RefreshAsync()

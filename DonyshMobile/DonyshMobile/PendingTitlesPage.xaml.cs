@@ -5,7 +5,7 @@ using DonyshMobile.UI;
 
 namespace DonyshMobile;
 
-public partial class PendingTitlesPage : ContentPage
+public partial class PendingTitlesPage : DonyshPage
 {
     private readonly SmsMonitorStore _store;
     private bool _promptFirstMessage;
@@ -22,17 +22,22 @@ public partial class PendingTitlesPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        SmsReceivedNotifier.MessageStored += OnMessageStored;
-        var refreshed = await RefreshAsync();
-        if (!_entered) { _entered = true; await UiMotion.EnterAsync(TitlesContent); }
-        if (_promptFirstMessage)
+        try
         {
-            _promptFirstMessage = false;
-            // Refresh already handles an unreadable encrypted queue. Do not read it
-            // again outside that error boundary when opened from a notification.
-            var first = refreshed ? _drafts.Values.FirstOrDefault() : null;
-            if (first is not null) Dispatcher.Dispatch(async () => await PromptForTitleAsync(first.Id));
+            SmsReceivedNotifier.MessageStored += OnMessageStored;
+            var refreshed = await RefreshAsync();
+            if (!_entered) { _entered = true; await UiMotion.EnterAsync(TitlesContent); }
+            if (_promptFirstMessage)
+            {
+                _promptFirstMessage = false;
+                // Refresh already handles an unreadable encrypted queue. Do not read it
+                // again outside that error boundary when opened from a notification.
+                var first = refreshed ? _drafts.Values.FirstOrDefault() : null;
+                if (first is not null) Dispatcher.Dispatch(async () => await PromptForTitleAsync(first.Id));
+            }
         }
+        catch (Exception exception) { UiSafety.Log(exception); }
+        finally { await CompletePageLoadingAsync(); }
     }
 
     protected override void OnDisappearing()

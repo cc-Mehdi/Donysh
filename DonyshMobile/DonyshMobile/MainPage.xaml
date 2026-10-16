@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+<ui:DonyshPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:local="clr-namespace:DonyshMobile"
              xmlns:ui="clr-namespace:DonyshMobile.UI"
@@ -22,8 +22,8 @@
                         <Border Padding="20" StrokeThickness="0" StrokeShape="RoundRectangle 26">
                             <Border.Background>
                                 <LinearGradientBrush StartPoint="1,0" EndPoint="0,1">
-                                    <GradientStop Color="#4038A5" Offset="0" />
-                                    <GradientStop Color="#145E78" Offset="1" />
+                                    <GradientStop Color="#5143D8" Offset="0" />
+                                    <GradientStop Color="#087F82" Offset="1" />
                                 </LinearGradientBrush>
                             </Border.Background>
                             <VerticalStackLayout Spacing="9">
@@ -36,21 +36,27 @@
                             </VerticalStackLayout>
                         </Border>
                         <Grid ColumnDefinitions="*,*,*" ColumnSpacing="9">
-                            <Border Style="{StaticResource Card}" Padding="10,14">
-                                <VerticalStackLayout Spacing="3">
-                                    <Label Text="{Binding SenderCount}" FontSize="25" FontAttributes="Bold" />
+                            <Border x:Name="SenderStatCard" Style="{StaticResource StatInfoCard}">
+                                <VerticalStackLayout Spacing="2">
+                                    <Label x:Name="SenderStatIcon" Text="{x:Static ui:AppIcons.Sms}" Style="{StaticResource StatIcon}"
+                                           TextColor="{AppThemeBinding Light=#1478A8, Dark=#78C9EF}" />
+                                    <Label Text="{Binding SenderCount}" FontSize="25" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#105F87, Dark=#A3DCF5}" />
                                     <Label Text="فرستنده" Style="{StaticResource Caption}" />
                                 </VerticalStackLayout>
                             </Border>
-                            <Border Grid.Column="1" Style="{StaticResource Card}" Padding="10,14">
-                                <VerticalStackLayout Spacing="3">
-                                    <Label Text="{Binding PendingCount}" FontSize="25" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#4338CA, Dark=#C7D2FE}" />
+                            <Border x:Name="PendingStatCard" Grid.Column="1" Style="{StaticResource StatWarningCard}">
+                                <VerticalStackLayout Spacing="2">
+                                    <Label x:Name="PendingStatIcon" Text="{x:Static ui:AppIcons.Schedule}" Style="{StaticResource StatIcon}"
+                                           TextColor="{AppThemeBinding Light=#B65D08, Dark=#F5BB62}" />
+                                    <Label Text="{Binding PendingCount}" FontSize="25" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#9A4D08, Dark=#FFD18B}" />
                                     <Label Text="در انتظار" Style="{StaticResource Caption}" />
                                 </VerticalStackLayout>
                             </Border>
-                            <Border Grid.Column="2" Style="{StaticResource Card}" Padding="10,14">
-                                <VerticalStackLayout Spacing="3">
-                                    <Label Text="{Binding SentCount}" FontSize="25" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#087E70, Dark=#77DDC5}" />
+                            <Border x:Name="SentStatCard" Grid.Column="2" Style="{StaticResource StatSuccessCard}">
+                                <VerticalStackLayout Spacing="2">
+                                    <Label x:Name="SentStatIcon" Text="{x:Static ui:AppIcons.CheckCircle}" Style="{StaticResource StatIcon}"
+                                           TextColor="{AppThemeBinding Light=#078675, Dark=#70D8BF}" />
+                                    <Label Text="{Binding SentCount}" FontSize="25" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#066C60, Dark=#9DE6D3}" />
                                     <Label Text="ارسال‌شده" Style="{StaticResource Caption}" />
                                 </VerticalStackLayout>
                             </Border>
@@ -119,4 +125,4 @@
             </CollectionView>
         </RefreshView>
     </Grid>
-</ContentPage>
+</ui:DonyshPage>

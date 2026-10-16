@@ -111,6 +111,11 @@ internal static class StartupSmokeCheck
         var shell = (Shell)window.Page!;
         var home = (MainPage)shell.CurrentPage;
         Check(window.Handler is not null && home.Handler is not null, "Native window and home page loaded");
+        await WaitUntilAsync(() => !home.IsPageLoading, "The home loading skeleton did not finish.");
+        Check(home.FindByName<Label>("SenderStatIcon").Text == AppIcons.Sms
+            && home.FindByName<Label>("PendingStatIcon").Text == AppIcons.Schedule
+            && home.FindByName<Label>("SentStatIcon").Text == AppIcons.CheckCircle,
+            "Home summary cards expose distinct semantic icons");
 
         var nativeResources = global::Microsoft.UI.Xaml.Application.Current.Resources;
         foreach (var name in new[] { "ContentControlThemeFontFamily", "TextControlThemeFontFamily" })
@@ -152,7 +157,7 @@ internal static class StartupSmokeCheck
         {
             foreach (var (theme, background) in new[]
             {
-                (AppTheme.Light, "#F4F7FC"), (AppTheme.Dark, "#0B1120")
+                (AppTheme.Light, "#F5F7FB"), (AppTheme.Dark, "#09111F")
             })
             {
                 application.UserAppTheme = theme;
@@ -379,6 +384,12 @@ internal static class StartupSmokeCheck
     {
         await shell.Navigation.PushAsync(page, animated: false);
         await WaitUntilAsync(() => page.IsLoaded && page.Handler is not null, $"{typeof(TPage).Name} did not load.");
+        if (page is DonyshPage donyshPage)
+        {
+            await WaitUntilAsync(() => !donyshPage.IsPageLoading,
+                $"{typeof(TPage).Name} did not finish its loading skeleton.");
+            Check(true, $"Loading lifecycle: {typeof(TPage).Name}");
+        }
         await verify(page);
         Check(true, $"Runtime page: {typeof(TPage).Name}");
         await shell.Navigation.PopAsync(animated: false);

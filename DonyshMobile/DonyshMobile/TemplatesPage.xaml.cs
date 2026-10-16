@@ -4,7 +4,7 @@ using DonyshMobile.UI;
 
 namespace DonyshMobile;
 
-public partial class TemplatesPage : ContentPage
+public partial class TemplatesPage : DonyshPage
 {
     private readonly SmsMonitorStore _store;
     private readonly Guid _senderId;
@@ -44,6 +44,7 @@ public partial class TemplatesPage : ContentPage
         {
             TemplateCountLabel.Text = "فهرست قالب‌ها خوانده نشد. دوباره وارد این صفحه شوید.";
         }
+        finally { await CompletePageLoadingAsync(); }
     }
 
     private async void OnAddClicked(object? sender, EventArgs e)
