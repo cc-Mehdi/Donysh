@@ -20,8 +20,10 @@ public partial class MainPage : ContentPage
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
     private readonly List<SenderItem> _allSenders = [];
     private bool _subscribed, _hasPermission, _entered, _busy, _isRefreshing, _openingPage, _requestingPermission;
+    private bool _setupWizardChecked;
     private string _search = string.Empty;
-    private int _nextStep;
+    private int _nextStep = -1;
+    private SetupStep _setupStep = SetupStep.Connection;
 
     public ObservableCollection<SenderItem> Senders { get; } = [];
     public bool IsRefreshing { get => _isRefreshing; set { _isRefreshing = value; OnPropertyChanged(); } }
@@ -35,11 +37,17 @@ public partial class MainPage : ContentPage
     public string NextStepAction { get; private set; } = "شروع کنیم";
     public string UntitledText { get; private set; } = string.Empty;
     public bool HasUntitled { get; private set; }
+    public bool HasNextStep => _nextStep >= 0;
+    public bool NeedsPermissionAttention => DeviceInfo.Platform == DevicePlatform.Android && !_hasPermission;
+    public bool ShowSenderSearch => _allSenders.Count >= 5;
 
     public MainPage()
     {
         InitializeComponent();
         BindingContext = this;
+#if DEBUG && WINDOWS
+        if (WinUI.StartupSmokeCheck.IsEnabled) _setupWizardChecked = true;
+#endif
     }
 
     protected override async void OnAppearing()
@@ -75,6 +83,14 @@ public partial class MainPage : ContentPage
             }
             return;
         }
+        if (!_setupWizardChecked && !SetupWizardPage.WasFinished && _setupStep != SetupStep.Complete)
+        {
+            _setupWizardChecked = true;
+            await OpenPageAsync(() => new SetupWizardPage(_store));
+            return;
+        }
+        if (_setupStep == SetupStep.Complete && !SetupWizardPage.WasFinished)
+            SetupWizardPage.MarkFinished();
 #if ANDROID
         if (_hasPermission) await RequestNotificationPermissionAsync();
         await TitleReminderNotifier.RefreshAsync(global::Android.App.Application.Context);
@@ -134,6 +150,15 @@ public partial class MainPage : ContentPage
     {
         ManualPanel.IsVisible = !ManualPanel.IsVisible;
         if (ManualPanel.IsVisible) SenderEntry.Focus();
+    }
+
+    private async void OnAddSenderMenuClicked(object? sender, EventArgs e)
+    {
+        if (_busy) return;
+        var choice = await DisplayActionSheet("افزودن فرستنده", "انصراف", null,
+            "انتخاب از پیامک‌های گوشی", "ورود دستی شماره یا نام");
+        if (choice == "انتخاب از پیامک‌های گوشی") OnPickSenderClicked(sender, e);
+        else if (choice == "ورود دستی شماره یا نام") OnToggleManualClicked(sender, e);
     }
 
     private async void OnAddSenderClicked(object? sender, EventArgs e)
@@ -248,11 +273,8 @@ public partial class MainPage : ContentPage
     {
         switch (_nextStep)
         {
-            case 0: OnPickSenderClicked(sender, e); break;
-            case 1: OnPermissionClicked(sender, e); break;
-            case 2: OnConnectionClicked(sender, e); break;
-            case 3: OnPendingTitlesClicked(sender, e); break;
-            default: OnConnectionClicked(sender, e); break;
+            case 0: _ = OpenPageAsync(() => new SetupWizardPage(_store)); break;
+            case 1: OnPendingTitlesClicked(sender, e); break;
         }
     }
 
@@ -292,6 +314,15 @@ public partial class MainPage : ContentPage
 #else
             var connection = await MobileConnectionStore.LoadAsync();
 #endif
+            var hasTemplate = false;
+            foreach (var summary in summaries)
+            {
+                if ((await _store.GetTemplatesAsync(summary.Id)).Count == 0) continue;
+                hasTemplate = true;
+                break;
+            }
+            var canReceive = DeviceInfo.Platform != DevicePlatform.Android || _hasPermission;
+            _setupStep = SetupFlow.Resolve(connection is not null, summaries.Count, canReceive, hasTemplate);
             _allSenders.Clear();
             _allSenders.AddRange(summaries.Select(x => new SenderItem(x.Id, x.Address,
                 x.MessageCount == 0 ? "منتظر اولین پیامک" : $"{UiText.Digits(x.MessageCount)} پیام · {UiText.Date(x.LastMessageAtUtc!.Value)}")));
@@ -301,12 +332,11 @@ public partial class MainPage : ContentPage
             HasUntitled = SmsSyncSettings.RequireTitle && untitled.Count > 0;
             UntitledText = $"{UiText.Digits(untitled.Count)} پیام، منتظر عنوان شما";
             ConnectionText = connection is null ? "هنوز به سامانه متصل نشده‌اید" : $"متصل به {connection.Destination}";
-            (_nextStep, NextStepText, NextStepAction) = summaries.Count == 0
-                ? (0, "بانک یا شماره‌ای را انتخاب کنید تا پیامک‌های تازه‌اش اینجا ثبت شود.", "انتخاب اولین فرستنده")
-                : !_hasPermission ? (1, "برای ثبت پیام‌های تازه، اجازهٔ دریافت پیامک را فعال کنید.", "فعال‌سازی دریافت")
-                : connection is null ? (2, "پیام‌ها روی گوشی ذخیره می‌شوند. برای ثبت خرج، گوشی را به سامانه وصل کنید.", "اتصال به دونیش")
-                : HasUntitled ? (3, "چند پیام تازه دارید؛ با نوشتن عنوان، آن‌ها را آمادهٔ ارسال کنید.", "ثبت عنوان پیام‌ها")
-                : (4, "دریافت و ارسال آماده است. پیام‌های تازه طبق تنظیمات شما بررسی می‌شوند.", "وضعیت ارسال و تنظیمات");
+            (_nextStep, NextStepText, NextStepAction) = _setupStep != SetupStep.Complete
+                ? (0, "راه‌اندازی هنوز کامل نشده است؛ قدم بعدی را ادامه دهید.", "ادامهٔ راه‌اندازی")
+                : HasUntitled
+                    ? (1, "چند پیام تازه دارید؛ با نوشتن عنوان، آن‌ها را آمادهٔ ارسال کنید.", "ثبت عنوان پیام‌ها")
+                    : (-1, "دریافت و ارسال آماده است. پیام‌های تازه طبق تنظیمات شما بررسی می‌شوند.", string.Empty);
             OnPropertyChanged(string.Empty);
         }
         catch (Exception)

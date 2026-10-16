@@ -5,10 +5,10 @@
     <ScrollView>
         <VerticalStackLayout x:Name="ConnectionContent" Padding="18,12,18,28" Spacing="14" MaximumWidthRequest="800" HorizontalOptions="Fill">
             <VerticalStackLayout Spacing="4">
-                <Label Text="همه‌چیز تحت کنترل شما" Style="{StaticResource PageTitle}" />
-                <Label Text="مقصد ارسال، عنوان پیام‌ها و ظاهر برنامه را تنظیم کنید." Style="{StaticResource MutedText}" />
+                <Label x:Name="PageHeadingLabel" Text="همه‌چیز تحت کنترل شما" Style="{StaticResource PageTitle}" />
+                <Label x:Name="PageDescriptionLabel" Text="مقصد ارسال، عنوان پیام‌ها و ظاهر برنامه را تنظیم کنید." Style="{StaticResource MutedText}" />
             </VerticalStackLayout>
-            <Border Style="{StaticResource InfoCard}" Padding="18">
+            <Border x:Name="ConnectionStatusCard" Style="{StaticResource InfoCard}" Padding="18">
                 <VerticalStackLayout Spacing="10">
                     <Label Text="اتصال و وضعیت ارسال" Style="{StaticResource SectionTitle}" />
                     <Label x:Name="ConnectionStatusLabel" FontSize="16" FontAttributes="Bold" />
@@ -33,7 +33,7 @@
                                IsTextPredictionEnabled="False" IsSpellCheckEnabled="False" ReturnType="Done"
                                Completed="OnConnectClicked" FlowDirection="LeftToRight" HorizontalTextAlignment="Start" />
                     </Border>
-                    <Button Text="آدرس سایت متفاوت است؟" Clicked="OnToggleServerClicked" Style="{StaticResource QuietAction}" />
+                    <Button x:Name="CustomServerButton" Text="آدرس سایت متفاوت است؟" Clicked="OnToggleServerClicked" Style="{StaticResource QuietAction}" />
                     <VerticalStackLayout x:Name="ServerPanel" IsVisible="False" Spacing="6">
                         <Label Text="آدرس سایت مورد اعتماد شما" FontAttributes="Bold" />
                         <Border Style="{StaticResource FieldCard}">
@@ -50,7 +50,7 @@
                     <Label Text="در حال انجام درخواست…" VerticalOptions="Center" />
                 </HorizontalStackLayout>
             </Border>
-            <Border Style="{StaticResource Card}" Padding="18">
+            <Border x:Name="TitleSettingsCard" Style="{StaticResource Card}" Padding="18">
                 <VerticalStackLayout Spacing="12">
                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
                         <VerticalStackLayout Spacing="5">
@@ -63,7 +63,7 @@
                     <Button x:Name="NotificationSettingsButton" Text="تنظیمات اعلان‌های گوشی" Clicked="OnNotificationSettingsClicked" Style="{StaticResource QuietAction}" />
                 </VerticalStackLayout>
             </Border>
-            <Border Style="{StaticResource Card}" Padding="18">
+            <Border x:Name="AppearanceCard" Style="{StaticResource Card}" Padding="18">
                 <VerticalStackLayout Spacing="12">
                     <Label Text="ظاهر و حس برنامه" Style="{StaticResource SectionTitle}" />
                     <Border Style="{StaticResource FieldCard}">
@@ -84,7 +84,7 @@
                     </Grid>
                 </VerticalStackLayout>
             </Border>
-            <Border Style="{StaticResource AccentCard}" Padding="18">
+            <Border x:Name="PrivacyCard" Style="{StaticResource AccentCard}" Padding="18">
                 <VerticalStackLayout Spacing="6">
                     <Label Text="حریم خصوصی پیام‌های شما" Style="{StaticResource SectionTitle}" />
                     <Label Text="داده‌های پیامکی روی گوشی رمزگذاری می‌شوند. فقط پیام‌های فرستنده‌های انتخابی به مقصد اتصال شما ارسال می‌شوند. پیام‌های تأییدشده پس از هفت روز از گوشی پاک می‌شوند؛ پیام‌های ارسال‌نشده در صف می‌مانند." Style="{StaticResource MutedText}" />

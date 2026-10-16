@@ -11,6 +11,7 @@ public partial class ConnectionPage : ContentPage
     private readonly Func<Task<MobileConnection?>> _loadConnectionAsync;
     private readonly Func<string, string, string, Task> _showAlertAsync;
     private readonly Func<string, string, string, string, Task<bool>> _confirmAsync;
+    private readonly bool _setupMode;
     private bool _busy, _settingsLoaded, _entered, _showPairing, _connected;
     private bool _visible, _connectivitySubscribed, _openingTitles;
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
@@ -20,11 +21,18 @@ public partial class ConnectionPage : ContentPage
     {
     }
 
+    public ConnectionPage(SmsMonitorStore store, bool setupMode)
+        : this(store, new MobileApiClient(), Connectivity.Current, MobileConnectionStore.LoadAsync,
+            setupMode: setupMode)
+    {
+    }
+
     // The runtime regression check supplies isolated credentials, network state and HTTP transport.
     internal ConnectionPage(SmsMonitorStore store, MobileApiClient api, IConnectivity connectivity,
         Func<Task<MobileConnection?>> loadConnectionAsync,
         Func<string, string, string, Task>? showAlertAsync = null,
-        Func<string, string, string, string, Task<bool>>? confirmAsync = null)
+        Func<string, string, string, string, Task<bool>>? confirmAsync = null,
+        bool setupMode = false)
     {
         _store = store;
         _api = api;
@@ -32,6 +40,7 @@ public partial class ConnectionPage : ContentPage
         _loadConnectionAsync = loadConnectionAsync;
         _showAlertAsync = showAlertAsync ?? DisplayAlert;
         _confirmAsync = confirmAsync ?? DisplayAlert;
+        _setupMode = setupMode;
         InitializeComponent();
         ServerEntry.Text = MobileConnectionStore.Server;
         ServerPanel.IsVisible = ServerEntry.Text != "https://donysh.ir";
@@ -40,6 +49,19 @@ public partial class ConnectionPage : ContentPage
         MotionSwitch.IsToggled = UiPreferences.Motion;
         HapticsSwitch.IsToggled = UiPreferences.Haptics;
         NotificationSettingsButton.IsVisible = DeviceInfo.Platform == DevicePlatform.Android;
+        if (_setupMode)
+        {
+            Title = "مرحلهٔ ۱ · اتصال";
+            PageHeadingLabel.Text = "کد اتصال را ثبت کنید";
+            PageDescriptionLabel.Text = "کدی را که در بخش «همراه دونیش» سایت ساخته‌اید، اینجا وارد کنید.";
+            ConnectionStatusCard.IsVisible = false;
+            TitleSettingsCard.IsVisible = false;
+            AppearanceCard.IsVisible = false;
+            PrivacyCard.IsVisible = false;
+            CustomServerButton.IsVisible = false;
+            ServerPanel.IsVisible = false;
+            PairingCard.IsVisible = true;
+        }
         _settingsLoaded = true;
         UpdateActions();
     }
@@ -139,6 +161,7 @@ public partial class ConnectionPage : ContentPage
     private async void OnConnectClicked(object? sender, EventArgs e)
     {
         if (_busy) return;
+        var paired = false;
         await RunBusyAsync(async () =>
         {
             var server = MobileApiClient.NormalizeServer(ServerEntry.Text);
@@ -169,6 +192,7 @@ public partial class ConnectionPage : ContentPage
                 UiMotion.Feedback();
                 SyncPlatform.Schedule();
                 await AlertAsync("گوشی متصل شد", $"مقصد پیام‌ها: {result.WorkspaceName} / {result.CategoryName}", "باشه");
+                paired = true;
             }
             catch (ArgumentException)
             {
@@ -180,6 +204,11 @@ public partial class ConnectionPage : ContentPage
             }
             });
         });
+        if (paired && _setupMode)
+        {
+            try { await Navigation.PopAsync(); }
+            catch (Exception exception) { UiSafety.Log(exception); }
+        }
     }
 
     private async void OnSyncClicked(object? sender, EventArgs e)
@@ -253,7 +282,7 @@ public partial class ConnectionPage : ContentPage
             var connection = await _loadConnectionAsync();
             var summary = await _store.GetSyncSummaryAsync();
             _connected = connection is not null;
-            PairingCard.IsVisible = !_connected || _showPairing;
+            PairingCard.IsVisible = _setupMode || !_connected || _showPairing;
             ConnectionStatusLabel.Text = connection is null ? "گوشی هنوز متصل نشده است" : $"مقصد: {connection.Destination}";
             NetworkStatusLabel.Text = ReadNetworkAccess() switch
             {

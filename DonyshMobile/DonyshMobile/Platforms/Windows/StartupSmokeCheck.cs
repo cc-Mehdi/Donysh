@@ -149,6 +149,7 @@ internal static class StartupSmokeCheck
 
         await ExerciseConnectionButtonsAsync(shell, home, store, address, preset.SampleMessage);
         await ExerciseFailureBoundariesAsync(shell, store, address, preset.SampleMessage);
+        await ExerciseSetupWizardAsync(shell);
         foreach (var check in await Diagnostics.TemplateFlowSmokeCheck.RunAsync(shell.Navigation)) Check(true, check);
         await VisitAsync(shell, new MessagesPage(store, sender.Id, address), async page =>
         {
@@ -194,12 +195,69 @@ internal static class StartupSmokeCheck
         Finish(true, null);
     }
 
+    private static async Task ExerciseSetupWizardAsync(Shell shell)
+    {
+        var setupStore = IsolatedStore(Path.Combine(DataDirectory!, "setup-wizard"));
+        var connected = new MobileConnection("https://donysh.ir", new string('C', 64), "فضای آزمایشی / خرید");
+
+        await VisitAsync(shell, new SetupWizardPage(setupStore,
+            () => Task.FromResult<MobileConnection?>(null), () => Task.FromResult(false)), page =>
+        {
+            Check(page.IsConnectionStep && page.FindByName<Border>("ConnectionStepCard").IsVisible
+                && !page.FindByName<Border>("SenderStepCard").IsVisible,
+                "Guided setup starts with the pairing-code step");
+            return Task.CompletedTask;
+        });
+
+        await VisitAsync(shell, new SetupWizardPage(setupStore,
+            () => Task.FromResult<MobileConnection?>(connected), () => Task.FromResult(false)), page =>
+        {
+            Check(page.IsSenderStep && page.FindByName<Border>("SenderStepCard").IsVisible,
+                "Guided setup advances to sender selection after pairing");
+            return Task.CompletedTask;
+        });
+
+        Check(await setupStore.AddSenderAsync("BANK-QA") == AddSenderResult.Added,
+            "Guided setup isolated sender registered");
+        await VisitAsync(shell, new SetupWizardPage(setupStore,
+            () => Task.FromResult<MobileConnection?>(connected), () => Task.FromResult(false)), page =>
+        {
+            Check(page.IsPermissionStep && page.FindByName<Border>("PermissionStepCard").IsVisible,
+                "Guided setup requests receive permission within the sender stage");
+            return Task.CompletedTask;
+        });
+
+        var sender = (await setupStore.GetSenderSummariesAsync()).Single();
+        await VisitAsync(shell, new SetupWizardPage(setupStore,
+            () => Task.FromResult<MobileConnection?>(connected), () => Task.FromResult(true)), page =>
+        {
+            Check(page.IsTemplateStep && page.FindByName<Border>("TemplateStepCard").IsVisible,
+                "Guided setup advances to the template step after monitoring is ready");
+            return Task.CompletedTask;
+        });
+
+        Check(await setupStore.SaveTemplateAsync(new SmsTemplate
+        {
+            SenderId = sender.Id,
+            Name = "قالب راه‌اندازی",
+            Pattern = "برداشت: {amount}",
+            Unit = MoneyUnit.Rial
+        }) is null, "Guided setup isolated template saved");
+        await VisitAsync(shell, new SetupWizardPage(setupStore,
+            () => Task.FromResult<MobileConnection?>(connected), () => Task.FromResult(true)), page =>
+        {
+            Check(page.IsCompleteStep && page.FindByName<Border>("CompleteStepCard").IsVisible,
+                "Guided setup shows one clear completion action");
+            return Task.CompletedTask;
+        });
+    }
+
     private static async Task ExerciseConnectionButtonsAsync(Shell shell, MainPage home, SmsMonitorStore store,
         string address, string sampleMessage)
     {
         SmsReceivedNotifier.Notify();
-        await WaitUntilAsync(() => home.SenderCount == "۱" && home.NextStepAction == "اتصال به دونیش",
-            "The home CTA did not switch to the connection step for the isolated queue.");
+        await WaitUntilAsync(() => home.SenderCount == "۱" && home.NextStepAction == "ادامهٔ راه‌اندازی",
+            "The home CTA did not offer the guided setup flow for the isolated queue.");
         var previousDepth = shell.Navigation.NavigationStack.Count;
         var settings = home.FindByName<Button>("SettingsButton");
         settings.SendClicked();
@@ -258,16 +316,16 @@ internal static class StartupSmokeCheck
         await shell.Navigation.PopAsync(animated: false);
 
         // The CTA has its own handler; exercising it catches a route regression that
-        // directly constructing ConnectionPage cannot detect.
+        // directly constructing the wizard cannot detect.
         await WaitUntilAsync(() => shell.CurrentPage == home && home.IsLoaded, "Home did not return after settings.");
         var nextStep = home.FindByName<Button>("NextStepButton");
         nextStep.SendClicked();
         nextStep.SendClicked();
-        await WaitUntilAsync(() => shell.CurrentPage is ConnectionPage { IsLoaded: true },
-            "The actual next-step Clicked handler did not open settings.");
+        await WaitUntilAsync(() => shell.CurrentPage is SetupWizardPage { IsLoaded: true },
+            "The actual next-step Clicked handler did not open guided setup.");
         await Task.Delay(100);
         Check(shell.Navigation.NavigationStack.Count == previousDepth + 1,
-            "Rapid connection CTA taps produce one navigation");
+            "Rapid setup CTA taps produce one navigation");
         await shell.Navigation.PopAsync(animated: false);
 
         var unavailableSubscription = new ConnectionScenario();

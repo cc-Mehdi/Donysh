@@ -30,7 +30,8 @@
                                 <Label Text="پیامک‌ها، مرتب و آماده" FontSize="23" FontAttributes="Bold" TextColor="White" />
                                 <Label Text="{Binding NextStepText}" FontSize="14" LineHeight="1.35" TextColor="#E0EAFF" />
                                 <Button x:Name="NextStepButton" Text="{Binding NextStepAction}" Clicked="OnNextStepClicked" BackgroundColor="White"
-                                        TextColor="#37328E" HorizontalOptions="Start" Margin="0,4,0,0" />
+                                        TextColor="#37328E" HorizontalOptions="Start" Margin="0,4,0,0"
+                                        IsVisible="{Binding HasNextStep}" />
                             </VerticalStackLayout>
                         </Border>
                         <Grid ColumnDefinitions="*,*,*" ColumnSpacing="9">
@@ -60,7 +61,7 @@
                                 <Button Text="عنوان‌گذاری پیام‌ها" Clicked="OnPendingTitlesClicked" Style="{StaticResource SuccessAction}" />
                             </VerticalStackLayout>
                         </Border>
-                        <Border Style="{StaticResource InfoCard}" Padding="16">
+                        <Border Style="{StaticResource InfoCard}" Padding="16" IsVisible="{Binding NeedsPermissionAttention}">
                             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
                                 <VerticalStackLayout Spacing="4">
                                     <Label Text="دریافت پیامک‌های جدید" FontAttributes="Bold" />
@@ -70,24 +71,18 @@
                                         Style="{StaticResource SecondaryAction}" VerticalOptions="Center" />
                             </Grid>
                         </Border>
-                        <Border Style="{StaticResource Card}" Padding="16">
-                            <VerticalStackLayout Spacing="10">
-                                <Label Text="یک فرستنده اضافه کنید" Style="{StaticResource SectionTitle}" />
-                                <Label Text="فقط پیام‌های تازهٔ فرستنده‌های انتخاب‌شده نگهداری می‌شوند." Style="{StaticResource MutedText}" />
-                                <Button Text="انتخاب از پیامک‌های گوشی" Clicked="OnPickSenderClicked" Style="{StaticResource PrimaryAction}" />
-                                <Button Text="ورود دستی شماره یا نام" Clicked="OnToggleManualClicked" Style="{StaticResource QuietAction}" />
-                                <VerticalStackLayout x:Name="ManualPanel" IsVisible="False" Spacing="8">
-                                    <Border Style="{StaticResource FieldCard}">
-                                        <Entry x:Name="SenderEntry" Placeholder="مثلاً ۰۹۱۲۱۲۳۴۵۶۷ یا نام بانک" MaxLength="64"
-                                               IsTextPredictionEnabled="False" IsSpellCheckEnabled="False" ReturnType="Done" Completed="OnAddSenderClicked" />
-                                    </Border>
-                                    <Label Text="شماره با پیش‌شمارهٔ ایران و ارقام فارسی هم شناخته می‌شود." Style="{StaticResource Caption}" />
-                                    <Button Text="ثبت فرستنده" Clicked="OnAddSenderClicked" Style="{StaticResource SuccessAction}" />
-                                </VerticalStackLayout>
-                            </VerticalStackLayout>
-                        </Border>
-                        <Label Text="فرستنده‌های من" Style="{StaticResource SectionTitle}" Margin="2,5,0,0" />
-                        <Border Style="{StaticResource FieldCard}">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Margin="2,5,0,0">
+                            <Label Text="فرستنده‌های زیر نظر" Style="{StaticResource SectionTitle}" VerticalOptions="Center" />
+                            <Button Grid.Column="1" Text="افزودن" Clicked="OnAddSenderMenuClicked" Style="{StaticResource SecondaryAction}" />
+                        </Grid>
+                        <VerticalStackLayout x:Name="ManualPanel" IsVisible="False" Spacing="8">
+                            <Border Style="{StaticResource FieldCard}">
+                                <Entry x:Name="SenderEntry" Placeholder="شماره یا نام فرستنده" MaxLength="64"
+                                       IsTextPredictionEnabled="False" IsSpellCheckEnabled="False" ReturnType="Done" Completed="OnAddSenderClicked" />
+                            </Border>
+                            <Button Text="ثبت فرستنده" Clicked="OnAddSenderClicked" Style="{StaticResource SuccessAction}" />
+                        </VerticalStackLayout>
+                        <Border Style="{StaticResource FieldCard}" IsVisible="{Binding ShowSenderSearch}">
                             <SearchBar Placeholder="جست‌وجوی فرستنده" TextChanged="OnSenderSearchChanged" />
                         </Border>
                     </VerticalStackLayout>
@@ -96,7 +91,7 @@
                     <Border Style="{StaticResource Card}" Padding="26">
                         <VerticalStackLayout Spacing="8">
                             <Label Text="هنوز فرستنده‌ای در این فهرست نیست" FontAttributes="Bold" HorizontalTextAlignment="Center" />
-                            <Label Text="یک فرستنده اضافه کنید یا عبارت جست‌وجو را تغییر دهید." Style="{StaticResource MutedText}" HorizontalTextAlignment="Center" />
+                            <Label Text="از دکمهٔ «افزودن» نخستین فرستنده را انتخاب کنید." Style="{StaticResource MutedText}" HorizontalTextAlignment="Center" />
                         </VerticalStackLayout>
                     </Border>
                 </CollectionView.EmptyView>

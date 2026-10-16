@@ -9,6 +9,7 @@ var testDirectory = Path.Combine(Path.GetTempPath(), $"donysh-mobile-tests-{Guid
 
 try
 {
+    SetupFlowRegressionTests.Run();
     await ManualRequeueRegressionTests.RunAsync(Path.Combine(testDirectory, "manual-requeue"));
     await TemplatePresetRegressionTests.RunAsync(Path.Combine(testDirectory, "template-retry"));
     using var manifestStream = typeof(Program).Assembly.GetManifestResourceStream("DonyshMobile.Tests.AndroidManifest.xml")
