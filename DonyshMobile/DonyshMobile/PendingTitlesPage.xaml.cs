@@ -1,3 +1,5 @@
+using System.Collections.ObjectModel;
+using System.ComponentModel;
 using DonyshMobile.Core;
 using DonyshMobile.UI;
 
@@ -51,10 +53,18 @@ public partial class PendingTitlesPage : ContentPage
     {
         if (_saving || !_drafts.TryGetValue(id, out var message)) return;
         var excerpt = message.Body.Length > 110 ? message.Body[..110] + "…" : message.Body;
-        var title = await DisplayPromptAsync("عنوان پیامک", $"{message.Sender}\n{excerpt}\n\nاین خرج برای چه بود؟",
-            "ثبت", "انصراف", "مانند خرید روزانه", 160);
+        var title = await DonyshTitleSheet.ShowAsync(this, "عنوان پیامک",
+            $"{message.Sender}\n{excerpt}", message.DraftTitle, message.Suggestions);
         if (title is null) return;
         await SaveTitleAsync(id, title);
+    }
+
+    private void OnSuggestionClicked(object? sender, EventArgs e)
+    {
+        if (sender is not Button { CommandParameter: string suggestion } button) return;
+        Element? current = button.Parent;
+        while (current is not null && current.BindingContext is not PendingTitleItem) current = current.Parent;
+        if (current?.BindingContext is PendingTitleItem item) item.DraftTitle = suggestion;
     }
 
     private async Task SaveTitleAsync(Guid id, string? title)
@@ -87,7 +97,16 @@ public partial class PendingTitlesPage : ContentPage
             var ids = messages.Select(x => x.Id).ToHashSet();
             foreach (var key in _drafts.Keys.Where(x => !ids.Contains(x)).ToArray()) _drafts.Remove(key);
             foreach (var message in messages)
-                _drafts.TryAdd(message.Id, new PendingTitleItem(message.Id, message.SenderAddress, message.Body, UiText.Date(message.ReceivedAtUtc)));
+            {
+                var suggestions = await _store.GetTitleSuggestionsAsync(message.SenderId, message.Body);
+                if (!_drafts.TryGetValue(message.Id, out var item))
+                {
+                    item = new PendingTitleItem(message.Id, message.SenderId, message.SenderAddress, message.Body,
+                        UiText.Date(message.ReceivedAtUtc));
+                    _drafts.Add(message.Id, item);
+                }
+                item.SetSuggestions(suggestions);
+            }
             PendingList.ItemsSource = messages.Select(x => _drafts[x.Id]).ToList();
             RemainingLabel.Text = messages.Count == 0 ? "همهٔ عنوان‌ها ثبت شده‌اند" : $"{UiText.Digits(messages.Count)} پیام باقی مانده است";
             return true;
@@ -100,7 +119,38 @@ public partial class PendingTitlesPage : ContentPage
     }
 }
 
-public sealed record PendingTitleItem(Guid Id, string Sender, string Body, string ReceivedAt)
+public sealed class PendingTitleItem : INotifyPropertyChanged
 {
-    public string DraftTitle { get; set; } = string.Empty;
+    private string _draftTitle = string.Empty;
+    public PendingTitleItem(Guid id, Guid senderId, string sender, string body, string receivedAt) =>
+        (Id, SenderId, Sender, Body, ReceivedAt) = (id, senderId, sender, body, receivedAt);
+
+    public Guid Id { get; }
+    public Guid SenderId { get; }
+    public string Sender { get; }
+    public string Body { get; }
+    public string ReceivedAt { get; }
+    public ObservableCollection<string> Suggestions { get; } = [];
+    public bool HasSuggestions => Suggestions.Count > 0;
+    public string DraftTitle
+    {
+        get => _draftTitle;
+        set
+        {
+            if (_draftTitle == value) return;
+            _draftTitle = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DraftTitle)));
+        }
+    }
+
+    public void SetSuggestions(IEnumerable<string> suggestions)
+    {
+        var desired = suggestions.ToArray();
+        if (Suggestions.SequenceEqual(desired, StringComparer.Ordinal)) return;
+        Suggestions.Clear();
+        foreach (var suggestion in desired) Suggestions.Add(suggestion);
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasSuggestions)));
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
 }

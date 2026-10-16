@@ -12,6 +12,8 @@ public static class AppIcons
     public const string Close = "\ue5cd";
     public const string Delete = "\ue872";
     public const string Edit = "\ue3c9";
+    public const string ExpandLess = "\ue5ce";
+    public const string ExpandMore = "\ue5cf";
     public const string Filter = "\ue152";
     public const string Link = "\ue157";
     public const string Message = "\ue0c9";

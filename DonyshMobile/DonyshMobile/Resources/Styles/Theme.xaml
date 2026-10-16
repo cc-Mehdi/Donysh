@@ -129,6 +129,17 @@
         <Setter Property="FontAttributes" Value="Bold" />
         <Setter Property="TextColor" Value="{AppThemeBinding Light=#4338CA, Dark=#C7D2FE}" />
     </Style>
+    <Style x:Key="SuggestionChip" TargetType="Button" BasedOn="{StaticResource ButtonBase}">
+        <Setter Property="FontFamily" Value="YekanBakhMedium" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="FontAttributes" Value="None" />
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=#ECEFFE, Dark=#283658}" />
+        <Setter Property="TextColor" Value="{AppThemeBinding Light=#38329B, Dark=#D6DEFF}" />
+        <Setter Property="CornerRadius" Value="18" />
+        <Setter Property="Padding" Value="12,5" />
+        <Setter Property="MinimumHeightRequest" Value="36" />
+        <Setter Property="Margin" Value="3" />
+    </Style>
     <Style x:Key="PrimaryAction" TargetType="Button" BasedOn="{StaticResource ButtonBase}" />
     <Style x:Key="SuccessAction" TargetType="Button" BasedOn="{StaticResource ButtonBase}">
         <Setter Property="BackgroundColor" Value="#087E70" />

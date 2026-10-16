@@ -36,22 +36,46 @@
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="local:MessageItem">
                     <Border Style="{StaticResource Card}" Margin="0,0,0,12" Padding="16">
-                        <VerticalStackLayout Spacing="9">
-                            <Label Text="{Binding ReceivedAt}" Style="{StaticResource Caption}" />
-                            <Label Text="{Binding Title}" FontSize="18" FontAttributes="Bold" />
-                            <Label Text="{Binding ParsedSummary}" Style="{StaticResource StatusBadge}" />
-                            <Border Style="{StaticResource InfoCard}" Padding="10,7" StrokeThickness="0">
-                                <Label Text="{Binding DeliveryStatus}" FontSize="12" FontAttributes="Bold" />
-                            </Border>
-                            <Label Text="{Binding Body}" LineHeight="1.35" MaxLines="6" LineBreakMode="TailTruncation" />
-                            <Grid ColumnDefinitions="*,*" ColumnSpacing="6">
-                                <ui:DonyshButton Glyph="{x:Static ui:AppIcons.Edit}" Text="عنوان پیام" IsVisible="{Binding CanEditTitle}" CommandParameter="{Binding Id}"
-                                        Clicked="OnSetTitleClicked" Style="{StaticResource SecondaryAction}" />
-                                <Button Grid.Column="1" Text="متن کامل" CommandParameter="{Binding Id}" Clicked="OnDetailsClicked" Style="{StaticResource QuietAction}" />
-                            </Grid>
-                            <ui:DonyshButton x:Name="RetryMessageButton" Glyph="{x:Static ui:AppIcons.Refresh}" AutomationId="RetryMessageButton" Text="بازگرداندن به صف ارسال" IsVisible="{Binding CanRetry}"
-                                    CommandParameter="{Binding Id}" Clicked="OnRetryMessageClicked" Style="{StaticResource SecondaryAction}" />
-                        </VerticalStackLayout>
+                            <VerticalStackLayout Spacing="10">
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                    <VerticalStackLayout Spacing="3">
+                                        <Label Text="{Binding Title}" FontSize="18" FontFamily="YekanBakhBold" LineBreakMode="TailTruncation" />
+                                        <Label Text="{Binding ReceivedAt}" Style="{StaticResource Caption}" />
+                                    </VerticalStackLayout>
+                                    <Border Grid.Column="1" Style="{StaticResource InfoCard}" Padding="10,5" StrokeThickness="0"
+                                            VerticalOptions="Start">
+                                        <Label Text="{Binding TransactionType}" Style="{StaticResource StatusBadge}" />
+                                    </Border>
+                                </Grid>
+                                <Label Text="{Binding AmountText}" FontSize="22" FontFamily="YekanBakhBold"
+                                       TextColor="{AppThemeBinding Light=#15243C, Dark=#F1F5FF}" />
+                                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="7">
+                                    <Label Text="{x:Static ui:AppIcons.Sync}" Style="{StaticResource SectionIcon}" FontSize="17" WidthRequest="22" />
+                                    <Label Grid.Column="1" Text="{Binding DeliveryStatus}" Style="{StaticResource Caption}" VerticalOptions="Center" />
+                                </Grid>
+                                <ui:DonyshButton AutomationId="MessageDetailsButton" Glyph="{Binding DetailsIcon}" Text="{Binding DetailsAction}" CommandParameter="{Binding Id}"
+                                                 Clicked="OnDetailsClicked" Style="{StaticResource QuietAction}" />
+
+                                <VerticalStackLayout IsVisible="{Binding IsExpanded}" Spacing="10">
+                                    <BoxView HeightRequest="1" BackgroundColor="{AppThemeBinding Light=#E0E7F2, Dark=#2A3953}" />
+                                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="7">
+                                        <Label Text="{x:Static ui:AppIcons.Message}" Style="{StaticResource SectionIcon}" FontSize="18" WidthRequest="24" />
+                                        <Label Grid.Column="1" Text="متن اصلی پیامک" FontFamily="YekanBakhBold" VerticalOptions="Center" />
+                                    </Grid>
+                                    <Border Style="{StaticResource FieldCard}" Padding="12">
+                                        <Label Text="{Binding Body}" LineHeight="1.35" />
+                                    </Border>
+                                    <Grid ColumnDefinitions="*,*" ColumnSpacing="6">
+                                        <ui:DonyshButton AutomationId="EditMessageTitleButton" Glyph="{x:Static ui:AppIcons.Edit}" Text="عنوان پیام" IsVisible="{Binding CanEditTitle}" CommandParameter="{Binding Id}"
+                                                         Clicked="OnSetTitleClicked" Style="{StaticResource SecondaryAction}" />
+                                        <ui:DonyshButton Grid.Column="1" Glyph="{x:Static ui:AppIcons.Template}" Text="قالب‌های پیامک" Clicked="OnTemplatesClicked"
+                                                         Style="{StaticResource SecondaryAction}" />
+                                    </Grid>
+                                    <ui:DonyshButton x:Name="RetryMessageButton" Glyph="{x:Static ui:AppIcons.Refresh}" AutomationId="RetryMessageButton"
+                                                     Text="بازگرداندن به صف ارسال" IsVisible="{Binding CanRetry}"
+                                                     CommandParameter="{Binding Id}" Clicked="OnRetryMessageClicked" Style="{StaticResource SecondaryAction}" />
+                                </VerticalStackLayout>
+                            </VerticalStackLayout>
                     </Border>
                 </DataTemplate>
             </CollectionView.ItemTemplate>

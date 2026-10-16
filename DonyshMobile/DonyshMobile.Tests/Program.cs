@@ -52,10 +52,13 @@ try
     Assert(message.DeliveryStatus == SmsDeliveryStatus.Pending, "New SMS starts pending");
     Assert((await store.TakePendingBatchAsync(DateTimeOffset.UtcNow, requireTitle: true)).Count == 0,
         "Automatic batch waits for a title");
-    Assert(await store.SetTitleAsync(message.Id, "خرید روزانه"), "Set a pending message title");
+    Assert(await store.SetTitleAsync(message.Id, "هزینهٔ آزمایشی ویژه"), "Set a pending message title");
+    var titleSuggestions = await store.GetTitleSuggestionsAsync(summary.Id, message.Body);
+    Assert(titleSuggestions.Count > 0 && titleSuggestions[0] == "هزینهٔ آزمایشی ویژه",
+        "Prefer the user's previous title for the same sender");
     var firstBatch = await store.TakePendingBatchAsync(DateTimeOffset.UtcNow, requireTitle: true);
     Assert(firstBatch.Count == 1 && firstBatch[0].Sender == "+989121234567"
-        && firstBatch[0].Title == "خرید روزانه", "Title-gated batch includes title");
+        && firstBatch[0].Title == "هزینهٔ آزمایشی ویژه", "Title-gated batch includes title");
     Assert(firstBatch[0].Key == new SmsEnvelope(firstBatch[0].Sender, firstBatch[0].Body,
         firstBatch[0].ReceivedAtUnixMs).Key, "Use the same idempotency key as the API contract");
     await store.ConfirmBatchAsync(firstBatch,
@@ -321,6 +324,8 @@ try
     Assert(await store.RemoveSenderAsync(summary.Id), "Remove sender");
     Assert((await store.GetSenderSummariesAsync()).Count == 0, "Remove sender messages");
     Assert((await store.GetTemplatesAsync(summary.Id)).Count == 0, "Remove sender templates");
+    Assert(!(await store.GetTitleSuggestionsAsync(summary.Id)).Contains("هزینهٔ آزمایشی ویژه"),
+        "Removing a sender also removes its private title history");
 
     Console.WriteLine("All DonyshMobile core tests passed.");
     return 0;

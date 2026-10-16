@@ -26,6 +26,18 @@
                             <Border Style="{StaticResource FieldCard}">
                                 <Entry Text="{Binding DraftTitle, Mode=TwoWay}" Placeholder="این خرج برای چه بود؟" MaxLength="160" ReturnType="Done" Completed="OnSetTitleClicked" />
                             </Border>
+                            <Label Text="پیشنهادهای سریع" Style="{StaticResource Caption}"
+                                   IsVisible="{Binding HasSuggestions}" />
+                            <FlexLayout Direction="Row" Wrap="Wrap" JustifyContent="Start" AlignItems="Start"
+                                        FlowDirection="RightToLeft" IsVisible="{Binding HasSuggestions}"
+                                        BindableLayout.ItemsSource="{Binding Suggestions}">
+                                <BindableLayout.ItemTemplate>
+                                    <DataTemplate x:DataType="x:String">
+                                        <Button Text="{Binding .}" CommandParameter="{Binding .}" Clicked="OnSuggestionClicked"
+                                                Style="{StaticResource SuggestionChip}" />
+                                    </DataTemplate>
+                                </BindableLayout.ItemTemplate>
+                            </FlexLayout>
                             <ui:DonyshButton Glyph="{x:Static ui:AppIcons.CheckCircle}" Text="ذخیرهٔ عنوان و آماده‌سازی ارسال" CommandParameter="{Binding Id}"
                                     Clicked="OnSetTitleClicked" Style="{StaticResource SuccessAction}" />
                         </VerticalStackLayout>

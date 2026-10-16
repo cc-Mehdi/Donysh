@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using DonyshMobile.Core;
 using DonyshMobile.UI;
 
@@ -97,13 +98,15 @@ public partial class MessagesPage : ContentPage
         {
             var stored = await _store.GetMessagesAsync(_senderId);
             var templates = await _store.GetTemplatesAsync(_senderId);
+            var expandedIds = _allMessages.Where(x => x.IsExpanded).Select(x => x.Id).ToHashSet();
             var items = await Task.Run(() =>
             {
                 var matchers = templates.Select(SmsTemplateParser.CreateMatcher).Where(x => x is not null).ToArray();
                 return stored.Select(message =>
                 {
                     var match = matchers.Select(parse => parse!(message.Body)).FirstOrDefault(p => p is not null);
-                    var summary = match is null ? "قالبی برای این پیام پیدا نشد" : UiText.Digits($"{(match.Kind == TransactionKind.Withdrawal ? "برداشت" : "واریز")} · {match.AmountRial:N0} ریال");
+                    var transactionType = match is null ? "خوانده نشد" : match.Kind == TransactionKind.Withdrawal ? "برداشت" : "واریز";
+                    var amount = match is null ? "مبلغ نامشخص" : UiText.Digits($"{match.AmountRial:N0} ریال");
                     var untitled = string.IsNullOrWhiteSpace(message.Title);
                     var delivery = message.DeliveryStatus switch
                     {
@@ -113,9 +116,11 @@ public partial class MessagesPage : ContentPage
                         _ when message.DeliveryAttempts > 0 => $"در صف تلاش دوباره · {UiText.Digits(message.DeliveryAttempts)} تلاش",
                         _ => "در صف ارسال به سامانه"
                     };
-                    return new MessageItem(message.Id, untitled ? "بدون عنوان" : message.Title!, message.Body,
-                        UiText.Date(message.ReceivedAtUtc), summary, delivery, message.DeliveryStatus,
+                    var item = new MessageItem(message.Id, untitled ? "بدون عنوان" : message.Title!, message.Body,
+                        UiText.Date(message.ReceivedAtUtc), transactionType, amount, delivery, message.DeliveryStatus,
                         message.DeliveryStatus == SmsDeliveryStatus.Pending, untitled, message.LastDeliveryError is not null);
+                    item.IsExpanded = expandedIds.Contains(message.Id);
+                    return item;
                 }).ToList();
             });
             _allMessages.Clear();
@@ -183,8 +188,10 @@ public partial class MessagesPage : ContentPage
         {
             var item = _allMessages.Find(x => x.Id == id);
             if (item is null) return;
-            var title = await DisplayPromptAsync("عنوان تراکنش", "این خرج برای چه بود؟", "ثبت عنوان", "انصراف",
-                "مانند خرید روزانه", 160, initialValue: item.Untitled ? string.Empty : item.Title);
+            var excerpt = item.Body.Length > 150 ? item.Body[..150] + "…" : item.Body;
+            var suggestions = await _store.GetTitleSuggestionsAsync(_senderId, item.Body);
+            var title = await DonyshTitleSheet.ShowAsync(this, "عنوان تراکنش", excerpt,
+                item.Untitled ? string.Empty : item.Title, suggestions);
             if (title is null) return;
             if (!await _store.SetTitleAsync(id, title))
             {
@@ -199,17 +206,51 @@ public partial class MessagesPage : ContentPage
         finally { _editing = false; }
     }
 
-    private async void OnDetailsClicked(object? sender, EventArgs e)
+    private void OnDetailsClicked(object? sender, EventArgs e)
     {
         if (sender is Button { CommandParameter: Guid id } && _allMessages.Find(x => x.Id == id) is { } item)
-            await DisplayAlert(item.Title, item.Body, "بستن");
+            item.IsExpanded = !item.IsExpanded;
     }
 
     private async void OnTemplatesClicked(object? sender, EventArgs e) => await Navigation.PushAsync(new TemplatesPage(_store, _senderId, SenderAddress));
 }
 
-public sealed record MessageItem(Guid Id, string Title, string Body, string ReceivedAt, string ParsedSummary,
-    string DeliveryStatus, SmsDeliveryStatus Status, bool CanEditTitle, bool Untitled, bool HasDeliveryError = false)
+public sealed class MessageItem : INotifyPropertyChanged
 {
+    private bool _isExpanded;
+
+    public MessageItem(Guid id, string title, string body, string receivedAt, string transactionType,
+        string amountText, string deliveryStatus, SmsDeliveryStatus status, bool canEditTitle, bool untitled,
+        bool hasDeliveryError = false) =>
+        (Id, Title, Body, ReceivedAt, TransactionType, AmountText, DeliveryStatus, Status, CanEditTitle, Untitled, HasDeliveryError) =
+        (id, title, body, receivedAt, transactionType, amountText, deliveryStatus, status, canEditTitle, untitled, hasDeliveryError);
+
+    public Guid Id { get; }
+    public string Title { get; }
+    public string Body { get; }
+    public string ReceivedAt { get; }
+    public string TransactionType { get; }
+    public string AmountText { get; }
+    public string ParsedSummary => $"{TransactionType} · {AmountText}";
+    public string DeliveryStatus { get; }
+    public SmsDeliveryStatus Status { get; }
+    public bool CanEditTitle { get; }
+    public bool Untitled { get; }
+    public bool HasDeliveryError { get; }
     public bool CanRetry => Status == SmsDeliveryStatus.Rejected || (Status == SmsDeliveryStatus.Pending && HasDeliveryError);
+    public bool IsExpanded
+    {
+        get => _isExpanded;
+        set
+        {
+            if (_isExpanded == value) return;
+            _isExpanded = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsExpanded)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DetailsAction)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DetailsIcon)));
+        }
+    }
+    public string DetailsAction => IsExpanded ? "بستن جزئیات" : "نمایش جزئیات";
+    public string DetailsIcon => IsExpanded ? AppIcons.ExpandLess : AppIcons.ExpandMore;
+    public event PropertyChangedEventHandler? PropertyChanged;
 }

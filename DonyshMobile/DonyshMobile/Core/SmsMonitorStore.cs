@@ -10,6 +10,7 @@ public sealed class SmsMonitorStore
     private const int MaxAddressLength = 64;
     private const int MaxBodyLength = 2048;
     private const int MaxTemplatesPerSender = 20;
+    private const int MaxTitleHistory = 80;
     private const long MaxStateBytes = 128L * 1024 * 1024;
     private static readonly TimeSpan Retention = TimeSpan.FromDays(7);
     private static readonly SemaphoreSlim Gate = new(1, 1);
@@ -117,6 +118,7 @@ public sealed class SmsMonitorStore
 
             state.Messages.RemoveAll(x => x.SenderId == senderId);
             state.Templates.RemoveAll(x => x.SenderId == senderId);
+            state.TitleHistory.RemoveAll(x => x.SenderId == senderId);
             await SaveUnsafeAsync(state, cancellationToken);
             return true;
         }
@@ -175,9 +177,67 @@ public sealed class SmsMonitorStore
             var state = await LoadUnsafeAsync(cancellationToken);
             var message = state.Messages.SingleOrDefault(x => x.Id == messageId && x.DeliveryStatus == SmsDeliveryStatus.Pending);
             if (message is null) return false;
+            var changed = !string.Equals(message.Title?.Trim(), title, StringComparison.OrdinalIgnoreCase);
             message.Title = title;
+            if (changed) TrackTitleUsage(state, message.SenderId, title);
             await SaveUnsafeAsync(state, cancellationToken);
             return true;
+        }
+        finally { Gate.Release(); }
+    }
+
+    public async Task<IReadOnlyList<string>> GetTitleSuggestionsAsync(
+        Guid senderId,
+        string? messageBody = null,
+        int maxCount = 5,
+        CancellationToken cancellationToken = default)
+    {
+        if (maxCount is < 1 or > 8) throw new ArgumentOutOfRangeException(nameof(maxCount));
+        await Gate.WaitAsync(cancellationToken);
+        try
+        {
+            var state = await LoadUnsafeAsync(cancellationToken);
+            var candidates = new Dictionary<string, (string Title, int SameSender, int Uses, DateTimeOffset LastUsed)>(StringComparer.OrdinalIgnoreCase);
+
+            void Add(string? value, Guid sourceSender, int uses, DateTimeOffset lastUsed)
+            {
+                var title = value?.Trim();
+                if (string.IsNullOrWhiteSpace(title) || title.Length > 160 || title.Any(char.IsControl)) return;
+                if (!candidates.TryGetValue(title, out var current))
+                    current = (title, 0, 0, DateTimeOffset.MinValue);
+                candidates[title] = (current.Title,
+                    current.SameSender + (sourceSender == senderId ? Math.Max(1, uses) : 0),
+                    current.Uses + Math.Max(1, uses),
+                    lastUsed > current.LastUsed ? lastUsed : current.LastUsed);
+            }
+
+            foreach (var usage in state.TitleHistory)
+                Add(usage.Title, usage.SenderId, usage.UseCount, usage.LastUsedAtUtc);
+            foreach (var message in state.Messages.Where(x => !string.IsNullOrWhiteSpace(x.Title)))
+                Add(message.Title, message.SenderId, 1, message.ReceivedAtUtc);
+
+            var result = candidates.Values
+                .OrderByDescending(x => x.SameSender > 0)
+                .ThenByDescending(x => x.SameSender)
+                .ThenByDescending(x => x.Uses)
+                .ThenByDescending(x => x.LastUsed)
+                .Select(x => x.Title)
+                .Take(maxCount)
+                .ToList();
+
+            var kind = state.Templates
+                .Where(x => x.SenderId == senderId)
+                .Select(x => SmsTemplateParser.TryParse(x, messageBody ?? string.Empty)?.Kind)
+                .FirstOrDefault(x => x.HasValue);
+            var defaults = kind == TransactionKind.Deposit
+                ? new[] { "حقوق و درآمد", "واریز شخصی", "بازگشت وجه", "پس‌انداز" }
+                : new[] { "خرید روزانه", "خرید اینترنتی", "رفت‌وآمد", "قبض و خدمات", "سایر هزینه‌ها" };
+            foreach (var fallback in defaults)
+            {
+                if (result.Count >= maxCount) break;
+                if (!result.Contains(fallback, StringComparer.OrdinalIgnoreCase)) result.Add(fallback);
+            }
+            return result;
         }
         finally { Gate.Release(); }
     }
@@ -518,6 +578,7 @@ public sealed class SmsMonitorStore
         }
 
         state.Templates ??= [];
+        state.TitleHistory ??= [];
         state.Senders ??= [];
         state.Messages ??= [];
         var senders = state.Senders.ToDictionary(x => x.Id);
@@ -536,6 +597,35 @@ public sealed class SmsMonitorStore
         // Upgrade existing installs only after the original state was read successfully.
         if (!isEncrypted) await SaveUnsafeAsync(state, cancellationToken);
         return state;
+    }
+
+    private static void TrackTitleUsage(SmsMonitorState state, Guid senderId, string title)
+    {
+        var usage = state.TitleHistory.FirstOrDefault(x => x.SenderId == senderId
+            && string.Equals(x.Title, title, StringComparison.OrdinalIgnoreCase));
+        if (usage is null)
+        {
+            state.TitleHistory.Add(new SmsTitleUsage
+            {
+                SenderId = senderId,
+                Title = title,
+                LastUsedAtUtc = DateTimeOffset.UtcNow
+            });
+        }
+        else
+        {
+            usage.Title = title;
+            usage.UseCount = Math.Min(10_000, usage.UseCount + 1);
+            usage.LastUsedAtUtc = DateTimeOffset.UtcNow;
+        }
+
+        if (state.TitleHistory.Count <= MaxTitleHistory) return;
+        var keep = state.TitleHistory
+            .OrderByDescending(x => x.LastUsedAtUtc)
+            .ThenByDescending(x => x.UseCount)
+            .Take(MaxTitleHistory)
+            .ToHashSet();
+        state.TitleHistory.RemoveAll(x => !keep.Contains(x));
     }
 
     private async Task SaveUnsafeAsync(SmsMonitorState state, CancellationToken cancellationToken)

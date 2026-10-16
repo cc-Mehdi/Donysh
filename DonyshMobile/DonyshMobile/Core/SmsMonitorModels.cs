@@ -30,9 +30,18 @@ public sealed class SmsMonitorState
     public List<MonitoredSender> Senders { get; set; } = [];
     public List<CapturedSms> Messages { get; set; } = [];
     public List<SmsTemplate> Templates { get; set; } = [];
+    public List<SmsTitleUsage> TitleHistory { get; set; } = [];
     public DateTimeOffset NextSyncAtUtc { get; set; }
     public int ConsecutiveSyncFailures { get; set; }
     public string SyncStatus { get; set; } = "هنوز پیامی به سامانه ارسال نشده است.";
+}
+
+public sealed class SmsTitleUsage
+{
+    public Guid SenderId { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public int UseCount { get; set; } = 1;
+    public DateTimeOffset LastUsedAtUtc { get; set; } = DateTimeOffset.UtcNow;
 }
 
 public enum SmsDeliveryStatus

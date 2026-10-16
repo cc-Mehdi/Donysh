@@ -179,6 +179,15 @@ internal static class TemplateFlowSmokeCheck
         Check(!page.Messages.Single(message => message.Id == rejected.Id).CanRetry
             && page.Messages.Single(message => message.Id == rejected.Id).CanEditTitle,
             "A requeued SMS allows title editing and no longer shows a stale retry action");
+        var retriedItem = page.Messages.Single(message => message.Id == rejected.Id);
+        FindMessageButton(page, retriedItem, "MessageDetailsButton").SendClicked();
+        await WaitAsync(() => retriedItem.IsExpanded);
+        Check(retriedItem.DetailsAction == "بستن جزئیات",
+            "Message cards reveal full details inline without a native alert");
+        FindMessageButton(page, retriedItem, "EditMessageTitleButton").SendClicked();
+        await WaitAsync(() => navigation.ModalStack.LastOrDefault() is DonyshTitleSheet);
+        Check(true, "Message title editing uses the themed suggestion sheet");
+        await navigation.PopModalAsync(animated: false);
         await navigation.PopAsync(animated: false);
 
         // A separate queue proves that bulk retry uses the current filter, not every
@@ -230,10 +239,13 @@ internal static class TemplateFlowSmokeCheck
         return checks;
     }
 
-    private static Button FindRetryButton(MessagesPage page, MessageItem message)
+    private static Button FindRetryButton(MessagesPage page, MessageItem message) =>
+        FindMessageButton(page, message, "RetryMessageButton");
+
+    private static Button FindMessageButton(MessagesPage page, MessageItem message, string automationId)
     {
         var realized = page.GetVisualTreeDescendants().OfType<Button>().FirstOrDefault(button =>
-            button.AutomationId == "RetryMessageButton" && button.CommandParameter is Guid id && id == message.Id);
+            button.AutomationId == automationId && button.CommandParameter is Guid id && id == message.Id);
         if (realized is not null) return realized;
 
         // Some platforms do not expose virtualized CollectionView cards in the MAUI
@@ -244,8 +256,9 @@ internal static class TemplateFlowSmokeCheck
         if (template.CreateContent() is not View card)
             throw new InvalidOperationException("The SMS card template did not create a view.");
         card.BindingContext = message;
-        return card.FindByName<Button>("RetryMessageButton")
-            ?? throw new InvalidOperationException("The message-card retry button was not found.");
+        return card.GetVisualTreeDescendants().OfType<Button>().FirstOrDefault(button =>
+                   button.AutomationId == automationId && button.CommandParameter is Guid id && id == message.Id)
+               ?? throw new InvalidOperationException($"The message-card button '{automationId}' was not found.");
     }
 
     private static async Task WaitAsync(Func<bool> condition)
