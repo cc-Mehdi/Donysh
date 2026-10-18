@@ -39,6 +39,84 @@ public sealed class MobileApiClient
             : throw new InvalidDataException("پاسخ اتصال سامانه معتبر نیست.");
     }
 
+    public async Task<MobileSessionResult?> LoginAsync(string server, string email, string password,
+        string installationId, string deviceName, CancellationToken cancellationToken = default)
+    {
+        server = NormalizeServer(server) ?? throw new ArgumentException("آدرس سامانه معتبر نیست.", nameof(server));
+        email = email.Trim();
+        deviceName = deviceName.Trim();
+        if (email.Length is < 3 or > 254 || string.IsNullOrEmpty(password) || password.Length > 256
+            || installationId.Length != 64 || !installationId.All(Uri.IsHexDigit)
+            || deviceName.Length is < 1 or > 80)
+            throw new ArgumentException("اطلاعات ورود کامل یا معتبر نیست.");
+        using var client = _clientFactory();
+        using var response = await client.PostAsJsonAsync(server + "/api/mobile/login",
+            new MobileLoginRequest(email, password, installationId, deviceName), JsonOptions, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.Unauthorized) return null;
+        if (response.StatusCode == HttpStatusCode.Conflict)
+            throw new InvalidOperationException("حساب یا فضای مالی برای اتصال این گوشی آماده نیست.");
+        response.EnsureSuccessStatusCode();
+        var result = await response.Content.ReadFromJsonAsync<MobileSessionResult>(JsonOptions, cancellationToken);
+        return ValidSession(result) ? result : throw new InvalidDataException("پاسخ ورود سامانه معتبر نیست.");
+    }
+
+    public async Task<MobileWorkspaceList> GetWorkspacesAsync(MobileConnection connection,
+        CancellationToken cancellationToken = default)
+    {
+        using var client = _clientFactory();
+        using var request = Authorized(HttpMethod.Get, connection, "/api/mobile/workspaces");
+        using var response = await client.SendAsync(request, cancellationToken);
+        if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+            throw new UnauthorizedAccessException("نشست این گوشی منقضی شده است.");
+        response.EnsureSuccessStatusCode();
+        var result = await response.Content.ReadFromJsonAsync<MobileWorkspaceList>(JsonOptions, cancellationToken);
+        return result is { WorkspaceName.Length: > 0, CategoryName.Length: > 0, Workspaces.Count: > 0 }
+            && result.WorkspaceId != Guid.Empty
+            ? result : throw new InvalidDataException("فهرست فضاهای مالی معتبر نیست.");
+    }
+
+    public async Task<MobileDestinationResult> ChangeDestinationAsync(MobileConnection connection,
+        Guid workspaceId, CancellationToken cancellationToken = default)
+    {
+        using var client = _clientFactory();
+        using var request = Authorized(HttpMethod.Put, connection, "/api/mobile/destination");
+        request.Content = JsonContent.Create(new MobileDestinationRequest(workspaceId), options: JsonOptions);
+        using var response = await client.SendAsync(request, cancellationToken);
+        if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+            throw new UnauthorizedAccessException("دسترسی به این فضای مالی وجود ندارد.");
+        response.EnsureSuccessStatusCode();
+        var result = await response.Content.ReadFromJsonAsync<MobileDestinationResult>(JsonOptions, cancellationToken);
+        return result is { WorkspaceName.Length: > 0, CategoryName.Length: > 0 }
+            && result.WorkspaceId != Guid.Empty
+            ? result : throw new InvalidDataException("پاسخ تغییر فضای مالی معتبر نیست.");
+    }
+
+    public async Task LogoutAsync(MobileConnection connection, CancellationToken cancellationToken = default)
+    {
+        using var client = _clientFactory();
+        using var request = Authorized(HttpMethod.Post, connection, "/api/mobile/logout");
+        using var response = await client.SendAsync(request, cancellationToken);
+        if (response.StatusCode != HttpStatusCode.Unauthorized) response.EnsureSuccessStatusCode();
+    }
+
+    private static bool ValidSession(MobileSessionResult? result) => result is
+    {
+        Token.Length: 64,
+        WorkspaceName.Length: > 0 and <= 160,
+        CategoryName.Length: > 0 and <= 160,
+        Workspaces.Count: > 0
+    } && result.WorkspaceId != Guid.Empty && result.Token.All(Uri.IsHexDigit);
+
+    private static HttpRequestMessage Authorized(HttpMethod method, MobileConnection connection, string path)
+    {
+        var server = NormalizeServer(connection.Server) ?? throw new ArgumentException("آدرس سامانه معتبر نیست.");
+        if (connection.Token.Length != 64 || !connection.Token.All(Uri.IsHexDigit))
+            throw new UnauthorizedAccessException("نشست این گوشی معتبر نیست.");
+        var request = new HttpRequestMessage(method, server + path);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", connection.Token);
+        return request;
+    }
+
     public static string? NormalizePairingCode(string? value)
     {
         if (string.IsNullOrWhiteSpace(value) || value.Length > 256) return null;

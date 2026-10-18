@@ -12,6 +12,7 @@ public sealed class MobileDevice
     [MaxLength(80)] public string Name { get; set; } = "";
     [MaxLength(64)] public string? PairCodeHash { get; set; }
     [MaxLength(64)] public string? TokenHash { get; set; }
+    [MaxLength(64)] public string? ClientInstanceHash { get; set; }
     public DateTime PairExpiresAtUtc { get; set; }
     public DateTime NextAllowedAtUtc { get; set; } = DateTime.UnixEpoch;
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;

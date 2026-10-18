@@ -11,6 +11,8 @@ public static class MobileSchema
             e.HasIndex(x => x.TokenHash).IsUnique();
             e.HasIndex(x => x.PairCodeHash).IsUnique();
             e.HasIndex(x => x.UserId);
+            e.HasIndex(x => new { x.UserId, x.ClientInstanceHash }).IsUnique()
+                .HasFilter("\"ClientInstanceHash\" IS NOT NULL");
             e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(x => x.Workspace).WithMany().HasForeignKey(x => x.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(x => x.Category).WithMany().HasForeignKey(x => x.CategoryId).OnDelete(DeleteBehavior.Cascade);
@@ -30,12 +32,16 @@ public static class MobileSchema
             "WorkspaceId" uuid NOT NULL REFERENCES "Workspaces"("Id") ON DELETE CASCADE,
             "CategoryId" uuid NOT NULL REFERENCES "ExpenseCategories"("Id") ON DELETE CASCADE,
             "Name" character varying(80) NOT NULL, "PairCodeHash" character varying(64), "TokenHash" character varying(64),
+            "ClientInstanceHash" character varying(64),
             "PairExpiresAtUtc" timestamp with time zone NOT NULL, "NextAllowedAtUtc" timestamp with time zone NOT NULL,
             "CreatedAtUtc" timestamp with time zone NOT NULL, "Revoked" boolean NOT NULL
         );
         CREATE UNIQUE INDEX IF NOT EXISTS "IX_MobileDevices_TokenHash" ON "MobileDevices"("TokenHash");
         CREATE UNIQUE INDEX IF NOT EXISTS "IX_MobileDevices_PairCodeHash" ON "MobileDevices"("PairCodeHash");
         CREATE INDEX IF NOT EXISTS "IX_MobileDevices_UserId" ON "MobileDevices"("UserId");
+        ALTER TABLE "MobileDevices" ADD COLUMN IF NOT EXISTS "ClientInstanceHash" character varying(64);
+        CREATE UNIQUE INDEX IF NOT EXISTS "IX_MobileDevices_UserId_ClientInstanceHash"
+            ON "MobileDevices"("UserId", "ClientInstanceHash") WHERE "ClientInstanceHash" IS NOT NULL;
         CREATE INDEX IF NOT EXISTS "IX_MobileDevices_WorkspaceId" ON "MobileDevices"("WorkspaceId");
         CREATE INDEX IF NOT EXISTS "IX_MobileDevices_CategoryId" ON "MobileDevices"("CategoryId");
         CREATE TABLE IF NOT EXISTS "SmsReceipts" (

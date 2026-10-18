@@ -80,6 +80,10 @@ async Task Check(string name, string path, string json, HttpStatusCode expected,
     else Console.WriteLine($"PASS {name}");
 }
 await Check("Pairing requires HTTPS", "/api/mobile/pair", "{}", HttpStatusCode.BadRequest, false);
+await Check("Mobile login requires HTTPS", "/api/mobile/login",
+    "{\"email\":\"user@example.com\",\"password\":\"Secret123\",\"installationId\":\"" + new string('A', 64) + "\",\"deviceName\":\"phone\"}",
+    HttpStatusCode.BadRequest, false);
+await Check("Malformed mobile login rejected before authentication", "/api/mobile/login", "{}", HttpStatusCode.BadRequest);
 await Check("SMS requires HTTPS", "/api/mobile/sms", "{}", HttpStatusCode.BadRequest, false);
 await Check("SMS requires device token, cookie is not enough", "/api/mobile/sms", "{}", HttpStatusCode.Unauthorized);
 await Check("Short device token rejected without database work", "/api/mobile/sms", "{}", HttpStatusCode.Unauthorized, token: "Bearer invalid");
@@ -88,6 +92,14 @@ await Check("Pairing missing code", "/api/mobile/pair", "{}", HttpStatusCode.Bad
 await Check("Pairing null payload", "/api/mobile/pair", "null", HttpStatusCode.BadRequest);
 await Check("Non-hex pairing code rejected without database work", "/api/mobile/pair", "{\"code\":\"" + new string('Z', 32) + "\"}", HttpStatusCode.BadRequest);
 await Check("Malformed JSON", "/api/mobile/pair", "{", HttpStatusCode.BadRequest);
+using (var workspacesWithoutToken = new HttpRequestMessage(HttpMethod.Get, "/api/mobile/workspaces"))
+{
+    workspacesWithoutToken.Headers.Add("Test-Https", "1");
+    using var response = await client.SendAsync(workspacesWithoutToken);
+    var guarded = response.StatusCode == HttpStatusCode.Unauthorized;
+    if (!guarded) failed++;
+    Console.WriteLine($"{(guarded ? "PASS" : "FAIL")} Workspace list requires device token");
+}
 await Check("Oversized pairing request", "/api/mobile/pair", "{\"code\":\"" + new string('a', 33000) + "\"}", HttpStatusCode.BadRequest);
 using (var chunked = new HttpRequestMessage(HttpMethod.Post, "/api/mobile/pair")
        { Content = new StringContent("{\"code\":\"" + new string('a', 33000) + "\"}", Encoding.UTF8, "application/json") })

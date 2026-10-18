@@ -305,6 +305,22 @@ internal static class StartupSmokeCheck
             "Rapid Settings taps produce one navigation");
         Check(page.FindByName<Entry>("PairCodeEntry").FontFamily == "YekanBakh",
             "Settings input uses the registered Persian font");
+        var savedTheme = UiPreferences.Theme;
+        try
+        {
+            var themePicker = page.FindByName<DonyshPicker>("ThemePicker");
+            themePicker.SelectedIndex = 2;
+            await WaitUntilAsync(() => MauiApplication.Current?.UserAppTheme == AppTheme.Dark,
+                "Choosing the dark theme did not update the application theme.");
+            Check(UiPreferences.Theme == 2 && themePicker.SelectedIndex == 2,
+                "Theme picker persists the dark selection");
+            themePicker.SelectedIndex = 1;
+            await WaitUntilAsync(() => MauiApplication.Current?.UserAppTheme == AppTheme.Light,
+                "Choosing the light theme did not update the application theme.");
+            Check(UiPreferences.Theme == 1 && themePicker.SelectedIndex == 1,
+                "Theme picker persists the light selection");
+        }
+        finally { UiPreferences.Theme = savedTheme; }
 
         var send = page.FindByName<Button>("ManualSyncButton");
         var alertsBefore = scenario.AlertTitles.Count;

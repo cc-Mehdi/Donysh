@@ -6,6 +6,7 @@ public static class MobileConnectionStore
 {
     private const string ConnectionKey = "donysh-mobile-connection-v1";
     private const string ServerKey = "donysh-mobile-server";
+    private const string InstallationKey = "donysh-mobile-installation-v1";
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     public static string Server
@@ -41,4 +42,21 @@ public static class MobileConnectionStore
     }
 
     public static void Remove() => SecureStorage.Default.Remove(ConnectionKey);
+
+    public static async Task<string> GetInstallationIdAsync()
+    {
+        try
+        {
+            var existing = await SecureStorage.Default.GetAsync(InstallationKey);
+            if (existing is { Length: 64 } && existing.All(Uri.IsHexDigit)) return existing;
+            var created = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
+            await SecureStorage.Default.SetAsync(InstallationKey, created);
+            return created;
+        }
+        catch (Exception)
+        {
+            // Secure storage can briefly be unavailable immediately after device restore.
+            throw new InvalidOperationException("حافظهٔ امن گوشی در دسترس نیست.");
+        }
+    }
 }

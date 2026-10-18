@@ -14,6 +14,18 @@ public sealed record SmsResult(string Key, string Status);
 public sealed record SmsBatchResult(List<SmsResult> Results);
 public sealed record PairRequest(string Code);
 public sealed record PairResult(string Token, string WorkspaceName, string CategoryName);
+public sealed record MobileLoginRequest(string Email, string Password, string InstallationId, string DeviceName);
+public sealed record MobileWorkspace(Guid Id, string Name, string Type);
+public sealed record MobileSessionResult(
+    string Token,
+    string DisplayName,
+    Guid WorkspaceId,
+    string WorkspaceName,
+    string CategoryName,
+    List<MobileWorkspace> Workspaces);
+public sealed record MobileWorkspaceList(Guid WorkspaceId, string WorkspaceName, string CategoryName, List<MobileWorkspace> Workspaces);
+public sealed record MobileDestinationRequest(Guid WorkspaceId);
+public sealed record MobileDestinationResult(Guid WorkspaceId, string WorkspaceName, string CategoryName);
 
 public static class SyncPolicy
 {

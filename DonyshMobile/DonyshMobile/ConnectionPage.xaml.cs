@@ -56,8 +56,8 @@ public partial class ConnectionPage : DonyshPage
         if (_setupMode)
         {
             Title = "مرحلهٔ ۱ · اتصال";
-            PageHeadingLabel.Text = "کد اتصال را ثبت کنید";
-            PageDescriptionLabel.Text = "کدی را که در بخش «همراه دونیش» سایت ساخته‌اید، اینجا وارد کنید.";
+            PageHeadingLabel.Text = "وارد حساب دونیش شوید";
+            PageDescriptionLabel.Text = "همان اطلاعات ورود سایت را وارد کنید؛ سپس فضای مالی را انتخاب می‌کنید.";
             ConnectionStatusCard.IsVisible = false;
             TitleSettingsCard.IsVisible = false;
             RecoverySettingsCard.IsVisible = false;
@@ -104,6 +104,7 @@ public partial class ConnectionPage : DonyshPage
             _connectivitySubscribed = false;
         }
         PairCodeEntry.Text = string.Empty;
+        PasswordEntry.Text = string.Empty;
         base.OnDisappearing();
     }
 
@@ -117,6 +118,8 @@ public partial class ConnectionPage : DonyshPage
     }
     private void OnChangeConnectionClicked(object? sender, EventArgs e) { _showPairing = !_showPairing; PairingCard.IsVisible = _showPairing || !_connected; }
     private void OnToggleServerClicked(object? sender, EventArgs e) => ServerPanel.IsVisible = !ServerPanel.IsVisible;
+    private void OnToggleLegacyPairingClicked(object? sender, EventArgs e) =>
+        LegacyPairingPanel.IsVisible = !LegacyPairingPanel.IsVisible;
     private async void OnPendingTitlesClicked(object? sender, EventArgs e)
     {
         if (_openingTitles) return;
@@ -138,7 +141,25 @@ public partial class ConnectionPage : DonyshPage
             await AlertAsync("تنظیمات باز نشد", "از تنظیمات گوشی، بخش برنامه‌ها و سپس دونیش را باز کنید.", "باشه");
         }
     }
-    private async void OnThemeChanged(object? sender, EventArgs e) => await SaveSettingAsync(() => UiPreferences.Theme = ThemePicker.SelectedIndex);
+    private async void OnThemeChanged(object? sender, EventArgs e)
+    {
+        if (!_settingsLoaded) return;
+        var selected = Math.Clamp(ThemePicker.SelectedIndex, 0, 2);
+        try
+        {
+            UiPreferences.Theme = selected;
+            // Re-read the persisted value after the visual tree has applied the new
+            // application theme. This prevents the custom picker reverting to its
+            // initial "system" selection during Android's theme redraw.
+            await Task.Yield();
+            ThemePicker.SelectedIndex = UiPreferences.Theme;
+        }
+        catch (Exception exception)
+        {
+            UiSafety.Log(exception);
+            await AlertAsync("پوسته تغییر نکرد", "دوباره یکی از حالت‌های روشن، تیره یا هماهنگ با گوشی را انتخاب کنید.", "باشه");
+        }
+    }
     private async void OnMotionToggled(object? sender, ToggledEventArgs e) => await SaveSettingAsync(() => UiPreferences.Motion = e.Value);
     private async void OnHapticsToggled(object? sender, ToggledEventArgs e) => await SaveSettingAsync(() => UiPreferences.Haptics = e.Value);
 
@@ -200,6 +221,113 @@ public partial class ConnectionPage : DonyshPage
             UiSafety.Log(exception);
             await AlertAsync("تنظیم ذخیره نشد", "دوباره تلاش کنید؛ پیام‌های ذخیره‌شده تغییری نکرده‌اند.", "باشه");
         }
+    }
+
+    private async void OnLoginClicked(object? sender, EventArgs e)
+    {
+        if (_busy) return;
+        var loggedIn = false;
+        await RunBusyAsync(async () =>
+        {
+            var server = MobileApiClient.NormalizeServer(ServerEntry.Text);
+            if (server is null)
+            {
+                await AlertAsync("آدرس معتبر نیست", "یک نشانی معتبر و امن برای سایت وارد کنید؛ مانند https://donysh.ir", "باشه");
+                return;
+            }
+            var email = EmailEntry.Text?.Trim() ?? string.Empty;
+            var password = PasswordEntry.Text ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(email) || string.IsNullOrEmpty(password))
+            {
+                await AlertAsync("اطلاعات ورود کامل نیست", "رایانامه و گذرواژهٔ حساب دونیش را وارد کنید.", "باشه");
+                return;
+            }
+            var host = new Uri(server).Host;
+            if (!host.Equals("donysh.ir", StringComparison.OrdinalIgnoreCase)
+                && !await ConfirmAsync("بررسی مقصد ورود", $"اطلاعات ورود به «{host}» فرستاده می‌شود. این سایت مورد اعتماد شماست؟", "ورود", "انصراف")) return;
+            await MobileApiClient.RunWithSyncLockAsync(async () =>
+            {
+                var queue = await _store.GetSyncSummaryAsync();
+                if (queue.Pending > 0 && !await ConfirmAsync("مقصد پیام‌های منتظر",
+                        $"{UiText.Digits(queue.Pending)} پیام منتظر دارید. پس از ورود، این پیام‌ها به فضای مالی انتخاب‌شده فرستاده می‌شوند. ادامه می‌دهید؟",
+                        "ادامه", "انصراف")) return;
+                var installationId = await MobileConnectionStore.GetInstallationIdAsync();
+                var result = await _api.LoginAsync(server, email, password, installationId,
+                    string.IsNullOrWhiteSpace(DeviceInfo.Name) ? "گوشی همراه" : DeviceInfo.Name);
+                PasswordEntry.Text = string.Empty;
+                if (result is null)
+                {
+                    await AlertAsync("ورود انجام نشد", "رایانامه یا گذرواژه درست نیست؛ اگر چند بار تلاش کرده‌اید کمی صبر کنید.", "باشه");
+                    return;
+                }
+                var workspaceId = result.WorkspaceId;
+                var workspaceName = result.WorkspaceName;
+                var categoryName = result.CategoryName;
+                if (result.Workspaces.Count > 1)
+                {
+                    var labels = result.Workspaces.Select(x => x.Type == "shared" ? $"{x.Name} · مشترک" : $"{x.Name} · شخصی").ToList();
+                    var choice = await DonyshSelectionSheet.ShowAsync(this, "فضای مالی پیش‌فرض", labels,
+                        result.Workspaces.FindIndex(x => x.Id == result.WorkspaceId));
+                    if (choice.HasValue && result.Workspaces[choice.Value].Id != workspaceId)
+                    {
+                        var provisional = new MobileConnection(server, result.Token,
+                            $"{workspaceName} / {categoryName}", workspaceId, result.DisplayName);
+                        var destination = await _api.ChangeDestinationAsync(provisional,
+                            result.Workspaces[choice.Value].Id);
+                        workspaceId = destination.WorkspaceId;
+                        workspaceName = destination.WorkspaceName;
+                        categoryName = destination.CategoryName;
+                    }
+                }
+                await MobileConnectionStore.SaveAsync(new MobileConnection(server, result.Token,
+                    $"{workspaceName} / {categoryName}", workspaceId, result.DisplayName));
+                _showPairing = false;
+                UiMotion.Feedback();
+                SyncPlatform.Schedule();
+                await AlertAsync("ورود انجام شد", $"فضای پیش‌فرض: {workspaceName}", "باشه");
+                loggedIn = true;
+            });
+        });
+        PasswordEntry.Text = string.Empty;
+        if (loggedIn && _setupMode)
+        {
+            try { await Navigation.PopAsync(); }
+            catch (Exception exception) { UiSafety.Log(exception); }
+        }
+    }
+
+    private async void OnWorkspaceClicked(object? sender, EventArgs e)
+    {
+        if (_busy) return;
+        await RunBusyAsync(async () => await ChooseWorkspaceAsync());
+    }
+
+    private async Task ChooseWorkspaceAsync()
+    {
+        var connection = await _loadConnectionAsync();
+        if (connection is null) return;
+        var list = await _api.GetWorkspacesAsync(connection);
+        var labels = list.Workspaces.Select(x => x.Type == "shared" ? $"{x.Name} · مشترک" : $"{x.Name} · شخصی").ToList();
+        var selected = await DonyshSelectionSheet.ShowAsync(this, "فضای مالی پیش‌فرض", labels,
+            list.Workspaces.FindIndex(x => x.Id == list.WorkspaceId));
+        if (!selected.HasValue) return;
+        var chosen = list.Workspaces[selected.Value];
+        if (chosen.Id == list.WorkspaceId) return;
+        var queue = await _store.GetSyncSummaryAsync();
+        if (queue.Pending > 0 && !await ConfirmAsync("تغییر مقصد پیام‌های منتظر",
+                $"{UiText.Digits(queue.Pending)} پیام منتظر نیز به «{chosen.Name}» فرستاده می‌شود. ادامه می‌دهید؟",
+                "تغییر فضا", "انصراف")) return;
+        await MobileApiClient.RunWithSyncLockAsync(async () =>
+        {
+            var result = await _api.ChangeDestinationAsync(connection, chosen.Id);
+            await MobileConnectionStore.SaveAsync(connection with
+            {
+                Destination = $"{result.WorkspaceName} / {result.CategoryName}",
+                WorkspaceId = result.WorkspaceId
+            });
+        });
+        SyncPlatform.Schedule();
+        UiMotion.Feedback();
     }
 
     private async void OnConnectClicked(object? sender, EventArgs e)
@@ -272,7 +400,7 @@ public partial class ConnectionPage : DonyshPage
                 && !await ConfirmAsync("ارسال دستی بدون عنوان", "پیام بی‌عنوان هم در صف وجود دارد. در این نوبت اجازه می‌دهید بدون عنوان ارسال شود؟", "ارسال دستی", "انصراف")) return;
             var result = await _api.SendNextBatchAsync(_store, _loadConnectionAsync, DateTimeOffset.UtcNow, manualSend: true);
             if (result == SyncRunResult.ConnectionRequired)
-                await AlertAsync("اتصال لازم است", "در سایت یک کد اتصال تازه بسازید و وارد کنید.", "باشه");
+                await AlertAsync("ورود دوباره لازم است", "نشست این گوشی پایان یافته است. دوباره با حساب دونیش وارد شوید.", "باشه");
             else if (result == SyncRunResult.NothingToSend)
                 await AlertAsync("صف فعلاً آماده نیست", "پیام منتظری وجود ندارد یا هنوز یک دقیقه از آخرین نوبت نگذشته است.", "باشه");
             else if (result == SyncRunResult.RetryScheduled)
@@ -288,11 +416,12 @@ public partial class ConnectionPage : DonyshPage
         await RunBusyAsync(async () =>
         {
             if (!await ConfirmAsync("قطع اتصال این گوشی", "اطلاعات اتصال از گوشی پاک می‌شود؛ پیام‌های منتظر باقی می‌مانند. برای لغو کامل دسترسی گوشی، آن را در بخش «همراه دونیش» سایت هم غیرفعال کنید.", "قطع اتصال", "انصراف")) return;
-            await MobileApiClient.RunWithSyncLockAsync(() =>
+            await MobileApiClient.RunWithSyncLockAsync(async () =>
             {
+                var connection = await _loadConnectionAsync();
+                if (connection is not null) await _api.LogoutAsync(connection);
                 MobileConnectionStore.Remove();
                 _showPairing = false;
-                return Task.CompletedTask;
             });
         });
     }
@@ -313,9 +442,10 @@ public partial class ConnectionPage : DonyshPage
     private void UpdateActions()
     {
         BusyCard.IsVisible = BusyIndicator.IsRunning = _busy;
-        ConnectButton.IsEnabled = PairCodeEntry.IsEnabled = ServerEntry.IsEnabled = !_busy;
+        ConnectButton.IsEnabled = LoginButton.IsEnabled = PairCodeEntry.IsEnabled = ServerEntry.IsEnabled = !_busy;
+        EmailEntry.IsEnabled = PasswordEntry.IsEnabled = !_busy;
         ManualSyncButton.IsEnabled = !_busy && _connected;
-        DisconnectButton.IsEnabled = ChangeConnectionButton.IsEnabled = !_busy && _connected;
+        DisconnectButton.IsEnabled = ChangeConnectionButton.IsEnabled = WorkspaceButton.IsEnabled = !_busy && _connected;
     }
 
     private async Task RefreshAsync()

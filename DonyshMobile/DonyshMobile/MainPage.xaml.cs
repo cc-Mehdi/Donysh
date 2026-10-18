@@ -18,6 +18,7 @@ public partial class MainPage : DonyshPage
     private readonly SmsMonitorStore _store = new(FileSystem.AppDataDirectory);
 #endif
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
+    private readonly MobileApiClient _api = new();
     private readonly List<SenderItem> _allSenders = [];
     private bool _subscribed, _hasPermission, _entered, _busy, _isRefreshing, _openingPage, _requestingPermission;
     private bool _setupWizardChecked;
@@ -33,6 +34,8 @@ public partial class MainPage : DonyshPage
     public string PendingCount { get; private set; } = "۰";
     public string SentCount { get; private set; } = "۰";
     public string ConnectionText { get; private set; } = "در حال بررسی اتصال";
+    public string WorkspaceText { get; private set; } = string.Empty;
+    public bool HasConnection { get; private set; }
     public string NextStepText { get; private set; } = "فرستنده‌های بانکی خود را انتخاب کنید.";
     public string NextStepAction { get; private set; } = "شروع کنیم";
     public string UntitledText { get; private set; } = string.Empty;
@@ -77,7 +80,7 @@ public partial class MainPage : DonyshPage
         if (!_entered) { _entered = true; await UiMotion.EnterAsync(PageContent); }
         if (ConsumePendingTitlesRequest())
         {
-            try { await Navigation.PushAsync(new PendingTitlesPage(_store, promptFirstMessage: true)); }
+            try { await Navigation.PushAsync(new PendingTitlesPage(_store)); }
             catch (Exception)
             {
                 RequestPendingTitles();
@@ -325,6 +328,49 @@ public partial class MainPage : DonyshPage
     }
     private void OnMessageStored(object? sender, EventArgs e) => Dispatcher.Dispatch(async () => await RefreshAsync());
 
+    private async void OnWorkspaceShortcutClicked(object? sender, EventArgs e)
+    {
+        if (_busy) return;
+        _busy = true;
+        try
+        {
+            var connection = await MobileConnectionStore.LoadAsync();
+            if (connection is null) return;
+            var list = await _api.GetWorkspacesAsync(connection);
+            var labels = list.Workspaces.Select(x => x.Type == "shared" ? $"{x.Name} · مشترک" : $"{x.Name} · شخصی").ToList();
+            var selected = await DonyshSelectionSheet.ShowAsync(this, "فضای مالی پیش‌فرض", labels,
+                list.Workspaces.FindIndex(x => x.Id == list.WorkspaceId));
+            if (!selected.HasValue || list.Workspaces[selected.Value].Id == list.WorkspaceId) return;
+            var chosen = list.Workspaces[selected.Value];
+            var queue = await _store.GetSyncSummaryAsync();
+            if (queue.Pending > 0 && !await DisplayAlert("تغییر مقصد پیام‌های منتظر",
+                    $"{UiText.Digits(queue.Pending)} پیام منتظر نیز به «{chosen.Name}» فرستاده می‌شود. ادامه می‌دهید؟",
+                    "تغییر فضا", "انصراف")) return;
+            await MobileApiClient.RunWithSyncLockAsync(async () =>
+            {
+                var result = await _api.ChangeDestinationAsync(connection, chosen.Id);
+                await MobileConnectionStore.SaveAsync(connection with
+                {
+                    Destination = $"{result.WorkspaceName} / {result.CategoryName}",
+                    WorkspaceId = result.WorkspaceId
+                });
+            });
+            SyncPlatform.Schedule();
+            UiMotion.Feedback();
+            await RefreshAsync();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            await UiSafety.AlertAsync(this, "ورود دوباره لازم است", "نشست این گوشی پایان یافته است. از تنظیمات دوباره وارد حساب دونیش شوید.");
+        }
+        catch (Exception exception)
+        {
+            UiSafety.Log(exception);
+            await UiSafety.AlertAsync(this, "فضای مالی تغییر نکرد", "اینترنت را بررسی کنید و دوباره تلاش کنید.");
+        }
+        finally { _busy = false; }
+    }
+
     private async Task RecoverRecentMessagesAsync(bool force = false)
     {
         if (!SmsSyncSettings.RecoverRecent) return;
@@ -373,6 +419,8 @@ public partial class MainPage : DonyshPage
             HasUntitled = SmsSyncSettings.RequireTitle && untitled.Count > 0;
             UntitledText = $"{UiText.Digits(untitled.Count)} پیام، منتظر عنوان شما";
             ConnectionText = connection is null ? "هنوز به سامانه متصل نشده‌اید" : $"متصل به {connection.Destination}";
+            HasConnection = connection is not null;
+            WorkspaceText = connection?.Destination.Split(" / ", 2, StringSplitOptions.TrimEntries)[0] ?? string.Empty;
             (_nextStep, NextStepText, NextStepAction) = _setupStep != SetupStep.Complete
                 ? (0, "راه‌اندازی هنوز کامل نشده است؛ قدم بعدی را ادامه دهید.", "ادامهٔ راه‌اندازی")
                 : HasUntitled

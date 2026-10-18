@@ -17,6 +17,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.Identity;
 using Npgsql;
 
 internal static class PostgresChecks
@@ -67,20 +68,28 @@ internal static class PostgresChecks
             Check(await ownership.TransferAsync(sharedWorkspace.Id, successor.Id, outsider.Id) == OwnershipTransferResult.TargetNotMember,
                 "ownership cannot be transferred to a non-member");
 
-            var user = new ApplicationUser { Id = Guid.NewGuid().ToString(), UserName = "sms-test", NormalizedUserName = "SMS-TEST" };
+            var user = new ApplicationUser { Id = Guid.NewGuid().ToString(), UserName = "sms-test@example.com", NormalizedUserName = "SMS-TEST@EXAMPLE.COM",
+                Email = "sms-test@example.com", NormalizedEmail = "SMS-TEST@EXAMPLE.COM", DisplayName = "کاربر آزمون" };
+            user.PasswordHash = new PasswordHasher<ApplicationUser>().HashPassword(user, "Secret123");
             var workspace = new Workspace { Name = "Test destination", OwnerUserId = user.Id, Type = WorkspaceType.Personal };
             var other = new Workspace { Name = "Other workspace", OwnerUserId = user.Id, Type = WorkspaceType.Personal };
             var category = new ExpenseCategory { Name = "Review", WorkspaceId = workspace.Id };
+            var otherCategory = new ExpenseCategory { Name = "سایر", WorkspaceId = other.Id };
             var code = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(16));
             var device = new MobileDevice { Name = "Test", UserId = user.Id, WorkspaceId = workspace.Id, CategoryId = category.Id,
                 PairCodeHash = MobileApi.Hash(code), PairExpiresAtUtc = DateTime.UtcNow.AddMinutes(10) };
-            db.AddRange(user, workspace, other, category, device,
-                new WorkspaceMember { UserId = user.Id, WorkspaceId = workspace.Id, Role = WorkspaceRole.Owner });
+            db.AddRange(user, workspace, other, category, otherCategory, device,
+                new WorkspaceMember { UserId = user.Id, WorkspaceId = workspace.Id, Role = WorkspaceRole.Owner },
+                new WorkspaceMember { UserId = user.Id, WorkspaceId = other.Id, Role = WorkspaceRole.Owner });
             await db.SaveChangesAsync();
 
             var builder = WebApplication.CreateBuilder();
             builder.Logging.ClearProviders(); builder.WebHost.UseUrls("http://127.0.0.1:0");
             builder.Services.AddDbContext<ApplicationDbContext>(o => o.UseNpgsql(cs.ConnectionString, p => p.EnableRetryOnFailure()));
+            builder.Services.AddIdentityCore<ApplicationUser>()
+                .AddRoles<IdentityRole>()
+                .AddEntityFrameworkStores<ApplicationDbContext>()
+                .AddSignInManager();
             builder.Services.AddMobileApi();
             await using var app = builder.Build();
             app.UseRouting(); app.UseRateLimiter();
@@ -121,6 +130,22 @@ internal static class PostgresChecks
             }));
             Check(pendingPairings.Count(x => x is not null) == 2 && await db.MobileDevices.CountAsync(x => x.UserId == user.Id) == 3,
                 "concurrent pairing submissions cannot bypass three-device limit");
+            var installationId = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
+            using var login = await client.PostAsJsonAsync("/api/mobile/login",
+                new MobileLoginRequest(user.Email!, "Secret123", installationId, "Login device"));
+            Check(login.StatusCode == HttpStatusCode.OK, "website credentials create a mobile session");
+            var session = (await login.Content.ReadFromJsonAsync<MobileSessionResult>())!;
+            Check(session.Workspaces.Count == 2 && session.Workspaces.All(x => x.Id == workspace.Id || x.Id == other.Id),
+                "mobile session only lists member workspaces");
+            using var loginClient = new HttpClient { BaseAddress = client.BaseAddress };
+            loginClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", session.Token);
+            using var changedDestination = await loginClient.PutAsJsonAsync("/api/mobile/destination", new MobileDestinationRequest(other.Id));
+            var changed = await changedDestination.Content.ReadFromJsonAsync<MobileDestinationResult>();
+            Check(changedDestination.StatusCode == HttpStatusCode.OK && changed?.WorkspaceId == other.Id,
+                "authenticated device can change to a member workspace");
+            using var deniedDestination = await loginClient.PutAsJsonAsync("/api/mobile/destination", new MobileDestinationRequest(sharedWorkspace.Id));
+            Check(deniedDestination.StatusCode == HttpStatusCode.Forbidden,
+                "device cannot change to another user's workspace");
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", pair.Token);
             var sms = new SmsEnvelope("Mellat", "حساب5555555555\nبرداشت50,000,000\nمانده111,111,111\n05/06/15-12:14", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
             using var oversized = await client.PostAsJsonAsync("/api/mobile/sms", new SmsBatch(Enumerable.Repeat(sms, 6).ToList()));

@@ -42,7 +42,7 @@ namespace DonyshMobile
                 try
                 {
                     await shell.Navigation.PushAsync(new PendingTitlesPage(
-                        new SmsMonitorStore(FileSystem.AppDataDirectory), promptFirstMessage: true));
+                        new SmsMonitorStore(FileSystem.AppDataDirectory)));
                 }
                 catch (Exception exception)
                 {

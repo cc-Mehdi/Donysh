@@ -6,6 +6,7 @@ using Donysh.Sms;
 using HesabYar.Web.Data;
 using HesabYar.Web.Domain;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 namespace HesabYar.Web.Sms;
@@ -30,6 +31,10 @@ public static class MobileApi
                 $"account:{ClientKey(ctx)}", _ => new() {
                 PermitLimit = 30, Window = TimeSpan.FromMinutes(1), QueueLimit = 0,
                 AutoReplenishment = true }));
+            o.AddPolicy("mobile-login", ctx => RateLimitPartition.GetFixedWindowLimiter(
+                $"mobile-login:{ClientKey(ctx)}", _ => new() {
+                PermitLimit = 5, Window = TimeSpan.FromMinutes(1), QueueLimit = 0,
+                AutoReplenishment = true }));
             o.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
                 ctx.Request.Path.StartsWithSegments("/api/mobile")
                     ? RateLimitPartition.GetConcurrencyLimiter(
@@ -46,6 +51,181 @@ public static class MobileApi
         var group = app.MapGroup("/api/mobile").RequireRateLimiting("mobile");
         group.MapPost("/pair", PairAsync);
         group.MapPost("/sms", ImportAsync);
+        group.MapGet("/workspaces", WorkspacesAsync);
+        group.MapPut("/destination", ChangeDestinationAsync);
+        group.MapPost("/logout", LogoutAsync);
+        app.MapPost("/api/mobile/login", LoginAsync).RequireRateLimiting("mobile-login");
+    }
+
+    private static async Task<IResult> LoginAsync(
+        HttpContext ctx,
+        ApplicationDbContext db,
+        CancellationToken ct)
+    {
+        ctx.Response.Headers.CacheControl = "no-store";
+        if (!ctx.Request.IsHttps) return Results.BadRequest(new { error = "HTTPS required" });
+        var input = await ReadAsync<MobileLoginRequest>(ctx, ct);
+        var email = input?.Email?.Trim();
+        var password = input?.Password;
+        var deviceName = input?.DeviceName?.Trim();
+        if (string.IsNullOrWhiteSpace(email) || email.Length > 254
+            || email.Any(char.IsControl)
+            || string.IsNullOrEmpty(password) || password.Length > 256
+            || !IsHexSecret(input?.InstallationId, 64)
+            || string.IsNullOrWhiteSpace(deviceName) || deviceName.Length > 80 || deviceName.Any(char.IsControl))
+            return Results.BadRequest(new { error = "Invalid login" });
+
+        var users = ctx.RequestServices.GetRequiredService<UserManager<ApplicationUser>>();
+        var signIn = ctx.RequestServices.GetRequiredService<SignInManager<ApplicationUser>>();
+        var user = await users.FindByEmailAsync(email);
+        // Use the same Identity password and lockout rules as the website. The response is
+        // deliberately identical for unknown users and wrong passwords.
+        if (user is null || !(await signIn.CheckPasswordSignInAsync(user, password, lockoutOnFailure: true)).Succeeded)
+            return Results.Unauthorized();
+
+        var workspaces = await AccessibleWorkspacesAsync(db, user.Id, ct);
+        if (workspaces.Count == 0) return Results.Conflict(new { error = "No workspace" });
+
+        var instanceHash = Hash(input!.InstallationId.ToUpperInvariant());
+        var token = NewSecret();
+        return await db.Database.CreateExecutionStrategy().ExecuteAsync<IResult>(async () =>
+        {
+            db.ChangeTracker.Clear();
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
+            await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({user.Id}, 0))", ct);
+            var device = await db.MobileDevices.SingleOrDefaultAsync(
+                x => x.UserId == user.Id && x.ClientInstanceHash == instanceHash, ct);
+            if (device is null)
+            {
+                if (await db.MobileDevices.CountAsync(x => x.UserId == user.Id && !x.Revoked, ct) >= 5)
+                    return Results.Conflict(new { error = "Device limit" });
+                var destination = await ResolveDestinationAsync(db, user.Id, workspaces[0].Id, ct);
+                if (destination is null) return Results.Conflict(new { error = "No category" });
+                device = new MobileDevice
+                {
+                    UserId = user.Id,
+                    WorkspaceId = destination.Value.Workspace.Id,
+                    CategoryId = destination.Value.Category.Id,
+                    Name = deviceName,
+                    ClientInstanceHash = instanceHash
+                };
+                db.MobileDevices.Add(device);
+            }
+            else
+            {
+                var destination = await ResolveDestinationAsync(db, user.Id, device.WorkspaceId, ct)
+                    ?? await ResolveDestinationAsync(db, user.Id, workspaces[0].Id, ct);
+                if (destination is null) return Results.Conflict(new { error = "No category" });
+                device.WorkspaceId = destination.Value.Workspace.Id;
+                device.CategoryId = destination.Value.Category.Id;
+                device.Name = deviceName;
+                device.Revoked = false;
+            }
+            device.TokenHash = Hash(token);
+            device.PairCodeHash = null;
+            device.PairExpiresAtUtc = DateTime.UnixEpoch;
+            device.NextAllowedAtUtc = DateTime.UnixEpoch;
+            await db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+            var selected = workspaces.Single(x => x.Id == device.WorkspaceId);
+            var categoryName = await db.ExpenseCategories.Where(x => x.Id == device.CategoryId).Select(x => x.Name).SingleAsync(ct);
+            return Results.Ok(new MobileSessionResult(token, user.DisplayName, selected.Id, selected.Name,
+                categoryName, workspaces));
+        });
+    }
+
+    private static async Task<IResult> WorkspacesAsync(HttpContext ctx, ApplicationDbContext db, CancellationToken ct)
+    {
+        ctx.Response.Headers.CacheControl = "no-store";
+        var authenticated = await AuthenticateDeviceAsync(ctx, db, ct);
+        if (authenticated is null) return Results.Unauthorized();
+        var workspaces = await AccessibleWorkspacesAsync(db, authenticated.Value.Device.UserId, ct);
+        var selected = workspaces.FirstOrDefault(x => x.Id == authenticated.Value.Device.WorkspaceId);
+        if (selected is null) return Results.StatusCode(403);
+        var categoryName = await db.ExpenseCategories.AsNoTracking()
+            .Where(x => x.Id == authenticated.Value.Device.CategoryId && !x.IsArchived)
+            .Select(x => x.Name).SingleOrDefaultAsync(ct);
+        if (categoryName is null) return Results.StatusCode(409);
+        return Results.Ok(new MobileWorkspaceList(selected.Id, selected.Name, categoryName, workspaces));
+    }
+
+    private static async Task<IResult> ChangeDestinationAsync(HttpContext ctx, ApplicationDbContext db, CancellationToken ct)
+    {
+        ctx.Response.Headers.CacheControl = "no-store";
+        if (!ctx.Request.IsHttps) return Results.BadRequest();
+        var authenticated = await AuthenticateDeviceAsync(ctx, db, ct);
+        if (authenticated is null) return Results.Unauthorized();
+        var input = await ReadAsync<MobileDestinationRequest>(ctx, ct);
+        if (input is null || input.WorkspaceId == Guid.Empty) return Results.BadRequest();
+        return await db.Database.CreateExecutionStrategy().ExecuteAsync<IResult>(async () =>
+        {
+            db.ChangeTracker.Clear();
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
+            await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({authenticated.Value.Device.UserId}, 0))", ct);
+            var device = await db.MobileDevices.SingleOrDefaultAsync(
+                x => x.Id == authenticated.Value.Device.Id && x.TokenHash == authenticated.Value.TokenHash && !x.Revoked, ct);
+            if (device is null) return Results.Unauthorized();
+            var destination = await ResolveDestinationAsync(db, device.UserId, input.WorkspaceId, ct);
+            if (destination is null) return Results.StatusCode(403);
+            device.WorkspaceId = destination.Value.Workspace.Id;
+            device.CategoryId = destination.Value.Category.Id;
+            await db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+            return Results.Ok(new MobileDestinationResult(device.WorkspaceId,
+                destination.Value.Workspace.Name, destination.Value.Category.Name));
+        });
+    }
+
+    private static async Task<IResult> LogoutAsync(HttpContext ctx, ApplicationDbContext db, CancellationToken ct)
+    {
+        ctx.Response.Headers.CacheControl = "no-store";
+        var authenticated = await AuthenticateDeviceAsync(ctx, db, ct);
+        if (authenticated is null) return Results.Unauthorized();
+        return await db.Database.CreateExecutionStrategy().ExecuteAsync<IResult>(async () =>
+        {
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"SELECT pg_advisory_xact_lock(hashtextextended({authenticated.Value.Device.UserId}, 0))", ct);
+            var changed = await db.MobileDevices.Where(x => x.Id == authenticated.Value.Device.Id
+                    && x.TokenHash == authenticated.Value.TokenHash && !x.Revoked)
+                .ExecuteUpdateAsync(x => x.SetProperty(d => d.Revoked, true)
+                    .SetProperty(d => d.TokenHash, (string?)null), ct);
+            if (changed == 0) return Results.Unauthorized();
+            await tx.CommitAsync(ct);
+            return Results.NoContent();
+        });
+    }
+
+    private static async Task<(MobileDevice Device, string TokenHash)?> AuthenticateDeviceAsync(
+        HttpContext ctx, ApplicationDbContext db, CancellationToken ct)
+    {
+        if (!ctx.Request.IsHttps) return null;
+        var auth = ctx.Request.Headers.Authorization.ToString();
+        if (!auth.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) || !IsHexSecret(auth[7..], 64)) return null;
+        var tokenHash = Hash(auth[7..]);
+        var device = await db.MobileDevices.AsNoTracking().SingleOrDefaultAsync(x => x.TokenHash == tokenHash && !x.Revoked, ct);
+        return device is null ? null : (device, tokenHash);
+    }
+
+    private static Task<List<MobileWorkspace>> AccessibleWorkspacesAsync(ApplicationDbContext db, string userId, CancellationToken ct) =>
+        db.WorkspaceMembers.AsNoTracking().Where(x => x.UserId == userId)
+            .OrderBy(x => x.Workspace.Type).ThenBy(x => x.Workspace.CreatedAtUtc)
+            .Select(x => new MobileWorkspace(x.WorkspaceId, x.Workspace.Name,
+                x.Workspace.Type == WorkspaceType.Shared ? "shared" : "personal"))
+            .ToListAsync(ct);
+
+    private static async Task<(Workspace Workspace, ExpenseCategory Category)?> ResolveDestinationAsync(
+        ApplicationDbContext db, string userId, Guid workspaceId, CancellationToken ct)
+    {
+        var workspace = await db.WorkspaceMembers.AsNoTracking()
+            .Where(x => x.UserId == userId && x.WorkspaceId == workspaceId)
+            .Select(x => x.Workspace).SingleOrDefaultAsync(ct);
+        if (workspace is null) return null;
+        var category = await db.ExpenseCategories.AsNoTracking()
+            .Where(x => x.WorkspaceId == workspaceId && !x.IsArchived)
+            .OrderByDescending(x => x.Name == "سایر").ThenBy(x => x.CreatedAtUtc)
+            .FirstOrDefaultAsync(ct);
+        return category is null ? null : (workspace, category);
     }
 
     // Manual bounded JSON read avoids model-binding large bodies before device validation.
@@ -113,11 +293,10 @@ public static class MobileApi
     {
         ctx.Response.Headers.CacheControl = "no-store";
         if (!ctx.Request.IsHttps) return Results.BadRequest();
-        var auth = ctx.Request.Headers.Authorization.ToString();
-        if (!auth.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) || !IsHexSecret(auth[7..], 64)) return Results.Unauthorized();
-        var tokenHash = Hash(auth[7..]);
-        var device = await db.MobileDevices.AsNoTracking().SingleOrDefaultAsync(x => x.TokenHash == tokenHash && !x.Revoked, ct);
-        if (device is null) return Results.Unauthorized();
+        var authenticated = await AuthenticateDeviceAsync(ctx, db, ct);
+        if (authenticated is null) return Results.Unauthorized();
+        var tokenHash = authenticated.Value.TokenHash;
+        var device = authenticated.Value.Device;
         var input = await ReadAsync<SmsBatch>(ctx, ct);
         if (input?.Messages is null || input.Messages.Count is < 1 or > SyncPolicy.BatchSize
             || input.Messages.Any(x => !SyncPolicy.Valid(x, DateTimeOffset.UtcNow))) return Results.BadRequest(new { error = "Invalid batch" });
@@ -127,6 +306,9 @@ public static class MobileApi
             await using var tx = await db.Database.BeginTransactionAsync(ct);
             // Serialize all devices of this user, not unrelated users. Hash collisions only delay; never grant access.
             await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({device.UserId}, 0))", ct);
+            device = await db.MobileDevices.AsNoTracking().SingleOrDefaultAsync(
+                x => x.Id == device.Id && x.TokenHash == tokenHash && !x.Revoked, ct);
+            if (device is null) return Results.Unauthorized();
             var now = DateTime.UtcNow;
             if (!await HasAccessAsync(db, device, ct) || !await db.ExpenseCategories.AnyAsync(x => x.Id == device.CategoryId && x.WorkspaceId == device.WorkspaceId && !x.IsArchived, ct))
                 return Results.StatusCode(403);

@@ -36,11 +36,11 @@
                     <Border Style="{StaticResource InfoCard}" WidthRequest="54" HeightRequest="54" HorizontalOptions="Start" StrokeThickness="0">
                         <Label Text="{x:Static ui:AppIcons.Link}" FontFamily="MaterialIconsRound" FontSize="24" HorizontalOptions="Center" VerticalOptions="Center" />
                     </Border>
-                    <Label Text="گوشی را به دونیش وصل کنید" Style="{StaticResource SectionTitle}" FontSize="20" />
-                    <Label Text="در سایت دونیش، بخش «همراه دونیش» را باز کنید؛ فضای مالی و دستهٔ مقصد را انتخاب کنید و یک کد اتصال بسازید." Style="{StaticResource MutedText}" LineHeight="1.35" />
-                    <ui:DonyshButton x:Name="OpenConnectionButton" Glyph="{x:Static ui:AppIcons.Security}" Text="واردکردن کد اتصال" Clicked="OnConnectionClicked"
+                    <Label Text="وارد حساب دونیش شوید" Style="{StaticResource SectionTitle}" FontSize="20" />
+                    <Label Text="با همان رایانامه و گذرواژهٔ سایت وارد شوید. پس از ورود، فضاهای مالی شما نمایش داده می‌شوند." Style="{StaticResource MutedText}" LineHeight="1.35" />
+                    <ui:DonyshButton x:Name="OpenConnectionButton" Glyph="{x:Static ui:AppIcons.Security}" Text="ورود به حساب دونیش" Clicked="OnConnectionClicked"
                             Style="{StaticResource PrimaryAction}" AutomationId="SetupConnectionButton" />
-                    <Label Text="کد فقط برای وصل‌کردن امن همین گوشی استفاده می‌شود." Style="{StaticResource Caption}" HorizontalTextAlignment="Center" />
+                    <Label Text="گذرواژه روی گوشی ذخیره نمی‌شود و این گوشی دسترسی جداگانه دریافت می‌کند." Style="{StaticResource Caption}" HorizontalTextAlignment="Center" />
                 </VerticalStackLayout>
             </Border>
 

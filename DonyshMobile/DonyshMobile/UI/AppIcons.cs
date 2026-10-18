@@ -34,4 +34,5 @@ public static class AppIcons
     public const string Template = "\uf1c2";
     public const string Title = "\ue264";
     public const string Tune = "\ue429";
+    public const string Workspace = "\ue850";
 }

@@ -35,6 +35,17 @@
                                         IsVisible="{Binding HasNextStep}" />
                             </VerticalStackLayout>
                         </Border>
+                        <Border Style="{StaticResource InfoCard}" Padding="14" IsVisible="{Binding HasConnection}">
+                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                                <Label Text="{x:Static ui:AppIcons.Workspace}" Style="{StaticResource SectionIcon}" VerticalOptions="Center" />
+                                <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                                    <Label Text="فضای مالی پیش‌فرض" Style="{StaticResource Caption}" />
+                                    <Label Text="{Binding WorkspaceText}" FontAttributes="Bold" LineBreakMode="TailTruncation" />
+                                </VerticalStackLayout>
+                                <ui:DonyshButton Grid.Column="2" Glyph="{x:Static ui:AppIcons.Sync}" Text="تغییر"
+                                                 Clicked="OnWorkspaceShortcutClicked" Style="{StaticResource SecondaryAction}" />
+                            </Grid>
+                        </Border>
                         <Grid ColumnDefinitions="*,*,*" ColumnSpacing="9">
                             <Border x:Name="SenderStatCard" Style="{StaticResource StatInfoCard}">
                                 <VerticalStackLayout Spacing="2">

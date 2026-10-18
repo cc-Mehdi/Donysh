@@ -182,6 +182,37 @@ try
     Assert(MobileApiClient.NormalizeServer("https://donysh.ir/path") == "https://donysh.ir", "Normalize API origin");
     Assert(MobileApiClient.NormalizeServer("http://donysh.ir") is null, "Require HTTPS API");
 
+    var loginWorkspaceId = Guid.NewGuid();
+    var loginApi = new MobileApiClient(() => new HttpClient(new StubHandler(request =>
+    {
+        Assert(request.RequestUri?.AbsolutePath == "/api/mobile/login", "Use mobile login endpoint");
+        var payload = request.Content!.ReadFromJsonAsync<MobileLoginRequest>().GetAwaiter().GetResult();
+        Assert(payload is { Email: "user@example.com", Password: "Secret123", DeviceName: "گوشی من" }
+               && payload.InstallationId == new string('1', 64), "Send website credentials only to login endpoint");
+        return new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = JsonContent.Create(new MobileSessionResult(new string('A', 64), "کاربر",
+                loginWorkspaceId, "شخصی", "سایر", [new(loginWorkspaceId, "شخصی", "personal")]))
+        };
+    })));
+    var loginResult = await loginApi.LoginAsync("https://donysh.ir", " user@example.com ", "Secret123",
+        new string('1', 64), "گوشی من");
+    Assert(loginResult?.WorkspaceId == loginWorkspaceId, "Accept authenticated mobile session");
+
+    var workspaceApi = new MobileApiClient(() => new HttpClient(new StubHandler(request =>
+    {
+        Assert(request.Headers.Authorization?.Scheme == "Bearer"
+               && request.Headers.Authorization.Parameter == new string('A', 64), "Authorize workspace request with device token");
+        return new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = JsonContent.Create(new MobileWorkspaceList(loginWorkspaceId, "شخصی", "سایر",
+                [new(loginWorkspaceId, "شخصی", "personal")]))
+        };
+    })));
+    var workspaceResult = await workspaceApi.GetWorkspacesAsync(
+        new MobileConnection("https://donysh.ir", new string('A', 64), "شخصی / سایر", loginWorkspaceId));
+    Assert(workspaceResult.Workspaces.Single().Id == loginWorkspaceId, "Load accessible workspaces");
+
     var apiDirectory = Path.Combine(testDirectory, "api-client");
     var apiStore = CreateStore(apiDirectory);
     Assert(await apiStore.AddSenderAsync("Bank") == AddSenderResult.Added, "Add API test sender");

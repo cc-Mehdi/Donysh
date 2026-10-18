@@ -26,7 +26,13 @@ public static class UiPreferences
 
     public static void ApplyTheme()
     {
-        if (Application.Current is { } app)
-            app.UserAppTheme = Theme switch { 1 => AppTheme.Light, 2 => AppTheme.Dark, _ => AppTheme.Unspecified };
+        var selected = Theme switch { 1 => AppTheme.Light, 2 => AppTheme.Dark, _ => AppTheme.Unspecified };
+        void Apply()
+        {
+            if (Application.Current is { } app && app.UserAppTheme != selected)
+                app.UserAppTheme = selected;
+        }
+        if (MainThread.IsMainThread) Apply();
+        else MainThread.BeginInvokeOnMainThread(Apply);
     }
 }
