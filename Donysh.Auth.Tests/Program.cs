@@ -4,6 +4,7 @@ using Donysh.Auth.Domain;
 using Donysh.Auth.Pages;
 using Donysh.Auth.Security;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -33,6 +34,15 @@ Check("Identity password hash remains compatible",
     authHasher.VerifyHashedPassword(new AuthUser(), legacyHash, "Migration-Test-123") is PasswordVerificationResult.Success or PasswordVerificationResult.SuccessRehashNeeded);
 Check("Authenticated Auth home renders without a login redirect loop",
     new IndexModel().OnGet() is Microsoft.AspNetCore.Mvc.RazorPages.PageResult);
+var authPrefetch = new DefaultHttpContext();
+authPrefetch.Request.Method = HttpMethods.Get;
+authPrefetch.Request.Path = "/connect/authorize";
+authPrefetch.Request.Headers["Sec-Purpose"] = "prefetch;prerender";
+Check("Auth ignores speculative authorization requests",
+    AuthenticationPrefetchGuard.ShouldSkip(authPrefetch.Request));
+authPrefetch.Request.Path = "/health/live";
+Check("Auth prefetch guard leaves ordinary endpoints unchanged",
+    !AuthenticationPrefetchGuard.ShouldSkip(authPrefetch.Request));
 
 Environment.SetEnvironmentVariable("Database__ApplyMigrations", "false");
 Environment.SetEnvironmentVariable("AllowedHosts", "*");

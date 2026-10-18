@@ -100,7 +100,6 @@
                     </div>
                     <div class="flex items-center gap-2">
                         @await Component.InvokeAsync("ObligationAlert")
-                        <button type="button" class="btn-secondary px-3" data-guide-open aria-label="بازکردن راهنما">؟ <span class="hidden sm:inline">راهنما</span></button>
                         <a asp-page="/Expenses/Create" class="btn-primary"><span class="text-lg">＋</span><span class="hidden sm:inline">ثبت خرج</span></a>
                     </div>
                 </div>
@@ -119,8 +118,6 @@
             </main>
         </div>
     </div>
-
-    <partial name="_OnboardingGuide" />
 
     <nav class="fixed inset-x-3 bottom-3 z-30 grid grid-cols-5 rounded-2xl border border-slate-200 bg-white/95 p-2 shadow-2xl backdrop-blur lg:hidden">
         <a asp-page="/Index" class="mobile-nav"><span>⌂</span><small>خانه</small></a>

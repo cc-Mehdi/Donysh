@@ -179,6 +179,7 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseAuthSecurityHeaders();
+app.Use(AuthenticationPrefetchGuard.InvokeAsync);
 app.UseStaticFiles();
 app.UseRequestLocalization(new RequestLocalizationOptions()
     .SetDefaultCulture("fa-IR")

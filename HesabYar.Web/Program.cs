@@ -92,6 +92,14 @@ if (centralAuth.Enabled)
             options.ResponseMode = CentralAuthOptions.SecureResponseMode;
             options.UsePkce = true;
             options.RequireHttpsMetadata = centralAuth.RequireHttpsMetadata;
+            options.CorrelationCookie.SameSite = SameSiteMode.Lax;
+            options.CorrelationCookie.SecurePolicy = CookieSecurePolicy.Always;
+            options.CorrelationCookie.HttpOnly = true;
+            options.CorrelationCookie.IsEssential = true;
+            options.NonceCookie.SameSite = SameSiteMode.Lax;
+            options.NonceCookie.SecurePolicy = CookieSecurePolicy.Always;
+            options.NonceCookie.HttpOnly = true;
+            options.NonceCookie.IsEssential = true;
             // Keep only the ID token in the encrypted application cookie so RP-initiated
             // logout can terminate the central session. Access/refresh tokens are discarded.
             options.SaveTokens = true;
@@ -259,6 +267,7 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseDonyshSecurityHeaders();
+app.Use(AuthenticationPrefetchGuard.InvokeAsync);
 
 app.UseStaticFiles();
 

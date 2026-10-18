@@ -1,5 +1,4 @@
 using HesabYar.Web.Configuration;
-using HesabYar.Web.Domain;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -11,19 +10,20 @@ namespace HesabYar.Web.Pages.Account;
 
 [Authorize]
 public sealed class LogoutModel(
-    SignInManager<ApplicationUser> signInManager,
     IOptions<CentralAuthOptions> centralAuthOptions) : PageModel
 {
-    public async Task<IActionResult> OnPostAsync()
+    public IActionResult OnPost()
     {
-        await signInManager.SignOutAsync();
         if (centralAuthOptions.Value.Enabled)
         {
             return SignOut(
-                new AuthenticationProperties { RedirectUri = Url.Page("/Account/Login") },
+                new AuthenticationProperties { RedirectUri = Url.Page("/Index") },
+                IdentityConstants.ApplicationScheme,
                 CentralAuthOptions.Scheme);
         }
 
-        return RedirectToPage("/Account/Login");
+        return SignOut(
+            new AuthenticationProperties { RedirectUri = Url.Page("/Account/Login") },
+            IdentityConstants.ApplicationScheme);
     }
 }

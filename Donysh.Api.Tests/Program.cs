@@ -55,6 +55,16 @@ Console.WriteLine("PASS Central authentication cannot reuse legacy Finance sessi
 if (!string.Equals(CentralAuthOptions.SecureResponseMode, "query", StringComparison.Ordinal))
     throw new Exception("Central authentication must not require an inline form_post script.");
 Console.WriteLine("PASS Central authentication callback preserves strict CSP without inline scripts");
+var financePrefetch = new DefaultHttpContext();
+financePrefetch.Request.Method = HttpMethods.Get;
+financePrefetch.Request.Path = "/Account/Login";
+financePrefetch.Request.Headers["Sec-Purpose"] = "prefetch;prerender";
+if (!AuthenticationPrefetchGuard.ShouldSkip(financePrefetch.Request))
+    throw new Exception("Finance authentication must ignore speculative browser navigation.");
+financePrefetch.Request.Method = HttpMethods.Post;
+if (AuthenticationPrefetchGuard.ShouldSkip(financePrefetch.Request))
+    throw new Exception("Finance authentication must never ignore an interactive form post.");
+Console.WriteLine("PASS Finance authentication ignores only speculative browser navigation");
 
 // Starts only a loopback test host. The unavailable database deliberately proves guards do not query it.
 var builder = WebApplication.CreateBuilder();

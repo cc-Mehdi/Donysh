@@ -562,56 +562,6 @@
         }
     }
 
-    const guide = document.getElementById('onboarding-guide');
-    if (guide) {
-        const user = guide.dataset.onboardingUser || 'anonymous';
-        const storageKey = `hesabyar:onboarding:v2:${user}`;
-        const steps = [...guide.querySelectorAll('[data-guide-step]')];
-        const dots = [...guide.querySelectorAll('[data-guide-dot]')];
-        const previousButton = guide.querySelector('[data-guide-prev]');
-        const nextButton = guide.querySelector('[data-guide-next]');
-        let currentStep = 0;
-
-        const renderGuide = () => {
-            steps.forEach((step, index) => step.classList.toggle('hidden', index !== currentStep));
-            dots.forEach((dot, index) => dot.classList.toggle('guide-dot-active', index === currentStep));
-            previousButton?.classList.toggle('hidden', currentStep === 0);
-            if (nextButton) nextButton.textContent = currentStep === steps.length - 1 ? 'شروع استفاده' : 'مرحله بعد';
-        };
-
-        const openGuide = () => {
-            currentStep = 0;
-            renderGuide();
-            guide.classList.remove('hidden');
-            document.body.classList.add('overflow-hidden');
-        };
-
-        const closeGuide = (remember = true) => {
-            guide.classList.add('hidden');
-            document.body.classList.remove('overflow-hidden');
-            if (remember) localStorage.setItem(storageKey, 'done');
-        };
-
-        document.querySelectorAll('[data-guide-open]').forEach((button) => button.addEventListener('click', openGuide));
-        guide.querySelectorAll('[data-guide-close], [data-guide-skip]').forEach((button) => button.addEventListener('click', () => closeGuide(true)));
-        previousButton?.addEventListener('click', () => {
-            currentStep = Math.max(0, currentStep - 1);
-            renderGuide();
-        });
-        nextButton?.addEventListener('click', () => {
-            if (currentStep >= steps.length - 1) closeGuide(true);
-            else {
-                currentStep += 1;
-                renderGuide();
-            }
-        });
-        guide.addEventListener('click', (event) => {
-            if (event.target === guide) closeGuide(true);
-        });
-
-        if (!localStorage.getItem(storageKey)) window.setTimeout(openGuide, 450);
-    }
-
     window.setTimeout(() => {
         document.querySelectorAll('[data-toast]').forEach((toast) => toast.remove());
     }, 5000);

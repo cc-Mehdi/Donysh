@@ -269,32 +269,6 @@
         font-variant-numeric: tabular-nums;
     }
 
-    .guide-overlay {
-        z-index: 100;
-        @apply fixed inset-0 grid place-items-center bg-slate-950/50 p-4 backdrop-blur-sm;
-    }
-
-    .guide-dialog {
-        max-height: 90vh;
-        @apply w-full max-w-xl overflow-y-auto rounded-3xl bg-white shadow-2xl;
-    }
-
-    .guide-close {
-        @apply grid size-10 shrink-0 place-items-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900;
-    }
-
-    .guide-icon {
-        @apply grid size-14 place-items-center rounded-2xl bg-indigo-100 text-xl font-black text-indigo-700;
-    }
-
-    .guide-dot {
-        @apply size-2 rounded-full bg-slate-200 transition-all;
-    }
-
-    .guide-dot-active {
-        @apply w-7 bg-indigo-600;
-    }
-
     /* Persian date picker */
     .persian-datepicker-control {
         position: relative;
