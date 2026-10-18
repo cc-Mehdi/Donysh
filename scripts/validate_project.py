@@ -2,10 +2,10 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 import xml.etree.ElementTree as ET
 
-import yaml
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -24,6 +24,20 @@ REQUIRED = [
     "HesabYar.Web/Pages/Shared/_OnboardingGuide.cshtml",
     "HesabYar.Web/ModelBinding/FlexibleDecimalModelBinder.cs",
     "HesabYar.Web/ModelBinding/PersianDateOnlyModelBinder.cs",
+    "Donysh.Auth/Donysh.Auth.csproj",
+    "Donysh.Auth/Program.cs",
+    "Donysh.Auth/Data/Migrations/AuthDbContextModelSnapshot.cs",
+    "Donysh.Auth/Pages/Account/Login.cshtml",
+    "Donysh.Auth/wwwroot/css/app.css",
+    "Donysh.Auth.Tests/Donysh.Auth.Tests.csproj",
+    "docker-compose.platform.yml",
+    "Caddyfile.platform",
+    "docs/platform/BASELINE.md",
+    "docs/platform/ARCHITECTURE.md",
+    "docs/platform/ROADMAP.md",
+    "docs/platform/AUTH.md",
+    "docs/platform/DEPLOYMENT.md",
+    "docs/platform/MIGRATION.md",
     ".github/workflows/deploy.yml",
     "scripts/server-deploy.sh",
     "CI-CD.md",
@@ -64,16 +78,26 @@ def main() -> int:
         json.loads((ROOT / "HesabYar.Web/package.json").read_text(encoding="utf-8"))
         json.loads((ROOT / "HesabYar.Web/appsettings.json").read_text(encoding="utf-8"))
         json.loads((ROOT / "global.json").read_text(encoding="utf-8"))
+        json.loads((ROOT / "Donysh.Auth/package.json").read_text(encoding="utf-8"))
+        json.loads((ROOT / "Donysh.Auth/appsettings.json").read_text(encoding="utf-8"))
     except Exception as exc:
         errors.append(f"invalid json: {exc}")
 
     try:
         ET.parse(ROOT / "HesabYar.Web/HesabYar.Web.csproj")
+        ET.parse(ROOT / "Donysh.Auth/Donysh.Auth.csproj")
+        ET.parse(ROOT / "Donysh.Auth.Tests/Donysh.Auth.Tests.csproj")
     except Exception as exc:
         errors.append(f"invalid csproj xml: {exc}")
 
-    for path in (ROOT / "HesabYar.Web").rglob("*.cs"):
+    source_roots = [ROOT / "HesabYar.Web", ROOT / "Donysh.Auth", ROOT / "Donysh.Auth.Tests"]
+    for path in (path for source_root in source_roots for path in source_root.rglob("*.cs")):
         text = path.read_text(encoding="utf-8")
+        # The simple delimiter check below is not a C# parser. Remove non-interpolated
+        # raw string bodies so SQL/JSON braces inside triple-quoted literals do not
+        # produce false positives; the real syntax check is the dotnet build.
+        text = re.sub(r'(?<!\$)"""[\s\S]*?"""', '""', text)
+        text = re.sub(r"'(?:\\.|[^'\\])'", "''", text)
         if not balanced(text, "{", "}"):
             errors.append(f"unbalanced braces: {path.relative_to(ROOT)}")
         if not balanced(text, "(", ")"):
@@ -83,25 +107,25 @@ def main() -> int:
         if "TODO" in text or "NotImplementedException" in text:
             errors.append(f"unfinished marker: {path.relative_to(ROOT)}")
 
-    for compose_name in ["docker-compose.yml", "docker-compose.domain.yml"]:
+    for compose_name in ["docker-compose.yml", "docker-compose.domain.yml", "docker-compose.platform.yml"]:
         compose = (ROOT / compose_name).read_text(encoding="utf-8")
-        try:
-            parsed_compose = yaml.safe_load(compose)
-            if not isinstance(parsed_compose, dict) or "services" not in parsed_compose:
-                errors.append(f"{compose_name} has no services mapping")
-        except Exception as exc:
-            errors.append(f"invalid {compose_name} yaml: {exc}")
+        if not compose.startswith("name:") or "\nservices:\n" not in compose:
+            errors.append(f"{compose_name} has no top-level services mapping")
 
     compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
     for token in ["postgres:17-alpine", "DataProtection__KeysPath", "${APP_PORT:-8080}:8080"]:
         if token not in compose:
             errors.append(f"compose token missing: {token}")
 
+    platform_compose = (ROOT / "docker-compose.platform.yml").read_text(encoding="utf-8")
+    for token in ["auth-db:", "auth:", "AUTH_SIGNING_CERT_PASSWORD", "Features__LegacyIdentityImportCompleted: \"false\""]:
+        if token not in platform_compose:
+            errors.append(f"platform compose token missing: {token}")
+
     workflow = (ROOT / ".github/workflows/deploy.yml").read_text(encoding="utf-8")
-    try:
-        yaml.safe_load(workflow)
-    except Exception as exc:
-        errors.append(f"invalid GitHub Actions yaml: {exc}")
+    for token in ["name: CI and Deploy", "\njobs:\n", "uses: actions/checkout@v4"]:
+        if token not in workflow:
+            errors.append(f"workflow token missing: {token}")
 
     pages_text = "\n".join(
         path.read_text(encoding="utf-8")

@@ -1,0 +1,146 @@
+name: hesabyar
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-hesabyar}
+      POSTGRES_USER: ${POSTGRES_USER:-hesabyar}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      TZ: ${TZ:-Asia/Tehran}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - finance-backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hesabyar} -d ${POSTGRES_DB:-hesabyar}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
+    logging: &default-logging
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  web:
+    build:
+      context: .
+      dockerfile: HesabYar.Web/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      AllowedHosts: ${DOMAIN:?DOMAIN is required}
+      ReverseProxy__Enabled: "true"
+      DataProtection__KeysPath: /keys
+      TZ: ${TZ:-Asia/Tehran}
+      ConnectionStrings__DefaultConnection: >-
+        Host=db;Port=5432;Database=${POSTGRES_DB:-hesabyar};Username=${POSTGRES_USER:-hesabyar};Password=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required};Pooling=true;Maximum Pool Size=100;Timeout=15;Command Timeout=30;Include Error Detail=false
+    expose:
+      - "8080"
+    volumes:
+      - dataprotection_keys:/keys
+    networks:
+      - finance-backend
+    logging: *default-logging
+
+  auth-db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${AUTH_POSTGRES_DB:-donysh_auth}
+      POSTGRES_USER: ${AUTH_POSTGRES_USER:-donysh_auth}
+      POSTGRES_PASSWORD: ${AUTH_POSTGRES_PASSWORD:?AUTH_POSTGRES_PASSWORD is required}
+      TZ: ${TZ:-Asia/Tehran}
+    volumes:
+      - auth_postgres_data:/var/lib/postgresql/data
+    networks:
+      - auth-backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${AUTH_POSTGRES_USER:-donysh_auth} -d ${AUTH_POSTGRES_DB:-donysh_auth}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
+    logging: *default-logging
+
+  auth:
+    build:
+      context: .
+      dockerfile: Donysh.Auth/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      auth-db:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      AllowedHosts: ${AUTH_DOMAIN:?AUTH_DOMAIN is required}
+      ReverseProxy__Enabled: "true"
+      Database__ApplyMigrations: "true"
+      DataProtection__KeysPath: /keys
+      Features__PublicRegistration: "false"
+      Features__PasswordRecovery: "false"
+      Features__LegacyIdentityImportCompleted: "false"
+      OpenIddict__SigningCertificate__Path: /certs/signing.pfx
+      OpenIddict__SigningCertificate__Password: ${AUTH_SIGNING_CERT_PASSWORD:?AUTH_SIGNING_CERT_PASSWORD is required}
+      OpenIddict__EncryptionCertificate__Path: /certs/encryption.pfx
+      OpenIddict__EncryptionCertificate__Password: ${AUTH_ENCRYPTION_CERT_PASSWORD:?AUTH_ENCRYPTION_CERT_PASSWORD is required}
+      TZ: ${TZ:-Asia/Tehran}
+      ConnectionStrings__AuthConnection: >-
+        Host=auth-db;Port=5432;Database=${AUTH_POSTGRES_DB:-donysh_auth};Username=${AUTH_POSTGRES_USER:-donysh_auth};Password=${AUTH_POSTGRES_PASSWORD:?AUTH_POSTGRES_PASSWORD is required};Pooling=true;Maximum Pool Size=30;Timeout=15;Command Timeout=30;Include Error Detail=false
+    expose:
+      - "8080"
+    volumes:
+      - auth_dataprotection_keys:/keys
+      - ./secrets/auth:/certs:ro
+    networks:
+      - auth-backend
+      - frontend
+    logging: *default-logging
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      web:
+        condition: service_started
+      auth:
+        condition: service_started
+    environment:
+      DOMAIN: ${DOMAIN:?DOMAIN is required}
+      AUTH_DOMAIN: ${AUTH_DOMAIN:?AUTH_DOMAIN is required}
+      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL is required}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile.platform:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - finance-backend
+      - frontend
+    logging: *default-logging
+
+volumes:
+  postgres_data:
+  dataprotection_keys:
+  auth_postgres_data:
+  auth_dataprotection_keys:
+  caddy_data:
+  caddy_config:
+
+networks:
+  frontend:
+  finance-backend:
+    internal: true
+  auth-backend:
+    internal: true

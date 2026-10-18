@@ -1,0 +1,11 @@
+@page
+@{
+    ViewData["Title"] = "خروج انجام شد";
+}
+<section class="simple-card">
+    <partial name="_Brand" />
+    <div class="success-icon" aria-hidden="true">✓</div>
+    <h1>با موفقیت خارج شدید</h1>
+    <p>نشست حساب مرکزی روی این مرورگر پایان یافت.</p>
+    <a asp-page="/Account/Login" class="primary-button">ورود دوباره</a>
+</section>

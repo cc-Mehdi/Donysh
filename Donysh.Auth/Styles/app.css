@@ -1,0 +1,100 @@
+@import "tailwindcss";
+
+@font-face {
+    font-family: "YekanBakh";
+    src: url("/fonts/YekanBakh-Regular.woff2") format("woff2");
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "YekanBakh";
+    src: url("/fonts/YekanBakh-Bold.woff2") format("woff2");
+    font-style: normal;
+    font-weight: 700 900;
+    font-display: swap;
+}
+
+@source "../Pages/**/*.cshtml";
+@source "../Pages/**/*.cs";
+
+@theme {
+    --font-sans: "IRANYekanX", "YekanBakh", Tahoma, Arial, sans-serif;
+}
+
+@layer base {
+    *, *::before, *::after { box-sizing: border-box; }
+    html { font-family: var(--font-sans); text-rendering: optimizeLegibility; }
+    body { margin: 0; font-family: var(--font-sans); }
+    input, button { font: inherit; }
+    a, button { -webkit-tap-highlight-color: transparent; }
+    :focus-visible { outline: 3px solid #a5b4fc; outline-offset: 3px; }
+}
+
+@layer components {
+    .auth-body {
+        @apply min-h-screen overflow-x-hidden bg-slate-950 text-slate-900 antialiased;
+        background-image: radial-gradient(circle at 15% 10%, rgba(79, 70, 229, .2), transparent 32%), radial-gradient(circle at 85% 85%, rgba(14, 165, 233, .13), transparent 34%);
+    }
+    .skip-link { @apply fixed start-4 top-4 z-50 -translate-y-24 rounded-xl bg-white px-4 py-2 text-sm font-bold text-slate-900 transition focus:translate-y-0; }
+    .auth-shell { @apply relative z-10 grid min-h-screen place-items-center p-3 sm:p-6 lg:p-10; }
+    .ambient { @apply pointer-events-none fixed rounded-full blur-3xl; }
+    .ambient-one { @apply -start-24 -top-28 size-80 bg-indigo-500/15; }
+    .ambient-two { @apply -bottom-32 -end-20 size-96 bg-sky-400/10; }
+    .auth-frame { @apply grid w-full max-w-5xl overflow-hidden rounded-[2rem] border border-white/10 bg-white shadow-2xl shadow-black/30 lg:grid-cols-[1.05fr_.95fr]; }
+    .auth-story { @apply relative hidden min-h-[42rem] flex-col justify-between overflow-hidden bg-slate-900 p-10 text-white lg:flex; }
+    .auth-story::after { content: ""; @apply absolute -bottom-32 -start-28 size-96 rounded-full border-[4rem] border-indigo-500/15; }
+    .story-copy { @apply relative z-10 max-w-lg; }
+    .story-copy h1 { @apply mt-4 text-4xl font-black leading-[1.55] tracking-tight; }
+    .story-copy p { @apply mt-5 text-base leading-8 text-slate-300; }
+    .eyebrow { @apply text-xs font-bold tracking-wide text-indigo-600; }
+    .auth-story .eyebrow { @apply text-indigo-300; }
+    .trust-list { @apply relative z-10 space-y-3 text-sm text-slate-300; }
+    .trust-list li { @apply flex items-center gap-3; }
+    .trust-list span { @apply grid size-6 place-items-center rounded-full bg-emerald-400/15 text-emerald-300; }
+    .auth-panel { @apply flex min-h-[42rem] flex-col justify-center bg-slate-50 px-6 py-9 sm:px-10 lg:px-12; }
+    .mobile-brand { @apply mb-8 lg:hidden; }
+    .brand { @apply inline-flex w-fit items-center gap-3 text-inherit no-underline; }
+    .brand-mark { @apply grid size-11 place-items-center rounded-2xl bg-white/10 ring-1 ring-current/10; }
+    .auth-panel .brand-mark, .form-card .brand-mark, .simple-card .brand-mark { @apply bg-indigo-50 text-indigo-700; }
+    .brand-mark img { @apply size-8; }
+    .brand > span:last-child { @apply grid; }
+    .brand strong { @apply text-lg font-black leading-5 tracking-tight; }
+    .brand small { @apply mt-1 text-xs opacity-65; }
+    .phase-notice { @apply mb-7 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950; }
+    .phase-notice span { @apply mt-1 text-amber-600; }
+    .phase-notice p { @apply m-0; }
+    .panel-header h1, .panel-header h2 { @apply mt-2 text-3xl font-black tracking-tight text-slate-950; }
+    .panel-header > p:last-child { @apply mt-3 text-sm leading-7 text-slate-500; }
+    .auth-form { @apply mt-7 space-y-5; }
+    .field { @apply grid gap-2; }
+    .field-heading { @apply flex items-center justify-between gap-3; }
+    .field label { @apply text-sm font-bold text-slate-700; }
+    .field-heading a, .text-link { @apply text-xs font-bold text-indigo-700 no-underline hover:text-indigo-900 hover:underline; }
+    .field input { @apply min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-950 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100; }
+    .field > span { @apply text-xs text-rose-700; }
+    .check-row { @apply flex cursor-pointer items-center gap-3 text-sm text-slate-600; }
+    .check-row input { @apply size-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500; }
+    .primary-button, .secondary-button { @apply inline-flex min-h-12 w-full items-center justify-center rounded-xl px-5 text-sm font-bold no-underline transition disabled:cursor-not-allowed disabled:opacity-60; }
+    .primary-button { @apply bg-indigo-600 text-white shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 active:translate-y-px; }
+    .secondary-button { @apply border border-slate-300 bg-white text-slate-700 hover:bg-slate-50; }
+    .panel-foot { @apply mt-7 text-center text-sm text-slate-500; }
+    .panel-foot a { @apply font-bold text-indigo-700 no-underline hover:underline; }
+    .muted { @apply text-slate-500; }
+    .validation-summary { @apply empty:hidden rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800; }
+    .validation-summary ul { @apply m-0 list-inside list-disc p-0; }
+    .form-card, .simple-card { @apply w-full max-w-lg rounded-[2rem] border border-white/10 bg-slate-50 p-6 shadow-2xl shadow-black/30 sm:p-10; }
+    .form-card > .brand, .simple-card > .brand { @apply mb-8; }
+    .simple-card { @apply text-center; }
+    .simple-card .brand { @apply mx-auto; }
+    .simple-card h1 { @apply mt-5 text-2xl font-black; }
+    .simple-card p { @apply my-4 text-sm leading-7 text-slate-500; }
+    .simple-card form, .simple-card .primary-button, .simple-card .secondary-button { @apply mt-5; }
+    .success-icon { @apply mx-auto mt-5 grid size-14 place-items-center rounded-2xl bg-emerald-100 text-2xl font-black text-emerald-700; }
+    .form-card > .text-link { @apply mt-6 inline-block; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}

@@ -43,7 +43,9 @@ jobs:
         with:
           node-version: 22.x
           cache: npm
-          cache-dependency-path: HesabYar.Web/package-lock.json
+          cache-dependency-path: |
+            HesabYar.Web/package-lock.json
+            Donysh.Auth/package-lock.json
 
       - name: Install frontend dependencies
         working-directory: HesabYar.Web
@@ -55,6 +57,18 @@ jobs:
 
       - name: Build Tailwind CSS
         working-directory: HesabYar.Web
+        run: npm run build:css
+
+      - name: Install Auth frontend dependencies
+        working-directory: Donysh.Auth
+        run: timeout 180s npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Audit Auth frontend dependencies
+        working-directory: Donysh.Auth
+        run: npm audit --audit-level=high
+
+      - name: Build Auth Tailwind CSS
+        working-directory: Donysh.Auth
         run: npm run build:css
 
       - name: Restore .NET packages
@@ -71,8 +85,16 @@ jobs:
       - name: Run SMS parser and queue tests
         run: dotnet run --project Donysh.Sms.Tests --configuration Release
 
+      - name: Run Auth protocol and security tests
+        env:
+          DONYSH_AUTH_TEST_POSTGRES: Host=127.0.0.1;Port=5432;Username=postgres;Password=local-test-only
+        run: dotnet run --project Donysh.Auth.Tests --configuration Release
+
       - name: Validate Docker image
         run: docker build --file HesabYar.Web/Dockerfile --tag donysh-ci:${{ github.sha }} .
+
+      - name: Validate Auth Docker image
+        run: docker build --file Donysh.Auth/Dockerfile --tag donysh-auth-ci:${{ github.sha }} .
 
   deploy:
     name: Deploy to production

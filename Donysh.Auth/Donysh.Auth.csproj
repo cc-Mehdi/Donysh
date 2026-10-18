@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <RootNamespace>Donysh.Auth</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
+    <PackageReference Include="OpenIddict.AspNetCore" Version="7.7.2" />
+    <PackageReference Include="OpenIddict.EntityFrameworkCore" Version="7.7.2" />
+    <!-- Overrides a vulnerable transitive dependency pulled by design-time tooling. -->
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="../HesabYar.Web/wwwroot/images/logo-mark.svg" Link="wwwroot/images/logo-mark.svg" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="../HesabYar.Web/wwwroot/fonts/YekanBakh-Regular.woff2" Link="wwwroot/fonts/YekanBakh-Regular.woff2" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="../HesabYar.Web/wwwroot/fonts/YekanBakh-Bold.woff2" Link="wwwroot/fonts/YekanBakh-Bold.woff2" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

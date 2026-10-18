@@ -1,0 +1,6 @@
+@page
+@model Donysh.Auth.Pages.Account.ConfirmEmailModel
+@{
+    ViewData["Title"] = "تأیید ایمیل";
+}
+<section class="simple-card"><partial name="_Brand" /><div class="success-icon">@(Model.Succeeded ? "✓" : "!")</div><h1>@(Model.Succeeded ? "ایمیل تأیید شد" : "پیوند معتبر نیست")</h1><p>@Model.Message</p><a asp-page="/Account/Login" class="primary-button">رفتن به صفحه ورود</a></section>

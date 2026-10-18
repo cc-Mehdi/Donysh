@@ -1,0 +1,68 @@
+@page
+@model Donysh.Auth.Pages.Account.LoginModel
+@{
+    ViewData["Title"] = "ورود";
+}
+<div class="auth-frame">
+    <section class="auth-story" aria-labelledby="story-title">
+        <partial name="_Brand" />
+        <div class="story-copy">
+            <span class="eyebrow">یک حساب، همهٔ ابزارهای دونیش</span>
+            <h1 id="story-title">ورود ساده و امن به اکوسیستم دونیش</h1>
+            <p>این سرویس، پایهٔ ورود یکپارچهٔ محصولات دونیش است. اطلاعات هر محصول همچنان در فضای مستقل خودش باقی می‌ماند.</p>
+        </div>
+        <ul class="trust-list" aria-label="ویژگی‌های امنیتی">
+            <li><span>✓</span> نشست مستقل و محافظت‌شده</li>
+            <li><span>✓</span> ارتباط رمزگذاری‌شده در محیط عملیاتی</li>
+            <li><span>✓</span> دسترسی فقط با تأیید خود شما</li>
+        </ul>
+    </section>
+
+    <section class="auth-panel" aria-labelledby="login-title">
+        <div class="mobile-brand"><partial name="_Brand" /></div>
+        <div class="phase-notice" role="status">
+            <span aria-hidden="true">◉</span>
+            <p><strong>نسخهٔ زیرساختی</strong> حساب‌های فعلی بخش مالی هنوز به این صفحه منتقل نشده‌اند.</p>
+        </div>
+        <header class="panel-header">
+            <p class="eyebrow">حساب مرکزی دونیش</p>
+            <h2 id="login-title">خوش آمدید</h2>
+            <p>برای ادامه، ایمیل و رمز عبور حساب مرکزی را وارد کنید.</p>
+        </header>
+
+        <form method="post" class="auth-form">
+            <input type="hidden" asp-for="ReturnUrl" />
+            <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
+            <div class="field">
+                <label asp-for="Input.Email"></label>
+                <input asp-for="Input.Email" autocomplete="email" inputmode="email" dir="ltr" autofocus />
+                <span asp-validation-for="Input.Email"></span>
+            </div>
+            <div class="field">
+                <div class="field-heading">
+                    <label asp-for="Input.Password"></label>
+                    @if (Model.PasswordRecoveryAvailable)
+                    {
+                        <a asp-page="/Account/ForgotPassword">رمز عبور را فراموش کرده‌اید؟</a>
+                    }
+                </div>
+                <input asp-for="Input.Password" autocomplete="current-password" dir="ltr" />
+                <span asp-validation-for="Input.Password"></span>
+            </div>
+            <label class="check-row">
+                <input asp-for="Input.RememberMe" />
+                <span>ورود من را روی این دستگاه حفظ کن</span>
+            </label>
+            <button class="primary-button" type="submit">ورود امن</button>
+        </form>
+
+        @if (Model.RegistrationAvailable)
+        {
+            <p class="panel-foot">حساب ندارید؟ <a asp-page="/Account/Register">ساخت حساب مرکزی</a></p>
+        }
+        else
+        {
+            <p class="panel-foot muted">ساخت حساب جدید پس از آماده‌شدن انتقال کاربران فعال می‌شود.</p>
+        }
+    </section>
+</div>
