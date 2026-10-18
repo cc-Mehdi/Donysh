@@ -15,6 +15,14 @@ fi
 [[ -f "$compose_file" ]] || { printf 'Missing compose file: %s\n' "$compose_file" >&2; exit 1; }
 
 cd "$repo_root"
+
+# Older installations may not yet contain settings introduced with central
+# authentication. Complete them atomically with safe defaults before Compose
+# interpolates the environment. Redirecting stdin keeps this operation
+# non-interactive and preserves every existing secret.
+COMPOSE_FILE="$compose_file" \
+  bash "$repo_root/scripts/configure-server-env.sh" "$env_file" </dev/null
+
 docker compose --env-file "$env_file" -f "$compose_file" up -d db auth-db auth
 
 ready=false
