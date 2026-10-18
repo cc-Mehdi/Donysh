@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using Donysh.Auth.Domain;
+using Donysh.Auth.Pages;
 using Donysh.Auth.Security;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
@@ -30,6 +31,8 @@ var legacyHash = legacyHasher.HashPassword(new IdentityUser(), "Migration-Test-1
 var authHasher = new PasswordHasher<AuthUser>();
 Check("Identity password hash remains compatible",
     authHasher.VerifyHashedPassword(new AuthUser(), legacyHash, "Migration-Test-123") is PasswordVerificationResult.Success or PasswordVerificationResult.SuccessRehashNeeded);
+Check("Authenticated Auth home renders without a login redirect loop",
+    new IndexModel().OnGet() is Microsoft.AspNetCore.Mvc.RazorPages.PageResult);
 
 Environment.SetEnvironmentVariable("Database__ApplyMigrations", "false");
 Environment.SetEnvironmentVariable("AllowedHosts", "*");

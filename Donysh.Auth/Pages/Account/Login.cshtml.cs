@@ -22,6 +22,7 @@ public sealed class LoginModel(
 
     public bool RegistrationAvailable => features.Value.CanRegister;
     public bool PasswordRecoveryAvailable => features.Value.CanRecoverPassword;
+    public bool MigrationCompleted => features.Value.LegacyIdentityImportCompleted;
 
     public sealed class InputModel
     {

@@ -20,10 +20,13 @@
 
     <section class="auth-panel" aria-labelledby="login-title">
         <div class="mobile-brand"><partial name="_Brand" /></div>
-        <div class="phase-notice" role="status">
-            <span aria-hidden="true">◉</span>
-            <p><strong>نسخهٔ زیرساختی</strong> حساب‌های فعلی بخش مالی هنوز به این صفحه منتقل نشده‌اند.</p>
-        </div>
+        @if (!Model.MigrationCompleted)
+        {
+            <div class="phase-notice" role="status">
+                <span aria-hidden="true">◉</span>
+                <p><strong>نسخهٔ زیرساختی</strong> حساب‌های فعلی بخش مالی هنوز به این صفحه منتقل نشده‌اند.</p>
+            </div>
+        }
         <header class="panel-header">
             <p class="eyebrow">حساب مرکزی دونیش</p>
             <h2 id="login-title">خوش آمدید</h2>
@@ -62,7 +65,11 @@
         }
         else
         {
-            <p class="panel-foot muted">ساخت حساب جدید پس از آماده‌شدن انتقال کاربران فعال می‌شود.</p>
+            <p class="panel-foot muted">
+                @(Model.MigrationCompleted
+                    ? "ساخت حساب جدید در حال حاضر غیرفعال است."
+                    : "ساخت حساب جدید پس از آماده‌شدن انتقال کاربران فعال می‌شود.")
+            </p>
         }
     </section>
 </div>

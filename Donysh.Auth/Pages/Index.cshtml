@@ -3,3 +3,12 @@
 @{
     ViewData["Title"] = "حساب مرکزی";
 }
+<section class="simple-card">
+    <partial name="_Brand" />
+    <div class="success-icon" aria-hidden="true">✓</div>
+    <h1>ورود با موفقیت انجام شد</h1>
+    <p>نشست حساب مرکزی شما فعال است. اکنون می‌توانید با خیال راحت به سرویس درخواست‌کننده بازگردید.</p>
+    <form method="post" asp-page="/Account/Logout">
+        <button class="secondary-button" type="submit">خروج از حساب مرکزی</button>
+    </form>
+</section>
