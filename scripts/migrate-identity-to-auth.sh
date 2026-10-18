@@ -25,11 +25,15 @@ COMPOSE_FILE="$compose_file" \
 
 docker compose --env-file "$env_file" -f "$compose_file" up -d db auth-db auth
 
+printf 'Waiting for the Auth database schema ...\n'
 ready=false
 for attempt in $(seq 1 30); do
-  if docker compose --env-file "$env_file" -f "$compose_file" exec -T auth-db \
-      sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc '\''SELECT to_regclass('"'"'public."AspNetUsers"'"'"');'\''' \
-      2>/dev/null | grep -q 'AspNetUsers'; then
+  if printf '%s\n' \
+      "SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'AspNetUsers';" \
+      | docker compose --env-file "$env_file" -f "$compose_file" exec -T auth-db \
+          sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tA' \
+          2>/dev/null \
+      | grep -qx '1'; then
     ready=true
     break
   fi
@@ -38,8 +42,10 @@ done
 
 [[ "$ready" == "true" ]] || {
   printf 'Auth database schema was not ready after 60 seconds. No users were copied.\n' >&2
+  docker compose --env-file "$env_file" -f "$compose_file" logs --tail=50 auth auth-db >&2 || true
   exit 1
 }
+printf 'Auth database schema is ready.\n'
 
 args=()
 [[ "$mode" == "--apply" ]] && args+=(--apply)
