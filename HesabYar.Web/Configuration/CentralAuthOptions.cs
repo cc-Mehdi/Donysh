@@ -4,6 +4,7 @@ public sealed class CentralAuthOptions
 {
     public const string SectionName = "CentralAuth";
     public const string Scheme = "DonyshCentralAuth";
+    public const string SecureResponseMode = "query";
 
     public bool Enabled { get; set; }
     public string Authority { get; set; } = string.Empty;

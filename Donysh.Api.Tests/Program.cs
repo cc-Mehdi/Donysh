@@ -52,6 +52,9 @@ Console.WriteLine("PASS Account balances are removed before expense storage");
 if (new CentralAuthOptions { Enabled = true }.FinanceSessionCookieName == new CentralAuthOptions { Enabled = false }.FinanceSessionCookieName)
     throw new Exception("Central authentication must rotate the Finance session cookie name.");
 Console.WriteLine("PASS Central authentication cannot reuse legacy Finance session cookies");
+if (!string.Equals(CentralAuthOptions.SecureResponseMode, "query", StringComparison.Ordinal))
+    throw new Exception("Central authentication must not require an inline form_post script.");
+Console.WriteLine("PASS Central authentication callback preserves strict CSP without inline scripts");
 
 // Starts only a loopback test host. The unavailable database deliberately proves guards do not query it.
 var builder = WebApplication.CreateBuilder();
