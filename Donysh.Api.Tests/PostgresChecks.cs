@@ -102,6 +102,9 @@ internal static class PostgresChecks
             var builder = WebApplication.CreateBuilder();
             builder.Logging.ClearProviders(); builder.WebHost.UseUrls("http://127.0.0.1:0");
             builder.Services.AddDbContext<ApplicationDbContext>(o => o.UseNpgsql(cs.ConnectionString, p => p.EnableRetryOnFailure()));
+            // AddIdentityCore registers SignInManager's Identity dependencies, while the
+            // authentication scheme provider is supplied by AddAuthentication.
+            builder.Services.AddAuthentication();
             builder.Services.AddIdentityCore<ApplicationUser>(options =>
                 {
                     // Keep this host aligned with the production Identity policy. Relying on
