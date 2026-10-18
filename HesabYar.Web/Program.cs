@@ -163,7 +163,10 @@ if (centralAuth.Enabled)
 
 builder.Services.ConfigureApplicationCookie(options =>
 {
-    options.Cookie.Name = ".HesabYar.Auth";
+    // A distinct cookie prevents legacy Finance sessions from bypassing the
+    // central sign-in after cutover. Disabling CentralAuth immediately restores
+    // recognition of the untouched legacy cookie for emergency rollback.
+    options.Cookie.Name = centralAuth.FinanceSessionCookieName;
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
     options.Cookie.SameSite = SameSiteMode.Lax;

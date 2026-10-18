@@ -10,4 +10,8 @@ public sealed class CentralAuthOptions
     public string ClientId { get; set; } = "finance-web";
     public string ClientSecret { get; set; } = string.Empty;
     public bool RequireHttpsMetadata { get; set; } = true;
+
+    public string FinanceSessionCookieName => Enabled
+        ? ".Donysh.Finance.CentralSession"
+        : ".HesabYar.Auth";
 }

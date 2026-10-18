@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text;
 using HesabYar.Web.Data;
+using HesabYar.Web.Configuration;
 using HesabYar.Web.Domain;
 using HesabYar.Web.Pages.Expenses;
 using HesabYar.Web.Sms;
@@ -48,6 +49,9 @@ var privateSms = Donysh.Sms.SmsPrivacy.RemoveBalance("برداشت 1,000,000\nم
 if (privateSms.Contains("موجودی", StringComparison.Ordinal) || privateSms.Contains("99,000,000", StringComparison.Ordinal))
     throw new Exception("Balance sanitizer must remove account balances.");
 Console.WriteLine("PASS Account balances are removed before expense storage");
+if (new CentralAuthOptions { Enabled = true }.FinanceSessionCookieName == new CentralAuthOptions { Enabled = false }.FinanceSessionCookieName)
+    throw new Exception("Central authentication must rotate the Finance session cookie name.");
+Console.WriteLine("PASS Central authentication cannot reuse legacy Finance session cookies");
 
 // Starts only a loopback test host. The unavailable database deliberately proves guards do not query it.
 var builder = WebApplication.CreateBuilder();
