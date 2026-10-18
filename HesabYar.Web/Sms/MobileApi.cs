@@ -349,7 +349,8 @@ public static class MobileApi
                 db.Expenses.Add(new Expense {
                     WorkspaceId = device.WorkspaceId, CategoryId = device.CategoryId, CreatedByUserId = device.UserId,
                     Reason = reason, Amount = amountToman, ExpenseDate = DateOnly.FromDateTime(localDateTime),
-                    SmsText = sms.Body, SmsLocalTime = localDateTime.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture), NeedsReview = true
+                    SmsText = SmsPrivacy.RemoveBalance(sms.Body),
+                    SmsLocalTime = localDateTime.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture), NeedsReview = true
                 });
                 db.SmsReceipts.Add(new SmsReceipt { UserId = device.UserId, Key = key });
                 results.Add(new(key, "created"));

@@ -203,7 +203,8 @@ public sealed class MobileApiClient
             using var request = new HttpRequestMessage(HttpMethod.Post, server + "/api/mobile/sms")
             {
                 Content = JsonContent.Create(new SmsBatch(batch
-                    .Select(x => new SmsEnvelope(x.Sender, x.Body, x.ReceivedAtUnixMs, x.Parsed, x.Title)).ToList()), options: JsonOptions)
+                    .Select(x => new SmsEnvelope(x.Sender, SmsPrivacy.RemoveBalance(x.Body), x.ReceivedAtUnixMs,
+                        x.Parsed, x.Title, x.Key)).ToList()), options: JsonOptions)
             };
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", connection.Token);
             using var response = await client.SendAsync(request, cancellationToken);

@@ -78,7 +78,7 @@ internal static class ManualRequeueRegressionTests
             && titledBatch.All(message => message.Id != rejected.Id && message.Id != alreadyQueued.Id),
             "Automatic title requirement still blocks untitled requeued messages");
         var manualBatch = await Store(directory).TakePendingBatchAsync(state.NextSyncAtUtc.AddSeconds(1));
-        Check(manualBatch.Any(message => message.Id == rejected.Id && message.Key == rejected.DeduplicationKey),
+        Check(manualBatch.Any(message => message.Id == rejected.Id && message.Key == rejected.DeliveryKey),
             "An explicit title-bypassing batch preserves the original receipt key");
     }
 
@@ -96,13 +96,13 @@ internal static class ManualRequeueRegressionTests
         var attemptAt = now.AddMinutes(1).AddSeconds(1);
         var batch = await store.TakePendingBatchAsync(attemptAt);
         Check(batch.Count == 1, "Requeued message becomes eligible when its interval expires");
-        await store.ConfirmBatchAsync(batch, [new SmsDeliveryReceipt(message.DeduplicationKey, "rejected")], attemptAt);
+        await store.ConfirmBatchAsync(batch, [new SmsDeliveryReceipt(batch.Single().Key, "rejected")], attemptAt);
         Check(await store.RequeueMessagesAsync(sender.Id, [message.Id, message.Id]) == 1,
             "Retry after a new rejection counts the message once");
         Check((await store.TakePendingBatchAsync(attemptAt.AddSeconds(30))).Count == 0,
             "Immediate retry after rejection retains the new server-receipt cooldown");
         var next = await Store(directory).TakePendingBatchAsync(attemptAt.AddMinutes(1));
-        Check(next.Count == 1 && next[0].Key == message.DeduplicationKey,
+        Check(next.Count == 1 && next[0].Key == batch.Single().Key,
             "Next paced retry uses the same idempotency key after reopening");
     }
 
@@ -121,7 +121,7 @@ internal static class ManualRequeueRegressionTests
             await releaseResponse.Task.WaitAsync(cancellationToken);
             return new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = JsonContent.Create(new SmsBatchResult([new SmsResult(message.DeduplicationKey, "created")]))
+                Content = JsonContent.Create(new SmsBatchResult([new SmsResult(message.DeliveryKey, "created")]))
             };
         })));
         var sending = api.SendNextBatchAsync(store, new MobileConnection("https://donysh.ir", new string('A', 64), "test"), now);
@@ -161,6 +161,7 @@ internal static class ManualRequeueRegressionTests
     {
         SenderId = sender.Id, SenderAddress = sender.Address, Body = "برداشت: 120,000", ReceivedAtUtc = receivedAt,
         DeduplicationKey = new SmsEnvelope(sender.Address, "برداشت: 120,000", receivedAt.ToUnixTimeMilliseconds()).Key,
+        DeliveryKey = Convert.ToHexString(Guid.NewGuid().ToByteArray()) + Convert.ToHexString(Guid.NewGuid().ToByteArray()),
         DeliveryStatus = status, DeliveryProtocolVersion = 2, DeliveryAttempts = 3, Title = title, LastDeliveryError = error
     };
 

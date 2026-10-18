@@ -44,6 +44,10 @@ if (invitationToken.Length != 64 || invitationTokenHash.Length != 64
     || InvitationToken.Hash(invitationToken) != invitationTokenHash)
     throw new Exception("Invitation tokens must be random and stored as deterministic one-way digests.");
 Console.WriteLine("PASS Invitation tokens are stored as one-way digests");
+var privateSms = Donysh.Sms.SmsPrivacy.RemoveBalance("برداشت 1,000,000\nموجودی: 99,000,000 ریال");
+if (privateSms.Contains("موجودی", StringComparison.Ordinal) || privateSms.Contains("99,000,000", StringComparison.Ordinal))
+    throw new Exception("Balance sanitizer must remove account balances.");
+Console.WriteLine("PASS Account balances are removed before expense storage");
 
 // Starts only a loopback test host. The unavailable database deliberately proves guards do not query it.
 var builder = WebApplication.CreateBuilder();

@@ -82,8 +82,20 @@ public class SyncJob : JobService
         var batch = queue.Take(DateTimeOffset.UtcNow);
         if (batch.Count == 0) return;
         using var client = CompanionSettings.Http();
+        var privateBatch = batch.Select(sms =>
+        {
+            var parsed = sms.Parsed;
+            if (parsed is null && BankSmsParser.Parse(sms.Body,
+                    DateTimeOffset.FromUnixTimeMilliseconds(sms.SentAtUnixMs)) is { } bank)
+            {
+                parsed = new ParsedTransaction(decimal.ToInt64(bank.AmountToman * 10m),
+                    "withdrawal", bank.Bank);
+            }
+            return new SmsEnvelope(sms.Sender, SmsPrivacy.RemoveBalance(sms.Body), sms.SentAtUnixMs,
+                parsed, sms.Title, sms.Key);
+        }).ToList();
         using var request = new HttpRequestMessage(HttpMethod.Post, connection.Server + "/api/mobile/sms") {
-            Content = JsonContent.Create(new SmsBatch(batch))
+            Content = JsonContent.Create(new SmsBatch(privateBatch))
         };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", connection.Token);
         using var response = await client.SendAsync(request, ct);

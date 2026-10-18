@@ -1,13 +1,19 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 
 namespace Donysh.Sms;
 
 public sealed record ParsedTransaction(long AmountRial, string Kind, string TemplateName);
-public sealed record SmsEnvelope(string Sender, string Body, long SentAtUnixMs, ParsedTransaction? Parsed = null, string? Title = null)
+public sealed record SmsEnvelope(string Sender, string Body, long SentAtUnixMs, ParsedTransaction? Parsed = null,
+    string? Title = null, string? ClientKey = null)
 {
-    public string Key => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(
-        $"{Sender.Trim().ToUpperInvariant()}\n{SentAtUnixMs}\n{Body.Replace("\r", "").Trim()}")));
+    [JsonIgnore]
+    public string Key => ClientKey is { Length: 64 } && ClientKey.All(Uri.IsHexDigit)
+        ? ClientKey.ToUpperInvariant()
+        : Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(
+            $"{Sender.Trim().ToUpperInvariant()}\n{SentAtUnixMs}\n{Body.Replace("\r", "").Trim()}")));
 }
 public sealed record SmsBatch(List<SmsEnvelope> Messages);
 public sealed record SmsResult(string Key, string Status);
@@ -40,6 +46,7 @@ public static class SyncPolicy
         && !string.IsNullOrWhiteSpace(sms.Sender) && sms.Sender.Length <= 64
         && !sms.Sender.Any(char.IsControl)
         && !string.IsNullOrWhiteSpace(sms.Body) && sms.Body.Length <= 2048
+        && (sms.ClientKey is null || sms.ClientKey.Length == 64 && sms.ClientKey.All(Uri.IsHexDigit))
         && sms.SentAtUnixMs >= 1577836800000L && sms.SentAtUnixMs <= now.AddMinutes(10).ToUnixTimeMilliseconds()
         && (sms.Title is null || (!string.IsNullOrWhiteSpace(sms.Title) && sms.Title.Length <= 160
             && !sms.Title.Any(char.IsControl)))
@@ -52,4 +59,20 @@ public static class SyncPolicy
         && !string.IsNullOrWhiteSpace(parsed.TemplateName)
         && parsed.TemplateName.Length <= 80
         && !parsed.TemplateName.Any(char.IsControl);
+}
+
+public static partial class SmsPrivacy
+{
+    [GeneratedRegex(@"(?im)(م\s*و\s*ج\s*و\s*د\s*[یي]|م\s*ا\s*ن\s*د\s*ه|balance)[^\r\n]*", RegexOptions.CultureInvariant, 100)]
+    private static partial Regex BalanceLine();
+
+    public static string RemoveBalance(string? body)
+    {
+        if (string.IsNullOrWhiteSpace(body)) return "متن حساس پیامک روی گوشی نگهداری شد.";
+        var clean = body.Replace("\u200e", "").Replace("\u200f", "");
+        try { clean = BalanceLine().Replace(clean, string.Empty); }
+        catch (RegexMatchTimeoutException) { return "متن حساس پیامک روی گوشی نگهداری شد."; }
+        clean = clean.Trim();
+        return string.IsNullOrWhiteSpace(clean) ? "متن حساس پیامک روی گوشی نگهداری شد." : clean;
+    }
 }

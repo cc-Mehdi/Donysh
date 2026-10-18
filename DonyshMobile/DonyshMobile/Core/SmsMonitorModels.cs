@@ -14,6 +14,7 @@ public sealed class CapturedSms
     public Guid SenderId { get; set; }
     public string SenderAddress { get; set; } = string.Empty;
     public string DeduplicationKey { get; set; } = string.Empty;
+    public string DeliveryKey { get; set; } = string.Empty;
     public string Body { get; set; } = string.Empty;
     public string? Title { get; set; }
     public DateTimeOffset ReceivedAtUtc { get; set; }

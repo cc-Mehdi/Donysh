@@ -42,7 +42,6 @@ internal static class PostgresChecks
                 """);
             var initializer = new DatabaseInitializer(db, NullLogger<DatabaseInitializer>.Instance);
             await initializer.InitializeAsync();
-            await initializer.InitializeAsync();
 
             var owner = new ApplicationUser { Id = Guid.NewGuid().ToString(), UserName = "owner", NormalizedUserName = "OWNER" };
             var successor = new ApplicationUser { Id = Guid.NewGuid().ToString(), UserName = "successor", NormalizedUserName = "SUCCESSOR" };
@@ -81,6 +80,23 @@ internal static class PostgresChecks
             db.AddRange(user, workspace, other, category, otherCategory, device,
                 new WorkspaceMember { UserId = user.Id, WorkspaceId = workspace.Id, Role = WorkspaceRole.Owner },
                 new WorkspaceMember { UserId = user.Id, WorkspaceId = other.Id, Role = WorkspaceRole.Owner });
+            await db.SaveChangesAsync();
+            var historical = new Expense
+            {
+                WorkspaceId = workspace.Id, CategoryId = category.Id, CreatedByUserId = user.Id,
+                Reason = "پیام قدیمی", Amount = 1000, ExpenseDate = DateOnly.FromDateTime(DateTime.UtcNow),
+                SmsText = "برداشت 10,000 ریال\nموجودی: 999,999,999 ریال"
+            };
+            db.Expenses.Add(historical);
+            await db.SaveChangesAsync();
+            await initializer.InitializeAsync();
+            db.ChangeTracker.Clear();
+            var cleanedHistorical = await db.Expenses.SingleAsync(x => x.Id == historical.Id);
+            Check(cleanedHistorical.SmsText is not null
+                  && !cleanedHistorical.SmsText.Contains("موجودی", StringComparison.Ordinal)
+                  && !cleanedHistorical.SmsText.Contains("999,999,999", StringComparison.Ordinal),
+                "upgrade removes balances from previously stored SMS text");
+            db.Expenses.Remove(cleanedHistorical);
             await db.SaveChangesAsync();
 
             var builder = WebApplication.CreateBuilder();
@@ -154,7 +170,11 @@ internal static class PostgresChecks
             Check(imported.StatusCode == HttpStatusCode.OK, "import");
             var expense = await db.Expenses.AsNoTracking().SingleAsync();
             Check(expense.WorkspaceId == workspace.Id && expense.CreatedByUserId == user.Id, "destination bound to token, forged scope ignored");
-            Check(expense.Amount == 5_000_000 && expense.NeedsReview && expense.SmsText == sms.Body && expense.ExpenseDate == new DateOnly(2026, 9, 6), "expense values and review metadata");
+            Check(expense.Amount == 5_000_000 && expense.NeedsReview
+                  && expense.SmsText is not null && !expense.SmsText.Contains("111,111,111", StringComparison.Ordinal)
+                  && !expense.SmsText.Contains("مانده", StringComparison.Ordinal)
+                  && expense.ExpenseDate == new DateOnly(2026, 9, 6),
+                "expense values and review metadata exclude the account balance");
             using var paced = await client.PostAsJsonAsync("/api/mobile/sms", new SmsBatch([sms]));
             Check(paced.StatusCode == HttpStatusCode.TooManyRequests && paced.Headers.RetryAfter is not null, "persistent device pacing");
             async Task Unpace() => await db.MobileDevices.Where(x => x.Id == device.Id).ExecuteUpdateAsync(s => s.SetProperty(x => x.NextAllowedAtUtc, DateTime.UnixEpoch));

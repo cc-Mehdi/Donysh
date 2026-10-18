@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json.Serialization;
 
 namespace DonyshMobile.Core;
 
@@ -14,10 +15,14 @@ public sealed record MobileWorkspaceList(Guid WorkspaceId, string WorkspaceName,
 public sealed record MobileDestinationRequest(Guid WorkspaceId);
 public sealed record MobileDestinationResult(Guid WorkspaceId, string WorkspaceName, string CategoryName);
 public sealed record ParsedTransaction(long AmountRial, string Kind, string TemplateName);
-public sealed record SmsEnvelope(string Sender, string Body, long SentAtUnixMs, ParsedTransaction? Parsed = null, string? Title = null)
+public sealed record SmsEnvelope(string Sender, string Body, long SentAtUnixMs, ParsedTransaction? Parsed = null,
+    string? Title = null, string? ClientKey = null)
 {
-    public string Key => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(
-        $"{Sender.Trim().ToUpperInvariant()}\n{SentAtUnixMs}\n{Body.Replace("\r", "").Trim()}")));
+    [JsonIgnore]
+    public string Key => ClientKey is { Length: 64 } && ClientKey.All(Uri.IsHexDigit)
+        ? ClientKey.ToUpperInvariant()
+        : Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(
+            $"{Sender.Trim().ToUpperInvariant()}\n{SentAtUnixMs}\n{Body.Replace("\r", "").Trim()}")));
 }
 public sealed record SmsBatch(List<SmsEnvelope> Messages);
 public sealed record SmsResult(string Key, string Status);

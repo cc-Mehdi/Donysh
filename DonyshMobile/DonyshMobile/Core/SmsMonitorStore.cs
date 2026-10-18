@@ -367,7 +367,7 @@ public sealed class SmsMonitorStore
                         .FirstOrDefault(result => result is not null);
                     return new PendingSms(
                         x.Id,
-                        x.DeduplicationKey,
+                        x.DeliveryKey,
                         string.IsNullOrWhiteSpace(x.SenderAddress) ? senders[x.SenderId].Address : x.SenderAddress,
                         x.Body,
                         x.ReceivedAtUtc.ToUnixTimeMilliseconds(),
@@ -400,7 +400,7 @@ public sealed class SmsMonitorStore
             var state = await LoadUnsafeAsync(cancellationToken);
             foreach (var receipt in receipts)
             {
-                var message = state.Messages.SingleOrDefault(x => x.DeduplicationKey == receipt.Key);
+                var message = state.Messages.SingleOrDefault(x => x.DeliveryKey == receipt.Key);
                 if (message is null || message.DeliveryStatus != SmsDeliveryStatus.Pending) continue;
                 message.DeliveryStatus = receipt.Status == "rejected"
                     ? SmsDeliveryStatus.Rejected
@@ -440,7 +440,7 @@ public sealed class SmsMonitorStore
             state.NextSyncAtUtc = nowUtc.AddSeconds(Math.Max(exponentialSeconds, requestedSeconds));
             state.SyncStatus = error;
             var keys = batch.Select(x => x.Key).ToHashSet(StringComparer.Ordinal);
-            foreach (var message in state.Messages.Where(x => keys.Contains(x.DeduplicationKey)
+            foreach (var message in state.Messages.Where(x => keys.Contains(x.DeliveryKey)
                                                                && x.DeliveryStatus == SmsDeliveryStatus.Pending))
             {
                 message.DeliveryAttempts++;
@@ -584,6 +584,7 @@ public sealed class SmsMonitorStore
                     SenderId = sender.Id,
                     SenderAddress = address,
                     DeduplicationKey = key,
+                    DeliveryKey = CreateDeliveryKey(),
                     Body = body,
                     ReceivedAtUtc = receivedAtUtc,
                     DeliveryProtocolVersion = 2,
@@ -688,12 +689,37 @@ public sealed class SmsMonitorStore
         state.DeliveryHistory ??= [];
         state.Senders ??= [];
         state.Messages ??= [];
+        var stateChanged = false;
         var senders = state.Senders.ToDictionary(x => x.Id);
         foreach (var message in state.Messages.Where(x => string.IsNullOrWhiteSpace(x.SenderAddress)))
         {
             if (!senders.TryGetValue(message.SenderId, out var sender)) continue;
             message.SenderAddress = sender.Address;
             message.DeduplicationKey = CreateKey(message.SenderAddress, message.Body, message.ReceivedAtUtc);
+            stateChanged = true;
+        }
+        var deliveryKeys = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var message in state.Messages)
+        {
+            var keyIsValid = message.DeliveryKey is { Length: 64 } && message.DeliveryKey.All(Uri.IsHexDigit)
+                && deliveryKeys.Add(message.DeliveryKey);
+            if (keyIsValid) continue;
+
+            // A request attempted by an older build may already exist on the server. Keeping its
+            // old receipt key avoids creating a duplicate after upgrade. New and never-attempted
+            // messages receive a random key that reveals nothing about the SMS contents.
+            var migratedKey = message.DeliveryAttempts > 0
+                              && message.DeduplicationKey is { Length: 64 }
+                              && message.DeduplicationKey.All(Uri.IsHexDigit)
+                ? message.DeduplicationKey
+                : CreateDeliveryKey();
+            while (migratedKey.Length != 64 || !migratedKey.All(Uri.IsHexDigit)
+                   || !deliveryKeys.Add(migratedKey))
+            {
+                migratedKey = CreateDeliveryKey();
+            }
+            message.DeliveryKey = migratedKey.ToUpperInvariant();
+            stateChanged = true;
         }
         foreach (var template in state.Templates)
         {
@@ -702,9 +728,11 @@ public sealed class SmsMonitorStore
         }
 
         // Upgrade existing installs only after the original state was read successfully.
-        if (!isEncrypted) await SaveUnsafeAsync(state, cancellationToken);
+        if (!isEncrypted || stateChanged) await SaveUnsafeAsync(state, cancellationToken);
         return state;
     }
+
+    private static string CreateDeliveryKey() => Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
 
     private static void TrackTitleUsage(SmsMonitorState state, Guid senderId, string title)
     {

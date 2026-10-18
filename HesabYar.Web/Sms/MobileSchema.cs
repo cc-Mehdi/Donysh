@@ -27,6 +27,13 @@ public static class MobileSchema
         ALTER TABLE "Expenses" ADD COLUMN IF NOT EXISTS "SmsText" character varying(2048);
         ALTER TABLE "Expenses" ADD COLUMN IF NOT EXISTS "SmsLocalTime" character varying(5);
         ALTER TABLE "Expenses" ADD COLUMN IF NOT EXISTS "NeedsReview" boolean NOT NULL DEFAULT FALSE;
+        UPDATE "Expenses"
+        SET "SmsText" = NULLIF(btrim(regexp_replace(
+            replace(replace("SmsText", U&'\200E', ''), U&'\200F', ''),
+            E'(?im)(م[[:space:]]*و[[:space:]]*ج[[:space:]]*و[[:space:]]*د[[:space:]]*[یي]|م[[:space:]]*ا[[:space:]]*ن[[:space:]]*د[[:space:]]*ه|balance)[^\\r\\n]*',
+            '', 'g')), '')
+        WHERE "SmsText" IS NOT NULL
+          AND "SmsText" ~* '(م[[:space:]]*و[[:space:]]*ج[[:space:]]*و[[:space:]]*د[[:space:]]*[یي]|م[[:space:]]*ا[[:space:]]*ن[[:space:]]*د[[:space:]]*ه|balance)';
         CREATE TABLE IF NOT EXISTS "MobileDevices" (
             "Id" uuid PRIMARY KEY, "UserId" text NOT NULL REFERENCES "AspNetUsers"("Id") ON DELETE CASCADE,
             "WorkspaceId" uuid NOT NULL REFERENCES "Workspaces"("Id") ON DELETE CASCADE,

@@ -62,9 +62,9 @@ internal static class TemplatePresetRegressionTests
         var restored = messages.Single(x => x.Id == retried.Id);
         Check(restored.DeliveryStatus == SmsDeliveryStatus.Pending && restored.ConfirmedAtUtc is null && restored.LastDeliveryError is null,
             "Matching rejected messages become pending after template save");
-        Check(restored.DeduplicationKey == retried.Key && restored.Title == "خرید آزمایشی" && restored.DeliveryAttempts == 1,
+        Check(restored.DeliveryKey == retried.Key && restored.Title == "خرید آزمایشی" && restored.DeliveryAttempts == 1,
             "Keep the same idempotency key, title and attempt history");
-        Check(messages.Single(x => x.DeduplicationKey == confirmedKey).DeliveryStatus == SmsDeliveryStatus.Sent,
+        Check(messages.Single(x => x.DeliveryKey == confirmedKey).DeliveryStatus == SmsDeliveryStatus.Sent,
             "Never requeue delivered messages");
         Check(messages.Where(x => x.Body is "پیام ناسازگار" or "واریز: 8000").All(x => x.DeliveryStatus == SmsDeliveryStatus.Rejected)
             && (await store.GetMessagesAsync(otherId)).Single().DeliveryStatus == SmsDeliveryStatus.Rejected,

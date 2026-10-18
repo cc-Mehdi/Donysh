@@ -109,8 +109,11 @@ try
     var firstBatch = await store.TakePendingBatchAsync(DateTimeOffset.UtcNow, requireTitle: true);
     Assert(firstBatch.Count == 1 && firstBatch[0].Sender == "+989121234567"
         && firstBatch[0].Title == "هزینهٔ آزمایشی ویژه", "Title-gated batch includes title");
-    Assert(firstBatch[0].Key == new SmsEnvelope(firstBatch[0].Sender, firstBatch[0].Body,
-        firstBatch[0].ReceivedAtUnixMs).Key, "Use the same idempotency key as the API contract");
+    var contentDerivedKey = new SmsEnvelope(firstBatch[0].Sender, firstBatch[0].Body,
+        firstBatch[0].ReceivedAtUnixMs).Key;
+    Assert(firstBatch[0].Key.Length == 64 && firstBatch[0].Key.All(Uri.IsHexDigit)
+        && firstBatch[0].Key != contentDerivedKey,
+        "Use a random delivery key that cannot reveal SMS contents");
     await store.ConfirmBatchAsync(firstBatch,
         [new SmsDeliveryReceipt(firstBatch[0].Key, "created")], DateTimeOffset.UtcNow);
     Assert(AssertSingle(await store.GetMessagesAsync(summary.Id), "Confirmed message").DeliveryStatus == SmsDeliveryStatus.Sent,
@@ -181,6 +184,13 @@ try
         "Back off without losing queued SMS");
     Assert(MobileApiClient.NormalizeServer("https://donysh.ir/path") == "https://donysh.ir", "Normalize API origin");
     Assert(MobileApiClient.NormalizeServer("http://donysh.ir") is null, "Require HTTPS API");
+    var bluPrivate = SmsPrivacy.RemoveBalance("بلو\nبرداشت پول\n1,400,000 ریال از حساب شما پرید.\nموجودی: 7,758,083 ریال\n17:55");
+    var mellatPrivate = SmsPrivacy.RemoveBalance("برداشت50,000,000\nمانده111,111,111\n05/06/15-12:14");
+    var resalatPrivate = SmsPrivacy.RemoveBalance("-42,500\n07/20_17:05\nمانده: 269,917,300");
+    Assert(!bluPrivate.Contains("7,758,083", StringComparison.Ordinal)
+           && !mellatPrivate.Contains("111,111,111", StringComparison.Ordinal)
+           && !resalatPrivate.Contains("269,917,300", StringComparison.Ordinal),
+        "Remove balance values from supported bank SMS bodies");
 
     var loginWorkspaceId = Guid.NewGuid();
     var loginApi = new MobileApiClient(() => new HttpClient(new StubHandler(request =>
@@ -247,6 +257,40 @@ try
         "Accept a complete API acknowledgement");
     Assert(AssertSingle(await apiStore.GetMessagesAsync((await apiStore.GetSenderSummariesAsync()).Single().Id),
         "API-confirmed SMS").DeliveryStatus == SmsDeliveryStatus.Sent, "API client persists confirmed status");
+
+    var privacyStore = CreateStore(Path.Combine(testDirectory, "privacy-send"));
+    Assert(await privacyStore.AddSenderAsync("PrivateBank") == AddSenderResult.Added, "Add privacy test sender");
+    var privacySender = (await privacyStore.GetSenderSummariesAsync()).Single();
+    Assert(await privacyStore.SaveTemplateAsync(new SmsTemplate
+    {
+        SenderId = privacySender.Id,
+        Name = "برداشت آزمایشی",
+        Pattern = "برداشت: {amount}\nموجودی: {ignore}",
+        Unit = MoneyUnit.Rial
+    }) is null, "Save privacy test template");
+    Assert(await privacyStore.CaptureAsync("PrivateBank", "برداشت: 120,000\nموجودی: 9,999,999",
+        DateTimeOffset.UtcNow), "Queue private SMS");
+    var originalPrivacyKey = (await privacyStore.TakePendingBatchAsync(DateTimeOffset.UtcNow)).Single().Key;
+    var privacyContentKey = new SmsEnvelope("PrivateBank", "برداشت: 120,000\nموجودی: 9,999,999",
+        (await privacyStore.TakePendingBatchAsync(DateTimeOffset.UtcNow)).Single().ReceivedAtUnixMs).Key;
+    Assert(originalPrivacyKey != privacyContentKey,
+        "Private delivery key is independent from the original balance-bearing SMS");
+    var privacyApi = new MobileApiClient(() => new HttpClient(new StubHandler(request =>
+    {
+        var payload = request.Content!.ReadFromJsonAsync<SmsBatch>().GetAwaiter().GetResult()!;
+        var outgoing = payload.Messages.Single();
+        Assert(!outgoing.Body.Contains("موجودی", StringComparison.Ordinal)
+               && !outgoing.Body.Contains("9,999,999", StringComparison.Ordinal),
+            "Never transmit account balance to Donysh");
+        Assert(outgoing.ClientKey == originalPrivacyKey && outgoing.Key == originalPrivacyKey,
+            "Redaction preserves the local idempotency key");
+        return new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = JsonContent.Create(new SmsBatchResult([new SmsResult(outgoing.Key, "created")]))
+        };
+    })));
+    Assert(await privacyApi.SendNextBatchAsync(privacyStore, apiConnection, DateTimeOffset.UtcNow,
+        manualSend: true) == SyncRunResult.Sent, "Redacted SMS receives an exact delivery receipt");
 
     var manualStore = CreateStore(Path.Combine(testDirectory, "manual-send"));
     Assert(await manualStore.AddSenderAsync("Bank") == AddSenderResult.Added, "Add manual sender");
@@ -393,8 +437,10 @@ try
     Assert(!System.Text.Encoding.UTF8.GetString(upgradedBytes).Contains("private banking text", StringComparison.Ordinal),
         "SMS text is no longer present in the saved file");
     Assert(!File.Exists(legacyPath + ".tmp"), "Migration does not leave a plaintext temporary file");
-    Assert((await CreateStore(legacyDirectory).GetMessagesAsync(legacySender.Id)).Single().Body == legacyMessage.Body,
-        "Reload encrypted state without losing legacy messages");
+    var upgradedMessage = (await CreateStore(legacyDirectory).GetMessagesAsync(legacySender.Id)).Single();
+    Assert(upgradedMessage.Body == legacyMessage.Body, "Reload encrypted state without losing legacy messages");
+    Assert(upgradedMessage.DeliveryKey.Length == 64 && upgradedMessage.DeliveryKey.All(Uri.IsHexDigit),
+        "Give a never-attempted legacy message a private random delivery key");
 
     var malformedApi = new MobileApiClient(() => new HttpClient(new StubHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
         { Content = new StringContent("{\"results\":[null]}", System.Text.Encoding.UTF8, "application/json") })));
