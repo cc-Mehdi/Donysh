@@ -37,7 +37,15 @@ internal static class PostgresChecks
             await verify.OpenAsync();
             foreach (var table in expectedTables)
             {
-                await using var command = new NpgsqlCommand("SELECT to_regclass(@name) IS NOT NULL", verify);
+                // Identity and OpenIddict use quoted, case-sensitive table names. Passing an
+                // unquoted name to to_regclass folds it to lowercase and reports a false miss.
+                await using var command = new NpgsqlCommand("""
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.tables
+                        WHERE table_schema = current_schema()
+                          AND table_name = @name)
+                    """, verify);
                 command.Parameters.AddWithValue("name", table);
                 if (!Convert.ToBoolean(await command.ExecuteScalarAsync()))
                     throw new Exception($"FAIL PostgreSQL migration: missing table {table}");
