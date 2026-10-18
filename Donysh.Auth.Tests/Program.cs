@@ -57,6 +57,10 @@ using (var response = await client.GetAsync("/Account/Login"))
         && html.Contains("lang=\"fa\"", StringComparison.Ordinal)
         && html.Contains("dir=\"rtl\"", StringComparison.Ordinal)
         && html.Contains("حساب‌های فعلی بخش مالی هنوز به این صفحه منتقل نشده‌اند", StringComparison.Ordinal));
+    Check("Password field has an accessible visibility control",
+        html.Contains("data-password-toggle", StringComparison.Ordinal)
+        && html.Contains("aria-label=\"نمایش رمز عبور\"", StringComparison.Ordinal)
+        && html.Contains("/js/password-toggle.js", StringComparison.Ordinal));
     Check("Security headers are present",
         response.Headers.TryGetValues("Content-Security-Policy", out var values)
         && values.Single().Contains("frame-ancestors 'none'", StringComparison.Ordinal)
