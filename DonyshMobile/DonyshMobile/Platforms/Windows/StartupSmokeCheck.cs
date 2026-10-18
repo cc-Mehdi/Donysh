@@ -133,6 +133,15 @@ internal static class StartupSmokeCheck
         themedPicker.SelectedItem = "گزینهٔ یک";
         Check(themedPicker.SelectedIndex == 0, "Themed picker accepts item selection");
 
+        var selectionTask = DonyshSelectionSheet.ShowAsync(home, "آزمون فهرست",
+            new[] { "گزینهٔ یک", "گزینهٔ دو" }, 0);
+        await WaitUntilAsync(() => home.Navigation.ModalStack.LastOrDefault() is DonyshSelectionSheet,
+            "The themed selection sheet did not open.");
+        var selectionSheet = (DonyshSelectionSheet)home.Navigation.ModalStack.Last();
+        await selectionSheet.CompleteSelectionForDiagnosticsAsync(1);
+        Check(await selectionTask == 1,
+            "Themed selection sheet returns the tapped option instead of cancellation");
+
         var iconButton = new DonyshButton { Glyph = AppIcons.Settings, Text = "تنظیمات" };
         Check(iconButton.ImageSource is FontImageSource { FontFamily: "MaterialIconsRound" },
             "Material icon font is wired to action buttons");

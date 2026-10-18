@@ -181,7 +181,9 @@ public sealed class DonyshTitleSheet : ContentPage
     protected override void OnDisappearing()
     {
         base.OnDisappearing();
-        _completion.TrySetResult(null);
+        // SubmitAsync completes the request after the modal has closed. Only an
+        // external navigation removal should be treated as cancellation here.
+        if (Volatile.Read(ref _closing) == 0) _completion.TrySetResult(null);
     }
 
     private async Task SubmitAsync()

@@ -102,7 +102,20 @@ internal static class PostgresChecks
             var builder = WebApplication.CreateBuilder();
             builder.Logging.ClearProviders(); builder.WebHost.UseUrls("http://127.0.0.1:0");
             builder.Services.AddDbContext<ApplicationDbContext>(o => o.UseNpgsql(cs.ConnectionString, p => p.EnableRetryOnFailure()));
-            builder.Services.AddIdentityCore<ApplicationUser>()
+            builder.Services.AddIdentityCore<ApplicationUser>(options =>
+                {
+                    // Keep this host aligned with the production Identity policy. Relying on
+                    // framework defaults makes the login regression test SDK-version dependent.
+                    options.User.RequireUniqueEmail = true;
+                    options.SignIn.RequireConfirmedAccount = false;
+                    options.Password.RequiredLength = 8;
+                    options.Password.RequireDigit = true;
+                    options.Password.RequireLowercase = true;
+                    options.Password.RequireUppercase = false;
+                    options.Password.RequireNonAlphanumeric = false;
+                    options.Lockout.MaxFailedAccessAttempts = 5;
+                    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+                })
                 .AddRoles<IdentityRole>()
                 .AddEntityFrameworkStores<ApplicationDbContext>()
                 .AddSignInManager();
@@ -146,10 +159,19 @@ internal static class PostgresChecks
             }));
             Check(pendingPairings.Count(x => x is not null) == 2 && await db.MobileDevices.CountAsync(x => x.UserId == user.Id) == 3,
                 "concurrent pairing submissions cannot bypass three-device limit");
+            // The concurrent-limit scenario deliberately leaves two pending devices behind.
+            // Remove only those fixtures so the following login scenario starts independently;
+            // the already paired device remains available for the SMS checks below.
+            await db.MobileDevices
+                .Where(x => x.UserId == user.Id && x.TokenHash == null && x.PairCodeHash != null)
+                .ExecuteDeleteAsync();
             var installationId = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
             using var login = await client.PostAsJsonAsync("/api/mobile/login",
                 new MobileLoginRequest(user.Email!, "Secret123", installationId, "Login device"));
-            Check(login.StatusCode == HttpStatusCode.OK, "website credentials create a mobile session");
+            var loginFailure = login.StatusCode == HttpStatusCode.OK
+                ? string.Empty
+                : $" (HTTP {(int)login.StatusCode}: {await login.Content.ReadAsStringAsync()})";
+            Check(login.StatusCode == HttpStatusCode.OK, "website credentials create a mobile session" + loginFailure);
             var session = (await login.Content.ReadFromJsonAsync<MobileSessionResult>())!;
             Check(session.Workspaces.Count == 2 && session.Workspaces.All(x => x.Id == workspace.Id || x.Id == other.Id),
                 "mobile session only lists member workspaces");

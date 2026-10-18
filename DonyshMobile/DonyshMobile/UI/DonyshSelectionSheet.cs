@@ -118,8 +118,12 @@ public sealed class DonyshSelectionSheet : ContentPage
     {
         base.OnDisappearing();
         // Complete callers even if the host navigation removes the sheet directly.
-        _completion.TrySetResult(null);
+        // A normal selection owns completion in CloseAsync; do not let the modal
+        // lifecycle replace that selected index with a cancellation result.
+        if (Volatile.Read(ref _closing) == 0) _completion.TrySetResult(null);
     }
+
+    internal Task CompleteSelectionForDiagnosticsAsync(int? result) => CloseAsync(result);
 
     private Border CreateRow(DonyshSelectionOption option, int index, bool selected)
     {
