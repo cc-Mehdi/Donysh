@@ -15,14 +15,20 @@
 
 ```bash
 cd /home/ubuntu/donysh
-cp .env.example .env.auth.example
-# مقادیر AUTH_* را در فایل .env موجود، با Secretهای تصادفی و واقعی اضافه کنید.
-set -a
-. ./.env
-set +a
-bash scripts/generate-auth-certificates.sh
+chmod +x scripts/configure-server-env.sh
+bash scripts/configure-server-env.sh
+AUTH_SIGNING_CERT_PASSWORD="$(sed -n 's/^AUTH_SIGNING_CERT_PASSWORD=//p' .env)" \
+AUTH_ENCRYPTION_CERT_PASSWORD="$(sed -n 's/^AUTH_ENCRYPTION_CERT_PASSWORD=//p' .env)" \
+  bash scripts/generate-auth-certificates.sh
 docker compose --env-file .env -f docker-compose.platform.yml config >/dev/null
 ```
+
+اسکریپت `configure-server-env.sh` دامنه‌ها و ایمیل گواهی را می‌پرسد، Secretهای خالی یا نمونه را
+روی خود سرور تولید می‌کند و فایل را با سطح دسترسی `600` به‌شکل اتمی می‌نویسد. رمزهای معتبر موجود
+بدون تغییر حفظ می‌شوند تا اتصال volume فعلی PostgreSQL قطع نشود. مقدارهای حساس در خروجی نمایش داده
+نمی‌شوند و فایل پیوند نمادین نیز پذیرفته نمی‌شود.
+فایل `.env` عمداً با `source` اجرا نمی‌شود؛ فقط دو رمز لازم برای ساخت گواهی‌ها به‌عنوان داده خوانده
+می‌شوند تا هیچ محتوایی از فایل به‌عنوان دستور پوسته اجرا نشود.
 
 فایل‌های PFX در `secrets/auth` ساخته می‌شوند، در Git نادیده گرفته شده‌اند و باید در backup رمزگذاری‌شده نگهداری شوند. رمز گواهی‌ها باید در Secret manager یا `.env` با دسترسی محدود باشد.
 

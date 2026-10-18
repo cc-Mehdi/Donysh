@@ -26,5 +26,5 @@ generate_certificate() {
 generate_certificate signing "$AUTH_SIGNING_CERT_PASSWORD"
 generate_certificate encryption "$AUTH_ENCRYPTION_CERT_PASSWORD"
 chmod 700 "$output_dir"
-chmod 644 "$output_dir/signing.pfx" "$output_dir/encryption.pfx"
+chmod 600 "$output_dir/signing.pfx" "$output_dir/encryption.pfx"
 echo "Auth certificates generated in $output_dir. The directory is excluded from Git."
