@@ -1,8 +1,8 @@
-# استقرار مرحلهٔ ۱ سرویس Auth
+# استقرار سرویس ورود مرکزی
 
 ## آنچه خودکار نیست
 
-این تغییر DNS، Secret، گواهی عمومی، Push، Deploy یا Migration Production را انجام نمی‌دهد. فایل Compose فعلی Finance تغییر نکرده و deploy معمول فعلی همچنان فقط همان برنامه را اجرا می‌کند.
+اسکریپت استقرار از `docker-compose.platform.yml` استفاده می‌کند و هر دو سرویس مالی و ورود را می‌سازد. انتقال کاربران و فعال‌سازی ورود مرکزی عمداً خودکار نیست تا امکان بررسی و بازگشت امن وجود داشته باشد.
 
 ## پیش‌نیاز سرور
 
@@ -17,9 +17,11 @@
 cd /home/ubuntu/donysh
 chmod +x scripts/configure-server-env.sh
 bash scripts/configure-server-env.sh
-AUTH_SIGNING_CERT_PASSWORD="$(sed -n 's/^AUTH_SIGNING_CERT_PASSWORD=//p' .env)" \
-AUTH_ENCRYPTION_CERT_PASSWORD="$(sed -n 's/^AUTH_ENCRYPTION_CERT_PASSWORD=//p' .env)" \
+sudo bash -c '
+AUTH_SIGNING_CERT_PASSWORD="$(sed -n "s/^AUTH_SIGNING_CERT_PASSWORD=//p" .env)" \
+AUTH_ENCRYPTION_CERT_PASSWORD="$(sed -n "s/^AUTH_ENCRYPTION_CERT_PASSWORD=//p" .env)" \
   bash scripts/generate-auth-certificates.sh
+'
 docker compose --env-file .env -f docker-compose.platform.yml config >/dev/null
 ```
 
@@ -32,7 +34,7 @@ docker compose --env-file .env -f docker-compose.platform.yml config >/dev/null
 
 فایل‌های PFX در `secrets/auth` ساخته می‌شوند، در Git نادیده گرفته شده‌اند و باید در backup رمزگذاری‌شده نگهداری شوند. رمز گواهی‌ها باید در Secret manager یا `.env` با دسترسی محدود باشد.
 
-## استقرار محدود مرحلهٔ ۱
+## استقرار سرویس‌ها با ورود مرکزی غیرفعال
 
 ```bash
 docker compose --env-file .env -f docker-compose.platform.yml build auth
@@ -44,7 +46,7 @@ curl -fsS https://auth.donysh.ir/health/ready
 curl -fsS https://auth.donysh.ir/.well-known/openid-configuration
 ```
 
-در اولین شروع، Migration فقط روی `auth-db` اجرا می‌شود. `Features__*` را false نگه دارید. صفحهٔ ورود قابل مشاهده است، اما ورود کاربران Finance هنوز کار نمی‌کند.
+در اولین شروع، Migration فقط روی `auth-db` اجرا می‌شود. تا قبل از اجرای راهنمای `MIGRATION.md`، مقدارهای `CENTRAL_AUTH_ENABLED` و `LEGACY_IDENTITY_IMPORT_COMPLETED` را `false` نگه دارید. برنامهٔ مالی در این وضعیت از ورود قبلی استفاده می‌کند.
 
 ## مشاهدهٔ Log
 
@@ -57,11 +59,11 @@ Log نباید شامل Secret، password، Token یا connection string کام�
 ## Rollback امن
 
 ```bash
-docker compose --env-file .env -f docker-compose.platform.yml stop auth
-docker compose --env-file .env -f docker-compose.domain.yml up -d caddy web db
+sed -i 's/^CENTRAL_AUTH_ENABLED=.*/CENTRAL_AUTH_ENABLED=false/' .env
+docker compose --env-file .env -f docker-compose.platform.yml up -d web
 ```
 
-volumeهای `auth_postgres_data` و `auth_dataprotection_keys` را حذف نکنید. برگشت Caddy به Compose فعلی Finance را روی `donysh.ir` نگه می‌دارد. چون Finance هنوز به Auth متصل نیست، سرویس مالی مستقل ادامه می‌دهد.
+volumeهای `auth_postgres_data` و `auth_dataprotection_keys` را حذف نکنید. با خاموش‌کردن پرچم، ورود محلی قبلی بدون حذف داده‌ها بازمی‌گردد.
 
 ## اجرای محلی توسعه
 

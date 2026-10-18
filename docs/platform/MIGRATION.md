@@ -1,6 +1,6 @@
 # برنامهٔ مهاجرت Finance و کاربران
 
-این سند برنامهٔ مرحلهٔ ۲ است و در مرحلهٔ ۱ هیچ‌کدام از عملیات آن روی Production اجرا نشده است.
+این سند دستور اجرای کنترل‌شدهٔ مرحلهٔ ۲ است. هیچ‌یک از فرمان‌های `--apply` یا فعال‌سازی زیر به‌صورت خودکار در Production اجرا نمی‌شوند.
 
 ## پیش‌نیازها
 
@@ -15,18 +15,50 @@
 
 ## مراحل پیشنهادی
 
-1. Export فقط جدول‌های Identity لازم با کنترل checksum و count.
-2. Import idempotent به Auth با تشخیص ایمیل نرمال‌شدهٔ تکراری.
-3. اعتبارسنجی Hash، تأیید ایمیل و Lockout روی نمونه‌های کنترل‌شده.
-4. اتصال Finance به OIDC در یک محیط آزمایشی.
-5. آزمون تمام مسیرهای وابسته به User ID و عملیات مالی.
-6. انتشار canary و سپس انتقال کنترل‌شده.
-7. پس از تأیید، فعال‌سازی بازیابی رمز و در نهایت ثبت‌نام مرکزی.
+1. از هر دو پایگاه‌داده نسخهٔ پشتیبان قابل بازیابی بگیرید.
+2. بررسی بدون نوشتن را اجرا کنید:
+
+   ```bash
+   cd /home/ubuntu/donysh
+   bash scripts/migrate-identity-to-auth.sh --dry-run
+   ```
+
+3. اگر بررسی بدون برخورد شناسه یا ایمیل تمام شد، انتقال اتمی و تکرارپذیر را اجرا کنید:
+
+   ```bash
+   bash scripts/migrate-identity-to-auth.sh --apply
+   bash scripts/migrate-identity-to-auth.sh --dry-run
+   ```
+
+   اجرای دوم باید تعداد کاربران آمادهٔ افزودن را صفر و کاربران یکسان را برابر تعداد کاربران Finance نشان دهد. ابزار فقط شمارنده‌ها را نمایش می‌دهد و ایمیل، هش رمز یا رشتهٔ اتصال را ثبت نمی‌کند.
+
+4. مقدار `LEGACY_IDENTITY_IMPORT_COMPLETED=true` را در `.env` قرار دهید و فقط سرویس Auth را بازسازی کنید:
+
+   ```bash
+   sed -i 's/^LEGACY_IDENTITY_IMPORT_COMPLETED=.*/LEGACY_IDENTITY_IMPORT_COMPLETED=true/' .env
+   docker compose --env-file .env -f docker-compose.platform.yml up -d auth
+   ```
+
+5. ورود یک حساب کنترل‌شده را در `auth.donysh.ir` آزمایش کنید. سپس ورود مرکزی Finance را فعال کنید:
+
+   ```bash
+   sed -i 's/^CENTRAL_AUTH_ENABLED=.*/CENTRAL_AUTH_ENABLED=true/' .env
+   docker compose --env-file .env -f docker-compose.platform.yml up -d web
+   ```
+
+6. ورود، خروج، دسترسی همان کاربر به فضاهای قبلی و عملیات خواندن/نوشتن مالی را بررسی کنید. شناسهٔ `sub` صادرشده باید دقیقاً در `AspNetUsers` مالی موجود باشد؛ در غیر این صورت ورود Finance رد می‌شود.
+
+7. ثبت‌نام محلی Finance هنگام فعال بودن ورود مرکزی بسته است. بازیابی رمز و ثبت‌نام مرکزی تا مرحلهٔ جداگانه و آماده‌شدن ارسال ایمیل غیرفعال می‌مانند.
 
 ## Rollback
 
 - تا پایان دورهٔ گذار، Schema و کاربران Identity موجود Finance حذف نمی‌شوند.
-- در صورت شکست، تنظیم OIDC Finance غیرفعال و Cookie login قبلی بازگردانده می‌شود.
+- در صورت شکست، فرمان زیر ورود قبلی را بدون حذف داده بازمی‌گرداند:
+
+  ```bash
+  sed -i 's/^CENTRAL_AUTH_ENABLED=.*/CENTRAL_AUTH_ENABLED=false/' .env
+  docker compose --env-file .env -f docker-compose.platform.yml up -d web
+  ```
 - دیتابیس Auth و گزارش Import حفظ می‌شوند تا علت بررسی شود؛ پاک‌کردن خودکار انجام نمی‌شود.
 - هر Migration دیتابیس Auth با backup همان دیتابیس و فرمان `dotnet ef database update <PreviousMigration>` بازگردانده می‌شود.
 

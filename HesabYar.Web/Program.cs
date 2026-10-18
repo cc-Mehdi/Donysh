@@ -1,14 +1,20 @@
 using System.Globalization;
+using System.Security.Claims;
+using HesabYar.Web.Configuration;
 using HesabYar.Web.Data;
 using HesabYar.Web.Domain;
 using HesabYar.Web.ModelBinding;
 using HesabYar.Web.Services;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
+using Microsoft.IdentityModel.Tokens;
 using HesabYar.Web.Sms;
 using HesabYar.Web.Security;
 
@@ -23,6 +29,9 @@ builder.Services.Configure<FormOptions>(options =>
 });
 
 var reverseProxyEnabled = builder.Configuration.GetValue<bool>("ReverseProxy:Enabled");
+var centralAuth = builder.Configuration
+    .GetSection(CentralAuthOptions.SectionName)
+    .Get<CentralAuthOptions>() ?? new CentralAuthOptions();
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' was not found.");
 
@@ -51,6 +60,107 @@ builder.Services
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
 
+builder.Services.AddOptions<CentralAuthOptions>()
+    .Bind(builder.Configuration.GetSection(CentralAuthOptions.SectionName));
+
+if (centralAuth.Enabled)
+{
+    if (!Uri.TryCreate(centralAuth.Authority, UriKind.Absolute, out var authority)
+        || (centralAuth.RequireHttpsMetadata && authority.Scheme != Uri.UriSchemeHttps))
+    {
+        throw new InvalidOperationException("CentralAuth:Authority must be an absolute HTTPS URI.");
+    }
+
+    if (string.IsNullOrWhiteSpace(centralAuth.ClientId)
+        || string.IsNullOrWhiteSpace(centralAuth.ClientSecret)
+        || centralAuth.ClientSecret.Length < 32)
+    {
+        throw new InvalidOperationException("CentralAuth requires a client ID and a secret of at least 32 characters.");
+    }
+
+    builder.Services.AddAuthentication()
+        .AddOpenIdConnect(CentralAuthOptions.Scheme, options =>
+        {
+            options.Authority = authority.AbsoluteUri.TrimEnd('/');
+            options.ClientId = centralAuth.ClientId;
+            options.ClientSecret = centralAuth.ClientSecret;
+            options.ResponseType = OpenIdConnectResponseType.Code;
+            options.UsePkce = true;
+            options.RequireHttpsMetadata = centralAuth.RequireHttpsMetadata;
+            // Keep only the ID token in the encrypted application cookie so RP-initiated
+            // logout can terminate the central session. Access/refresh tokens are discarded.
+            options.SaveTokens = true;
+            options.GetClaimsFromUserInfoEndpoint = true;
+            options.SignInScheme = IdentityConstants.ApplicationScheme;
+            options.MapInboundClaims = false;
+            options.Scope.Clear();
+            options.Scope.Add("openid");
+            options.Scope.Add("profile");
+            options.Scope.Add("email");
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                NameClaimType = "name",
+                RoleClaimType = "role"
+            };
+            options.Events = new OpenIdConnectEvents
+            {
+                OnTicketReceived = context =>
+                {
+                    var idToken = context.Properties?.GetTokenValue(OpenIdConnectParameterNames.IdToken);
+                    context.Properties?.StoreTokens(string.IsNullOrWhiteSpace(idToken)
+                        ? []
+                        : [new AuthenticationToken
+                        {
+                            Name = OpenIdConnectParameterNames.IdToken,
+                            Value = idToken
+                        }]);
+                    return Task.CompletedTask;
+                },
+                OnTokenValidated = async context =>
+                {
+                    var subject = context.Principal?.FindFirstValue("sub");
+                    if (string.IsNullOrWhiteSpace(subject))
+                    {
+                        context.Fail("The identity token has no subject.");
+                        return;
+                    }
+
+                    await using var scope = context.HttpContext.RequestServices.CreateAsyncScope();
+                    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                    var localUser = await db.Users.AsNoTracking()
+                        .Where(user => user.Id == subject)
+                        .Select(user => new { user.Id, user.SecurityStamp })
+                        .SingleOrDefaultAsync(context.HttpContext.RequestAborted);
+                    if (localUser is null)
+                    {
+                        context.Fail("The central account is not linked to a finance account.");
+                        return;
+                    }
+
+                    if (context.Principal?.Identity is ClaimsIdentity identity
+                        && !identity.HasClaim(claim => claim.Type == ClaimTypes.NameIdentifier))
+                    {
+                        identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, subject));
+                    }
+
+                    var securityStampClaimType = new IdentityOptions().ClaimsIdentity.SecurityStampClaimType;
+                    if (context.Principal?.Identity is ClaimsIdentity claimsIdentity
+                        && !string.IsNullOrWhiteSpace(localUser.SecurityStamp)
+                        && !claimsIdentity.HasClaim(claim => claim.Type == securityStampClaimType))
+                    {
+                        claimsIdentity.AddClaim(new Claim(securityStampClaimType, localUser.SecurityStamp));
+                    }
+                },
+                OnRemoteFailure = context =>
+                {
+                    context.HandleResponse();
+                    context.Response.Redirect("/Account/Login?authError=1");
+                    return Task.CompletedTask;
+                }
+            };
+        });
+}
+
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.Cookie.Name = ".HesabYar.Auth";
@@ -60,7 +170,7 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.Cookie.SecurePolicy = reverseProxyEnabled
         ? CookieSecurePolicy.Always
         : CookieSecurePolicy.SameAsRequest;
-    options.ExpireTimeSpan = TimeSpan.FromDays(30);
+    options.ExpireTimeSpan = centralAuth.Enabled ? TimeSpan.FromHours(8) : TimeSpan.FromDays(30);
     options.SlidingExpiration = true;
     options.LoginPath = "/Account/Login";
     options.AccessDeniedPath = "/Account/AccessDenied";

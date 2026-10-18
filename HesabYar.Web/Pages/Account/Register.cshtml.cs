@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using HesabYar.Web.Configuration;
 using HesabYar.Web.Data;
 using HesabYar.Web.Domain;
 using HesabYar.Web.Helpers;
@@ -7,6 +8,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Options;
 
 namespace HesabYar.Web.Pages.Account;
 
@@ -15,7 +17,8 @@ namespace HesabYar.Web.Pages.Account;
 public sealed class RegisterModel(
     UserManager<ApplicationUser> userManager,
     SignInManager<ApplicationUser> signInManager,
-    ApplicationDbContext db) : PageModel
+    ApplicationDbContext db,
+    IOptions<CentralAuthOptions> centralAuthOptions) : PageModel
 {
     [BindProperty]
     public InputModel Input { get; set; } = new();
@@ -54,11 +57,18 @@ public sealed class RegisterModel(
             return RedirectToPage("/Index");
         }
 
-        return Page();
+        return centralAuthOptions.Value.Enabled
+            ? RedirectToPage("/Account/Login", new { ReturnUrl })
+            : Page();
     }
 
     public async Task<IActionResult> OnPostAsync()
     {
+        if (centralAuthOptions.Value.Enabled)
+        {
+            return RedirectToPage("/Account/Login", new { ReturnUrl });
+        }
+
         ReturnUrl ??= Url.Content("~/");
         if (!ModelState.IsValid)
         {

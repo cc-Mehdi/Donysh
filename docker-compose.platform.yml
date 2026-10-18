@@ -39,6 +39,11 @@ services:
       AllowedHosts: ${DOMAIN:?DOMAIN is required}
       ReverseProxy__Enabled: "true"
       DataProtection__KeysPath: /keys
+      CentralAuth__Enabled: ${CENTRAL_AUTH_ENABLED:-false}
+      CentralAuth__Authority: https://${AUTH_DOMAIN:?AUTH_DOMAIN is required}
+      CentralAuth__ClientId: finance-web
+      CentralAuth__ClientSecret: ${FINANCE_OIDC_CLIENT_SECRET:?FINANCE_OIDC_CLIENT_SECRET is required}
+      CentralAuth__RequireHttpsMetadata: "true"
       TZ: ${TZ:-Asia/Tehran}
       ConnectionStrings__DefaultConnection: >-
         Host=db;Port=5432;Database=${POSTGRES_DB:-hesabyar};Username=${POSTGRES_USER:-hesabyar};Password=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required};Pooling=true;Maximum Pool Size=100;Timeout=15;Command Timeout=30;Include Error Detail=false
@@ -48,6 +53,7 @@ services:
       - dataprotection_keys:/keys
     networks:
       - finance-backend
+      - frontend
     logging: *default-logging
 
   auth-db:
@@ -87,7 +93,13 @@ services:
       DataProtection__KeysPath: /keys
       Features__PublicRegistration: "false"
       Features__PasswordRecovery: "false"
-      Features__LegacyIdentityImportCompleted: "false"
+      Features__LegacyIdentityImportCompleted: ${LEGACY_IDENTITY_IMPORT_COMPLETED:-false}
+      OidcClients__0__ClientId: finance-web
+      OidcClients__0__DisplayName: Donysh Finance
+      OidcClients__0__ClientSecret: ${FINANCE_OIDC_CLIENT_SECRET:?FINANCE_OIDC_CLIENT_SECRET is required}
+      OidcClients__0__PublicClient: "false"
+      OidcClients__0__RedirectUris__0: https://${DOMAIN:?DOMAIN is required}/signin-oidc
+      OidcClients__0__PostLogoutRedirectUris__0: https://${DOMAIN:?DOMAIN is required}/signout-callback-oidc
       OpenIddict__SigningCertificate__Path: /certs/signing.pfx
       OpenIddict__SigningCertificate__Password: ${AUTH_SIGNING_CERT_PASSWORD:?AUTH_SIGNING_CERT_PASSWORD is required}
       OpenIddict__EncryptionCertificate__Path: /certs/encryption.pfx
@@ -103,6 +115,21 @@ services:
     networks:
       - auth-backend
       - frontend
+    logging: *default-logging
+
+  identity-migration:
+    profiles: ["tools"]
+    build:
+      context: .
+      dockerfile: Donysh.IdentityMigration/Dockerfile
+    environment:
+      SOURCE_CONNECTION_STRING: >-
+        Host=db;Port=5432;Database=${POSTGRES_DB:-hesabyar};Username=${POSTGRES_USER:-hesabyar};Password=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required};Pooling=false;Timeout=15;Command Timeout=30;Include Error Detail=false
+      TARGET_CONNECTION_STRING: >-
+        Host=auth-db;Port=5432;Database=${AUTH_POSTGRES_DB:-donysh_auth};Username=${AUTH_POSTGRES_USER:-donysh_auth};Password=${AUTH_POSTGRES_PASSWORD:?AUTH_POSTGRES_PASSWORD is required};Pooling=false;Timeout=15;Command Timeout=30;Include Error Detail=false
+    networks:
+      - finance-backend
+      - auth-backend
     logging: *default-logging
 
   caddy:

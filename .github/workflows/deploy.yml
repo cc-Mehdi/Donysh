@@ -96,6 +96,9 @@ jobs:
       - name: Validate Auth Docker image
         run: docker build --file Donysh.Auth/Dockerfile --tag donysh-auth-ci:${{ github.sha }} .
 
+      - name: Validate identity migration Docker image
+        run: docker build --file Donysh.IdentityMigration/Dockerfile --tag donysh-identity-migration-ci:${{ github.sha }} .
+
   deploy:
     name: Deploy to production
     needs: validate

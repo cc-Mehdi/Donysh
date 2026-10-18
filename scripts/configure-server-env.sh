@@ -31,6 +31,7 @@ managed_keys=(
   POSTGRES_DB POSTGRES_USER POSTGRES_PASSWORD TZ APP_PORT DOMAIN ACME_EMAIL
   AUTH_DOMAIN AUTH_POSTGRES_DB AUTH_POSTGRES_USER AUTH_POSTGRES_PASSWORD
   AUTH_SIGNING_CERT_PASSWORD AUTH_ENCRYPTION_CERT_PASSWORD
+  FINANCE_OIDC_CLIENT_SECRET LEGACY_IDENTITY_IMPORT_COMPLETED CENTRAL_AUTH_ENABLED
 )
 
 for key in "${managed_keys[@]}"; do
@@ -123,6 +124,16 @@ keep_or_generate_secret POSTGRES_PASSWORD
 keep_or_generate_secret AUTH_POSTGRES_PASSWORD
 keep_or_generate_secret AUTH_SIGNING_CERT_PASSWORD
 keep_or_generate_secret AUTH_ENCRYPTION_CERT_PASSWORD
+keep_or_generate_secret FINANCE_OIDC_CLIENT_SECRET
+[[ "${#desired[FINANCE_OIDC_CLIENT_SECRET]}" -ge 32 ]] \
+  || fail "مقدار FINANCE_OIDC_CLIENT_SECRET باید دست‌کم ۳۲ نویسه باشد."
+
+desired[LEGACY_IDENTITY_IMPORT_COMPLETED]="$(existing_or_default LEGACY_IDENTITY_IMPORT_COMPLETED false)"
+desired[CENTRAL_AUTH_ENABLED]="$(existing_or_default CENTRAL_AUTH_ENABLED false)"
+for key in LEGACY_IDENTITY_IMPORT_COMPLETED CENTRAL_AUTH_ENABLED; do
+  [[ "${desired[$key]}" == "true" || "${desired[$key]}" == "false" ]] \
+    || fail "مقدار $key فقط می‌تواند true یا false باشد."
+done
 
 temp_file="$(mktemp "$env_dir/.env.donysh.XXXXXX")"
 cleanup() {

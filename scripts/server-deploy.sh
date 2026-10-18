@@ -4,7 +4,7 @@ set -Eeuo pipefail
 APP_DIR="${APP_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 BRANCH="${DEPLOY_BRANCH:-main}"
 ENV_FILE="${ENV_FILE:-.env}"
-COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.domain.yml}"
+COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.platform.yml}"
 LOCK_FILE="${LOCK_FILE:-/tmp/donysh-deploy.lock}"
 LOCK_WAIT_SECONDS="${DEPLOY_LOCK_WAIT_SECONDS:-900}"
 GIT_FETCH_TIMEOUT_SECONDS="${GIT_FETCH_TIMEOUT_SECONDS:-120}"
@@ -73,19 +73,28 @@ rollback() {
 }
 trap rollback ERR
 
+# Adds newly introduced settings with secure defaults without replacing existing
+# database or certificate secrets. This keeps unattended deployments upgrade-safe.
+bash scripts/configure-server-env.sh "$ENV_FILE" 9>&-
+
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" config 9>&- >/dev/null
-docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" build web 9>&-
+docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" build web auth 9>&-
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --remove-orphans 9>&-
 
 # Read DOMAIN without executing the env file as shell code.
 domain="$(sed -n 's/^DOMAIN=//p' "$ENV_FILE" | tail -n 1 | tr -d '\r' | xargs)"
+auth_domain="$(sed -n 's/^AUTH_DOMAIN=//p' "$ENV_FILE" | tail -n 1 | tr -d '\r' | xargs)"
 health_url="${HEALTH_URL:-https://${domain}/health}"
+auth_health_url="${AUTH_HEALTH_URL:-https://${auth_domain}/health/ready}"
 
 for attempt in $(seq 1 24); do
   if curl --fail --silent --show-error --max-time 10 \
       --resolve "${domain}:443:127.0.0.1" \
-      "$health_url" 9>&- >/dev/null; then
-    echo "Health check passed: $health_url"
+      "$health_url" 9>&- >/dev/null \
+      && curl --fail --silent --show-error --max-time 10 \
+      --resolve "${auth_domain}:443:127.0.0.1" \
+      "$auth_health_url" 9>&- >/dev/null; then
+    echo "Health checks passed: $health_url and $auth_health_url"
     trap - ERR
     docker image prune -f 9>&- >/dev/null 2>&1 || true
     docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps 9>&-
@@ -97,5 +106,5 @@ for attempt in $(seq 1 24); do
   sleep 5 9>&-
 done
 
-echo "Health check failed: $health_url"
+echo "A health check failed: $health_url or $auth_health_url"
 exit 1

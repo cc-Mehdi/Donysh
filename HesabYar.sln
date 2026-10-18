@@ -5,6 +5,8 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HesabYar.Web", "HesabYar.Web\HesabYar.Web.csproj", "{D7C894C3-19A8-4DAB-9D4D-D1E5AE47A600}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Donysh.IdentityMigration", "Donysh.IdentityMigration\Donysh.IdentityMigration.csproj", "{B46088EB-40C9-4DC4-ACAB-87A02E2BBBA1}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Donysh.Auth", "Donysh.Auth\Donysh.Auth.csproj", "{1C5C58B9-8B3D-40D7-9AB8-1E00812B6FEB}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Donysh.Auth.Tests", "Donysh.Auth.Tests\Donysh.Auth.Tests.csproj", "{7D97EAD0-E250-48AA-994B-C3C90ECB846D}"
@@ -19,6 +21,18 @@ Global
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B46088EB-40C9-4DC4-ACAB-87A02E2BBBA1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B46088EB-40C9-4DC4-ACAB-87A02E2BBBA1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B46088EB-40C9-4DC4-ACAB-87A02E2BBBA1}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{B46088EB-40C9-4DC4-ACAB-87A02E2BBBA1}.Debug|x64.Build.0 = Debug|Any CPU
+		{B46088EB-40C9-4DC4-ACAB-87A02E2BBBA1}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{B46088EB-40C9-4DC4-ACAB-87A02E2BBBA1}.Debug|x86.Build.0 = Debug|Any CPU
+		{B46088EB-40C9-4DC4-ACAB-87A02E2BBBA1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B46088EB-40C9-4DC4-ACAB-87A02E2BBBA1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B46088EB-40C9-4DC4-ACAB-87A02E2BBBA1}.Release|x64.ActiveCfg = Release|Any CPU
+		{B46088EB-40C9-4DC4-ACAB-87A02E2BBBA1}.Release|x64.Build.0 = Release|Any CPU
+		{B46088EB-40C9-4DC4-ACAB-87A02E2BBBA1}.Release|x86.ActiveCfg = Release|Any CPU
+		{B46088EB-40C9-4DC4-ACAB-87A02E2BBBA1}.Release|x86.Build.0 = Release|Any CPU
 		{D7C894C3-19A8-4DAB-9D4D-D1E5AE47A600}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{D7C894C3-19A8-4DAB-9D4D-D1E5AE47A600}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D7C894C3-19A8-4DAB-9D4D-D1E5AE47A600}.Debug|x64.ActiveCfg = Debug|Any CPU

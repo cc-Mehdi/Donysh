@@ -23,29 +23,46 @@
                 <partial name="_Brand" />
             </a>
             <h2 class="text-3xl font-black">خوش آمدید</h2>
-            <p class="mt-2 text-slate-500">برای ورود، اطلاعات حساب خود را وارد کنید.</p>
+            @if (Model.UsesCentralAuth)
+            {
+                <p class="mt-2 text-slate-500">ورود حساب شما از مسیر امن مرکزی دنیش انجام می‌شود.</p>
+                @if (Model.AuthError)
+                {
+                    <div class="mt-6 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm leading-7 text-rose-800">
+                        ورود کامل نشد. دوباره تلاش کنید؛ اگر مشکل ادامه داشت، با پشتیبانی تماس بگیرید.
+                    </div>
+                }
+                <form method="post" asp-page-handler="Central" class="mt-8">
+                    <input type="hidden" asp-for="ReturnUrl" />
+                    <button type="submit" class="btn-primary w-full">ورود امن به دنیش</button>
+                </form>
+            }
+            else
+            {
+                <p class="mt-2 text-slate-500">برای ورود، اطلاعات حساب خود را وارد کنید.</p>
 
-            <form method="post" class="mt-8 space-y-5">
-                <input type="hidden" asp-for="ReturnUrl" />
-                <div asp-validation-summary="ModelOnly"></div>
-                <div>
-                    <label asp-for="Input.Email" class="label"></label>
-                    <input asp-for="Input.Email" class="input" autocomplete="email" autofocus />
-                    <span asp-validation-for="Input.Email" class="field-error"></span>
-                </div>
-                <div>
-                    <label asp-for="Input.Password" class="label"></label>
-                    <input asp-for="Input.Password" class="input" autocomplete="current-password" />
-                    <span asp-validation-for="Input.Password" class="field-error"></span>
-                </div>
-                <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
-                    <input asp-for="Input.RememberMe" class="size-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
-                    <span>مرا به خاطر بسپار؛ تا ۳۰ روز نیاز به ورود مجدد نباشد</span>
-                </label>
-                <button type="submit" class="btn-primary w-full">ورود به حساب</button>
-            </form>
+                <form method="post" class="mt-8 space-y-5">
+                    <input type="hidden" asp-for="ReturnUrl" />
+                    <div asp-validation-summary="ModelOnly"></div>
+                    <div>
+                        <label asp-for="Input.Email" class="label"></label>
+                        <input asp-for="Input.Email" class="input" autocomplete="email" autofocus />
+                        <span asp-validation-for="Input.Email" class="field-error"></span>
+                    </div>
+                    <div>
+                        <label asp-for="Input.Password" class="label"></label>
+                        <input asp-for="Input.Password" class="input" autocomplete="current-password" />
+                        <span asp-validation-for="Input.Password" class="field-error"></span>
+                    </div>
+                    <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+                        <input asp-for="Input.RememberMe" class="size-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                        <span>مرا به خاطر بسپار؛ تا ۳۰ روز نیاز به ورود مجدد نباشد</span>
+                    </label>
+                    <button type="submit" class="btn-primary w-full">ورود به حساب</button>
+                </form>
 
-            <p class="mt-6 text-center text-sm text-slate-500">حساب ندارید؟ <a asp-page="/Account/Register" asp-route-returnUrl="@Model.ReturnUrl" class="font-bold text-indigo-700">ثبت‌نام کنید</a></p>
+                <p class="mt-6 text-center text-sm text-slate-500">حساب ندارید؟ <a asp-page="/Account/Register" asp-route-returnUrl="@Model.ReturnUrl" class="font-bold text-indigo-700">ثبت‌نام کنید</a></p>
+            }
         </div>
     </section>
 </div>

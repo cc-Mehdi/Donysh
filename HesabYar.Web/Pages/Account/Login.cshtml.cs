@@ -1,22 +1,34 @@
 using System.ComponentModel.DataAnnotations;
+using HesabYar.Web.Configuration;
 using HesabYar.Web.Domain;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Options;
 
 namespace HesabYar.Web.Pages.Account;
 
 [AllowAnonymous]
 [EnableRateLimiting("account")]
-public sealed class LoginModel(SignInManager<ApplicationUser> signInManager) : PageModel
+public sealed class LoginModel(
+    SignInManager<ApplicationUser> signInManager,
+    IOptions<CentralAuthOptions> centralAuthOptions) : PageModel
 {
+    private readonly CentralAuthOptions centralAuth = centralAuthOptions.Value;
+
     [BindProperty]
     public InputModel Input { get; set; } = new();
 
     [BindProperty(SupportsGet = true)]
     public string? ReturnUrl { get; set; }
+
+    [BindProperty(SupportsGet = true)]
+    public bool AuthError { get; set; }
+
+    public bool UsesCentralAuth => centralAuth.Enabled;
 
     public sealed class InputModel
     {
@@ -40,11 +52,21 @@ public sealed class LoginModel(SignInManager<ApplicationUser> signInManager) : P
             return RedirectToPage("/Index");
         }
 
+        if (centralAuth.Enabled && !AuthError)
+        {
+            return ChallengeCentralAuth();
+        }
+
         return Page();
     }
 
     public async Task<IActionResult> OnPostAsync()
     {
+        if (centralAuth.Enabled)
+        {
+            return ChallengeCentralAuth();
+        }
+
         ReturnUrl ??= Url.Content("~/");
         if (!ModelState.IsValid)
         {
@@ -67,5 +89,17 @@ public sealed class LoginModel(SignInManager<ApplicationUser> signInManager) : P
 
         ModelState.AddModelError(string.Empty, "ایمیل یا رمز عبور صحیح نیست.");
         return Page();
+    }
+
+    public IActionResult OnPostCentralAsync() => ChallengeCentralAuth();
+
+    private ChallengeResult ChallengeCentralAuth()
+    {
+        var destination = !string.IsNullOrWhiteSpace(ReturnUrl) && Url.IsLocalUrl(ReturnUrl)
+            ? ReturnUrl
+            : Url.Content("~/");
+        return Challenge(
+            new AuthenticationProperties { RedirectUri = destination },
+            CentralAuthOptions.Scheme);
     }
 }
