@@ -32,4 +32,22 @@ public static class SyncPlatform
         return Task.FromResult(new SmsRecoveryResult(0, 0, Skipped: true));
 #endif
     }
+
+    public static async Task<IReadOnlyList<SmsCaptureCandidate>> FindMissingMessagesAsync(
+        SmsMonitorStore store,
+        DateTimeOffset fromUtc,
+        DateTimeOffset toUtc,
+        IReadOnlyCollection<string> senderAddresses,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(store);
+#if ANDROID
+        var candidates = await DonyshMobile.Platforms.Android.SmsInboxRecovery.FindAsync(
+            global::Android.App.Application.Context, fromUtc, toUtc, senderAddresses, cancellationToken);
+        return await store.FindUnstoredCandidatesAsync(candidates, cancellationToken);
+#else
+        await Task.CompletedTask;
+        return [];
+#endif
+    }
 }

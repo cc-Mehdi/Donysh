@@ -593,6 +593,51 @@ public sealed class SmsMonitorStore
         finally { Gate.Release(); }
     }
 
+    public async Task<IReadOnlyList<SmsCaptureCandidate>> FindUnstoredCandidatesAsync(
+        IReadOnlyCollection<SmsCaptureCandidate> captures,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(captures);
+        if (captures.Count == 0) return [];
+        if (captures.Count > 1000) throw new ArgumentOutOfRangeException(nameof(captures));
+
+        await Gate.WaitAsync(cancellationToken);
+        try
+        {
+            var state = await LoadUnsafeAsync(cancellationToken);
+            var senders = state.Senders
+                .Select(sender => SenderAddress.Normalize(sender.Address))
+                .Where(address => address.Length > 0)
+                .ToHashSet(StringComparer.Ordinal);
+            var result = new List<SmsCaptureCandidate>();
+
+            foreach (var capture in captures.OrderByDescending(x => x.ReceivedAtUtc))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var address = capture.SenderAddress?.Trim() ?? string.Empty;
+                var body = capture.Body?.Trim() ?? string.Empty;
+                var normalized = SenderAddress.Normalize(address);
+                if (!senders.Contains(normalized) || body.Length is 0 or > MaxBodyLength) continue;
+
+                var receivedAtUtc = capture.ReceivedAtUtc.ToUniversalTime();
+                var key = CreateKey(address, body, receivedAtUtc);
+                var alreadyStored = state.Messages.Any(message => message.DeduplicationKey == key
+                    || SenderAddress.Normalize(message.SenderAddress) == normalized
+                    && string.Equals(message.Body.Trim(), body, StringComparison.Ordinal)
+                    && (message.ReceivedAtUtc - receivedAtUtc).Duration() <= RecoveryDeduplicationWindow);
+                var alreadyListed = result.Any(message =>
+                    SenderAddress.Normalize(message.SenderAddress) == normalized
+                    && string.Equals(message.Body.Trim(), body, StringComparison.Ordinal)
+                    && (message.ReceivedAtUtc - receivedAtUtc).Duration() <= RecoveryDeduplicationWindow);
+                if (!alreadyStored && !alreadyListed)
+                    result.Add(capture with { SenderAddress = address, Body = body, ReceivedAtUtc = receivedAtUtc });
+            }
+
+            return result;
+        }
+        finally { Gate.Release(); }
+    }
+
     private async Task<SmsMonitorState> LoadUnsafeAsync(CancellationToken cancellationToken)
     {
         if (!File.Exists(_statePath))

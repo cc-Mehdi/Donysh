@@ -200,6 +200,15 @@ internal static class StartupSmokeCheck
             await WaitUntilAsync(() => page.FindByName<CollectionView>("PendingList").ItemsSource is not null,
                 "The pending-title list did not load.");
         });
+        await VisitAsync(shell, new MissedMessagesPage(store), async page =>
+        {
+            await WaitUntilAsync(() => page.Senders.Count == 1,
+                "The missed-message review did not load monitored senders.");
+            Check(page.FindByName<Button>("ScanButton").Text?.Contains("۲۴ ساعت", StringComparison.Ordinal) == true,
+                "Missed-message review defaults to the previous 24 hours");
+            Check(!page.FindByName<Border>("AddBar").IsVisible,
+                "Missed-message review never queues anything before the user confirms a preview");
+        });
 
         // A corrupt encrypted queue used to escape the catch in notification-driven OnAppearing.
         var corruptDirectory = Path.Combine(DataDirectory!, "corrupt-queue");

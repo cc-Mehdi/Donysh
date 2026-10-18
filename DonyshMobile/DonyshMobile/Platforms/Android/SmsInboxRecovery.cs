@@ -12,6 +12,8 @@ public static class SmsInboxRecovery
     private static readonly TimeSpan Overlap = TimeSpan.FromMinutes(2);
     private static readonly TimeSpan MinimumInterval = TimeSpan.FromMinutes(2);
     private const int MaxMessagesPerScan = 1000;
+    private const int MaxAddressLength = 64;
+    private const int MaxBodyLength = 2048;
 
     public static async Task<SmsRecoveryResult> RecoverAsync(
         Context context,
@@ -35,22 +37,53 @@ public static class SmsInboxRecovery
         if (!force && lastRecovery is { } previous && previous > cutoff && previous <= now.AddMinutes(5))
             cutoff = previous.Subtract(Overlap);
 
-        var candidates = await Task.Run(() => ReadInbox(context, cutoff, cancellationToken), cancellationToken);
+        var candidates = await Task.Run(
+            () => ReadInbox(context, cutoff, now, null, cancellationToken), cancellationToken);
         var added = await store.CaptureBatchAsync(candidates, cancellationToken);
         SmsSyncSettings.LastRecoveryAtUtc = now;
         return new SmsRecoveryResult(candidates.Count, added);
     }
 
+    public static Task<IReadOnlyList<SmsCaptureCandidate>> FindAsync(
+        Context context,
+        DateTimeOffset fromUtc,
+        DateTimeOffset toUtc,
+        IReadOnlyCollection<string> senderAddresses,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(senderAddresses);
+        if (fromUtc >= toUtc) throw new ArgumentOutOfRangeException(nameof(fromUtc));
+        if (senderAddresses.Count is 0 or > 50) return Task.FromResult<IReadOnlyList<SmsCaptureCandidate>>([]);
+        if (OperatingSystem.IsAndroidVersionAtLeast(23)
+            && context.CheckSelfPermission(global::Android.Manifest.Permission.ReadSms) != Permission.Granted)
+            throw new UnauthorizedAccessException("اجازهٔ خواندن پیامک فعال نیست.");
+
+        var selected = senderAddresses
+            .Select(SenderAddress.Normalize)
+            .Where(address => address.Length > 0)
+            .ToHashSet(StringComparer.Ordinal);
+        return Task.Run(
+            () => ReadInbox(context, fromUtc.ToUniversalTime(), toUtc.ToUniversalTime(), selected, cancellationToken),
+            cancellationToken);
+    }
+
     private static IReadOnlyList<SmsCaptureCandidate> ReadInbox(
         Context context,
-        DateTimeOffset cutoff,
+        DateTimeOffset fromUtc,
+        DateTimeOffset toUtc,
+        IReadOnlySet<string>? selectedSenders,
         CancellationToken cancellationToken)
     {
         string[] columns = ["address", "body", "date"];
-        var selection = "date >= ?";
-        var arguments = new[] { cutoff.ToUnixTimeMilliseconds().ToString(CultureInfo.InvariantCulture) };
+        var selection = "date >= ? AND date <= ?";
+        var arguments = new[]
+        {
+            fromUtc.ToUnixTimeMilliseconds().ToString(CultureInfo.InvariantCulture),
+            toUtc.ToUnixTimeMilliseconds().ToString(CultureInfo.InvariantCulture)
+        };
         using var cursor = context.ContentResolver?.Query(
-            Telephony.Sms.Inbox.ContentUri!, columns, selection, arguments, "date ASC");
+            Telephony.Sms.Inbox.ContentUri!, columns, selection, arguments, "date DESC");
         if (cursor is null) return [];
 
         var addressIndex = cursor.GetColumnIndex("address");
@@ -65,7 +98,9 @@ public static class SmsInboxRecovery
             var address = cursor.GetString(addressIndex)?.Trim();
             var body = cursor.GetString(bodyIndex)?.Trim();
             var receivedAt = cursor.GetLong(dateIndex);
-            if (string.IsNullOrWhiteSpace(address) || string.IsNullOrWhiteSpace(body) || receivedAt <= 0) continue;
+            if (string.IsNullOrWhiteSpace(address) || string.IsNullOrWhiteSpace(body) || receivedAt <= 0
+                || address.Length > MaxAddressLength || body.Length > MaxBodyLength || address.Any(char.IsControl)) continue;
+            if (selectedSenders is not null && !selectedSenders.Contains(SenderAddress.Normalize(address))) continue;
             try
             {
                 result.Add(new SmsCaptureCandidate(address, body,

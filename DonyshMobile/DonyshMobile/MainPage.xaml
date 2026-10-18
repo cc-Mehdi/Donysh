@@ -78,6 +78,21 @@
                                         Style="{StaticResource SecondaryAction}" VerticalOptions="Center" />
                             </Grid>
                         </Border>
+                        <Border Style="{StaticResource AccentCard}" Padding="16">
+                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="11">
+                                <Label Text="{x:Static ui:AppIcons.History}" Style="{StaticResource SectionIcon}"
+                                       VerticalOptions="Center" />
+                                <VerticalStackLayout Grid.Column="1" Spacing="3" VerticalOptions="Center">
+                                    <Label Text="پیامک‌های جامانده" Style="{StaticResource SectionTitle}" />
+                                    <Label Text="فرستنده و بازه را انتخاب کنید و پیش از افزودن، پیام‌ها را ببینید."
+                                           Style="{StaticResource Caption}" />
+                                </VerticalStackLayout>
+                                <ui:DonyshButton Grid.Column="2" Glyph="{x:Static ui:AppIcons.Search}"
+                                                 Text="بررسی" Clicked="OnMissedMessagesClicked"
+                                                 Style="{StaticResource SecondaryAction}"
+                                                 SemanticProperties.Hint="بازکردن بررسی پیامک‌های جامانده" />
+                            </Grid>
+                        </Border>
                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Margin="2,5,0,0">
                             <Label Text="فرستنده‌های زیر نظر" Style="{StaticResource SectionTitle}" VerticalOptions="Center" />
                             <ui:DonyshButton Grid.Column="1" Glyph="{x:Static ui:AppIcons.Add}" Text="افزودن" Clicked="OnAddSenderMenuClicked" Style="{StaticResource SecondaryAction}" />

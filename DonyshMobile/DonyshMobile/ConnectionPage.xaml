@@ -87,9 +87,6 @@
                                 SemanticProperties.Description="بازیابی پیامک‌های جامانده فعال باشد" />
                     </Grid>
                     <Label x:Name="RecoveryStatusLabel" Style="{StaticResource Caption}" />
-                    <ui:DonyshButton x:Name="RecoveryNowButton" Glyph="{x:Static ui:AppIcons.Refresh}"
-                                     Text="بررسی پیامک‌های ۲۴ ساعت گذشته" Clicked="OnRecoveryNowClicked"
-                                     Style="{StaticResource SecondaryAction}" />
                 </VerticalStackLayout>
             </Border>
             <Border x:Name="AppearanceCard" Style="{StaticResource Card}" Padding="18">

@@ -57,6 +57,17 @@ try
         new SmsCaptureCandidate("Unknown", "برداشت: 300,000", receivedAt.AddMinutes(2), true)
     ]);
     Assert(recovered == 1, "Recovery scan ignores provider duplicates and unmonitored senders");
+    var recoveryPreview = await recoveryStore.FindUnstoredCandidatesAsync([
+        new SmsCaptureCandidate("bank recovery", "برداشت: 100,000", receivedAt.AddSeconds(45), true),
+        new SmsCaptureCandidate("Bank-Recovery", "برداشت: 400,000", receivedAt.AddMinutes(3), true),
+        new SmsCaptureCandidate("Unknown", "برداشت: 500,000", receivedAt.AddMinutes(4), true)
+    ]);
+    Assert(recoveryPreview.Count == 1 && recoveryPreview[0].Body == "برداشت: 400,000",
+        "Missed-message preview shows only unstored messages from monitored senders");
+    Assert((await recoveryStore.GetMessagesAsync(recoverySender.Id)).All(x => x.Body != "برداشت: 400,000"),
+        "Preview does not add a message to the delivery queue before confirmation");
+    Assert(await recoveryStore.CaptureBatchAsync(recoveryPreview) == 1,
+        "Confirmed preview messages enter the delivery queue once");
     var recoveredMessage = (await recoveryStore.GetMessagesAsync(recoverySender.Id))
         .Single(item => item.Body == "برداشت: 200,000");
     Assert(recoveredMessage.RecoveredFromInbox, "Recovered SMS keeps its local source marker");

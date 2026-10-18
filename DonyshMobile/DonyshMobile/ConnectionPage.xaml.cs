@@ -16,7 +16,7 @@ public partial class ConnectionPage : DonyshPage
     private readonly Func<string, string, string, string, Task<bool>> _confirmAsync;
     private readonly bool _setupMode;
     private bool _busy, _settingsLoaded, _entered, _showPairing, _connected;
-    private bool _visible, _connectivitySubscribed, _openingTitles, _recovering;
+    private bool _visible, _connectivitySubscribed, _openingTitles;
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
 
     public ConnectionPage(SmsMonitorStore store)
@@ -145,62 +145,24 @@ public partial class ConnectionPage : DonyshPage
     private async void OnRecoverRecentToggled(object? sender, ToggledEventArgs e)
     {
         if (!_settingsLoaded) return;
-        SyncPlatform.ConfigureRecovery(e.Value);
-        if (e.Value) await RecoverRecentAsync(requestPermission: true);
-        else await RefreshRecoveryStatusAsync();
-    }
-
-    private async void OnRecoveryNowClicked(object? sender, EventArgs e) =>
-        await RecoverRecentAsync(requestPermission: true);
-
-    private async Task RecoverRecentAsync(bool requestPermission)
-    {
-        if (_recovering || !SmsSyncSettings.RecoverRecent) return;
-        _recovering = true;
-        RecoveryNowButton.IsEnabled = false;
-        RecoveryNowButton.Text = "در حال بررسی پیامک‌ها…";
         try
         {
+            SyncPlatform.ConfigureRecovery(e.Value);
 #if ANDROID
-            var permission = await Permissions.CheckStatusAsync<ReadSmsPermission>();
-            if (permission != PermissionStatus.Granted && requestPermission)
-                permission = await Permissions.RequestAsync<ReadSmsPermission>();
-            if (permission != PermissionStatus.Granted)
-            {
-                RecoveryStatusLabel.Text = "برای بازیابی، اجازهٔ خواندن پیامک را از تنظیمات گوشی فعال کنید.";
-                return;
-            }
-            var result = await SyncPlatform.RecoverRecentAsync(_store, force: true);
-            RecoveryStatusLabel.Text = result.Added > 0
-                ? $"{UiText.Digits(result.Added)} پیام جامانده به فهرست اضافه شد."
-                : "همهٔ پیامک‌های مرتبط از قبل در فهرست بودند.";
-            if (result.Added > 0)
-            {
-                UiMotion.Feedback();
-                SmsReceivedNotifier.NotifySyncChanged();
-                SyncPlatform.Schedule();
-            }
-#else
-            await Task.CompletedTask;
-            RecoveryStatusLabel.Text = "بازیابی پیامک روی گوشی اندرویدی انجام می‌شود.";
+            if (e.Value && await Permissions.CheckStatusAsync<ReadSmsPermission>() != PermissionStatus.Granted)
+                await Permissions.RequestAsync<ReadSmsPermission>();
 #endif
+            await RefreshRecoveryStatusAsync();
         }
         catch (Exception exception)
         {
             UiSafety.Log(exception);
-            RecoveryStatusLabel.Text = "بررسی پیامک‌ها کامل نشد؛ پیام‌های موجود تغییری نکردند.";
-        }
-        finally
-        {
-            _recovering = false;
-            RecoveryNowButton.IsEnabled = SmsSyncSettings.RecoverRecent;
-            RecoveryNowButton.Text = "بررسی پیامک‌های ۲۴ ساعت گذشته";
+            RecoveryStatusLabel.Text = "تنظیم بازیابی کامل نشد؛ دوباره تلاش کنید.";
         }
     }
 
     private async Task RefreshRecoveryStatusAsync()
     {
-        RecoveryNowButton.IsEnabled = SmsSyncSettings.RecoverRecent && !_recovering;
         if (!SmsSyncSettings.RecoverRecent)
         {
             RecoveryStatusLabel.Text = "خاموش است؛ فقط پیامک‌هایی که همان لحظه دریافت شوند ثبت می‌شوند.";

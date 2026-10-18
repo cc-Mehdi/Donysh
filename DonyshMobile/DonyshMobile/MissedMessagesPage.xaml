@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ui:DonyshPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+                xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+                xmlns:local="clr-namespace:DonyshMobile"
+                xmlns:ui="clr-namespace:DonyshMobile.UI"
+                x:Class="DonyshMobile.MissedMessagesPage"
+                x:DataType="local:MissedMessagesPage"
+                Title="پیامک‌های جامانده">
+    <Grid x:Name="PageContent" RowDefinitions="*,Auto">
+        <CollectionView Grid.Row="0" ItemsSource="{Binding Messages}" SelectionMode="None">
+            <CollectionView.Header>
+                <VerticalStackLayout Padding="18,12,18,14" Spacing="14">
+                    <VerticalStackLayout Spacing="4">
+                        <Label Text="بررسی پیامک‌های جامانده" Style="{StaticResource PageTitle}" />
+                        <Label Text="ابتدا فرستنده‌ها و بازهٔ زمانی را مشخص کنید. تا تأیید نهایی، هیچ پیامی وارد فهرست ارسال نمی‌شود."
+                               Style="{StaticResource MutedText}" />
+                    </VerticalStackLayout>
+
+                    <Border Style="{StaticResource Card}" Padding="18">
+                        <VerticalStackLayout Spacing="12">
+                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="9">
+                                <Label Text="{x:Static ui:AppIcons.Filter}" Style="{StaticResource SectionIcon}" />
+                                <VerticalStackLayout Grid.Column="1" Spacing="2">
+                                    <Label Text="فرستنده‌های مورد بررسی" Style="{StaticResource SectionTitle}" />
+                                    <Label Text="فقط پیامک‌های فرستنده‌های انتخاب‌شده نمایش داده می‌شوند." Style="{StaticResource Caption}" />
+                                </VerticalStackLayout>
+                                <CheckBox Grid.Column="2" x:Name="AllSendersCheckBox"
+                                          CheckedChanged="OnAllSendersChanged"
+                                          SemanticProperties.Description="انتخاب همهٔ فرستنده‌ها" />
+                            </Grid>
+                            <VerticalStackLayout BindableLayout.ItemsSource="{Binding Senders}" Spacing="7">
+                                <BindableLayout.ItemTemplate>
+                                    <DataTemplate x:DataType="local:RecoverySenderOption">
+                                        <Border Style="{StaticResource FieldCard}" Padding="11,7">
+                                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                                <Label Text="{Binding Address}" FontAttributes="Bold" VerticalOptions="Center"
+                                                       LineBreakMode="TailTruncation" />
+                                                <CheckBox Grid.Column="1" IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                                          CheckedChanged="OnSenderSelectionChanged"
+                                                          SemanticProperties.Description="انتخاب این فرستنده" />
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </BindableLayout.ItemTemplate>
+                            </VerticalStackLayout>
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}" Padding="18">
+                        <VerticalStackLayout Spacing="12">
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="9">
+                                <Label Text="{x:Static ui:AppIcons.Schedule}" Style="{StaticResource SectionIcon}" />
+                                <VerticalStackLayout Grid.Column="1" Spacing="2">
+                                    <Label Text="بازهٔ زمانی" Style="{StaticResource SectionTitle}" />
+                                    <Label Text="پیش‌فرض، ۲۴ ساعت گذشته است." Style="{StaticResource Caption}" />
+                                </VerticalStackLayout>
+                            </Grid>
+                            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="9" RowSpacing="7">
+                                <Label Text="از تاریخ" FontAttributes="Bold" />
+                                <Label Grid.Column="1" Text="از ساعت" FontAttributes="Bold" />
+                                <Border Grid.Row="1" Style="{StaticResource FieldCard}">
+                                    <DatePicker x:Name="FromDatePicker" DateSelected="OnDateChanged"
+                                                SemanticProperties.Description="تاریخ شروع بررسی" />
+                                </Border>
+                                <Border Grid.Row="1" Grid.Column="1" Style="{StaticResource FieldCard}">
+                                    <TimePicker x:Name="FromTimePicker" PropertyChanged="OnTimeChanged"
+                                                SemanticProperties.Description="ساعت شروع بررسی" />
+                                </Border>
+                                <Label Grid.Row="2" Text="تا تاریخ" FontAttributes="Bold" Margin="0,5,0,0" />
+                                <Label Grid.Row="2" Grid.Column="1" Text="تا ساعت" FontAttributes="Bold" Margin="0,5,0,0" />
+                            </Grid>
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="9">
+                                <Border Style="{StaticResource FieldCard}">
+                                    <DatePicker x:Name="ToDatePicker" DateSelected="OnDateChanged"
+                                                SemanticProperties.Description="تاریخ پایان بررسی" />
+                                </Border>
+                                <Border Grid.Column="1" Style="{StaticResource FieldCard}">
+                                    <TimePicker x:Name="ToTimePicker" PropertyChanged="OnTimeChanged"
+                                                SemanticProperties.Description="ساعت پایان بررسی" />
+                                </Border>
+                            </Grid>
+                            <ui:DonyshButton x:Name="ScanButton" Glyph="{x:Static ui:AppIcons.Search}"
+                                             Text="بررسی پیامک‌های ۲۴ ساعت گذشته" Clicked="OnScanClicked"
+                                             Style="{StaticResource PrimaryAction}" />
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <Border x:Name="StatusCard" Style="{StaticResource InfoCard}" Padding="15">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                            <ActivityIndicator x:Name="BusyIndicator" IsVisible="False" IsRunning="False"
+                                               WidthRequest="22" HeightRequest="22" />
+                            <Label x:Name="StatusLabel" Grid.Column="1"
+                                   Text="پس از انتخاب بازه، دکمهٔ بررسی را بزنید."
+                                   Style="{StaticResource MutedText}" VerticalOptions="Center" />
+                        </Grid>
+                    </Border>
+
+                    <Grid x:Name="ResultsHeading" IsVisible="False" ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                        <VerticalStackLayout Spacing="2">
+                            <Label Text="پیامک‌های پیدا‌شده" Style="{StaticResource SectionTitle}" />
+                            <Label Text="تیک پیام‌هایی را که نمی‌خواهید بردارید." Style="{StaticResource Caption}" />
+                        </VerticalStackLayout>
+                        <Button Grid.Column="1" x:Name="ToggleMessagesButton" Text="لغو همه"
+                                Clicked="OnToggleMessagesClicked" Style="{StaticResource QuietAction}" />
+                    </Grid>
+                </VerticalStackLayout>
+            </CollectionView.Header>
+
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="local:RecoveryMessageOption">
+                    <Border Style="{StaticResource Card}" Margin="18,0,18,10" Padding="14">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                            <VerticalStackLayout Spacing="5">
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                    <Label Text="{Binding SenderAddress}" FontAttributes="Bold" LineBreakMode="TailTruncation" />
+                                    <Label Grid.Column="1" Text="{Binding ReceivedAtText}" Style="{StaticResource Caption}" />
+                                </Grid>
+                                <Label Text="{Binding BodyPreview}" Style="{StaticResource MutedText}"
+                                       MaxLines="4" LineBreakMode="TailTruncation" />
+                            </VerticalStackLayout>
+                            <CheckBox Grid.Column="1" IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                      CheckedChanged="OnMessageSelectionChanged"
+                                      VerticalOptions="Center" SemanticProperties.Description="افزودن این پیامک به فهرست" />
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+
+            <CollectionView.Footer>
+                <BoxView HeightRequest="14" Opacity="0" />
+            </CollectionView.Footer>
+        </CollectionView>
+
+        <Border Grid.Row="1" x:Name="AddBar" IsVisible="False" Style="{StaticResource Card}"
+                StrokeThickness="0" Padding="18,12" Margin="0">
+            <ui:DonyshButton x:Name="AddButton" Glyph="{x:Static ui:AppIcons.Add}"
+                             Text="افزودن به فهرست" Clicked="OnAddClicked"
+                             Style="{StaticResource SuccessAction}" />
+        </Border>
+    </Grid>
+</ui:DonyshPage>

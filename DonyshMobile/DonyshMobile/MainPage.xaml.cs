@@ -278,6 +278,8 @@ public partial class MainPage : DonyshPage
 #endif
     });
     private async void OnPendingTitlesClicked(object? sender, EventArgs e) => await OpenPageAsync(() => new PendingTitlesPage(_store));
+    private async void OnMissedMessagesClicked(object? sender, EventArgs e) =>
+        await OpenPageAsync(() => new MissedMessagesPage(_store));
 
     private async Task OpenPageAsync(Func<Page> createPage)
     {
