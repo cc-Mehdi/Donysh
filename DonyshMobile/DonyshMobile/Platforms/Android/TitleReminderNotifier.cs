@@ -55,7 +55,8 @@ public static class TitleReminderNotifier
         if (OperatingSystem.IsAndroidVersionAtLeast(23)) flags |= PendingIntentFlags.Immutable;
         var pending = PendingIntent.GetActivity(context, 0, openIntent, flags);
         var builder = new NotificationCompat.Builder(context, ChannelId);
-        builder.SetSmallIcon(global::Android.Resource.Drawable.IcDialogInfo);
+        builder.SetSmallIcon(Resource.Drawable.ic_donysh_notification);
+        builder.SetColor(global::Android.Graphics.Color.Rgb(81, 67, 216));
         builder.SetContentTitle("پیامک جدید در دونیش");
         builder.SetContentText($"{count} پیام منتظر ثبت عنوان است. برای عنوان‌گذاری ضربه بزنید.");
         builder.SetContentIntent(pending);

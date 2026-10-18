@@ -1,5 +1,7 @@
 using System.Text.Json;
 using System.Security.Cryptography;
+using System.Text;
+using System.Text.RegularExpressions;
 
 namespace DonyshMobile.Core;
 
@@ -11,9 +13,12 @@ public sealed class SmsMonitorStore
     private const int MaxBodyLength = 2048;
     private const int MaxTemplatesPerSender = 20;
     private const int MaxTitleHistory = 80;
+    private const int MaxDeliveryHistory = 10_000;
     private const long MaxStateBytes = 128L * 1024 * 1024;
     private static readonly TimeSpan Retention = TimeSpan.FromDays(7);
-    private static readonly TimeSpan RecoveryDeduplicationWindow = TimeSpan.FromMinutes(2);
+    private static readonly TimeSpan DeliveryHistoryRetention = TimeSpan.FromDays(35);
+    private static readonly TimeSpan RecoveryDeduplicationWindow = TimeSpan.FromMinutes(5);
+    private static readonly Regex DeduplicationWhitespace = new(@"\s+", RegexOptions.Compiled, TimeSpan.FromMilliseconds(100));
     private static readonly SemaphoreSlim Gate = new(1, 1);
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
@@ -120,6 +125,7 @@ public sealed class SmsMonitorStore
             state.Messages.RemoveAll(x => x.SenderId == senderId);
             state.Templates.RemoveAll(x => x.SenderId == senderId);
             state.TitleHistory.RemoveAll(x => x.SenderId == senderId);
+            state.DeliveryHistory.RemoveAll(x => x.SenderId == senderId);
             await SaveUnsafeAsync(state, cancellationToken);
             return true;
         }
@@ -404,6 +410,8 @@ public sealed class SmsMonitorStore
                 message.LastDeliveryError = receipt.Status == "rejected"
                     ? "سامانه پیام را دریافت کرد، اما قالب آن را نپذیرفت."
                     : null;
+                if (message.DeliveryStatus == SmsDeliveryStatus.Sent)
+                    RememberDelivered(state, message, nowUtc);
             }
             state.ConsecutiveSyncFailures = 0;
             state.NextSyncAtUtc = nowUtc.AddMinutes(1);
@@ -549,9 +557,8 @@ public sealed class SmsMonitorStore
                 var receivedAtUtc = capture.ReceivedAtUtc.ToUniversalTime();
                 var key = CreateKey(address, body, receivedAtUtc);
                 var isDuplicate = state.Messages.Any(message => message.DeduplicationKey == key
-                    || message.SenderId == sender.Id
-                    && string.Equals(message.Body.Trim(), body, StringComparison.Ordinal)
-                    && (message.ReceivedAtUtc - receivedAtUtc).Duration() <= RecoveryDeduplicationWindow);
+                    || IsSameMessage(message.SenderId, message.Body, message.ReceivedAtUtc,
+                        sender.Id, body, receivedAtUtc));
                 if (isDuplicate) continue;
 
                 if (state.Messages.Count >= MaxMessages)
@@ -606,9 +613,10 @@ public sealed class SmsMonitorStore
         {
             var state = await LoadUnsafeAsync(cancellationToken);
             var senders = state.Senders
-                .Select(sender => SenderAddress.Normalize(sender.Address))
-                .Where(address => address.Length > 0)
-                .ToHashSet(StringComparer.Ordinal);
+                .Select(sender => (Sender: sender, Address: SenderAddress.Normalize(sender.Address)))
+                .Where(x => x.Address.Length > 0)
+                .GroupBy(x => x.Address, StringComparer.Ordinal)
+                .ToDictionary(x => x.Key, x => x.First().Sender, StringComparer.Ordinal);
             var result = new List<SmsCaptureCandidate>();
 
             foreach (var capture in captures.OrderByDescending(x => x.ReceivedAtUtc))
@@ -617,19 +625,22 @@ public sealed class SmsMonitorStore
                 var address = capture.SenderAddress?.Trim() ?? string.Empty;
                 var body = capture.Body?.Trim() ?? string.Empty;
                 var normalized = SenderAddress.Normalize(address);
-                if (!senders.Contains(normalized) || body.Length is 0 or > MaxBodyLength) continue;
+                if (!senders.TryGetValue(normalized, out var sender) || body.Length is 0 or > MaxBodyLength) continue;
 
                 var receivedAtUtc = capture.ReceivedAtUtc.ToUniversalTime();
                 var key = CreateKey(address, body, receivedAtUtc);
                 var alreadyStored = state.Messages.Any(message => message.DeduplicationKey == key
-                    || SenderAddress.Normalize(message.SenderAddress) == normalized
-                    && string.Equals(message.Body.Trim(), body, StringComparison.Ordinal)
+                    || IsSameMessage(message.SenderId, message.Body, message.ReceivedAtUtc,
+                        sender.Id, body, receivedAtUtc));
+                var bodyHash = CreateBodyHash(body);
+                var alreadyDelivered = state.DeliveryHistory.Any(message => message.SenderId == sender.Id
+                    && string.Equals(message.BodyHash, bodyHash, StringComparison.Ordinal)
                     && (message.ReceivedAtUtc - receivedAtUtc).Duration() <= RecoveryDeduplicationWindow);
                 var alreadyListed = result.Any(message =>
                     SenderAddress.Normalize(message.SenderAddress) == normalized
-                    && string.Equals(message.Body.Trim(), body, StringComparison.Ordinal)
+                    && string.Equals(CreateBodyHash(message.Body), bodyHash, StringComparison.Ordinal)
                     && (message.ReceivedAtUtc - receivedAtUtc).Duration() <= RecoveryDeduplicationWindow);
-                if (!alreadyStored && !alreadyListed)
+                if (!alreadyStored && !alreadyDelivered && !alreadyListed)
                     result.Add(capture with { SenderAddress = address, Body = body, ReceivedAtUtc = receivedAtUtc });
             }
 
@@ -674,6 +685,7 @@ public sealed class SmsMonitorStore
 
         state.Templates ??= [];
         state.TitleHistory ??= [];
+        state.DeliveryHistory ??= [];
         state.Senders ??= [];
         state.Messages ??= [];
         var senders = state.Senders.ToDictionary(x => x.Id);
@@ -763,8 +775,12 @@ public sealed class SmsMonitorStore
     private static bool Prune(SmsMonitorState state, DateTimeOffset nowUtc)
     {
         var cutoff = nowUtc.Subtract(Retention);
-        var changed = state.Messages.RemoveAll(x => x.ReceivedAtUtc < cutoff
-            && x.DeliveryStatus != SmsDeliveryStatus.Pending) > 0;
+        var removable = state.Messages.Where(x => x.ReceivedAtUtc < cutoff
+            && x.DeliveryStatus != SmsDeliveryStatus.Pending).ToList();
+        foreach (var message in removable.Where(x => x.DeliveryStatus == SmsDeliveryStatus.Sent))
+            RememberDelivered(state, message, message.ConfirmedAtUtc ?? nowUtc);
+        var changed = state.Messages.RemoveAll(x => removable.Contains(x)) > 0;
+        changed |= PruneDeliveryHistory(state, nowUtc);
         var count = state.Messages.Count;
         TrimConfirmedMessages(state);
         return changed || state.Messages.Count != count;
@@ -779,7 +795,58 @@ public sealed class SmsMonitorStore
             .Take(state.Messages.Count - MaxMessages)
             .Select(x => x.Id)
             .ToHashSet();
+        foreach (var message in state.Messages.Where(x => removable.Contains(x.Id)
+                     && x.DeliveryStatus == SmsDeliveryStatus.Sent))
+            RememberDelivered(state, message, message.ConfirmedAtUtc ?? DateTimeOffset.UtcNow);
         state.Messages.RemoveAll(x => removable.Contains(x.Id));
+    }
+
+    private static bool IsSameMessage(
+        Guid existingSenderId,
+        string existingBody,
+        DateTimeOffset existingReceivedAtUtc,
+        Guid candidateSenderId,
+        string candidateBody,
+        DateTimeOffset candidateReceivedAtUtc) =>
+        existingSenderId == candidateSenderId
+        && string.Equals(CreateBodyHash(existingBody), CreateBodyHash(candidateBody), StringComparison.Ordinal)
+        && (existingReceivedAtUtc - candidateReceivedAtUtc).Duration() <= RecoveryDeduplicationWindow;
+
+    private static string CreateBodyHash(string body)
+    {
+        var normalized = DeduplicationWhitespace.Replace(
+                body.Normalize(NormalizationForm.FormKC)
+                    .Replace("\u200c", string.Empty, StringComparison.Ordinal)
+                    .Replace("\u200f", string.Empty, StringComparison.Ordinal)
+                    .Replace("\ufeff", string.Empty, StringComparison.Ordinal), " ")
+            .Trim();
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(normalized)));
+    }
+
+    private static void RememberDelivered(SmsMonitorState state, CapturedSms message, DateTimeOffset deliveredAtUtc)
+    {
+        var bodyHash = CreateBodyHash(message.Body);
+        if (state.DeliveryHistory.Any(item => item.SenderId == message.SenderId
+            && string.Equals(item.BodyHash, bodyHash, StringComparison.Ordinal)
+            && (item.ReceivedAtUtc - message.ReceivedAtUtc).Duration() <= RecoveryDeduplicationWindow)) return;
+        state.DeliveryHistory.Add(new DeliveredSmsFingerprint
+        {
+            SenderId = message.SenderId,
+            BodyHash = bodyHash,
+            ReceivedAtUtc = message.ReceivedAtUtc.ToUniversalTime(),
+            DeliveredAtUtc = deliveredAtUtc.ToUniversalTime()
+        });
+        if (state.DeliveryHistory.Count <= MaxDeliveryHistory) return;
+        state.DeliveryHistory = state.DeliveryHistory
+            .OrderByDescending(x => x.DeliveredAtUtc)
+            .Take(MaxDeliveryHistory)
+            .ToList();
+    }
+
+    private static bool PruneDeliveryHistory(SmsMonitorState state, DateTimeOffset nowUtc)
+    {
+        var cutoff = nowUtc.Subtract(DeliveryHistoryRetention);
+        return state.DeliveryHistory.RemoveAll(x => x.DeliveredAtUtc < cutoff) > 0;
     }
 
     private static string CreateKey(string senderAddress, string body, DateTimeOffset receivedAtUtc)

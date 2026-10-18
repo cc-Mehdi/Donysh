@@ -32,9 +32,18 @@ public sealed class SmsMonitorState
     public List<CapturedSms> Messages { get; set; } = [];
     public List<SmsTemplate> Templates { get; set; } = [];
     public List<SmsTitleUsage> TitleHistory { get; set; } = [];
+    public List<DeliveredSmsFingerprint> DeliveryHistory { get; set; } = [];
     public DateTimeOffset NextSyncAtUtc { get; set; }
     public int ConsecutiveSyncFailures { get; set; }
     public string SyncStatus { get; set; } = "هنوز پیامی به سامانه ارسال نشده است.";
+}
+
+public sealed class DeliveredSmsFingerprint
+{
+    public Guid SenderId { get; set; }
+    public string BodyHash { get; set; } = string.Empty;
+    public DateTimeOffset ReceivedAtUtc { get; set; }
+    public DateTimeOffset DeliveredAtUtc { get; set; }
 }
 
 public sealed class SmsTitleUsage

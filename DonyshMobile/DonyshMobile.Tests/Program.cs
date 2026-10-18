@@ -58,7 +58,7 @@ try
     ]);
     Assert(recovered == 1, "Recovery scan ignores provider duplicates and unmonitored senders");
     var recoveryPreview = await recoveryStore.FindUnstoredCandidatesAsync([
-        new SmsCaptureCandidate("bank recovery", "برداشت: 100,000", receivedAt.AddSeconds(45), true),
+        new SmsCaptureCandidate("bank recovery", "برداشت:\n100,000", receivedAt.AddSeconds(45), true),
         new SmsCaptureCandidate("Bank-Recovery", "برداشت: 400,000", receivedAt.AddMinutes(3), true),
         new SmsCaptureCandidate("Unknown", "برداشت: 500,000", receivedAt.AddMinutes(4), true)
     ]);
@@ -68,6 +68,22 @@ try
         "Preview does not add a message to the delivery queue before confirmation");
     Assert(await recoveryStore.CaptureBatchAsync(recoveryPreview) == 1,
         "Confirmed preview messages enter the delivery queue once");
+
+    var historyStore = CreateStore(Path.Combine(testDirectory, "delivery-history"));
+    Assert(await historyStore.AddSenderAsync("Bank-History") == AddSenderResult.Added, "Add delivery-history sender");
+    var oldDeliveredAt = DateTimeOffset.UtcNow.AddDays(-8);
+    Assert(await historyStore.CaptureAsync("Bank-History", "برداشت 700,000 ریال", oldDeliveredAt),
+        "Capture an old SMS before delivery");
+    var oldBatch = await historyStore.TakePendingBatchAsync(DateTimeOffset.UtcNow);
+    await historyStore.ConfirmBatchAsync(oldBatch,
+        [new SmsDeliveryReceipt(oldBatch.Single().Key, "created")], DateTimeOffset.UtcNow);
+    var historySender = (await historyStore.GetSenderSummariesAsync()).Single();
+    Assert((await historyStore.GetMessagesAsync(historySender.Id)).Count == 0,
+        "Old delivered SMS leaves the visible list after retention");
+    historyStore = CreateStore(Path.Combine(testDirectory, "delivery-history"));
+    Assert((await historyStore.FindUnstoredCandidatesAsync([
+        new SmsCaptureCandidate("bank history", "برداشت 700,000 ریال", oldDeliveredAt.AddSeconds(20), true)
+    ])).Count == 0, "Delivered fingerprint prevents a pruned SMS from reappearing in recovery");
     var recoveredMessage = (await recoveryStore.GetMessagesAsync(recoverySender.Id))
         .Single(item => item.Body == "برداشت: 200,000");
     Assert(recoveredMessage.RecoveredFromInbox, "Recovered SMS keeps its local source marker");

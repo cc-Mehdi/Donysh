@@ -155,15 +155,17 @@ internal static class StartupSmokeCheck
         var previousTheme = application.UserAppTheme;
         try
         {
-            foreach (var (theme, background) in new[]
+            foreach (var (theme, middleColor) in new[]
             {
                 (AppTheme.Light, "#F5F7FB"), (AppTheme.Dark, "#09111F")
             })
             {
                 application.UserAppTheme = theme;
-                await WaitUntilAsync(() => home.BackgroundColor?.Equals(Color.FromArgb(background)) == true,
-                    $"The {theme} page background was not applied. Actual: {home.BackgroundColor}");
-                Check(true, $"{theme} page theme applied");
+                await WaitUntilAsync(() => home.Background is LinearGradientBrush gradient
+                    && gradient.GradientStops.Count == 3
+                    && gradient.GradientStops[1].Color.Equals(Color.FromArgb(middleColor)),
+                    $"The {theme} brand background was not applied. Actual: {home.Background}");
+                Check(true, $"{theme} brand gradient preserves the page theme");
             }
         }
         finally { application.UserAppTheme = previousTheme; }

@@ -3,7 +3,15 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
                     xmlns:ui="clr-namespace:DonyshMobile.UI">
     <Style TargetType="ContentPage" ApplyToDerivedTypes="True">
-        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=#F5F7FB, Dark=#09111F}" />
+        <Setter Property="Background">
+            <Setter.Value>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Offset="0" Color="{AppThemeBinding Light=#F1F2FF, Dark=#10162B}" />
+                    <GradientStop Offset="0.48" Color="{AppThemeBinding Light=#F5F7FB, Dark=#09111F}" />
+                    <GradientStop Offset="1" Color="{AppThemeBinding Light=#EDF9F5, Dark=#0A1A20}" />
+                </LinearGradientBrush>
+            </Setter.Value>
+        </Setter>
         <Setter Property="FlowDirection" Value="RightToLeft" />
     </Style>
     <Style TargetType="Label">
