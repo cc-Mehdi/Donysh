@@ -71,6 +71,7 @@ public partial class MainPage : DonyshPage
             _subscribed = true;
         }
         await RefreshPermissionAsync();
+        await RecoverRecentMessagesAsync();
         await RefreshAsync();
         SyncPlatform.Schedule();
         if (!_entered) { _entered = true; await UiMotion.EnterAsync(PageContent); }
@@ -117,11 +118,21 @@ public partial class MainPage : DonyshPage
         {
 #if ANDROID
             var status = await Permissions.CheckStatusAsync<ReceiveSmsPermission>();
-            if (status == PermissionStatus.Granted) AppInfo.ShowSettingsUI();
+            if (status == PermissionStatus.Granted && SmsSyncSettings.RecoverRecent
+                && await Permissions.CheckStatusAsync<ReadSmsPermission>() != PermissionStatus.Granted)
+                await Permissions.RequestAsync<ReadSmsPermission>();
+            else if (status == PermissionStatus.Granted) AppInfo.ShowSettingsUI();
             else status = await Permissions.RequestAsync<ReceiveSmsPermission>();
             if (status != PermissionStatus.Granted)
                 await UiSafety.AlertAsync(this, "اجازهٔ دریافت پیامک", "در تنظیمات گوشی، اجازهٔ دریافت پیامک را برای دونیش فعال کنید.");
-            else await RequestNotificationPermissionAsync();
+            else
+            {
+                if (SmsSyncSettings.RecoverRecent
+                    && await Permissions.CheckStatusAsync<ReadSmsPermission>() != PermissionStatus.Granted)
+                    await Permissions.RequestAsync<ReadSmsPermission>();
+                await RequestNotificationPermissionAsync();
+                await RecoverRecentMessagesAsync(force: true);
+            }
 #else
             await UiSafety.AlertAsync(this, "دریافت روی گوشی", "دریافت پیامک به گوشی اندرویدی نیاز دارد. روی ویندوز می‌توانید قالب‌ها و تنظیمات را بررسی کنید.");
 #endif
@@ -302,7 +313,7 @@ public partial class MainPage : DonyshPage
 
     private async void OnRefreshing(object? sender, EventArgs e)
     {
-        try { await RefreshPermissionAsync(); await RefreshAsync(); }
+        try { await RefreshPermissionAsync(); await RecoverRecentMessagesAsync(force: true); await RefreshAsync(); }
         catch (Exception exception)
         {
             UiSafety.Log(exception);
@@ -311,6 +322,23 @@ public partial class MainPage : DonyshPage
         finally { IsRefreshing = false; }
     }
     private void OnMessageStored(object? sender, EventArgs e) => Dispatcher.Dispatch(async () => await RefreshAsync());
+
+    private async Task RecoverRecentMessagesAsync(bool force = false)
+    {
+        if (!SmsSyncSettings.RecoverRecent) return;
+        try
+        {
+            var result = await SyncPlatform.RecoverRecentAsync(_store, force);
+            if (result.Added <= 0) return;
+            SmsReceivedNotifier.NotifySyncChanged();
+            SyncPlatform.Schedule();
+        }
+        catch (Exception exception)
+        {
+            // Live reception and the durable queue remain available if the provider is restricted.
+            UiSafety.Log(exception);
+        }
+    }
 
     private async Task RefreshAsync()
     {

@@ -13,6 +13,7 @@ public sealed class SmsMonitorStore
     private const int MaxTitleHistory = 80;
     private const long MaxStateBytes = 128L * 1024 * 1024;
     private static readonly TimeSpan Retention = TimeSpan.FromDays(7);
+    private static readonly TimeSpan RecoveryDeduplicationWindow = TimeSpan.FromMinutes(2);
     private static readonly SemaphoreSlim Gate = new(1, 1);
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
@@ -255,7 +256,7 @@ public sealed class SmsMonitorStore
             if (!state.Senders.Any(x => x.Id == senderId)) return 0;
             var changed = 0;
             foreach (var message in state.Messages.Where(x => x.SenderId == senderId && ids.Contains(x.Id)
-                         && x.DeliveryStatus is SmsDeliveryStatus.Pending or SmsDeliveryStatus.Rejected))
+                         && x.DeliveryStatus is SmsDeliveryStatus.Pending or SmsDeliveryStatus.Rejected or SmsDeliveryStatus.Excluded))
             {
                 if (message.DeliveryStatus == SmsDeliveryStatus.Pending && message.LastDeliveryError is null
                     && message.ConfirmedAtUtc is null) continue;
@@ -268,6 +269,34 @@ public sealed class SmsMonitorStore
             if (changed == 0) return 0;
             // Preserve titles, idempotency keys, attempt history, cooldown and failure backoff.
             state.SyncStatus = "پیام‌های انتخاب‌شده دوباره در صف ارسال قرار گرفتند.";
+            await SaveUnsafeAsync(state, cancellationToken);
+            return changed;
+        }
+        finally { Gate.Release(); }
+    }
+
+    public async Task<int> ExcludeMessagesAsync(Guid senderId, IReadOnlyCollection<Guid> messageIds,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(messageIds);
+        if (messageIds.Count == 0) return 0;
+        var ids = messageIds.ToHashSet();
+        await Gate.WaitAsync(cancellationToken);
+        try
+        {
+            var state = await LoadUnsafeAsync(cancellationToken);
+            if (!state.Senders.Any(x => x.Id == senderId)) return 0;
+            var changed = 0;
+            foreach (var message in state.Messages.Where(x => x.SenderId == senderId && ids.Contains(x.Id)
+                         && x.DeliveryStatus is SmsDeliveryStatus.Pending or SmsDeliveryStatus.Rejected))
+            {
+                message.DeliveryStatus = SmsDeliveryStatus.Excluded;
+                message.ConfirmedAtUtc = null;
+                message.LastDeliveryError = null;
+                changed++;
+            }
+            if (changed == 0) return 0;
+            state.SyncStatus = "پیام‌های انتخاب‌شده از ارسال کنار گذاشته شدند.";
             await SaveUnsafeAsync(state, cancellationToken);
             return changed;
         }
@@ -484,63 +513,84 @@ public sealed class SmsMonitorStore
         DateTimeOffset receivedAtUtc,
         CancellationToken cancellationToken = default)
     {
-        var normalized = SenderAddress.Normalize(senderAddress);
-        if (normalized.Length == 0 || senderAddress.Length > MaxAddressLength
-            || string.IsNullOrWhiteSpace(body) || body.Length > MaxBodyLength)
-        {
-            return false;
-        }
+        return await CaptureBatchAsync(
+            [new SmsCaptureCandidate(senderAddress, body, receivedAtUtc)], cancellationToken) > 0;
+    }
+
+    public async Task<int> CaptureBatchAsync(
+        IReadOnlyCollection<SmsCaptureCandidate> captures,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(captures);
+        if (captures.Count == 0) return 0;
+        if (captures.Count > 1000) throw new ArgumentOutOfRangeException(nameof(captures));
 
         await Gate.WaitAsync(cancellationToken);
         try
         {
             var state = await LoadUnsafeAsync(cancellationToken);
-            Prune(state, DateTimeOffset.UtcNow);
-            var sender = state.Senders.FirstOrDefault(x => SenderAddress.Normalize(x.Address) == normalized);
-            if (sender is null)
-            {
-                return false;
-            }
+            var stateChanged = Prune(state, DateTimeOffset.UtcNow);
+            var senders = state.Senders
+                .Select(sender => (Sender: sender, Address: SenderAddress.Normalize(sender.Address)))
+                .Where(x => x.Address.Length > 0)
+                .GroupBy(x => x.Address, StringComparer.Ordinal)
+                .ToDictionary(x => x.Key, x => x.First().Sender, StringComparer.Ordinal);
+            var added = 0;
 
-            var key = CreateKey(senderAddress, body, receivedAtUtc);
-            if (state.Messages.Any(x => x.DeduplicationKey == key))
+            foreach (var capture in captures.OrderBy(x => x.ReceivedAtUtc))
             {
-                return false;
-            }
+                cancellationToken.ThrowIfCancellationRequested();
+                var address = capture.SenderAddress?.Trim() ?? string.Empty;
+                var body = capture.Body?.Trim() ?? string.Empty;
+                var normalized = SenderAddress.Normalize(address);
+                if (normalized.Length == 0 || address.Length is 0 or > MaxAddressLength || address.Any(char.IsControl)
+                    || body.Length is 0 or > MaxBodyLength || !senders.TryGetValue(normalized, out var sender)) continue;
 
-            if (state.Messages.Count >= MaxMessages)
-            {
-                var oldestConfirmed = state.Messages
-                    .Where(x => x.DeliveryStatus != SmsDeliveryStatus.Pending)
-                    .MinBy(x => x.ReceivedAtUtc);
-                if (oldestConfirmed is not null) state.Messages.Remove(oldestConfirmed);
-            }
-            if (state.Messages.Count >= MaxMessages)
-            {
-                state.SyncStatus = "صف آفلاین گوشی پر است؛ ابتدا اتصال و ارسال پیام‌های منتظر را بررسی کنید.";
-                await SaveUnsafeAsync(state, cancellationToken);
-                return false;
-            }
+                var receivedAtUtc = capture.ReceivedAtUtc.ToUniversalTime();
+                var key = CreateKey(address, body, receivedAtUtc);
+                var isDuplicate = state.Messages.Any(message => message.DeduplicationKey == key
+                    || message.SenderId == sender.Id
+                    && string.Equals(message.Body.Trim(), body, StringComparison.Ordinal)
+                    && (message.ReceivedAtUtc - receivedAtUtc).Duration() <= RecoveryDeduplicationWindow);
+                if (isDuplicate) continue;
 
-            state.Messages.Add(new CapturedSms
-            {
-                SenderId = sender.Id,
-                SenderAddress = senderAddress.Trim(),
-                DeduplicationKey = key,
-                Body = body.Trim(),
-                ReceivedAtUtc = receivedAtUtc.ToUniversalTime(),
-                DeliveryProtocolVersion = 2
-            });
+                if (state.Messages.Count >= MaxMessages)
+                {
+                    var oldestConfirmed = state.Messages
+                        .Where(x => x.DeliveryStatus != SmsDeliveryStatus.Pending)
+                        .MinBy(x => x.ReceivedAtUtc);
+                    if (oldestConfirmed is not null)
+                    {
+                        state.Messages.Remove(oldestConfirmed);
+                        stateChanged = true;
+                    }
+                }
+                if (state.Messages.Count >= MaxMessages)
+                {
+                    state.SyncStatus = "صف آفلاین گوشی پر است؛ ابتدا اتصال و ارسال پیام‌های منتظر را بررسی کنید.";
+                    stateChanged = true;
+                    break;
+                }
+
+                state.Messages.Add(new CapturedSms
+                {
+                    SenderId = sender.Id,
+                    SenderAddress = address,
+                    DeduplicationKey = key,
+                    Body = body,
+                    ReceivedAtUtc = receivedAtUtc,
+                    DeliveryProtocolVersion = 2,
+                    RecoveredFromInbox = capture.RecoveredFromInbox
+                });
+                added++;
+                stateChanged = true;
+            }
 
             TrimConfirmedMessages(state);
-
-            await SaveUnsafeAsync(state, cancellationToken);
-            return true;
+            if (stateChanged) await SaveUnsafeAsync(state, cancellationToken);
+            return added;
         }
-        finally
-        {
-            Gate.Release();
-        }
+        finally { Gate.Release(); }
     }
 
     private async Task<SmsMonitorState> LoadUnsafeAsync(CancellationToken cancellationToken)

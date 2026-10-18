@@ -235,6 +235,24 @@ internal static class TemplateFlowSmokeCheck
             && (await bulkStore.GetMessagesAsync(otherSenderId)).Single().DeliveryStatus == SmsDeliveryStatus.Rejected
             && !bulkPage.HasRetryableMessages && bulkScheduled == 1,
             "Confirmed bulk retry affects only retryable messages in the current status and search filter");
+
+        search.Text = string.Empty;
+        await WaitAsync(() => bulkPage.Messages.Count == 1 && bulkPage.Messages[0].Body == excludedBody);
+        var removableItem = bulkPage.Messages[0];
+        FindMessageButton(bulkPage, removableItem, "MessageDetailsButton").SendClicked();
+        await WaitAsync(() => removableItem.IsExpanded);
+        FindMessageButton(bulkPage, removableItem, "ExcludeMessageButton").SendClicked();
+        await WaitAsync(() => bulkPage.Messages.Count == 0);
+        Check((await bulkStore.GetMessagesAsync(bulkSenderId)).Single(message => message.Body == excludedBody)
+            .DeliveryStatus == SmsDeliveryStatus.Excluded, "Message-card action persists the excluded state");
+        bulkPage.FindByName<DonyshPicker>("StatusPicker").SelectedIndex = 4;
+        await WaitAsync(() => bulkPage.Messages.Count == 1 && bulkPage.Messages[0].CanRetry);
+        FindRetryButton(bulkPage, bulkPage.Messages[0]).SendClicked();
+        await WaitAsync(() => bulkScheduled == 2 && bulkPage.Messages.Count == 0);
+        Check((await bulkStore.GetMessagesAsync(bulkSenderId)).Single(message => message.Body == excludedBody)
+            .DeliveryStatus == SmsDeliveryStatus.Pending, "Excluded SMS returns to the pending queue");
+        Check(bulkScheduled == 2 && bulkPage.Messages.Count == 0,
+            "Excluded filter lets the user restore a hidden SMS without replaying delivered messages");
         await navigation.PopAsync(animated: false);
         return checks;
     }

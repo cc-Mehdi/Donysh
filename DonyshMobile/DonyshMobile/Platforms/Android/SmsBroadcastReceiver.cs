@@ -42,6 +42,10 @@ public sealed class SmsBroadcastReceiver : BroadcastReceiver
             return;
         }
 
+        // Schedule a provider-backed safety scan before asynchronous storage work.
+        // If an OEM stops this cold process early, the inbox scan can recover the SMS later.
+        SmsRecoveryJob.Schedule(context, immediate: true);
+
         var pendingResult = GoAsync();
         _ = Task.Run(async () =>
         {
@@ -54,11 +58,8 @@ public sealed class SmsBroadcastReceiver : BroadcastReceiver
                 }
 
                 var store = new SmsMonitorStore(directory);
-                var storedAny = false;
-                foreach (var capture in captures)
-                {
-                    storedAny |= await store.CaptureAsync(capture.Address, capture.Body, capture.Timestamp);
-                }
+                var storedAny = await store.CaptureBatchAsync(captures.Select(capture =>
+                    new SmsCaptureCandidate(capture.Address, capture.Body, capture.Timestamp)).ToList()) > 0;
 
                 if (storedAny)
                 {

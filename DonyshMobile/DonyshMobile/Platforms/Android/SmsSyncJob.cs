@@ -65,6 +65,8 @@ public sealed class SmsSyncJob : JobService
             try
             {
                 var store = new SmsMonitorStore(FileSystem.AppDataDirectory);
+                await SmsInboxRecovery.RecoverAsync(ApplicationContext ?? this, store,
+                    cancellationToken: cancellation.Token);
                 var result = await new MobileApiClient().SendNextBatchAsync(
                     store, MobileConnectionStore.LoadAsync, DateTimeOffset.UtcNow, cancellation.Token,
                     requireTitleProvider: () => SmsSyncSettings.RequireTitle);
@@ -116,6 +118,9 @@ public sealed class SyncRestartReceiver : BroadcastReceiver
     public override void OnReceive(Context? context, Intent? intent)
     {
         if (context is not null && intent?.Action is Intent.ActionBootCompleted or Intent.ActionMyPackageReplaced)
+        {
             SmsSyncJob.Schedule(context);
+            SmsRecoveryJob.Schedule(context, immediate: true);
+        }
     }
 }

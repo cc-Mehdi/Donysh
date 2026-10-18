@@ -236,6 +236,9 @@ public partial class SetupWizardPage : DonyshPage
                 PermissionButton.Text = "بازکردن تنظیمات گوشی";
                 return;
             }
+            if (SmsSyncSettings.RecoverRecent
+                && await Permissions.CheckStatusAsync<ReadSmsPermission>() != PermissionStatus.Granted)
+                await Permissions.RequestAsync<ReadSmsPermission>();
 #endif
             StatusLabel.IsVisible = false;
             UiMotion.Feedback();

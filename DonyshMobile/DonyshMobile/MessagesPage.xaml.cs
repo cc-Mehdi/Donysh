@@ -86,7 +86,8 @@ public partial class MessagesPage : DonyshPage
                      1 => x.Status == SmsDeliveryStatus.Pending,
                      2 => x.Status == SmsDeliveryStatus.Sent,
                      3 => x.Status == SmsDeliveryStatus.Rejected,
-                     4 => x.CanEditTitle && x.Untitled,
+                     4 => x.Status == SmsDeliveryStatus.Excluded,
+                     5 => x.CanEditTitle && x.Untitled,
                      _ => true
                  }) && (string.IsNullOrWhiteSpace(_search) || x.Body.Contains(_search, StringComparison.OrdinalIgnoreCase)
                         || x.Title.Contains(_search, StringComparison.OrdinalIgnoreCase))))
@@ -117,13 +118,15 @@ public partial class MessagesPage : DonyshPage
                     {
                         SmsDeliveryStatus.Sent => "دریافت توسط سامانه تأیید شد",
                         SmsDeliveryStatus.Rejected => "قالب پذیرفته نشد؛ پیام روی گوشی باقی است",
+                        SmsDeliveryStatus.Excluded => "از ارسال کنار گذاشته شده است",
                         _ when untitled && SmsSyncSettings.RequireTitle => "منتظر نوشتن عنوان شما",
                         _ when message.DeliveryAttempts > 0 => $"در صف تلاش دوباره · {UiText.Digits(message.DeliveryAttempts)} تلاش",
                         _ => "در صف ارسال به سامانه"
                     };
                     var item = new MessageItem(message.Id, untitled ? "بدون عنوان" : message.Title!, message.Body,
                         UiText.Date(message.ReceivedAtUtc), transactionType, amount, delivery, message.DeliveryStatus,
-                        message.DeliveryStatus == SmsDeliveryStatus.Pending, untitled, message.LastDeliveryError is not null);
+                        message.DeliveryStatus == SmsDeliveryStatus.Pending, untitled, message.LastDeliveryError is not null,
+                        message.RecoveredFromInbox);
                     item.IsExpanded = expandedIds.Contains(message.Id);
                     return item;
                 }).ToList();
@@ -148,6 +151,40 @@ public partial class MessagesPage : DonyshPage
 
     private async void OnRetryVisibleClicked(object? sender, EventArgs e) =>
         await RequeueAsync(Messages.Where(x => x.CanRetry).Select(x => x.Id).ToArray(), confirm: true);
+
+    private async void OnExcludeMessageClicked(object? sender, EventArgs e)
+    {
+        if (_retrying || _editing || sender is not Button { CommandParameter: Guid id }
+            || _allMessages.Find(x => x.Id == id) is not { CanExclude: true } item) return;
+        if (!await _confirmAsync("کنار گذاشتن پیام",
+                $"«{item.Title}» از صف ارسال کنار گذاشته شود؟ پیام در بخش «کنار گذاشته‌شده» می‌ماند و هر زمان بخواهید قابل بازگرداندن است.",
+                "کنار گذاشتن", "انصراف")) return;
+
+        _retrying = true;
+        try
+        {
+            var changed = 0;
+            await MobileApiClient.RunWithSyncLockAsync(async () =>
+                changed = await _store.ExcludeMessagesAsync(_senderId, [id]));
+            await RefreshAsync(waitForCurrent: true);
+            RetryStatusLabel.Text = changed > 0
+                ? "پیام کنار گذاشته شد و برای سامانه ارسال نمی‌شود."
+                : "وضعیت پیام تغییر کرده است و کنار گذاشته نشد.";
+            RetryStatusLabel.IsVisible = true;
+            if (changed > 0)
+            {
+                UiMotion.Feedback();
+                SmsReceivedNotifier.NotifySyncChanged();
+            }
+        }
+        catch (Exception exception)
+        {
+            UiSafety.Log(exception);
+            RetryStatusLabel.Text = "کنار گذاشتن پیام کامل نشد؛ پیام محفوظ است.";
+            RetryStatusLabel.IsVisible = true;
+        }
+        finally { _retrying = false; }
+    }
 
     private async Task RequeueAsync(IReadOnlyCollection<Guid> ids, bool confirm)
     {
@@ -226,9 +263,9 @@ public sealed class MessageItem : INotifyPropertyChanged
 
     public MessageItem(Guid id, string title, string body, string receivedAt, string transactionType,
         string amountText, string deliveryStatus, SmsDeliveryStatus status, bool canEditTitle, bool untitled,
-        bool hasDeliveryError = false) =>
-        (Id, Title, Body, ReceivedAt, TransactionType, AmountText, DeliveryStatus, Status, CanEditTitle, Untitled, HasDeliveryError) =
-        (id, title, body, receivedAt, transactionType, amountText, deliveryStatus, status, canEditTitle, untitled, hasDeliveryError);
+        bool hasDeliveryError = false, bool recoveredFromInbox = false) =>
+        (Id, Title, Body, ReceivedAt, TransactionType, AmountText, DeliveryStatus, Status, CanEditTitle, Untitled, HasDeliveryError, RecoveredFromInbox) =
+        (id, title, body, receivedAt, transactionType, amountText, deliveryStatus, status, canEditTitle, untitled, hasDeliveryError, recoveredFromInbox);
 
     public Guid Id { get; }
     public string Title { get; }
@@ -242,7 +279,10 @@ public sealed class MessageItem : INotifyPropertyChanged
     public bool CanEditTitle { get; }
     public bool Untitled { get; }
     public bool HasDeliveryError { get; }
-    public bool CanRetry => Status == SmsDeliveryStatus.Rejected || (Status == SmsDeliveryStatus.Pending && HasDeliveryError);
+    public bool RecoveredFromInbox { get; }
+    public bool CanRetry => Status is SmsDeliveryStatus.Rejected or SmsDeliveryStatus.Excluded
+        || (Status == SmsDeliveryStatus.Pending && HasDeliveryError);
+    public bool CanExclude => Status is SmsDeliveryStatus.Pending or SmsDeliveryStatus.Rejected;
     public bool IsExpanded
     {
         get => _isExpanded;

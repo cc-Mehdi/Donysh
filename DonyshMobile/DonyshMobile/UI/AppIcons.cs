@@ -15,6 +15,7 @@ public static class AppIcons
     public const string ExpandLess = "\ue5ce";
     public const string ExpandMore = "\ue5cf";
     public const string Filter = "\ue152";
+    public const string History = "\ue889";
     public const string Link = "\ue157";
     public const string Message = "\ue0c9";
     public const string More = "\ue5d4";

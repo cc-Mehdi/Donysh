@@ -1,5 +1,8 @@
 using DonyshMobile.Core;
 using DonyshMobile.UI;
+#if ANDROID
+using DonyshMobile.Platforms.Android;
+#endif
 
 namespace DonyshMobile;
 
@@ -13,7 +16,7 @@ public partial class ConnectionPage : DonyshPage
     private readonly Func<string, string, string, string, Task<bool>> _confirmAsync;
     private readonly bool _setupMode;
     private bool _busy, _settingsLoaded, _entered, _showPairing, _connected;
-    private bool _visible, _connectivitySubscribed, _openingTitles;
+    private bool _visible, _connectivitySubscribed, _openingTitles, _recovering;
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
 
     public ConnectionPage(SmsMonitorStore store)
@@ -45,6 +48,7 @@ public partial class ConnectionPage : DonyshPage
         ServerEntry.Text = MobileConnectionStore.Server;
         ServerPanel.IsVisible = ServerEntry.Text != "https://donysh.ir";
         RequireTitleSwitch.IsToggled = SmsSyncSettings.RequireTitle;
+        RecoverRecentSwitch.IsToggled = SmsSyncSettings.RecoverRecent;
         ThemePicker.SelectedIndex = UiPreferences.Theme;
         MotionSwitch.IsToggled = UiPreferences.Motion;
         HapticsSwitch.IsToggled = UiPreferences.Haptics;
@@ -56,6 +60,7 @@ public partial class ConnectionPage : DonyshPage
             PageDescriptionLabel.Text = "کدی را که در بخش «همراه دونیش» سایت ساخته‌اید، اینجا وارد کنید.";
             ConnectionStatusCard.IsVisible = false;
             TitleSettingsCard.IsVisible = false;
+            RecoverySettingsCard.IsVisible = false;
             AppearanceCard.IsVisible = false;
             PrivacyCard.IsVisible = false;
             CustomServerButton.IsVisible = false;
@@ -81,6 +86,7 @@ public partial class ConnectionPage : DonyshPage
         try
         {
             await RefreshAsync();
+            await RefreshRecoveryStatusAsync();
             if (!_entered) { _entered = true; await UiMotion.EnterAsync(ConnectionContent); }
         }
         catch (Exception exception) { UiSafety.Log(exception); }
@@ -135,6 +141,81 @@ public partial class ConnectionPage : DonyshPage
     private async void OnThemeChanged(object? sender, EventArgs e) => await SaveSettingAsync(() => UiPreferences.Theme = ThemePicker.SelectedIndex);
     private async void OnMotionToggled(object? sender, ToggledEventArgs e) => await SaveSettingAsync(() => UiPreferences.Motion = e.Value);
     private async void OnHapticsToggled(object? sender, ToggledEventArgs e) => await SaveSettingAsync(() => UiPreferences.Haptics = e.Value);
+
+    private async void OnRecoverRecentToggled(object? sender, ToggledEventArgs e)
+    {
+        if (!_settingsLoaded) return;
+        SyncPlatform.ConfigureRecovery(e.Value);
+        if (e.Value) await RecoverRecentAsync(requestPermission: true);
+        else await RefreshRecoveryStatusAsync();
+    }
+
+    private async void OnRecoveryNowClicked(object? sender, EventArgs e) =>
+        await RecoverRecentAsync(requestPermission: true);
+
+    private async Task RecoverRecentAsync(bool requestPermission)
+    {
+        if (_recovering || !SmsSyncSettings.RecoverRecent) return;
+        _recovering = true;
+        RecoveryNowButton.IsEnabled = false;
+        RecoveryNowButton.Text = "در حال بررسی پیامک‌ها…";
+        try
+        {
+#if ANDROID
+            var permission = await Permissions.CheckStatusAsync<ReadSmsPermission>();
+            if (permission != PermissionStatus.Granted && requestPermission)
+                permission = await Permissions.RequestAsync<ReadSmsPermission>();
+            if (permission != PermissionStatus.Granted)
+            {
+                RecoveryStatusLabel.Text = "برای بازیابی، اجازهٔ خواندن پیامک را از تنظیمات گوشی فعال کنید.";
+                return;
+            }
+            var result = await SyncPlatform.RecoverRecentAsync(_store, force: true);
+            RecoveryStatusLabel.Text = result.Added > 0
+                ? $"{UiText.Digits(result.Added)} پیام جامانده به فهرست اضافه شد."
+                : "همهٔ پیامک‌های مرتبط از قبل در فهرست بودند.";
+            if (result.Added > 0)
+            {
+                UiMotion.Feedback();
+                SmsReceivedNotifier.NotifySyncChanged();
+                SyncPlatform.Schedule();
+            }
+#else
+            await Task.CompletedTask;
+            RecoveryStatusLabel.Text = "بازیابی پیامک روی گوشی اندرویدی انجام می‌شود.";
+#endif
+        }
+        catch (Exception exception)
+        {
+            UiSafety.Log(exception);
+            RecoveryStatusLabel.Text = "بررسی پیامک‌ها کامل نشد؛ پیام‌های موجود تغییری نکردند.";
+        }
+        finally
+        {
+            _recovering = false;
+            RecoveryNowButton.IsEnabled = SmsSyncSettings.RecoverRecent;
+            RecoveryNowButton.Text = "بررسی پیامک‌های ۲۴ ساعت گذشته";
+        }
+    }
+
+    private async Task RefreshRecoveryStatusAsync()
+    {
+        RecoveryNowButton.IsEnabled = SmsSyncSettings.RecoverRecent && !_recovering;
+        if (!SmsSyncSettings.RecoverRecent)
+        {
+            RecoveryStatusLabel.Text = "خاموش است؛ فقط پیامک‌هایی که همان لحظه دریافت شوند ثبت می‌شوند.";
+            return;
+        }
+#if ANDROID
+        var permission = await Permissions.CheckStatusAsync<ReadSmsPermission>();
+        RecoveryStatusLabel.Text = permission == PermissionStatus.Granted
+            ? "فعال است؛ بررسی خودکار و بدون ثبت دوبارهٔ پیام‌ها انجام می‌شود."
+            : "روشن است؛ برای شروع بازیابی، اجازهٔ خواندن پیامک را فعال کنید.";
+#else
+        await Task.CompletedTask;
+        RecoveryStatusLabel.Text = "بازیابی پیامک روی گوشی اندرویدی انجام می‌شود.";
+#endif
+    }
 
     private async void OnRequireTitleToggled(object? sender, ToggledEventArgs e)
     {

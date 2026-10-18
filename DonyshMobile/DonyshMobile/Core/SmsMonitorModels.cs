@@ -22,6 +22,7 @@ public sealed class CapturedSms
     public int DeliveryAttempts { get; set; }
     public DateTimeOffset? ConfirmedAtUtc { get; set; }
     public string? LastDeliveryError { get; set; }
+    public bool RecoveredFromInbox { get; set; }
 }
 
 public sealed class SmsMonitorState
@@ -48,8 +49,21 @@ public enum SmsDeliveryStatus
 {
     Pending,
     Sent,
-    Rejected
+    Rejected,
+    Excluded
 }
+
+public sealed record SmsCaptureCandidate(
+    string SenderAddress,
+    string Body,
+    DateTimeOffset ReceivedAtUtc,
+    bool RecoveredFromInbox = false);
+
+public sealed record SmsRecoveryResult(
+    int Examined,
+    int Added,
+    bool PermissionRequired = false,
+    bool Skipped = false);
 
 public sealed record PendingSms(
     Guid Id,

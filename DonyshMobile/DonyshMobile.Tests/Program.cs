@@ -20,6 +20,8 @@ try
         .Select(element => (string?)element.Attribute(android + "name")).ToHashSet(StringComparer.Ordinal);
     Assert(permissions.Contains("android.permission.INTERNET"), "Android manifest permits API network requests");
     Assert(permissions.Contains("android.permission.ACCESS_NETWORK_STATE"), "Android manifest permits connectivity checks and network-constrained jobs");
+    Assert(permissions.Contains("android.permission.RECEIVE_SMS"), "Android manifest permits live SMS reception");
+    Assert(permissions.Contains("android.permission.READ_SMS"), "Android manifest permits opted-in missed-SMS recovery");
 
     Assert(SenderAddress.Normalize("۰۹۱۲ ۱۲۳ ۴۵۶۷") == "9121234567", "Persian digits");
     Assert(SenderAddress.Normalize("+98 (912) 123-4567") == "9121234567", "Iran phone variants");
@@ -43,6 +45,27 @@ try
     var receivedAt = DateTimeOffset.UtcNow.AddMinutes(-1);
     Assert(await store.CaptureAsync("+989121234567", "پیام آزمایشی", receivedAt), "Capture matching SMS");
     Assert(!await store.CaptureAsync("+989121234567", "پیام آزمایشی", receivedAt), "Deduplicate SMS");
+
+    var recoveryStore = CreateStore(Path.Combine(testDirectory, "recovery"));
+    Assert(await recoveryStore.AddSenderAsync("Bank-Recovery") == AddSenderResult.Added, "Add recovery sender");
+    var recoverySender = (await recoveryStore.GetSenderSummariesAsync()).Single();
+    Assert(await recoveryStore.CaptureAsync("Bank-Recovery", "برداشت: 100,000", receivedAt),
+        "Capture live SMS before recovery scan");
+    var recovered = await recoveryStore.CaptureBatchAsync([
+        new SmsCaptureCandidate("bank recovery", "برداشت: 100,000", receivedAt.AddSeconds(30), true),
+        new SmsCaptureCandidate("Bank-Recovery", "برداشت: 200,000", receivedAt.AddMinutes(1), true),
+        new SmsCaptureCandidate("Unknown", "برداشت: 300,000", receivedAt.AddMinutes(2), true)
+    ]);
+    Assert(recovered == 1, "Recovery scan ignores provider duplicates and unmonitored senders");
+    var recoveredMessage = (await recoveryStore.GetMessagesAsync(recoverySender.Id))
+        .Single(item => item.Body == "برداشت: 200,000");
+    Assert(recoveredMessage.RecoveredFromInbox, "Recovered SMS keeps its local source marker");
+    Assert(await recoveryStore.ExcludeMessagesAsync(recoverySender.Id, [recoveredMessage.Id]) == 1,
+        "User can exclude a recovered SMS from delivery");
+    Assert((await recoveryStore.TakePendingBatchAsync(DateTimeOffset.UtcNow.AddMinutes(1)))
+        .All(item => item.Id != recoveredMessage.Id), "Excluded SMS cannot enter an API batch");
+    Assert(await recoveryStore.RequeueMessagesAsync(recoverySender.Id, [recoveredMessage.Id]) == 1,
+        "User can restore an excluded SMS to the delivery queue");
 
     store = CreateStore(testDirectory);
     var summary = (await store.GetSenderSummariesAsync()).Single(x => x.Address == "۰۹۱۲۱۲۳۴۵۶۷");

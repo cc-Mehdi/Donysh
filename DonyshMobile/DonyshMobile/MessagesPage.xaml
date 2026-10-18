@@ -16,7 +16,7 @@
             </Border>
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
                 <ui:DonyshPicker x:Name="StatusPicker" Title="وضعیت پیام" SelectedIndexChanged="OnFilterChanged" SelectedIndex="0">
-                    <ui:DonyshPicker.Items><x:String>همهٔ پیام‌ها</x:String><x:String>منتظر ارسال</x:String><x:String>ارسال‌شده</x:String><x:String>نیازمند بررسی</x:String><x:String>منتظر عنوان</x:String></ui:DonyshPicker.Items>
+                    <ui:DonyshPicker.Items><x:String>همهٔ پیام‌ها</x:String><x:String>منتظر ارسال</x:String><x:String>ارسال‌شده</x:String><x:String>نیازمند بررسی</x:String><x:String>کنار گذاشته‌شده</x:String><x:String>منتظر عنوان</x:String></ui:DonyshPicker.Items>
                 </ui:DonyshPicker>
                 <Label Grid.Column="1" Text="{Binding MessageCountText}" Style="{StaticResource Caption}" VerticalOptions="Center" />
             </Grid>
@@ -53,6 +53,10 @@
                                     <Label Text="{x:Static ui:AppIcons.Sync}" Style="{StaticResource SectionIcon}" FontSize="17" WidthRequest="22" />
                                     <Label Grid.Column="1" Text="{Binding DeliveryStatus}" Style="{StaticResource Caption}" VerticalOptions="Center" />
                                 </Grid>
+                                <Border Style="{StaticResource AccentCard}" Padding="9,4" StrokeThickness="0"
+                                        HorizontalOptions="Start" IsVisible="{Binding RecoveredFromInbox}">
+                                    <Label Text="بازیابی‌شده از پیامک‌های گوشی" Style="{StaticResource Caption}" />
+                                </Border>
                                 <ui:DonyshButton AutomationId="MessageDetailsButton" Glyph="{x:Static ui:AppIcons.ExpandMore}" Text="{Binding DetailsAction}" CommandParameter="{Binding Id}"
                                                  Clicked="OnDetailsClicked" Style="{StaticResource QuietAction}" />
 
@@ -74,6 +78,9 @@
                                     <ui:DonyshButton x:Name="RetryMessageButton" Glyph="{x:Static ui:AppIcons.Refresh}" AutomationId="RetryMessageButton"
                                                      Text="بازگرداندن به صف ارسال" IsVisible="{Binding CanRetry}"
                                                      CommandParameter="{Binding Id}" Clicked="OnRetryMessageClicked" Style="{StaticResource SecondaryAction}" />
+                                    <ui:DonyshButton Glyph="{x:Static ui:AppIcons.Delete}" AutomationId="ExcludeMessageButton"
+                                                     Text="کنار گذاشتن از ارسال" IsVisible="{Binding CanExclude}"
+                                                     CommandParameter="{Binding Id}" Clicked="OnExcludeMessageClicked" Style="{StaticResource DangerAction}" />
                                 </VerticalStackLayout>
                             </VerticalStackLayout>
                     </Border>
