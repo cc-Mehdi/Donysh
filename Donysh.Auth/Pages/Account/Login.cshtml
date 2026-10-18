@@ -33,7 +33,7 @@
             <p>برای ادامه، ایمیل و رمز عبور حساب مرکزی را وارد کنید.</p>
         </header>
 
-        <form method="post" class="auth-form">
+        <form method="post" asp-page="/Account/Login" class="auth-form">
             <input type="hidden" asp-for="ReturnUrl" />
             <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
             <div class="field">

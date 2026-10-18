@@ -68,6 +68,17 @@ using (var response = await client.GetAsync("/Account/Login"))
         && frame.Single() == "DENY");
 }
 
+using (var response = await client.GetAsync(
+    "/Account/Login?ReturnUrl=%2Fconnect%2Fauthorize%3Fclient_id%3Dfinance-web%26redirect_uri%3Dhttps%253A%252F%252Fdonysh.ir%252Fsignin-oidc"))
+{
+    var html = await response.Content.ReadAsStringAsync();
+    Check("Login form posts to a fixed same-origin path under strict CSP",
+        response.StatusCode == HttpStatusCode.OK
+        && html.Contains("action=\"/Account/Login\"", StringComparison.Ordinal)
+        && html.Contains("name=\"ReturnUrl\"", StringComparison.Ordinal)
+        && html.Contains("/connect/authorize?client_id=finance-web", StringComparison.Ordinal));
+}
+
 using (var response = await client.GetAsync("/Account/Register"))
 {
     var html = await response.Content.ReadAsStringAsync();
