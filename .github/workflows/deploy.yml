@@ -84,6 +84,13 @@ jobs:
         working-directory: Donysh.Landing
         run: npm run build:css
 
+      - name: Verify committed frontend assets are current
+        run: |
+          git diff --exit-code -- \
+            HesabYar.Web/wwwroot/css/app.css \
+            Donysh.Auth/wwwroot/css/app.css \
+            Donysh.Landing/wwwroot/css/app.css
+
       - name: Restore .NET packages
         run: dotnet restore HesabYar.sln
 

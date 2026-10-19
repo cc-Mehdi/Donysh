@@ -33,6 +33,7 @@ REQUIRED = [
     "Donysh.Landing/Program.cs",
     "Donysh.Landing/Pages/Index.cshtml",
     "Donysh.Landing/Styles/app.css",
+    "Donysh.Landing/wwwroot/css/app.css",
     "Donysh.Landing/package-lock.json",
     "Donysh.Landing/Dockerfile",
     "Donysh.Landing.Tests/Donysh.Landing.Tests.csproj",
@@ -148,9 +149,25 @@ def main() -> int:
             errors.append(f"platform compose token missing: {token}")
 
     workflow = (ROOT / ".github/workflows/deploy.yml").read_text(encoding="utf-8")
-    for token in ["name: CI and Deploy", "\njobs:\n", "uses: actions/checkout@v4"]:
+    for token in [
+        "name: CI and Deploy",
+        "\njobs:\n",
+        "uses: actions/checkout@v4",
+        "Verify committed frontend assets are current",
+    ]:
         if token not in workflow:
             errors.append(f"workflow token missing: {token}")
+
+    for dockerfile_name in [
+        "HesabYar.Web/Dockerfile",
+        "Donysh.Auth/Dockerfile",
+        "Donysh.Landing/Dockerfile",
+    ]:
+        dockerfile = (ROOT / dockerfile_name).read_text(encoding="utf-8")
+        if "npm ci" in dockerfile or "FROM node:" in dockerfile:
+            errors.append(f"{dockerfile_name} must consume CI-verified compiled assets")
+        if "--mount=type=cache,id=donysh-nuget" not in dockerfile:
+            errors.append(f"{dockerfile_name} must cache restored NuGet packages")
 
     pages_text = "\n".join(
         path.read_text(encoding="utf-8")

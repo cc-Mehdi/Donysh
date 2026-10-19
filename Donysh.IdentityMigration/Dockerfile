@@ -1,9 +1,11 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine AS build
 WORKDIR /src
 COPY Donysh.IdentityMigration/Donysh.IdentityMigration.csproj Donysh.IdentityMigration/
-RUN dotnet restore Donysh.IdentityMigration/Donysh.IdentityMigration.csproj
+RUN --mount=type=cache,id=donysh-nuget,target=/root/.nuget/packages \
+    dotnet restore Donysh.IdentityMigration/Donysh.IdentityMigration.csproj
 COPY Donysh.IdentityMigration/ Donysh.IdentityMigration/
-RUN dotnet publish Donysh.IdentityMigration/Donysh.IdentityMigration.csproj -c Release -o /app/publish --no-restore
+RUN --mount=type=cache,id=donysh-nuget,target=/root/.nuget/packages \
+    dotnet publish Donysh.IdentityMigration/Donysh.IdentityMigration.csproj -c Release -o /app/publish --no-restore
 
 FROM mcr.microsoft.com/dotnet/runtime:10.0-alpine AS final
 WORKDIR /app
