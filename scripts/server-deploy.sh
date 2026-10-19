@@ -11,13 +11,14 @@ GIT_FETCH_TIMEOUT_SECONDS="${GIT_FETCH_TIMEOUT_SECONDS:-120}"
 DOCKER_BUILD_TIMEOUT_SECONDS="${DOCKER_BUILD_TIMEOUT_SECONDS:-900}"
 DB_HEALTH_WAIT_SECONDS="${DB_HEALTH_WAIT_SECONDS:-60}"
 MIN_DISK_FREE_MB="${MIN_DISK_FREE_MB:-1024}"
+BUILD_CACHE_RETENTION_HOURS="${BUILD_CACHE_RETENTION_HOURS:-168}"
 GIT_SSH_COMMAND="${GIT_SSH_COMMAND:-ssh -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3}"
 
 for command in git docker curl flock timeout sed tail tr xargs df awk seq sleep; do
   command -v "$command" >/dev/null 2>&1 || { echo "Required command not found: $command"; exit 1; }
 done
 
-for setting in LOCK_WAIT_SECONDS GIT_FETCH_TIMEOUT_SECONDS DOCKER_BUILD_TIMEOUT_SECONDS DB_HEALTH_WAIT_SECONDS MIN_DISK_FREE_MB; do
+for setting in LOCK_WAIT_SECONDS GIT_FETCH_TIMEOUT_SECONDS DOCKER_BUILD_TIMEOUT_SECONDS DB_HEALTH_WAIT_SECONDS MIN_DISK_FREE_MB BUILD_CACHE_RETENTION_HOURS; do
   value="${!setting}"
   if [[ ! "$value" =~ ^[1-9][0-9]*$ ]] && [[ "$setting" != "LOCK_WAIT_SECONDS" || ! "$value" =~ ^[0-9]+$ ]]; then
     echo "$setting must be a positive integer."
@@ -53,6 +54,29 @@ check_disk_capacity() {
     return 1
   fi
   echo "Disk preflight passed for ${label}: $((available_kb / 1024)) MB free."
+}
+
+recover_disk_capacity() {
+  local path="$1" label="$2"
+  if check_disk_capacity "$path" "$label"; then
+    return 0
+  fi
+
+  echo "Low disk space detected; pruning unused Docker build cache and dangling images ..."
+  docker builder prune -af --filter "until=24h" 9>&- || true
+  docker image prune -f 9>&- || true
+  if check_disk_capacity "$path" "$label"; then
+    return 0
+  fi
+
+  echo "Disk is still low; pruning the remaining unused Docker build cache ..."
+  docker builder prune -af 9>&- || true
+  check_disk_capacity "$path" "$label"
+}
+
+prune_stale_build_cache() {
+  docker builder prune -f \
+    --filter "until=${BUILD_CACHE_RETENTION_HOURS}h" 9>&- >/dev/null 2>&1 || true
 }
 
 diagnose_service() {
@@ -144,10 +168,10 @@ build_selected_images() {
     docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" build "${build_services[@]}" 9>&-
 }
 
-check_disk_capacity "$APP_DIR" "application checkout"
+recover_disk_capacity "$APP_DIR" "application checkout"
 docker_root="$(docker info --format '{{.DockerRootDir}}' 9>&- 2>/dev/null || true)"
 if [[ -n "$docker_root" && -d "$docker_root" ]]; then
-  check_disk_capacity "$docker_root" "Docker storage"
+  recover_disk_capacity "$docker_root" "Docker storage"
 fi
 
 compose config 9>&- >/dev/null
@@ -196,6 +220,7 @@ rollback() {
   compose config 9>&- >/dev/null
   build_selected_images
   compose up -d --remove-orphans 9>&-
+  prune_stale_build_cache
   echo "Rollback attempt finished with original exit code ${exit_code}."
   exit "$exit_code"
 }
@@ -248,6 +273,7 @@ for attempt in $(seq 1 24); do
       bash scripts/verify-platform-release.sh 9>&-
     trap - ERR
     docker image prune -f 9>&- >/dev/null 2>&1 || true
+    prune_stale_build_cache
     compose ps 9>&-
     echo "Deployment completed successfully."
     exit 0
