@@ -197,6 +197,58 @@ namespace Donysh.Life.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Donysh.Life.Domain.ScheduleOccurrenceOverride", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("DurationMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsCancelled")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateOnly>("OriginalDate")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("PatternId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("ScheduledDate")
+                        .HasColumnType("date");
+
+                    b.Property<int>("StartMinute")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UserSubject")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PatternId", "UserSubject");
+
+                    b.HasIndex("UserSubject", "PatternId", "OriginalDate")
+                        .IsUnique();
+
+                    b.HasIndex("UserSubject", "ScheduledDate", "StartMinute");
+
+                    b.ToTable("LifeScheduleOccurrenceOverrides", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_LifeScheduleOccurrenceOverrides_Duration", "\"DurationMinutes\" BETWEEN 30 AND 1440 AND \"DurationMinutes\" % 30 = 0 AND \"StartMinute\" + \"DurationMinutes\" <= 1440");
+
+                            t.HasCheckConstraint("CK_LifeScheduleOccurrenceOverrides_StartMinute", "\"StartMinute\" BETWEEN 0 AND 1410 AND \"StartMinute\" % 30 = 0");
+                        });
+                });
+
             modelBuilder.Entity("Donysh.Life.Domain.WeeklyGoal", b =>
                 {
                     b.Property<Guid>("Id")
@@ -260,6 +312,18 @@ namespace Donysh.Life.Data.Migrations
                     b.Navigation("Pattern");
                 });
 
+            modelBuilder.Entity("Donysh.Life.Domain.ScheduleOccurrenceOverride", b =>
+                {
+                    b.HasOne("Donysh.Life.Domain.RecurringSchedulePattern", "Pattern")
+                        .WithMany("OccurrenceOverrides")
+                        .HasForeignKey("PatternId", "UserSubject")
+                        .HasPrincipalKey("Id", "UserSubject")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Pattern");
+                });
+
             modelBuilder.Entity("Donysh.Life.Domain.WeeklyGoal", b =>
                 {
                     b.HasOne("Donysh.Life.Domain.LifeActivity", "Activity")
@@ -281,6 +345,8 @@ namespace Donysh.Life.Data.Migrations
 
             modelBuilder.Entity("Donysh.Life.Domain.RecurringSchedulePattern", b =>
                 {
+                    b.Navigation("OccurrenceOverrides");
+
                     b.Navigation("Slots");
                 });
 #pragma warning restore 612, 618

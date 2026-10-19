@@ -49,11 +49,13 @@ using (var response = await client.GetAsync("/Account/Login"))
         && html.Contains("lang=\"fa\"", StringComparison.Ordinal)
         && html.Contains("dir=\"rtl\"", StringComparison.Ordinal)
         && html.Contains("همان حسابی که در دونیش مالی داری", StringComparison.Ordinal));
-    Check("Life security headers block framing and scripts",
+    Check("Life security headers allow only same-origin scripts and block framing",
         response.Headers.TryGetValues("Content-Security-Policy", out var csp)
         && csp.Single().Contains("frame-ancestors 'none'", StringComparison.Ordinal)
         && csp.Single().Contains("form-action 'self' https://auth.test", StringComparison.Ordinal)
-        && csp.Single().Contains("script-src 'none'", StringComparison.Ordinal)
+        && csp.Single().Contains("script-src 'self'", StringComparison.Ordinal)
+        && !csp.Single().Contains("'unsafe-inline'", StringComparison.Ordinal)
+        && !csp.Single().Contains("'unsafe-eval'", StringComparison.Ordinal)
         && response.Headers.TryGetValues("X-Frame-Options", out var frame)
         && frame.Single() == "DENY");
 }
@@ -78,6 +80,13 @@ using (var response = await client.GetAsync("/css/app.css"))
 {
     Check("Life stylesheet is served", response.StatusCode == HttpStatusCode.OK
         && response.Content.Headers.ContentType?.MediaType == "text/css");
+}
+
+using (var response = await client.GetAsync("/js/week-planner.js"))
+{
+    Check("Life interactive planner script is served from the same origin",
+        response.StatusCode == HttpStatusCode.OK
+        && response.Content.Headers.ContentType?.MediaType is "text/javascript" or "application/javascript");
 }
 
 await using (var authenticatedFactory = new AuthenticatedLifeApplicationFactory())
@@ -122,7 +131,7 @@ using (var authenticatedClient = authenticatedFactory.CreateClient(new WebApplic
         var weekHtml = await weekResponse.Content.ReadAsStringAsync();
         Check("Life weekly planner renders its responsive empty state",
             weekResponse.StatusCode == HttpStatusCode.OK
-            && weekHtml.Contains("برنامهٔ ثابت هفته", StringComparison.Ordinal)
+            && weekHtml.Contains("برنامه‌ریزی تعاملی", StringComparison.Ordinal)
             && weekHtml.Contains("اول یک فعالیت بساز", StringComparison.Ordinal)
             && !weekHtml.Contains("style=", StringComparison.OrdinalIgnoreCase));
     }
@@ -210,6 +219,48 @@ await using (var activityDb = new LifeDbContext(activityOptions))
         && await activityDb.ScheduleSlots.CountAsync() == 2);
 
     var ownerPatternId = ownerWeek.Days.Single(day => day.DayOfWeek == DayOfWeek.Saturday).Blocks[0].Id;
+    var weekStart = ownerWeek.WeekStart;
+    var occurrenceMoved = await scheduler.ApplyInteractionAsync(new ScheduleInteractionForm
+    {
+        PatternId = ownerPatternId,
+        OriginalDate = weekStart,
+        TargetDate = weekStart.AddDays(1),
+        StartMinute = 600,
+        DurationMinutes = 30,
+        Scope = "occurrence"
+    });
+    var changedWeek = await scheduler.GetWeekAsync(DayOfWeek.Sunday, weekStart);
+    var nextWeek = await scheduler.GetWeekAsync(DayOfWeek.Saturday, weekStart.AddDays(7));
+    var occurrenceReset = await scheduler.ApplyInteractionAsync(new ScheduleInteractionForm
+    {
+        PatternId = ownerPatternId,
+        OriginalDate = weekStart,
+        TargetDate = weekStart,
+        StartMinute = 480,
+        DurationMinutes = 60,
+        Scope = "occurrence"
+    });
+    Check("Life occurrence edits affect one week without changing the recurring series",
+        occurrenceMoved.Succeeded
+        && changedWeek.Days.Single(day => day.DayOfWeek == DayOfWeek.Saturday).Blocks.Count == 0
+        && changedWeek.Days.Single(day => day.DayOfWeek == DayOfWeek.Sunday).Blocks.Single().IsOccurrenceOverride
+        && nextWeek.Days.Single(day => day.DayOfWeek == DayOfWeek.Saturday).Blocks.Single().StartMinute == 480
+        && occurrenceReset.Succeeded
+        && await activityDb.ScheduleOccurrenceOverrides.CountAsync() == 0);
+
+    var occurrenceCancelled = await scheduler.CancelOccurrenceAsync(ownerPatternId, weekStart);
+    var cancelledWeek = await scheduler.GetWeekAsync(DayOfWeek.Saturday, weekStart);
+    var occurrenceRestored = await scheduler.ApplyInteractionAsync(new ScheduleInteractionForm
+    {
+        PatternId = ownerPatternId, OriginalDate = weekStart, TargetDate = weekStart,
+        StartMinute = 480, DurationMinutes = 60, Scope = "occurrence"
+    });
+    Check("Life can cancel one occurrence without deleting its recurring pattern",
+        occurrenceCancelled.Succeeded
+        && cancelledWeek.Days.Single(day => day.DayOfWeek == DayOfWeek.Saturday).Blocks.Count == 0
+        && occurrenceRestored.Succeeded
+        && await activityDb.SchedulePatterns.AnyAsync(item => item.Id == ownerPatternId));
+
     var moved = await scheduler.SaveAsync(ownerPatternId, new SchedulePatternForm
     {
         ActivityId = ownerItems[0].Id,
@@ -250,10 +301,16 @@ await using (var activityDb = new LifeDbContext(activityOptions))
     });
     var forbiddenScheduleDelete = await ownerBScheduler.DeleteAsync(
         ownerPatternId);
+    var forbiddenOccurrenceEdit = await ownerBScheduler.ApplyInteractionAsync(new ScheduleInteractionForm
+    {
+        PatternId = ownerPatternId, OriginalDate = weekStart, TargetDate = weekStart,
+        StartMinute = 600, DurationMinutes = 30, Scope = "occurrence"
+    });
     Check("Life weekly schedule slots are isolated per user",
         ownerBActivityResult.Succeeded
         && sameTimeForOtherUser.Succeeded
-        && !forbiddenScheduleDelete.Succeeded);
+        && !forbiddenScheduleDelete.Succeeded
+        && !forbiddenOccurrenceEdit.Succeeded);
 }
 
 var postgres = Environment.GetEnvironmentVariable("DONYSH_LIFE_TEST_POSTGRES");

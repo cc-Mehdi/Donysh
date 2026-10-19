@@ -9,7 +9,7 @@ public static class LifeSecurityHeaders
             : throw new ArgumentException("The central authority must use HTTP or HTTPS.", nameof(centralAuthority));
         return "default-src 'self'; base-uri 'none'; frame-ancestors 'none'; " +
             $"form-action 'self' {trustedAuthority}; object-src 'none'; img-src 'self' data:; " +
-            "style-src 'self'; script-src 'none'; font-src 'self'; connect-src 'self'";
+            "style-src 'self'; script-src 'self'; font-src 'self'; connect-src 'self'";
     }
 
     public static IApplicationBuilder UseLifeSecurityHeaders(

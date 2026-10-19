@@ -38,7 +38,10 @@ public sealed record ScheduleBlockItem(
     int StartMinute,
     int DurationMinutes,
     string? Note,
-    bool IsActive)
+    bool IsActive,
+    DateOnly OriginalDate,
+    DateOnly ScheduledDate,
+    bool IsOccurrenceOverride)
 {
     public int EndMinute => StartMinute + DurationMinutes;
     public string StartLabel => FormatMinute(StartMinute);
@@ -54,6 +57,16 @@ public sealed record ScheduleBlockItem(
     private static string FormatMinute(int minute) => $"{minute / 60:00}:{minute % 60:00}";
 }
 
+public sealed class ScheduleInteractionForm
+{
+    [Required] public Guid PatternId { get; set; }
+    [Required] public DateOnly OriginalDate { get; set; }
+    [Required] public DateOnly TargetDate { get; set; }
+    [Range(0, 1410)] public int StartMinute { get; set; }
+    [Range(30, 1440)] public int DurationMinutes { get; set; }
+    [RegularExpression("^(occurrence|series)$")] public string Scope { get; set; } = "occurrence";
+}
+
 public sealed record ActivityPlanSummary(Guid ActivityId, string Title, string ColorHex, int GoalMinutes, int PlannedMinutes)
 {
     public string ColorClass => ActivityCatalog.ColorClass(ColorHex);
@@ -62,9 +75,9 @@ public sealed record ActivityPlanSummary(Guid ActivityId, string Title, string C
     public int CoveragePercent => GoalMinutes == 0 ? 0 : Math.Min(100, (int)Math.Round(PlannedMinutes * 100m / GoalMinutes));
 }
 
-public sealed record WeekDayView(DayOfWeek DayOfWeek, string Name, string PersianDate, bool IsSelected, IReadOnlyList<ScheduleBlockItem> Blocks);
+public sealed record WeekDayView(DateOnly Date, DayOfWeek DayOfWeek, string Name, string PersianDate, bool IsSelected, IReadOnlyList<ScheduleBlockItem> Blocks);
 
-public sealed record ScheduleBlockCardModel(ScheduleBlockItem Block, IReadOnlyList<ScheduleActivityOption> Activities);
+public sealed record ScheduleBlockCardModel(ScheduleBlockItem Block, IReadOnlyList<ScheduleActivityOption> Activities, DateOnly WeekStart);
 
 public sealed record WeekScheduleView(
     DateOnly WeekStart,
@@ -74,4 +87,5 @@ public sealed record WeekScheduleView(
     int PlannedMinutes)
 {
     public decimal PlannedHours => PlannedMinutes / 60m;
+    public DateOnly WeekEnd => WeekStart.AddDays(6);
 }

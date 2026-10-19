@@ -3,22 +3,30 @@
 @{
     var block = Model.Block;
 }
-<article class="schedule-block @block.ColorClass @(block.IsActive ? "" : "inactive")">
+<article class="schedule-block @block.ColorClass @(block.IsActive ? "" : "inactive")" draggable="true"
+         data-pattern-id="@block.Id" data-original-date="@block.OriginalDate.ToString("yyyy-MM-dd")"
+         data-scheduled-date="@block.ScheduledDate.ToString("yyyy-MM-dd")" data-start-minute="@block.StartMinute" data-duration="@block.DurationMinutes">
     <div class="block-main"><span class="block-icon">@block.IconGlyph</span><div><strong>@block.ActivityTitle</strong><span class="block-time">@block.StartLabel تا @block.EndLabel</span>@if (!string.IsNullOrWhiteSpace(block.Note)) { <small>@block.Note</small> }</div></div>
     <details class="block-actions">
         <summary aria-label="گزینه‌های @block.ActivityTitle">•••</summary>
         <div class="block-popover">
             <form method="post" asp-page="/Week" asp-page-handler="Save" class="schedule-form compact-schedule-form">
                 <input type="hidden" name="PatternId" value="@block.Id" />
+                <input type="hidden" name="WeekStart" value="@Model.WeekStart.ToString("yyyy-MM-dd")" />
                 <label class="field"><span>فعالیت</span><select name="Input.ActivityId">@foreach (var activity in Model.Activities) { <option value="@activity.Id" selected="@(activity.Id == block.ActivityId ? "selected" : null)">@activity.IconGlyph @activity.Title</option> }</select></label>
                 <label class="field"><span>روز</span><select name="Input.DayOfWeek">@foreach (var day in WeekCalendar.Days) { <option value="@day" selected="@(day == block.DayOfWeek ? "selected" : null)">@WeekCalendar.DayName(day)</option> }</select></label>
                 <div class="field-grid"><label class="field"><span>شروع</span><input name="Input.StartTime" value="@block.StartLabel" type="time" step="1800" required /></label><label class="field"><span>مدت</span><select name="Input.DurationMinutes">@foreach (var duration in WeekCalendar.DurationOptions) { <option value="@duration" selected="@(duration == block.DurationMinutes ? "selected" : null)">@WeekCalendar.DurationName(duration)</option> }</select></label></div>
                 <label class="field"><span>یادداشت</span><input name="Input.Note" value="@block.Note" maxlength="160" /></label>
-                <button class="button primary" type="submit">ذخیرهٔ تغییرات</button>
+                <button class="button primary" type="submit">ویرایش همهٔ هفته‌ها</button>
             </form>
+            <div class="resize-actions" aria-label="تغییر مدت این برنامه">
+                <button type="button" class="text-button resize-block" data-resize="-30" disabled="@(block.DurationMinutes <= 30 ? "disabled" : null)">۳۰ دقیقه کمتر</button>
+                <button type="button" class="text-button resize-block" data-resize="30" disabled="@(block.EndMinute >= 1440 ? "disabled" : null)">۳۰ دقیقه بیشتر</button>
+            </div>
             <div class="block-secondary-actions">
-                <form method="post" asp-page="/Week" asp-page-handler="Toggle"><input type="hidden" name="PatternId" value="@block.Id" /><input type="hidden" name="SelectedDay" value="@block.DayOfWeek" /><button class="text-button" type="submit">@(block.IsActive ? "غیرفعال‌کردن" : "فعال‌کردن")</button></form>
-                <form method="post" asp-page="/Week" asp-page-handler="Delete" class="delete-form"><input type="hidden" name="PatternId" value="@block.Id" /><input type="hidden" name="SelectedDay" value="@block.DayOfWeek" /><label><input type="checkbox" name="ConfirmDelete" value="true" required /> حذف را تأیید می‌کنم</label><button class="text-button danger" type="submit">حذف بازه</button></form>
+                <form method="post" asp-page="/Week" asp-page-handler="CancelOccurrence"><input type="hidden" name="PatternId" value="@block.Id" /><input type="hidden" name="OriginalDate" value="@block.OriginalDate.ToString("yyyy-MM-dd")" /><input type="hidden" name="SelectedDay" value="@block.DayOfWeek" /><input type="hidden" name="WeekStart" value="@Model.WeekStart.ToString("yyyy-MM-dd")" /><button class="text-button danger" type="submit">حذف فقط از این هفته</button></form>
+                <form method="post" asp-page="/Week" asp-page-handler="Toggle"><input type="hidden" name="PatternId" value="@block.Id" /><input type="hidden" name="SelectedDay" value="@block.DayOfWeek" /><input type="hidden" name="WeekStart" value="@Model.WeekStart.ToString("yyyy-MM-dd")" /><button class="text-button" type="submit">@(block.IsActive ? "غیرفعال‌کردن الگو" : "فعال‌کردن الگو")</button></form>
+                <form method="post" asp-page="/Week" asp-page-handler="Delete" class="delete-form"><input type="hidden" name="PatternId" value="@block.Id" /><input type="hidden" name="SelectedDay" value="@block.DayOfWeek" /><input type="hidden" name="WeekStart" value="@Model.WeekStart.ToString("yyyy-MM-dd")" /><label><input type="checkbox" name="ConfirmDelete" value="true" required /> حذف همه را تأیید می‌کنم</label><button class="text-button danger" type="submit">حذف از همهٔ هفته‌ها</button></form>
             </div>
         </div>
     </details>

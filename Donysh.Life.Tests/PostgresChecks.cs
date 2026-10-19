@@ -86,13 +86,40 @@ internal static class PostgresChecks
             if (!overlapRejected)
                 throw new Exception("FAIL PostgreSQL Life schedule slots allowed an overlapping block");
 
+            var originalDate = DateOnly.FromDateTime(DateTime.UtcNow);
+            originalDate = originalDate.AddDays(-(((int)originalDate.DayOfWeek - (int)DayOfWeek.Saturday + 7) % 7));
+            db.ScheduleOccurrenceOverrides.Add(new ScheduleOccurrenceOverride
+            {
+                Id = Guid.NewGuid(), PatternId = ownerAPattern.Id, UserSubject = "owner-a",
+                OriginalDate = originalDate, ScheduledDate = originalDate.AddDays(1),
+                StartMinute = 600, DurationMinutes = 30,
+                CreatedAtUtc = DateTimeOffset.UtcNow, UpdatedAtUtc = DateTimeOffset.UtcNow
+            });
+            await db.SaveChangesAsync();
+            db.ScheduleOccurrenceOverrides.Add(new ScheduleOccurrenceOverride
+            {
+                Id = Guid.NewGuid(), PatternId = ownerAPattern.Id, UserSubject = "owner-a",
+                OriginalDate = originalDate, ScheduledDate = originalDate.AddDays(2),
+                StartMinute = 660, DurationMinutes = 30,
+                CreatedAtUtc = DateTimeOffset.UtcNow, UpdatedAtUtc = DateTimeOffset.UtcNow
+            });
+            var duplicateOverrideRejected = false;
+            try { await db.SaveChangesAsync(); }
+            catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+            {
+                duplicateOverrideRejected = true;
+                db.ChangeTracker.Clear();
+            }
+            if (!duplicateOverrideRejected)
+                throw new Exception("FAIL PostgreSQL Life allowed duplicate overrides for one occurrence");
+
             await using var verify = new NpgsqlConnection(connection.ConnectionString);
             await verify.OpenAsync();
             await using var command = new NpgsqlCommand("""
-                SELECT count(*) = 5
+                SELECT count(*) = 6
                 FROM information_schema.tables
                 WHERE table_schema = current_schema()
-                  AND table_name IN ('LifeProfiles', 'LifeActivities', 'LifeWeeklyGoals', 'LifeSchedulePatterns', 'LifeScheduleSlots')
+                  AND table_name IN ('LifeProfiles', 'LifeActivities', 'LifeWeeklyGoals', 'LifeSchedulePatterns', 'LifeScheduleSlots', 'LifeScheduleOccurrenceOverrides')
                 """, verify);
             if (!Convert.ToBoolean(await command.ExecuteScalarAsync()))
                 throw new Exception("FAIL PostgreSQL Life migration did not create its isolated schema");
@@ -101,6 +128,7 @@ internal static class PostgresChecks
             Console.WriteLine("PASS PostgreSQL Life profile keeps Saturday and Tehran defaults");
             Console.WriteLine("PASS PostgreSQL Life activities and weekly goals preserve per-user ownership");
             Console.WriteLine("PASS PostgreSQL Life schedule slots reject overlaps and remain isolated per user");
+            Console.WriteLine("PASS PostgreSQL Life occurrence overrides are unique per recurring occurrence");
         }
         finally
         {

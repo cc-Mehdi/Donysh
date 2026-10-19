@@ -15,4 +15,5 @@ public sealed class RecurringSchedulePattern
 
     public LifeActivity Activity { get; set; } = null!;
     public ICollection<RecurringScheduleSlot> Slots { get; set; } = [];
+    public ICollection<ScheduleOccurrenceOverride> OccurrenceOverrides { get; set; } = [];
 }

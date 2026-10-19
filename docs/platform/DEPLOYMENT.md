@@ -150,10 +150,13 @@ curl -sS -D - -o /dev/null https://life.donysh.ir/ | grep -iE '^(HTTP|location:)
 sudo docker compose --env-file .env -f docker-compose.platform.yml logs --tail=100 life life-db auth caddy
 ```
 
-در اجرای اول فقط Migration افزایشی `InitialLifeSchema` روی دیتابیس مستقل `life-db` اجرا می‌شود؛
-دیتابیس Finance و Auth تغییر نمی‌کنند. برای Rollback، نسخهٔ قبلی کد را Deploy کنید یا سرویس‌های
+در هر استقرار، Migrationهای افزایشی Life روی دیتابیس مستقل `life-db` اجرا می‌شوند. زیرمرحلهٔ ۶.۳
+Migration غیرمخرب `AddScheduleOccurrenceOverrides` را برای نگهداری تغییرات یک رخداد اضافه می‌کند؛
+هیچ جدول یا ستونی حذف نمی‌شود و دیتابیس‌های Finance و Auth تغییر نمی‌کنند. پیش از استقرار عملیاتی
+از volume یا دیتابیس Life نسخهٔ پشتیبان بگیرید. برای Rollback، نسخهٔ قبلی کد را Deploy کنید یا سرویس‌های
 `life` و `life-db` را متوقف کنید. volumeهای `life_postgres_data` و `life_dataprotection_keys` را
-حذف نکنید تا بازگشت رو به جلو بدون ازدست‌رفتن داده ممکن باشد.
+حذف نکنید تا بازگشت رو به جلو بدون ازدست‌رفتن داده ممکن باشد؛ Down کردن Migration فقط زمانی مجاز
+است که دادهٔ استثناهای رخداد دیگر موردنیاز نباشد.
 
 ## اجرای محلی توسعه
 

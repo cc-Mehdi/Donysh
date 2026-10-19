@@ -10,6 +10,7 @@ public sealed class LifeDbContext(DbContextOptions<LifeDbContext> options) : DbC
     public DbSet<WeeklyGoal> WeeklyGoals => Set<WeeklyGoal>();
     public DbSet<RecurringSchedulePattern> SchedulePatterns => Set<RecurringSchedulePattern>();
     public DbSet<RecurringScheduleSlot> ScheduleSlots => Set<RecurringScheduleSlot>();
+    public DbSet<ScheduleOccurrenceOverride> ScheduleOccurrenceOverrides => Set<ScheduleOccurrenceOverride>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -79,6 +80,22 @@ public sealed class LifeDbContext(DbContextOptions<LifeDbContext> options) : DbC
         scheduleSlot.HasIndex(item => new { item.UserSubject, item.DayOfWeek, item.SlotIndex }).IsUnique();
         scheduleSlot.HasOne(item => item.Pattern)
             .WithMany(item => item.Slots)
+            .HasPrincipalKey(item => new { item.Id, item.UserSubject })
+            .HasForeignKey(item => new { item.PatternId, item.UserSubject })
+            .OnDelete(DeleteBehavior.Cascade);
+
+        var occurrenceOverride = modelBuilder.Entity<ScheduleOccurrenceOverride>();
+        occurrenceOverride.ToTable("LifeScheduleOccurrenceOverrides", table =>
+        {
+            table.HasCheckConstraint("CK_LifeScheduleOccurrenceOverrides_StartMinute", "\"StartMinute\" BETWEEN 0 AND 1410 AND \"StartMinute\" % 30 = 0");
+            table.HasCheckConstraint("CK_LifeScheduleOccurrenceOverrides_Duration", "\"DurationMinutes\" BETWEEN 30 AND 1440 AND \"DurationMinutes\" % 30 = 0 AND \"StartMinute\" + \"DurationMinutes\" <= 1440");
+        });
+        occurrenceOverride.HasKey(item => item.Id);
+        occurrenceOverride.Property(item => item.UserSubject).HasMaxLength(450).IsRequired();
+        occurrenceOverride.HasIndex(item => new { item.UserSubject, item.PatternId, item.OriginalDate }).IsUnique();
+        occurrenceOverride.HasIndex(item => new { item.UserSubject, item.ScheduledDate, item.StartMinute });
+        occurrenceOverride.HasOne(item => item.Pattern)
+            .WithMany(item => item.OccurrenceOverrides)
             .HasPrincipalKey(item => new { item.Id, item.UserSubject })
             .HasForeignKey(item => new { item.PatternId, item.UserSubject })
             .OnDelete(DeleteBehavior.Cascade);
