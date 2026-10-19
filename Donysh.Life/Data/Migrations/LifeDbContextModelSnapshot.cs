@@ -22,6 +22,53 @@ namespace Donysh.Life.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Donysh.Life.Domain.ActualActivityEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ActivityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ActualMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<DateOnly>("OccurredDate")
+                        .HasColumnType("date");
+
+                    b.Property<int?>("StartMinute")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UserSubject")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActivityId", "UserSubject");
+
+                    b.HasIndex("UserSubject", "OccurredDate");
+
+                    b.ToTable("LifeActualActivityEntries", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_LifeActualActivityEntries_ActualMinutes", "\"ActualMinutes\" BETWEEN 1 AND 1440");
+
+                            t.HasCheckConstraint("CK_LifeActualActivityEntries_StartMinute", "\"StartMinute\" IS NULL OR \"StartMinute\" BETWEEN 0 AND 1439");
+                        });
+                });
+
             modelBuilder.Entity("Donysh.Life.Domain.LifeActivity", b =>
                 {
                     b.Property<Guid>("Id")
@@ -206,6 +253,9 @@ namespace Donysh.Life.Data.Migrations
                     b.Property<DateTimeOffset>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<bool>("CreatedByOutcome")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("DurationMinutes")
                         .HasColumnType("integer");
 
@@ -351,6 +401,18 @@ namespace Donysh.Life.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Donysh.Life.Domain.ActualActivityEntry", b =>
+                {
+                    b.HasOne("Donysh.Life.Domain.LifeActivity", "Activity")
+                        .WithMany("ActualEntries")
+                        .HasForeignKey("ActivityId", "UserSubject")
+                        .HasPrincipalKey("Id", "UserSubject")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Activity");
+                });
+
             modelBuilder.Entity("Donysh.Life.Domain.RecurringSchedulePattern", b =>
                 {
                     b.HasOne("Donysh.Life.Domain.LifeActivity", "Activity")
@@ -413,6 +475,8 @@ namespace Donysh.Life.Data.Migrations
 
             modelBuilder.Entity("Donysh.Life.Domain.LifeActivity", b =>
                 {
+                    b.Navigation("ActualEntries");
+
                     b.Navigation("SchedulePatterns");
 
                     b.Navigation("WeeklyGoal");

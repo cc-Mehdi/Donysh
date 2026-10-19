@@ -10,6 +10,7 @@ public sealed class ScheduleOccurrenceOverride
     public int StartMinute { get; set; }
     public int DurationMinutes { get; set; }
     public bool IsCancelled { get; set; }
+    public bool CreatedByOutcome { get; set; }
     public DateTimeOffset CreatedAtUtc { get; set; }
     public DateTimeOffset UpdatedAtUtc { get; set; }
 

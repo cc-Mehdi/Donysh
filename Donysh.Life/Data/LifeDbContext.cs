@@ -12,6 +12,7 @@ public sealed class LifeDbContext(DbContextOptions<LifeDbContext> options) : DbC
     public DbSet<RecurringScheduleSlot> ScheduleSlots => Set<RecurringScheduleSlot>();
     public DbSet<ScheduleOccurrenceOverride> ScheduleOccurrenceOverrides => Set<ScheduleOccurrenceOverride>();
     public DbSet<ScheduleOccurrenceRecord> ScheduleOccurrenceRecords => Set<ScheduleOccurrenceRecord>();
+    public DbSet<ActualActivityEntry> ActualActivityEntries => Set<ActualActivityEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -118,6 +119,22 @@ public sealed class LifeDbContext(DbContextOptions<LifeDbContext> options) : DbC
             .WithMany(item => item.OccurrenceRecords)
             .HasPrincipalKey(item => new { item.Id, item.UserSubject })
             .HasForeignKey(item => new { item.PatternId, item.UserSubject })
+            .OnDelete(DeleteBehavior.Restrict);
+
+        var actualEntry = modelBuilder.Entity<ActualActivityEntry>();
+        actualEntry.ToTable("LifeActualActivityEntries", table =>
+        {
+            table.HasCheckConstraint("CK_LifeActualActivityEntries_StartMinute", "\"StartMinute\" IS NULL OR \"StartMinute\" BETWEEN 0 AND 1439");
+            table.HasCheckConstraint("CK_LifeActualActivityEntries_ActualMinutes", "\"ActualMinutes\" BETWEEN 1 AND 1440");
+        });
+        actualEntry.HasKey(item => item.Id);
+        actualEntry.Property(item => item.UserSubject).HasMaxLength(450).IsRequired();
+        actualEntry.Property(item => item.Note).HasMaxLength(160);
+        actualEntry.HasIndex(item => new { item.UserSubject, item.OccurredDate });
+        actualEntry.HasOne(item => item.Activity)
+            .WithMany(item => item.ActualEntries)
+            .HasPrincipalKey(item => new { item.Id, item.UserSubject })
+            .HasForeignKey(item => new { item.ActivityId, item.UserSubject })
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

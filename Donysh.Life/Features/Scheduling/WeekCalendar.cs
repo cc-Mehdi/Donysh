@@ -30,6 +30,13 @@ public static class WeekCalendar
 
     public static DateOnly CurrentSaturday()
     {
+        var today = Today();
+        var distance = ((int)today.DayOfWeek - (int)DayOfWeek.Saturday + 7) % 7;
+        return today.AddDays(-distance);
+    }
+
+    public static DateOnly Today()
+    {
         var utcNow = DateTimeOffset.UtcNow;
         DateTime localNow;
         try
@@ -41,9 +48,7 @@ public static class WeekCalendar
             localNow = utcNow.AddHours(3.5).DateTime;
         }
 
-        var today = DateOnly.FromDateTime(localNow);
-        var distance = ((int)today.DayOfWeek - (int)DayOfWeek.Saturday + 7) % 7;
-        return today.AddDays(-distance);
+        return DateOnly.FromDateTime(localNow);
     }
 
     public static string PersianDate(DateOnly date)

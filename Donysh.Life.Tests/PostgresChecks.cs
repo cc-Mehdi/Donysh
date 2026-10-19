@@ -138,13 +138,23 @@ internal static class PostgresChecks
             if (!duplicateRecordRejected)
                 throw new Exception("FAIL PostgreSQL Life allowed duplicate results for one occurrence");
 
+            db.ActualActivityEntries.Add(new ActualActivityEntry
+            {
+                Id = Guid.NewGuid(), ActivityId = ownerAActivity.Id, UserSubject = "owner-a",
+                OccurredDate = originalDate, StartMinute = 570, ActualMinutes = 45, Note = "ثبت دستی",
+                CreatedAtUtc = DateTimeOffset.UtcNow, UpdatedAtUtc = DateTimeOffset.UtcNow
+            });
+            await db.SaveChangesAsync();
+            if (await db.ActualActivityEntries.CountAsync(item => item.UserSubject == "owner-a" && item.ActivityId == ownerAActivity.Id) != 1)
+                throw new Exception("FAIL PostgreSQL Life did not preserve manual actual activity ownership");
+
             await using var verify = new NpgsqlConnection(connection.ConnectionString);
             await verify.OpenAsync();
             await using var command = new NpgsqlCommand("""
-                SELECT count(*) = 7
+                SELECT count(*) = 8
                 FROM information_schema.tables
                 WHERE table_schema = current_schema()
-                  AND table_name IN ('LifeProfiles', 'LifeActivities', 'LifeWeeklyGoals', 'LifeSchedulePatterns', 'LifeScheduleSlots', 'LifeScheduleOccurrenceOverrides', 'LifeScheduleOccurrenceRecords')
+                  AND table_name IN ('LifeProfiles', 'LifeActivities', 'LifeWeeklyGoals', 'LifeSchedulePatterns', 'LifeScheduleSlots', 'LifeScheduleOccurrenceOverrides', 'LifeScheduleOccurrenceRecords', 'LifeActualActivityEntries')
                 """, verify);
             if (!Convert.ToBoolean(await command.ExecuteScalarAsync()))
                 throw new Exception("FAIL PostgreSQL Life migration did not create its isolated schema");
@@ -155,6 +165,7 @@ internal static class PostgresChecks
             Console.WriteLine("PASS PostgreSQL Life schedule slots reject overlaps and remain isolated per user");
             Console.WriteLine("PASS PostgreSQL Life occurrence overrides are unique per recurring occurrence");
             Console.WriteLine("PASS PostgreSQL Life stores one actual result per recurring occurrence");
+            Console.WriteLine("PASS PostgreSQL Life stores owned manual actual activities");
         }
         finally
         {

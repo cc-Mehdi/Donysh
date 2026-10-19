@@ -146,6 +146,9 @@ public sealed class LifeActivityService(LifeDbContext db, IHttpContextAccessor h
 
         if (await db.ScheduleOccurrenceRecords.AnyAsync(item =>
                 item.UserSubject == subject && item.Pattern.ActivityId == activityId,
+                cancellationToken)
+            || await db.ActualActivityEntries.AnyAsync(item =>
+                item.UserSubject == subject && item.ActivityId == activityId,
                 cancellationToken))
             return ActivityCommandResult.Failure("برای این فعالیت عملکرد واقعی ثبت شده است؛ برای حفظ سابقه آن را غیرفعال کنید.");
 

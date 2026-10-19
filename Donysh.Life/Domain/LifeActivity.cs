@@ -15,4 +15,5 @@ public sealed class LifeActivity
 
     public WeeklyGoal? WeeklyGoal { get; set; }
     public ICollection<RecurringSchedulePattern> SchedulePatterns { get; set; } = [];
+    public ICollection<ActualActivityEntry> ActualEntries { get; set; } = [];
 }

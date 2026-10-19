@@ -12,10 +12,79 @@
     <span class="week-chip">هفته از شنبه آغاز می‌شود</span>
 </section>
 
+@if (TempData["ActualMessage"] is string actualMessage) { <div class="notice success" role="status">@actualMessage</div> }
+@if (TempData["ActualError"] is string actualError) { <div class="notice error" role="alert">@actualError</div> }
+@if (Model.CommandError is not null) { <div class="notice error" role="alert">@Model.CommandError</div> }
+
 <section class="insight-grid" aria-label="خلاصهٔ هفته">
     <article class="metric-card primary"><span>هدف این هفته</span><strong>@(Model.Overview.WeeklyTargetMinutes == 0 ? "هنوز تنظیم نشده" : $"{Model.Overview.WeeklyTargetHours:0.#} ساعت")</strong><small>مجموع هدف فعالیت‌های فعال</small></article>
     <article class="metric-card"><span>زمان برنامه‌ریزی‌شده</span><strong>@Model.Overview.PlannedWeeklyHours.ToString("0.#") ساعت</strong><small><a asp-page="/Week">مشاهدهٔ برنامهٔ هفته</a></small></article>
     <article class="metric-card"><span>فعالیت‌های فعال</span><strong>@Model.Overview.ActiveActivityCount فعالیت</strong><small>از @Model.Overview.ActivityCount فعالیت تعریف‌شده</small></article>
+</section>
+
+<section class="actual-log-layout" aria-label="ثبت و سابقهٔ فعالیت‌های انجام‌شده">
+    <article class="panel quick-log-panel">
+        <div class="panel-head"><div><span class="section-icon">✓</span><div><h2>فعالیتی انجام دادی؟</h2><small>حتی اگر در برنامهٔ هفته نبوده، همین‌جا ثبتش کن.</small></div></div></div>
+        @if (Model.Activities.Any(item => item.IsActive))
+        {
+            <form method="post" asp-page-handler="SaveActual" class="quick-log-form">
+                <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
+                <div class="field-grid">
+                    <label class="field field-wide"><span>فعالیت</span><select asp-for="ManualEntry.ActivityId" required><option value="">انتخاب فعالیت</option>@foreach (var activity in Model.Activities.Where(item => item.IsActive)) { <option value="@activity.Id">@activity.IconGlyph @activity.Title</option> }</select><span asp-validation-for="ManualEntry.ActivityId" class="field-error"></span></label>
+                    <label class="field"><span>تاریخ انجام</span><input asp-for="ManualEntry.OccurredDate" type="date" required /><span asp-validation-for="ManualEntry.OccurredDate" class="field-error"></span></label>
+                    <label class="field"><span>ساعت شروع <small>اختیاری</small></span><input asp-for="ManualEntry.StartTime" type="time" /></label>
+                    <label class="field"><span>مدت واقعی (دقیقه)</span><input asp-for="ManualEntry.ActualMinutes" type="number" min="1" max="1440" inputmode="numeric" required /><span asp-validation-for="ManualEntry.ActualMinutes" class="field-error"></span></label>
+                    <label class="field"><span>یادداشت <small>اختیاری</small></span><input asp-for="ManualEntry.Note" maxlength="160" placeholder="مثلاً مطالعهٔ فصل سوم" /></label>
+                </div>
+                <button class="button primary" type="submit">ثبت فعالیت انجام‌شده</button>
+            </form>
+        }
+        else
+        {
+            <div class="compact-empty"><p>برای ثبت عملکرد، ابتدا یک فعالیت فعال بساز.</p><a class="button secondary" asp-page="/Activities">ساخت فعالیت</a></div>
+        }
+    </article>
+
+    <article class="panel recent-actual-panel">
+        <div class="panel-head"><div><span class="section-icon coral">◷</span><div><h2>هفت روز گذشته</h2><small>ثبت‌های واقعی و خارج از برنامه</small></div></div><span class="tag">@Model.RecentEntries.Count مورد</span></div>
+        @if (Model.RecentEntries.Count == 0)
+        {
+            <div class="compact-empty"><span>◎</span><p>هنوز فعالیتی به‌صورت دستی ثبت نشده است.</p></div>
+        }
+        else
+        {
+            <div class="actual-entry-list">
+                @foreach (var entry in Model.RecentEntries)
+                {
+                    <details class="actual-entry @entry.ColorClass">
+                        <summary>
+                            <span class="activity-icon">@entry.IconGlyph</span>
+                            <span class="actual-entry-main"><strong>@entry.ActivityTitle</strong><small>@entry.PersianDate@(entry.StartLabel is null ? "" : $"، ساعت {entry.StartLabel}")</small></span>
+                            <span class="duration-pill">@entry.DurationLabel</span>
+                            <span class="expand-mark" aria-hidden="true">⌄</span>
+                        </summary>
+                        @if (entry.Note is not null) { <p class="actual-note">@entry.Note</p> }
+                        <form method="post" asp-page-handler="SaveActual" class="actual-edit-form">
+                            <input type="hidden" name="EntryId" value="@entry.Id" />
+                            <div class="field-grid">
+                                <label class="field field-wide"><span>فعالیت</span><select name="ManualEntry.ActivityId" required>@foreach (var activity in Model.Activities.Where(item => item.IsActive || item.Id == entry.ActivityId)) { <option value="@activity.Id" selected="@(activity.Id == entry.ActivityId ? "selected" : null)">@activity.IconGlyph @activity.Title</option> }</select></label>
+                                <label class="field"><span>تاریخ</span><input name="ManualEntry.OccurredDate" value="@entry.OccurredDate.ToString("yyyy-MM-dd")" type="date" required /></label>
+                                <label class="field"><span>ساعت <small>اختیاری</small></span><input name="ManualEntry.StartTime" value="@entry.StartLabel" type="time" /></label>
+                                <label class="field"><span>مدت (دقیقه)</span><input name="ManualEntry.ActualMinutes" value="@entry.ActualMinutes" type="number" min="1" max="1440" required /></label>
+                                <label class="field"><span>یادداشت</span><input name="ManualEntry.Note" value="@entry.Note" maxlength="160" /></label>
+                            </div>
+                            <button class="button secondary" type="submit">ذخیرهٔ ویرایش</button>
+                        </form>
+                        <form method="post" asp-page-handler="DeleteActual" class="delete-form actual-delete-form">
+                            <input type="hidden" name="EntryId" value="@entry.Id" />
+                            <label><input type="checkbox" name="ConfirmDelete" value="true" required /> حذف را تأیید می‌کنم</label>
+                            <button class="text-button danger" type="submit">حذف ثبت</button>
+                        </form>
+                    </details>
+                }
+            </div>
+        }
+    </article>
 </section>
 
 <section class="dashboard-grid">

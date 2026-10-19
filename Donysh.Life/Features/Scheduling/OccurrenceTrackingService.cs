@@ -7,7 +7,10 @@ using Npgsql;
 
 namespace Donysh.Life.Features.Scheduling;
 
-public sealed class OccurrenceTrackingService(LifeDbContext db, IHttpContextAccessor httpContextAccessor)
+public sealed class OccurrenceTrackingService(
+    LifeDbContext db,
+    IHttpContextAccessor httpContextAccessor,
+    WeeklyScheduleService weeklySchedules)
 {
     public async Task<ActivityCommandResult> RecordAsync(OccurrenceRecordForm input, CancellationToken cancellationToken = default)
     {
@@ -18,20 +21,47 @@ public sealed class OccurrenceTrackingService(LifeDbContext db, IHttpContextAcce
         if (pattern is null || input.OriginalDate.DayOfWeek != pattern.DayOfWeek)
             return ActivityCommandResult.Failure("رخداد انتخاب‌شده در حساب شما پیدا نشد.");
 
-        var occurrenceOverride = await db.ScheduleOccurrenceOverrides.AsNoTracking().SingleOrDefaultAsync(item =>
+        var occurrenceOverride = await db.ScheduleOccurrenceOverrides.SingleOrDefaultAsync(item =>
             item.PatternId == pattern.Id && item.UserSubject == subject && item.OriginalDate == input.OriginalDate,
             cancellationToken);
         if (occurrenceOverride?.IsCancelled == true)
             return ActivityCommandResult.Failure("رخداد حذف‌شده را نمی‌توان به‌عنوان عملکرد ثبت کرد.");
         var scheduledDate = occurrenceOverride?.ScheduledDate ?? input.OriginalDate;
         var plannedMinutes = occurrenceOverride?.DurationMinutes ?? pattern.DurationMinutes;
-        var validation = Validate(input, scheduledDate, plannedMinutes, out var actualMinutes, out var movedToDate);
-        if (validation is not null) return ActivityCommandResult.Failure(validation);
-
         var record = await db.ScheduleOccurrenceRecords.SingleOrDefaultAsync(item =>
             item.PatternId == pattern.Id && item.UserSubject == subject && item.OriginalDate == input.OriginalDate,
             cancellationToken);
+        var restoreDate = record?.Status == OccurrenceOutcomeStatus.Moved ? record.ScheduledDate : scheduledDate;
+        var validation = Validate(input, restoreDate, plannedMinutes, out var actualMinutes, out var movedToDate);
+        if (validation is not null) return ActivityCommandResult.Failure(validation);
+
         var now = DateTimeOffset.UtcNow;
+        var wasMoved = record?.Status == OccurrenceOutcomeStatus.Moved;
+        if (input.Status == OccurrenceOutcomeStatus.Moved)
+        {
+            var conflict = await FindMoveConflictAsync(pattern.Id, input.OriginalDate, movedToDate!.Value,
+                occurrenceOverride?.StartMinute ?? pattern.StartMinute, plannedMinutes, cancellationToken);
+            if (conflict is not null)
+                return ActivityCommandResult.Failure($"این انتقال با «{conflict.ActivityTitle}» از {conflict.StartLabel} تا {conflict.EndLabel} تداخل دارد.");
+
+            if (occurrenceOverride is null)
+            {
+                occurrenceOverride = new ScheduleOccurrenceOverride
+                {
+                    Id = Guid.NewGuid(), PatternId = pattern.Id, UserSubject = subject,
+                    OriginalDate = input.OriginalDate, StartMinute = pattern.StartMinute,
+                    DurationMinutes = pattern.DurationMinutes, CreatedByOutcome = true, CreatedAtUtc = now
+                };
+                db.ScheduleOccurrenceOverrides.Add(occurrenceOverride);
+            }
+            occurrenceOverride.ScheduledDate = movedToDate.Value;
+            occurrenceOverride.IsCancelled = false;
+            occurrenceOverride.UpdatedAtUtc = now;
+        }
+        else if (wasMoved && occurrenceOverride is not null)
+        {
+            RestoreMovedOverride(occurrenceOverride, restoreDate);
+        }
         if (record is null)
         {
             record = new ScheduleOccurrenceRecord
@@ -41,7 +71,7 @@ public sealed class OccurrenceTrackingService(LifeDbContext db, IHttpContextAcce
             };
             db.ScheduleOccurrenceRecords.Add(record);
         }
-        record.ScheduledDate = scheduledDate;
+        record.ScheduledDate = restoreDate;
         record.Status = input.Status;
         record.PlannedMinutes = plannedMinutes;
         record.ActualMinutes = actualMinutes;
@@ -66,9 +96,38 @@ public sealed class OccurrenceTrackingService(LifeDbContext db, IHttpContextAcce
             item.PatternId == patternId && item.UserSubject == subject && item.OriginalDate == originalDate,
             cancellationToken);
         if (record is null) return ActivityCommandResult.Failure("عملکرد ثبت‌شده‌ای برای حذف پیدا نشد.");
+        if (record.Status == OccurrenceOutcomeStatus.Moved)
+        {
+            var occurrenceOverride = await db.ScheduleOccurrenceOverrides.SingleOrDefaultAsync(item =>
+                item.PatternId == patternId && item.UserSubject == subject && item.OriginalDate == originalDate,
+                cancellationToken);
+            if (occurrenceOverride is not null) RestoreMovedOverride(occurrenceOverride, record.ScheduledDate);
+        }
         db.ScheduleOccurrenceRecords.Remove(record);
         await db.SaveChangesAsync(cancellationToken);
         return ActivityCommandResult.Success("وضعیت عملکرد پاک شد.");
+    }
+
+    private async Task<ScheduleBlockItem?> FindMoveConflictAsync(Guid patternId, DateOnly originalDate, DateOnly targetDate,
+        int startMinute, int durationMinutes, CancellationToken cancellationToken)
+    {
+        var week = await weeklySchedules.GetWeekAsync(targetDate.DayOfWeek, targetDate, cancellationToken);
+        var endMinute = startMinute + durationMinutes;
+        return week.Days.Single(day => day.Date == targetDate).Blocks.FirstOrDefault(block =>
+            block.IsActive && (block.Id != patternId || block.OriginalDate != originalDate)
+            && block.StartMinute < endMinute && startMinute < block.EndMinute);
+    }
+
+    private void RestoreMovedOverride(ScheduleOccurrenceOverride occurrenceOverride, DateOnly restoreDate)
+    {
+        if (occurrenceOverride.CreatedByOutcome)
+        {
+            db.ScheduleOccurrenceOverrides.Remove(occurrenceOverride);
+            return;
+        }
+        occurrenceOverride.ScheduledDate = restoreDate;
+        occurrenceOverride.IsCancelled = false;
+        occurrenceOverride.UpdatedAtUtc = DateTimeOffset.UtcNow;
     }
 
     private static string? Validate(OccurrenceRecordForm input, DateOnly scheduledDate, int plannedMinutes,

@@ -43,7 +43,9 @@ public sealed class WeeklyScheduleService(LifeDbContext db, IHttpContextAccessor
                 blocks.Add(ToBlock(pattern, changed.OriginalDate, changed.ScheduledDate, changed.StartMinute, changed.DurationMinutes, true));
         }
         var records = await db.ScheduleOccurrenceRecords.AsNoTracking().Where(x => x.UserSubject == subject
-            && ((x.OriginalDate >= weekStart && x.OriginalDate <= weekEnd) || (x.ScheduledDate >= weekStart && x.ScheduledDate <= weekEnd)))
+            && ((x.OriginalDate >= weekStart && x.OriginalDate <= weekEnd)
+                || (x.ScheduledDate >= weekStart && x.ScheduledDate <= weekEnd)
+                || (x.MovedToDate >= weekStart && x.MovedToDate <= weekEnd)))
             .ToListAsync(cancellationToken);
         var recordMap = records.ToDictionary(x => (x.PatternId, x.OriginalDate));
         blocks = blocks.Select(block => recordMap.TryGetValue((block.Id, block.OriginalDate), out var record)
@@ -143,6 +145,7 @@ public sealed class WeeklyScheduleService(LifeDbContext db, IHttpContextAccessor
             changed.StartMinute = input.StartMinute;
             changed.DurationMinutes = input.DurationMinutes;
             changed.IsCancelled = false;
+            changed.CreatedByOutcome = false;
             changed.UpdatedAtUtc = now;
         }
         try { await db.SaveChangesAsync(cancellationToken); return ActivityCommandResult.Success("فقط همین رخداد ویرایش شد."); }

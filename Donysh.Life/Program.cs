@@ -3,6 +3,7 @@ using Donysh.Life.Configuration;
 using Donysh.Life.Data;
 using Donysh.Life.Features.Activities;
 using Donysh.Life.Features.Scheduling;
+using Donysh.Life.Features.Tracking;
 using Donysh.Life.Security;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -37,6 +38,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<LifeActivityService>();
 builder.Services.AddScoped<WeeklyScheduleService>();
 builder.Services.AddScoped<OccurrenceTrackingService>();
+builder.Services.AddScoped<ActualActivityService>();
 
 builder.Services.AddAuthentication(options =>
     {

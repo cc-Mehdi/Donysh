@@ -6,6 +6,7 @@ using Donysh.Life.Configuration;
 using Donysh.Life.Data;
 using Donysh.Life.Features.Activities;
 using Donysh.Life.Features.Scheduling;
+using Donysh.Life.Features.Tracking;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
@@ -102,7 +103,8 @@ using (var authenticatedClient = authenticatedFactory.CreateClient(new WebApplic
         response.StatusCode == HttpStatusCode.OK
         && html.Contains("برای چیزهای مهم، جا باز کن", StringComparison.Ordinal)
         && html.Contains("برنامهٔ هفته", StringComparison.Ordinal)
-        && html.Contains("فعالیت‌های فعال", StringComparison.Ordinal));
+        && html.Contains("فعالیت‌های فعال", StringComparison.Ordinal)
+        && html.Contains("فعالیتی انجام دادی", StringComparison.Ordinal));
     Check("Life logout posts locally before central OIDC sign-out",
         html.Contains("action=\"/Account/Logout\"", StringComparison.Ordinal));
 
@@ -261,7 +263,7 @@ await using (var activityDb = new LifeDbContext(activityOptions))
         && occurrenceRestored.Succeeded
         && await activityDb.SchedulePatterns.AnyAsync(item => item.Id == ownerPatternId));
 
-    var tracking = new OccurrenceTrackingService(activityDb, new HttpContextAccessor { HttpContext = httpContext });
+    var tracking = new OccurrenceTrackingService(activityDb, new HttpContextAccessor { HttpContext = httpContext }, scheduler);
     var completed = await tracking.RecordAsync(new OccurrenceRecordForm
     {
         PatternId = ownerPatternId, OriginalDate = weekStart,
@@ -312,6 +314,47 @@ await using (var activityDb = new LifeDbContext(activityOptions))
     Check("Life can clear an outcome before changing its recurring schedule",
         clearedOutcome.Succeeded && await activityDb.ScheduleOccurrenceRecords.CountAsync() == 0);
 
+    var movedOutcome = await tracking.RecordAsync(new OccurrenceRecordForm
+    {
+        PatternId = ownerPatternId, OriginalDate = weekStart,
+        Status = Donysh.Life.Domain.OccurrenceOutcomeStatus.Moved,
+        MovedToDate = weekStart.AddDays(2)
+    });
+    var movedOutcomeWeek = await scheduler.GetWeekAsync(DayOfWeek.Monday, weekStart);
+    var movedOutcomeBlock = movedOutcomeWeek.Days.Single(day => day.DayOfWeek == DayOfWeek.Monday).Blocks.Single();
+    var restoredOutcome = await tracking.ClearAsync(ownerPatternId, weekStart);
+    var restoredWeek = await scheduler.GetWeekAsync(DayOfWeek.Saturday, weekStart);
+    Check("Life moved outcomes relocate occurrences and clearing restores them",
+        movedOutcome.Succeeded
+        && movedOutcomeBlock.OriginalDate == weekStart
+        && movedOutcomeBlock.OutcomeStatus == Donysh.Life.Domain.OccurrenceOutcomeStatus.Moved
+        && movedOutcomeBlock.MovedToDate == weekStart.AddDays(2)
+        && restoredOutcome.Succeeded
+        && restoredWeek.Days.Single(day => day.DayOfWeek == DayOfWeek.Saturday).Blocks.Count == 1
+        && await activityDb.ScheduleOccurrenceOverrides.CountAsync() == 0);
+
+    var actualService = new ActualActivityService(activityDb, new HttpContextAccessor { HttpContext = httpContext });
+    var actualCreated = await actualService.SaveAsync(null, new ActualActivityForm
+    {
+        ActivityId = ownerItems[0].Id, OccurredDate = WeekCalendar.Today(), StartTime = "18:15",
+        ActualMinutes = 45, Note = "تمرین واقعی"
+    });
+    var actualEntry = (await actualService.ListRecentAsync()).Single();
+    var protectedByManualHistory = await service.DeleteAsync(ownerItems[0].Id);
+    httpContext.User = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "activity-owner-b")], "test"));
+    var ownerBActualService = new ActualActivityService(activityDb, new HttpContextAccessor { HttpContext = httpContext });
+    var forbiddenActualDelete = await ownerBActualService.DeleteAsync(actualEntry.Id);
+    httpContext.User = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "activity-owner-a")], "test"));
+    var actualDeleted = await actualService.DeleteAsync(actualEntry.Id);
+    Check("Life manual actual entries validate ownership and protect history",
+        actualCreated.Succeeded
+        && actualEntry.ActualMinutes == 45
+        && actualEntry.StartLabel == "18:15"
+        && !protectedByManualHistory.Succeeded
+        && !forbiddenActualDelete.Succeeded
+        && actualDeleted.Succeeded
+        && await activityDb.ActualActivityEntries.CountAsync() == 0);
+
     var moved = await scheduler.SaveAsync(ownerPatternId, new SchedulePatternForm
     {
         ActivityId = ownerItems[0].Id,
@@ -357,7 +400,7 @@ await using (var activityDb = new LifeDbContext(activityOptions))
         PatternId = ownerPatternId, OriginalDate = weekStart, TargetDate = weekStart,
         StartMinute = 600, DurationMinutes = 30, Scope = "occurrence"
     });
-    var ownerBTracking = new OccurrenceTrackingService(activityDb, new HttpContextAccessor { HttpContext = httpContext });
+    var ownerBTracking = new OccurrenceTrackingService(activityDb, new HttpContextAccessor { HttpContext = httpContext }, ownerBScheduler);
     var forbiddenOutcome = await ownerBTracking.RecordAsync(new OccurrenceRecordForm
     {
         PatternId = ownerPatternId, OriginalDate = weekStart,
