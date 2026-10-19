@@ -1,5 +1,6 @@
 using Donysh.Life.Data;
 using Donysh.Life.Domain;
+using Donysh.Life.Features.Scheduling;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
@@ -65,13 +66,33 @@ internal static class PostgresChecks
             if (await db.Activities.CountAsync(item => item.NormalizedTitle == "مطالعه") != 2)
                 throw new Exception("FAIL PostgreSQL Life activity titles were not isolated per user");
 
+            var ownerAPattern = CreatePattern(ownerAActivity, "owner-a");
+            var ownerBPattern = CreatePattern(ownerBActivity, "owner-b");
+            db.SchedulePatterns.AddRange(ownerAPattern, ownerBPattern);
+            await db.SaveChangesAsync();
+
+            var conflictingPattern = CreatePattern(ownerAActivity, "owner-a");
+            db.SchedulePatterns.Add(conflictingPattern);
+            var overlapRejected = false;
+            try
+            {
+                await db.SaveChangesAsync();
+            }
+            catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+            {
+                overlapRejected = true;
+                db.ChangeTracker.Clear();
+            }
+            if (!overlapRejected)
+                throw new Exception("FAIL PostgreSQL Life schedule slots allowed an overlapping block");
+
             await using var verify = new NpgsqlConnection(connection.ConnectionString);
             await verify.OpenAsync();
             await using var command = new NpgsqlCommand("""
-                SELECT count(*) = 3
+                SELECT count(*) = 5
                 FROM information_schema.tables
                 WHERE table_schema = current_schema()
-                  AND table_name IN ('LifeProfiles', 'LifeActivities', 'LifeWeeklyGoals')
+                  AND table_name IN ('LifeProfiles', 'LifeActivities', 'LifeWeeklyGoals', 'LifeSchedulePatterns', 'LifeScheduleSlots')
                 """, verify);
             if (!Convert.ToBoolean(await command.ExecuteScalarAsync()))
                 throw new Exception("FAIL PostgreSQL Life migration did not create its isolated schema");
@@ -79,6 +100,7 @@ internal static class PostgresChecks
             Console.WriteLine("PASS PostgreSQL Life migration creates an isolated schema");
             Console.WriteLine("PASS PostgreSQL Life profile keeps Saturday and Tehran defaults");
             Console.WriteLine("PASS PostgreSQL Life activities and weekly goals preserve per-user ownership");
+            Console.WriteLine("PASS PostgreSQL Life schedule slots reject overlaps and remain isolated per user");
         }
         finally
         {
@@ -89,5 +111,24 @@ internal static class PostgresChecks
             await using var drop = new NpgsqlCommand($"DROP DATABASE IF EXISTS \"{databaseName}\" WITH (FORCE)", cleanup);
             await drop.ExecuteNonQueryAsync();
         }
+    }
+
+    private static RecurringSchedulePattern CreatePattern(LifeActivity activity, string subject)
+    {
+        var pattern = new RecurringSchedulePattern
+        {
+            Id = Guid.NewGuid(), UserSubject = subject, ActivityId = activity.Id,
+            DayOfWeek = DayOfWeek.Saturday, StartMinute = 480, DurationMinutes = 60, IsActive = true,
+            CreatedAtUtc = DateTimeOffset.UtcNow, UpdatedAtUtc = DateTimeOffset.UtcNow
+        };
+        pattern.Slots.Add(new RecurringScheduleSlot
+        {
+            PatternId = pattern.Id, UserSubject = subject, DayOfWeek = DayOfWeek.Saturday, SlotIndex = 16
+        });
+        pattern.Slots.Add(new RecurringScheduleSlot
+        {
+            PatternId = pattern.Id, UserSubject = subject, DayOfWeek = DayOfWeek.Saturday, SlotIndex = 17
+        });
+        return pattern;
     }
 }

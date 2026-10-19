@@ -114,6 +114,89 @@ namespace Donysh.Life.Data.Migrations
                     b.ToTable("LifeProfiles", (string)null);
                 });
 
+            modelBuilder.Entity("Donysh.Life.Domain.RecurringSchedulePattern", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ActivityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("DayOfWeek")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("DurationMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<int>("StartMinute")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UserSubject")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActivityId", "UserSubject");
+
+                    b.HasIndex("UserSubject", "DayOfWeek", "StartMinute");
+
+                    b.ToTable("LifeSchedulePatterns", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_LifeSchedulePatterns_DayOfWeek", "\"DayOfWeek\" BETWEEN 0 AND 6");
+
+                            t.HasCheckConstraint("CK_LifeSchedulePatterns_Duration", "\"DurationMinutes\" BETWEEN 30 AND 1440 AND \"DurationMinutes\" % 30 = 0 AND \"StartMinute\" + \"DurationMinutes\" <= 1440");
+
+                            t.HasCheckConstraint("CK_LifeSchedulePatterns_StartMinute", "\"StartMinute\" BETWEEN 0 AND 1410 AND \"StartMinute\" % 30 = 0");
+                        });
+                });
+
+            modelBuilder.Entity("Donysh.Life.Domain.RecurringScheduleSlot", b =>
+                {
+                    b.Property<Guid>("PatternId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("SlotIndex")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("DayOfWeek")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("UserSubject")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.HasKey("PatternId", "SlotIndex");
+
+                    b.HasIndex("PatternId", "UserSubject");
+
+                    b.HasIndex("UserSubject", "DayOfWeek", "SlotIndex")
+                        .IsUnique();
+
+                    b.ToTable("LifeScheduleSlots", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_LifeScheduleSlots_DayOfWeek", "\"DayOfWeek\" BETWEEN 0 AND 6");
+
+                            t.HasCheckConstraint("CK_LifeScheduleSlots_SlotIndex", "\"SlotIndex\" BETWEEN 0 AND 47");
+                        });
+                });
+
             modelBuilder.Entity("Donysh.Life.Domain.WeeklyGoal", b =>
                 {
                     b.Property<Guid>("Id")
@@ -153,6 +236,30 @@ namespace Donysh.Life.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Donysh.Life.Domain.RecurringSchedulePattern", b =>
+                {
+                    b.HasOne("Donysh.Life.Domain.LifeActivity", "Activity")
+                        .WithMany("SchedulePatterns")
+                        .HasForeignKey("ActivityId", "UserSubject")
+                        .HasPrincipalKey("Id", "UserSubject")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Activity");
+                });
+
+            modelBuilder.Entity("Donysh.Life.Domain.RecurringScheduleSlot", b =>
+                {
+                    b.HasOne("Donysh.Life.Domain.RecurringSchedulePattern", "Pattern")
+                        .WithMany("Slots")
+                        .HasForeignKey("PatternId", "UserSubject")
+                        .HasPrincipalKey("Id", "UserSubject")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Pattern");
+                });
+
             modelBuilder.Entity("Donysh.Life.Domain.WeeklyGoal", b =>
                 {
                     b.HasOne("Donysh.Life.Domain.LifeActivity", "Activity")
@@ -167,7 +274,14 @@ namespace Donysh.Life.Data.Migrations
 
             modelBuilder.Entity("Donysh.Life.Domain.LifeActivity", b =>
                 {
+                    b.Navigation("SchedulePatterns");
+
                     b.Navigation("WeeklyGoal");
+                });
+
+            modelBuilder.Entity("Donysh.Life.Domain.RecurringSchedulePattern", b =>
+                {
+                    b.Navigation("Slots");
                 });
 #pragma warning restore 612, 618
         }

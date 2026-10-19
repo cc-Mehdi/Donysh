@@ -8,6 +8,8 @@ public sealed class LifeDbContext(DbContextOptions<LifeDbContext> options) : DbC
     public DbSet<LifeProfile> Profiles => Set<LifeProfile>();
     public DbSet<LifeActivity> Activities => Set<LifeActivity>();
     public DbSet<WeeklyGoal> WeeklyGoals => Set<WeeklyGoal>();
+    public DbSet<RecurringSchedulePattern> SchedulePatterns => Set<RecurringSchedulePattern>();
+    public DbSet<RecurringScheduleSlot> ScheduleSlots => Set<RecurringScheduleSlot>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -46,6 +48,39 @@ public sealed class LifeDbContext(DbContextOptions<LifeDbContext> options) : DbC
             .WithOne(item => item.WeeklyGoal)
             .HasPrincipalKey<LifeActivity>(item => new { item.Id, item.UserSubject })
             .HasForeignKey<WeeklyGoal>(item => new { item.ActivityId, item.UserSubject })
+            .OnDelete(DeleteBehavior.Cascade);
+
+        var schedulePattern = modelBuilder.Entity<RecurringSchedulePattern>();
+        schedulePattern.ToTable("LifeSchedulePatterns", table =>
+        {
+            table.HasCheckConstraint("CK_LifeSchedulePatterns_DayOfWeek", "\"DayOfWeek\" BETWEEN 0 AND 6");
+            table.HasCheckConstraint("CK_LifeSchedulePatterns_StartMinute", "\"StartMinute\" BETWEEN 0 AND 1410 AND \"StartMinute\" % 30 = 0");
+            table.HasCheckConstraint("CK_LifeSchedulePatterns_Duration", "\"DurationMinutes\" BETWEEN 30 AND 1440 AND \"DurationMinutes\" % 30 = 0 AND \"StartMinute\" + \"DurationMinutes\" <= 1440");
+        });
+        schedulePattern.HasKey(item => item.Id);
+        schedulePattern.Property(item => item.UserSubject).HasMaxLength(450).IsRequired();
+        schedulePattern.Property(item => item.Note).HasMaxLength(160);
+        schedulePattern.HasIndex(item => new { item.UserSubject, item.DayOfWeek, item.StartMinute });
+        schedulePattern.HasAlternateKey(item => new { item.Id, item.UserSubject });
+        schedulePattern.HasOne(item => item.Activity)
+            .WithMany(item => item.SchedulePatterns)
+            .HasPrincipalKey(item => new { item.Id, item.UserSubject })
+            .HasForeignKey(item => new { item.ActivityId, item.UserSubject })
+            .OnDelete(DeleteBehavior.Cascade);
+
+        var scheduleSlot = modelBuilder.Entity<RecurringScheduleSlot>();
+        scheduleSlot.ToTable("LifeScheduleSlots", table =>
+        {
+            table.HasCheckConstraint("CK_LifeScheduleSlots_DayOfWeek", "\"DayOfWeek\" BETWEEN 0 AND 6");
+            table.HasCheckConstraint("CK_LifeScheduleSlots_SlotIndex", "\"SlotIndex\" BETWEEN 0 AND 47");
+        });
+        scheduleSlot.HasKey(item => new { item.PatternId, item.SlotIndex });
+        scheduleSlot.Property(item => item.UserSubject).HasMaxLength(450).IsRequired();
+        scheduleSlot.HasIndex(item => new { item.UserSubject, item.DayOfWeek, item.SlotIndex }).IsUnique();
+        scheduleSlot.HasOne(item => item.Pattern)
+            .WithMany(item => item.Slots)
+            .HasPrincipalKey(item => new { item.Id, item.UserSubject })
+            .HasForeignKey(item => new { item.PatternId, item.UserSubject })
             .OnDelete(DeleteBehavior.Cascade);
     }
 }

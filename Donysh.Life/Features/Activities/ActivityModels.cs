@@ -44,9 +44,10 @@ public sealed record ActivityListItem(
     public string IconGlyph => ActivityCatalog.IconGlyph(IconKey);
 }
 
-public sealed record LifeOverview(int ActivityCount, int ActiveActivityCount, int WeeklyTargetMinutes)
+public sealed record LifeOverview(int ActivityCount, int ActiveActivityCount, int WeeklyTargetMinutes, int PlannedWeeklyMinutes)
 {
     public decimal WeeklyTargetHours => WeeklyTargetMinutes / 60m;
+    public decimal PlannedWeeklyHours => PlannedWeeklyMinutes / 60m;
 }
 
 public sealed record ActivityCommandResult(bool Succeeded, string Message)

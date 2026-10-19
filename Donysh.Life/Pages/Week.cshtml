@@ -1,5 +1,80 @@
 @page
+@model WeekModel
+@using Donysh.Life.Features.Activities
+@using Donysh.Life.Features.Scheduling
 @{
     ViewData["Title"] = "برنامهٔ هفته";
 }
-<partial name="Shared/_ComingSoon" model='new Donysh.Life.Pages.Shared.ComingSoonModel("برنامهٔ هفته", "زمان‌های ثابت و منعطف هفته را بدون تداخل در یک نمای ساده می‌چینی.", "▦")' />
+
+<section class="page-head compact">
+    <div><p class="eyebrow">هفته از شنبه آغاز می‌شود</p><h1>برنامهٔ ثابت هفته</h1><p>زمان‌های تکرارشونده را روی بازه‌های ۳۰ دقیقه‌ای بچین. دونیش از ثبت زمان‌های هم‌پوشان جلوگیری می‌کند.</p></div>
+    <span class="week-chip">@Model.View.Days[0].PersianDate تا @Model.View.Days[6].PersianDate</span>
+</section>
+
+@if (TempData["ScheduleMessage"] is string message) { <div class="notice success" role="status">@message</div> }
+@if (TempData["ScheduleError"] is string scheduleError) { <div class="notice error" role="alert">@scheduleError</div> }
+@if (!string.IsNullOrWhiteSpace(Model.CommandError)) { <div class="notice error" role="alert">@Model.CommandError</div> }
+
+<section class="week-summary" aria-label="خلاصهٔ برنامه">
+    <article class="metric-card primary"><span>کل زمان برنامه‌ریزی‌شده</span><strong>@Model.View.PlannedHours.ToString("0.#") ساعت</strong><small>در یک هفتهٔ تکرارشونده</small></article>
+    @foreach (var summary in Model.View.Summaries.Take(3))
+    {
+        <article class="plan-summary @summary.ColorClass"><div><span>@summary.Title</span><strong>@summary.PlannedHours.ToString("0.#") از @summary.GoalHours.ToString("0.#") ساعت</strong></div><span class="coverage-badge">@summary.CoveragePercent٪</span><progress max="100" value="@summary.CoveragePercent">@summary.CoveragePercent٪</progress></article>
+    }
+</section>
+
+@if (Model.View.Activities.Count == 0)
+{
+    <article class="panel schedule-prerequisite"><span class="empty-mark">◎</span><h2>اول یک فعالیت بساز</h2><p>هر بازهٔ زمانی باید به یکی از فعالیت‌های فعال متصل باشد.</p><a class="button secondary" asp-page="/Activities">مدیریت فعالیت‌ها</a></article>
+}
+else
+{
+    <section class="schedule-builder">
+        <aside class="panel schedule-form-panel">
+            <div class="panel-head"><div><span class="section-icon">＋</span><h2>زمان ثابت تازه</h2></div></div>
+            <p class="form-hint">این بازه در هر هفته تکرار می‌شود.</p>
+            <form method="post" asp-page-handler="Save" class="schedule-form">
+                @if (!ViewData.ModelState.IsValid) { <div class="validation-summary" role="alert"><ul>@foreach (var error in ViewData.ModelState.Values.SelectMany(entry => entry.Errors)) { <li>@error.ErrorMessage</li> }</ul></div> }
+                <label class="field"><span>فعالیت</span><select name="Input.ActivityId" required><option value="">انتخاب فعالیت</option>@foreach (var activity in Model.View.Activities) { <option value="@activity.Id" selected="@(activity.Id == Model.Input.ActivityId ? "selected" : null)">@activity.IconGlyph @activity.Title</option> }</select></label>
+                <label class="field"><span>روز هفته</span><select name="Input.DayOfWeek">@foreach (var day in WeekCalendar.Days) { <option value="@day" selected="@(day == Model.Input.DayOfWeek ? "selected" : null)">@WeekCalendar.DayName(day)</option> }</select></label>
+                <div class="field-grid">
+                    <label class="field"><span>ساعت شروع</span><input name="Input.StartTime" value="@Model.Input.StartTime" type="time" step="1800" required /></label>
+                    <label class="field"><span>مدت</span><select name="Input.DurationMinutes">@foreach (var duration in WeekCalendar.DurationOptions) { <option value="@duration" selected="@(duration == Model.Input.DurationMinutes ? "selected" : null)">@WeekCalendar.DurationName(duration)</option> }</select></label>
+                </div>
+                <label class="field"><span>یادداشت <small>اختیاری</small></span><input name="Input.Note" value="@Model.Input.Note" maxlength="160" placeholder="مثلاً جلسهٔ هفتگی" /></label>
+                <button class="button primary" type="submit">افزودن به هفته</button>
+            </form>
+        </aside>
+
+        <div class="schedule-board-wrap">
+            <nav class="mobile-day-tabs" aria-label="انتخاب روز">
+                @foreach (var day in Model.View.Days)
+                {
+                    <a class="@(day.IsSelected ? "active" : "")" asp-page="/Week" asp-route-day="@day.DayOfWeek"><strong>@day.Name</strong><small>@day.PersianDate[5..]</small></a>
+                }
+            </nav>
+
+            <section class="desktop-week-board" aria-label="جدول برنامهٔ هفتگی">
+                @foreach (var day in Model.View.Days)
+                {
+                    <article class="week-day-column @(day.DayOfWeek == DayOfWeek.Friday ? "friday" : "")">
+                        <header><strong>@day.Name</strong><small>@day.PersianDate</small></header>
+                        <div class="day-blocks">
+                            @if (day.Blocks.Count == 0) { <p class="day-empty">زمانی ثبت نشده</p> }
+                            @foreach (var block in day.Blocks) { <partial name="Shared/_ScheduleBlock" model="new ScheduleBlockCardModel(block, Model.View.Activities)" /> }
+                        </div>
+                    </article>
+                }
+            </section>
+
+            <section class="mobile-day-timeline" aria-label="برنامهٔ روز انتخاب‌شده">
+                @{ var selectedDay = Model.View.Days.Single(day => day.IsSelected); }
+                <header class="selected-day-head"><div><strong>@selectedDay.Name</strong><small>@selectedDay.PersianDate</small></div><span>@selectedDay.Blocks.Count بازه</span></header>
+                <div class="timeline-list">
+                    @if (selectedDay.Blocks.Count == 0) { <div class="mobile-empty"><span>＋</span><p>برای این روز هنوز زمانی ثبت نشده است.</p></div> }
+                    @foreach (var block in selectedDay.Blocks) { <partial name="Shared/_ScheduleBlock" model="new ScheduleBlockCardModel(block, Model.View.Activities)" /> }
+                </div>
+            </section>
+        </div>
+    </section>
+}

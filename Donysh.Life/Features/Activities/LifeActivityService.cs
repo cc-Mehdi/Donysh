@@ -11,12 +11,15 @@ public sealed class LifeActivityService(LifeDbContext db, IHttpContextAccessor h
     {
         var subject = GetSubject();
         var activities = db.Activities.AsNoTracking().Where(item => item.UserSubject == subject);
-        return new LifeOverview(
-            await activities.CountAsync(cancellationToken),
-            await activities.CountAsync(item => item.IsActive, cancellationToken),
-            await db.WeeklyGoals.AsNoTracking()
+        var activityCount = await activities.CountAsync(cancellationToken);
+        var activeActivityCount = await activities.CountAsync(item => item.IsActive, cancellationToken);
+        var weeklyTargetMinutes = await db.WeeklyGoals.AsNoTracking()
                 .Where(item => item.UserSubject == subject && item.Activity.IsActive)
-                .SumAsync(item => (int?)item.TargetMinutes, cancellationToken) ?? 0);
+                .SumAsync(item => (int?)item.TargetMinutes, cancellationToken) ?? 0;
+        var plannedWeeklyMinutes = await db.SchedulePatterns.AsNoTracking()
+            .Where(item => item.UserSubject == subject && item.IsActive)
+            .SumAsync(item => (int?)item.DurationMinutes, cancellationToken) ?? 0;
+        return new LifeOverview(activityCount, activeActivityCount, weeklyTargetMinutes, plannedWeeklyMinutes);
     }
 
     public async Task<IReadOnlyList<ActivityListItem>> ListAsync(CancellationToken cancellationToken = default)

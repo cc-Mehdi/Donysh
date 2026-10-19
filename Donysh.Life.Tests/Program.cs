@@ -5,6 +5,7 @@ using System.Text.Encodings.Web;
 using Donysh.Life.Configuration;
 using Donysh.Life.Data;
 using Donysh.Life.Features.Activities;
+using Donysh.Life.Features.Scheduling;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
@@ -116,6 +117,16 @@ using (var authenticatedClient = authenticatedFactory.CreateClient(new WebApplic
             && activitiesHtml.Contains("هنوز فعالیتی نداری", StringComparison.Ordinal));
     }
 
+    using (var weekResponse = await authenticatedClient.GetAsync("/Week?day=Monday"))
+    {
+        var weekHtml = await weekResponse.Content.ReadAsStringAsync();
+        Check("Life weekly planner renders its responsive empty state",
+            weekResponse.StatusCode == HttpStatusCode.OK
+            && weekHtml.Contains("برنامهٔ ثابت هفته", StringComparison.Ordinal)
+            && weekHtml.Contains("اول یک فعالیت بساز", StringComparison.Ordinal)
+            && !weekHtml.Contains("style=", StringComparison.OrdinalIgnoreCase));
+    }
+
     var antiforgeryMatch = Regex.Match(
         html,
         "name=\"__RequestVerificationToken\" type=\"hidden\" value=\"([^\"]+)\"",
@@ -173,6 +184,76 @@ await using (var activityDb = new LifeDbContext(activityOptions))
         otherItems.Count == 0
         && !forbiddenToggle.Succeeded
         && !forbiddenDelete.Succeeded);
+
+    httpContext.User = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "activity-owner-a")], "test"));
+    var scheduler = new WeeklyScheduleService(activityDb, new HttpContextAccessor { HttpContext = httpContext });
+    var scheduled = await scheduler.SaveAsync(null, new SchedulePatternForm
+    {
+        ActivityId = ownerItems[0].Id,
+        DayOfWeek = DayOfWeek.Saturday,
+        StartTime = "08:00",
+        DurationMinutes = 60,
+        Note = "شروع هفته"
+    });
+    var overlap = await scheduler.SaveAsync(null, new SchedulePatternForm
+    {
+        ActivityId = ownerItems[0].Id,
+        DayOfWeek = DayOfWeek.Saturday,
+        StartTime = "08:30",
+        DurationMinutes = 60
+    });
+    var ownerWeek = await scheduler.GetWeekAsync(DayOfWeek.Saturday);
+    Check("Life weekly planner stores 30-minute slots and rejects overlaps",
+        scheduled.Succeeded
+        && !overlap.Succeeded
+        && ownerWeek.Days.Single(day => day.DayOfWeek == DayOfWeek.Saturday).Blocks.Count == 1
+        && await activityDb.ScheduleSlots.CountAsync() == 2);
+
+    var ownerPatternId = ownerWeek.Days.Single(day => day.DayOfWeek == DayOfWeek.Saturday).Blocks[0].Id;
+    var moved = await scheduler.SaveAsync(ownerPatternId, new SchedulePatternForm
+    {
+        ActivityId = ownerItems[0].Id,
+        DayOfWeek = DayOfWeek.Saturday,
+        StartTime = "09:00",
+        DurationMinutes = 30
+    });
+    var paused = await scheduler.ToggleAsync(ownerPatternId);
+    var replacement = await scheduler.SaveAsync(null, new SchedulePatternForm
+    {
+        ActivityId = ownerItems[0].Id,
+        DayOfWeek = DayOfWeek.Saturday,
+        StartTime = "09:00",
+        DurationMinutes = 30
+    });
+    var conflictingResume = await scheduler.ToggleAsync(ownerPatternId);
+    Check("Life schedule edits rebuild reservations and paused blocks release their slots",
+        moved.Succeeded
+        && paused.Succeeded
+        && replacement.Succeeded
+        && !conflictingResume.Succeeded
+        && await activityDb.ScheduleSlots.CountAsync(item => item.UserSubject == "activity-owner-a") == 1);
+
+    httpContext.User = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "activity-owner-b")], "test"));
+    var ownerBService = new LifeActivityService(activityDb, new HttpContextAccessor { HttpContext = httpContext });
+    var ownerBActivityResult = await ownerBService.SaveAsync(null, new ActivityForm
+    {
+        Title = "مطالعه", ColorHex = "#2563EB", IconKey = "book", WeeklyHours = 3
+    });
+    var ownerBActivity = (await ownerBService.ListAsync()).Single();
+    var ownerBScheduler = new WeeklyScheduleService(activityDb, new HttpContextAccessor { HttpContext = httpContext });
+    var sameTimeForOtherUser = await ownerBScheduler.SaveAsync(null, new SchedulePatternForm
+    {
+        ActivityId = ownerBActivity.Id,
+        DayOfWeek = DayOfWeek.Saturday,
+        StartTime = "08:00",
+        DurationMinutes = 60
+    });
+    var forbiddenScheduleDelete = await ownerBScheduler.DeleteAsync(
+        ownerPatternId);
+    Check("Life weekly schedule slots are isolated per user",
+        ownerBActivityResult.Succeeded
+        && sameTimeForOtherUser.Succeeded
+        && !forbiddenScheduleDelete.Succeeded);
 }
 
 var postgres = Environment.GetEnvironmentVariable("DONYSH_LIFE_TEST_POSTGRES");

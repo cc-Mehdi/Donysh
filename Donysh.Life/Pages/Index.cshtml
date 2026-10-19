@@ -14,7 +14,7 @@
 
 <section class="insight-grid" aria-label="خلاصهٔ هفته">
     <article class="metric-card primary"><span>هدف این هفته</span><strong>@(Model.Overview.WeeklyTargetMinutes == 0 ? "هنوز تنظیم نشده" : $"{Model.Overview.WeeklyTargetHours:0.#} ساعت")</strong><small>مجموع هدف فعالیت‌های فعال</small></article>
-    <article class="metric-card"><span>زمان برنامه‌ریزی‌شده</span><strong>۰ ساعت</strong><small>هفتهٔ تو هنوز فضای خالی دارد.</small></article>
+    <article class="metric-card"><span>زمان برنامه‌ریزی‌شده</span><strong>@Model.Overview.PlannedWeeklyHours.ToString("0.#") ساعت</strong><small><a asp-page="/Week">مشاهدهٔ برنامهٔ هفته</a></small></article>
     <article class="metric-card"><span>فعالیت‌های فعال</span><strong>@Model.Overview.ActiveActivityCount فعالیت</strong><small>از @Model.Overview.ActivityCount فعالیت تعریف‌شده</small></article>
 </section>
 

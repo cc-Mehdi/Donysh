@@ -14,4 +14,5 @@ public sealed class LifeActivity
     public DateTimeOffset UpdatedAtUtc { get; set; }
 
     public WeeklyGoal? WeeklyGoal { get; set; }
+    public ICollection<RecurringSchedulePattern> SchedulePatterns { get; set; } = [];
 }
