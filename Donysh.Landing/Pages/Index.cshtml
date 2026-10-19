@@ -1,0 +1,150 @@
+@page
+@using Microsoft.Extensions.Options
+@inject IOptions<LandingLinksOptions> ProductOptions
+@{
+    ViewData["Title"] = "دونیش | ابزارهای ساده برای زندگی روشن‌تر";
+    var products = ProductOptions.Value;
+}
+
+<header class="site-header">
+    <nav class="nav-shell" aria-label="ناوبری اصلی">
+        <a class="wordmark-link" href="#top" aria-label="دونیش، صفحهٔ اصلی">
+            <img src="/landing-assets/images/donysh-wordmark.png" alt="دونیش" width="178" height="58" />
+        </a>
+        <div class="nav-links">
+            <a href="#products">محصول‌ها</a>
+            <a href="#approach">نگاه دونیش</a>
+        </div>
+        <a class="nav-action" href="@(products.FinanceUrl.TrimEnd('/') + "/Account/Login")">ورود به بخش مالی</a>
+    </nav>
+</header>
+
+<main id="main-content">
+    <section id="top" class="hero section-shell" aria-labelledby="hero-title">
+        <div class="hero-copy">
+            <p class="eyebrow"><span aria-hidden="true"></span> یک خانه برای مدیریت بهتر زندگی</p>
+            <h1 id="hero-title">پول، زمان و هدف‌هایت را<br /> <strong>یک‌جا بهتر ببین.</strong></h1>
+            <p class="hero-lead">دونیش مجموعه‌ای از ابزارهای ساده و هماهنگ است تا تصمیم‌های روزمره‌ات روشن‌تر شوند؛ بدون صفحه‌های شلوغ و پیچیدگی اضافه.</p>
+            <div class="hero-actions">
+                <a class="button button-primary" href="@products.FinanceUrl">
+                    ورود به دونیش مالی
+                    <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6" /></svg>
+                </a>
+                <a class="button button-secondary" href="#products">دیدن محصول‌ها</a>
+            </div>
+            <div class="trust-row" aria-label="ویژگی‌های اصلی">
+                <span><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg>اطلاعات هر محصول جدا</span>
+                <span><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg>ورود یکپارچه و امن</span>
+            </div>
+        </div>
+
+        <div class="hero-visual" aria-label="نمایی از اکوسیستم دونیش">
+            <div class="orbit orbit-one" aria-hidden="true"></div>
+            <div class="orbit orbit-two" aria-hidden="true"></div>
+            <div class="ecosystem-core">
+                <span>دونیش</span>
+                <strong>زندگی، روشن‌تر</strong>
+            </div>
+            <article class="floating-card finance-chip">
+                <span class="product-icon product-icon-finance" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H18a2 2 0 0 1 2 2v2H4V7.5Z"/><path d="M4 9h16v10H6a2 2 0 0 1-2-2V9Z"/><path d="M16 13h5v3h-5a1.5 1.5 0 0 1 0-3Z"/></svg>
+                </span>
+                <span><small>فعال</small><strong>مدیریت مالی</strong></span>
+            </article>
+            <article class="floating-card life-chip">
+                <span class="product-icon product-icon-life" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>
+                </span>
+                <span><small>در مسیر ساخت</small><strong>مدیریت زندگی</strong></span>
+            </article>
+            <div class="pulse-dot pulse-one" aria-hidden="true"></div>
+            <div class="pulse-dot pulse-two" aria-hidden="true"></div>
+        </div>
+    </section>
+
+    <section id="products" class="products-section section-shell" aria-labelledby="products-title">
+        <div class="section-heading">
+            <p class="eyebrow">محصول‌های دونیش</p>
+            <h2 id="products-title">هر بخش، ساده و مستقل؛<br />همه زیر یک حساب.</h2>
+            <p>از ابزاری که امروز نیاز داری شروع کن. محصولات دونیش داده‌ها و مسئولیت‌های جدا دارند، اما تجربهٔ ورودشان یکپارچه است.</p>
+        </div>
+
+        <div class="product-grid">
+            <article class="product-card product-card-finance">
+                <div class="product-card-top">
+                    <span class="product-icon product-icon-finance" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H18a2 2 0 0 1 2 2v2H4V7.5Z"/><path d="M4 9h16v10H6a2 2 0 0 1-2-2V9Z"/><path d="M16 13h5v3h-5a1.5 1.5 0 0 1 0-3Z"/></svg>
+                    </span>
+                    <span class="status status-live"><i aria-hidden="true"></i>در دسترس</span>
+                </div>
+                <div>
+                    <p class="product-kicker">دونیش مالی</p>
+                    <h3>تصویر واضح‌تری از پولت داشته باش.</h3>
+                    <p>مخارج، بودجه‌ها، پس‌اندازها و اقساط را در فضای شخصی یا مشترک مدیریت کن و با گزارش‌های روشن تصمیم بگیر.</p>
+                </div>
+                <ul class="feature-list">
+                    <li>فضاهای مالی شخصی و مشترک</li>
+                    <li>بودجه و هدف‌های پس‌انداز</li>
+                    <li>گزارش و دستیار هوشمند</li>
+                </ul>
+                <a class="product-link" href="@products.FinanceUrl">بازکردن دونیش مالی <span aria-hidden="true">←</span></a>
+            </article>
+
+            <article class="product-card product-card-life">
+                <div class="product-card-top">
+                    <span class="product-icon product-icon-life" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>
+                    </span>
+                    <span class="status">به‌زودی</span>
+                </div>
+                <div>
+                    <p class="product-kicker">دونیش زندگی</p>
+                    <h3>برای چیزهای مهم، زمان واقعی بساز.</h3>
+                    <p>هدف‌های هفتگی، برنامه و عملکرد واقعی را کنار هم ببین تا بدانی وقتت کجا می‌رود و قدم بعدی چیست.</p>
+                </div>
+                <ul class="feature-list">
+                    <li>هدف زمانی هفتگی</li>
+                    <li>برنامه‌ریزی ساده و منعطف</li>
+                    <li>سنجش پیشرفت واقعی</li>
+                </ul>
+                <p class="product-link product-link-muted">در حال آماده‌سازی</p>
+            </article>
+        </div>
+    </section>
+
+    <section id="approach" class="approach-section section-shell" aria-labelledby="approach-title">
+        <div class="approach-panel">
+            <div class="section-heading compact">
+                <p class="eyebrow">نگاه دونیش</p>
+                <h2 id="approach-title">کمتر درگیر ابزار باش؛<br />بیشتر به تصمیم بعدی برس.</h2>
+            </div>
+            <ol class="approach-steps">
+                <li><span>۱</span><div><strong>ببین</strong><p>وضعیت واقعی را بدون شلوغی ببین.</p></div></li>
+                <li><span>۲</span><div><strong>تصمیم بگیر</strong><p>برای پول و زمانت یک قدم روشن انتخاب کن.</p></div></li>
+                <li><span>۳</span><div><strong>بهتر شو</strong><p>نتیجه را بسنج و برنامه را آرام اصلاح کن.</p></div></li>
+            </ol>
+        </div>
+    </section>
+
+    <section class="final-cta section-shell" aria-labelledby="cta-title">
+        <div>
+            <p class="eyebrow">شروع از همین امروز</p>
+            <h2 id="cta-title">اولین تصویر روشن از وضعیت مالی‌ات را بساز.</h2>
+        </div>
+        <a class="button button-light" href="@(products.FinanceUrl.TrimEnd('/') + "/Account/Login")">ورود به حساب دونیش</a>
+    </section>
+</main>
+
+<footer class="site-footer">
+    <div class="section-shell footer-inner">
+        <div class="footer-brand">
+            <img src="/landing-assets/images/donysh-wordmark.png" alt="دونیش" width="140" height="46" />
+            <p>ابزارهای ساده برای زندگی روشن‌تر.</p>
+        </div>
+        <div class="footer-links">
+            <a href="@products.FinanceUrl">دونیش مالی</a>
+            <a href="@products.AuthUrl">حساب کاربری</a>
+        </div>
+        <p class="copyright">© @DateTime.UtcNow.Year دونیش</p>
+    </div>
+</footer>

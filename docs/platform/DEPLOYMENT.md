@@ -79,6 +79,31 @@ curl -sS -D - -o /dev/null https://finance.donysh.ir/Account/Login | grep -iE '^
 دامنهٔ جدید بررسی کنید. گزارش‌ها و فایل‌های ایستا نیز باید بدون خطای شبکه بارگذاری شوند. دامنهٔ
 قدیم در این مرحله Redirect نمی‌شود.
 
+## استقرار لندینگ روی دامنهٔ اصلی
+
+پیش از استقرار مرحلهٔ ۴ مطمئن شوید `finance.donysh.ir` در مرورگر و Health Check پایدار است. سپس
+Compose باید سرویس‌های `landing`، `web` و `auth` را هم‌زمان نشان دهد:
+
+```bash
+cd /home/ubuntu/donysh
+sudo docker compose --env-file .env -f docker-compose.platform.yml config --quiet
+sudo docker compose --env-file .env -f docker-compose.platform.yml ps
+```
+
+پس از استقرار:
+
+```bash
+curl -fsS https://donysh.ir/health
+curl -fsS https://finance.donysh.ir/health
+curl -fsS https://auth.donysh.ir/health/ready
+curl -sS -D - -o /dev/null https://donysh.ir/Expenses | grep -iE '^(HTTP|location:)'
+```
+
+فرمان آخر باید Redirect دائمی به `https://finance.donysh.ir/Expenses` بدهد. مسیرهای
+`/api/mobile/*` روی دامنهٔ اصلی عمداً در دورهٔ سازگاری به Finance فرستاده می‌شوند تا نسخه‌های
+نصب‌شدهٔ برنامهٔ همراه ناگهان قطع نشوند. Callbackهای ورود و درخواست‌های غیر GET فرم‌های بازشده
+پیش از Deploy نیز مستقیم به Finance می‌رسند.
+
 در اولین شروع، Migration فقط روی `auth-db` اجرا می‌شود. تا قبل از اجرای راهنمای `MIGRATION.md`، مقدارهای `CENTRAL_AUTH_ENABLED` و `LEGACY_IDENTITY_IMPORT_COMPLETED` را `false` نگه دارید. برنامهٔ مالی در این وضعیت از ورود قبلی استفاده می‌کند.
 
 ## مشاهدهٔ Log
@@ -100,6 +125,9 @@ volumeهای `auth_postgres_data` و `auth_dataprotection_keys` را حذف نک
 
 اگر فقط دامنهٔ جدید مشکل داشت، رکورد DNS آن را حذف کنید و نسخهٔ قبلی کد را دوباره مستقر کنید؛
 `donysh.ir` و دیتابیس مالی دست‌نخورده می‌مانند. هیچ volume یا جدول دیتابیسی را برای بازگشت مرحلهٔ ۳ حذف نکنید.
+
+برای بازگشت مرحلهٔ ۴، کامیت قبلی را دوباره Deploy کنید تا Caddy دامنهٔ اصلی را مستقیماً به `web`
+متصل کند. سرویس Landing هیچ volume یا دیتابیسی ندارد و Rollback نیازمند Migration نیست.
 
 ## اجرای محلی توسعه
 

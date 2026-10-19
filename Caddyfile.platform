@@ -14,7 +14,33 @@
     }
 }
 
-{$DOMAIN}, {$FINANCE_DOMAIN} {
+{$DOMAIN} {
+    encode zstd gzip
+    import secure_headers
+    route {
+        # Keep installed mobile clients, in-flight OIDC callbacks and already-open
+        # Finance tabs functional during the public-domain cutover.
+        @legacy_backend path /api/* /signin-oidc /signout-callback-oidc /css/* /js/* /fonts/* /images/*
+        reverse_proxy @legacy_backend web:8080
+
+        @legacy_finance_get {
+            method GET HEAD
+            path /Account* /Ai* /Budgets* /Categories* /Expenses* /Mobile* /Obligations* /Reports* /Savings* /Settings* /Workspaces*
+        }
+        redir @legacy_finance_get https://{$FINANCE_DOMAIN}{uri} 308
+
+        @legacy_finance_write path /Account* /Ai* /Budgets* /Categories* /Expenses* /Mobile* /Obligations* /Reports* /Savings* /Settings* /Workspaces*
+        reverse_proxy @legacy_finance_write web:8080
+
+        reverse_proxy landing:8080
+    }
+    log {
+        output stdout
+        format json
+    }
+}
+
+{$FINANCE_DOMAIN} {
     encode zstd gzip
     import secure_headers
     reverse_proxy web:8080

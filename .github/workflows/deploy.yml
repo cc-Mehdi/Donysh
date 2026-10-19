@@ -46,6 +46,7 @@ jobs:
           cache-dependency-path: |
             HesabYar.Web/package-lock.json
             Donysh.Auth/package-lock.json
+            Donysh.Landing/package-lock.json
 
       - name: Install frontend dependencies
         working-directory: HesabYar.Web
@@ -71,6 +72,18 @@ jobs:
         working-directory: Donysh.Auth
         run: npm run build:css
 
+      - name: Install Landing frontend dependencies
+        working-directory: Donysh.Landing
+        run: timeout 180s npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Audit Landing frontend dependencies
+        working-directory: Donysh.Landing
+        run: npm audit --audit-level=high
+
+      - name: Build Landing Tailwind CSS
+        working-directory: Donysh.Landing
+        run: npm run build:css
+
       - name: Restore .NET packages
         run: dotnet restore HesabYar.sln
 
@@ -90,11 +103,27 @@ jobs:
           DONYSH_AUTH_TEST_POSTGRES: Host=127.0.0.1;Port=5432;Username=postgres;Password=local-test-only
         run: dotnet run --project Donysh.Auth.Tests --configuration Release
 
+      - name: Run Landing rendering and security tests
+        run: dotnet run --project Donysh.Landing.Tests --configuration Release
+
       - name: Validate Docker image
         run: docker build --file HesabYar.Web/Dockerfile --tag donysh-ci:${{ github.sha }} .
 
       - name: Validate Auth Docker image
         run: docker build --file Donysh.Auth/Dockerfile --tag donysh-auth-ci:${{ github.sha }} .
+
+      - name: Validate Landing Docker image
+        run: docker build --file Donysh.Landing/Dockerfile --tag donysh-landing-ci:${{ github.sha }} .
+
+      - name: Validate reverse proxy configuration
+        run: |
+          docker run --rm \
+            -e DOMAIN=donysh.test \
+            -e FINANCE_DOMAIN=finance.donysh.test \
+            -e AUTH_DOMAIN=auth.donysh.test \
+            -e ACME_EMAIL=admin@donysh.test \
+            -v "$PWD/Caddyfile.platform:/etc/caddy/Caddyfile:ro" \
+            caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile
 
       - name: Validate identity migration Docker image
         run: docker build --file Donysh.IdentityMigration/Dockerfile --tag donysh-identity-migration-ci:${{ github.sha }} .

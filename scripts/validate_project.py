@@ -29,6 +29,13 @@ REQUIRED = [
     "Donysh.Auth/Pages/Account/Login.cshtml",
     "Donysh.Auth/wwwroot/css/app.css",
     "Donysh.Auth.Tests/Donysh.Auth.Tests.csproj",
+    "Donysh.Landing/Donysh.Landing.csproj",
+    "Donysh.Landing/Program.cs",
+    "Donysh.Landing/Pages/Index.cshtml",
+    "Donysh.Landing/Styles/app.css",
+    "Donysh.Landing/package-lock.json",
+    "Donysh.Landing/Dockerfile",
+    "Donysh.Landing.Tests/Donysh.Landing.Tests.csproj",
     "docker-compose.platform.yml",
     "Caddyfile.platform",
     "docs/platform/BASELINE.md",
@@ -79,6 +86,8 @@ def main() -> int:
         json.loads((ROOT / "global.json").read_text(encoding="utf-8"))
         json.loads((ROOT / "Donysh.Auth/package.json").read_text(encoding="utf-8"))
         json.loads((ROOT / "Donysh.Auth/appsettings.json").read_text(encoding="utf-8"))
+        json.loads((ROOT / "Donysh.Landing/package.json").read_text(encoding="utf-8"))
+        json.loads((ROOT / "Donysh.Landing/appsettings.json").read_text(encoding="utf-8"))
     except Exception as exc:
         errors.append(f"invalid json: {exc}")
 
@@ -86,10 +95,18 @@ def main() -> int:
         ET.parse(ROOT / "HesabYar.Web/HesabYar.Web.csproj")
         ET.parse(ROOT / "Donysh.Auth/Donysh.Auth.csproj")
         ET.parse(ROOT / "Donysh.Auth.Tests/Donysh.Auth.Tests.csproj")
+        ET.parse(ROOT / "Donysh.Landing/Donysh.Landing.csproj")
+        ET.parse(ROOT / "Donysh.Landing.Tests/Donysh.Landing.Tests.csproj")
     except Exception as exc:
         errors.append(f"invalid csproj xml: {exc}")
 
-    source_roots = [ROOT / "HesabYar.Web", ROOT / "Donysh.Auth", ROOT / "Donysh.Auth.Tests"]
+    source_roots = [
+        ROOT / "HesabYar.Web",
+        ROOT / "Donysh.Auth",
+        ROOT / "Donysh.Auth.Tests",
+        ROOT / "Donysh.Landing",
+        ROOT / "Donysh.Landing.Tests",
+    ]
     for path in (path for source_root in source_roots for path in source_root.rglob("*.cs")):
         text = path.read_text(encoding="utf-8")
         # The simple delimiter check below is not a C# parser. Remove non-interpolated
@@ -124,6 +141,8 @@ def main() -> int:
         "FINANCE_DOMAIN",
         "OidcClients__0__RedirectUris__1",
         "OidcClients__0__PostLogoutRedirectUris__1",
+        "landing:",
+        "Products__FinanceUrl",
     ]:
         if token not in platform_compose:
             errors.append(f"platform compose token missing: {token}")
@@ -142,8 +161,10 @@ def main() -> int:
             errors.append(f"UI token missing: {token}")
 
     caddy = (ROOT / "Caddyfile.platform").read_text(encoding="utf-8")
-    if "{$DOMAIN}, {$FINANCE_DOMAIN}" not in caddy:
-        errors.append("platform Caddyfile must serve Finance on both transition domains")
+    if "{$DOMAIN} {" not in caddy or "reverse_proxy landing:8080" not in caddy:
+        errors.append("platform Caddyfile must serve Landing on the primary domain")
+    if "{$FINANCE_DOMAIN} {" not in caddy or "reverse_proxy web:8080" not in caddy:
+        errors.append("platform Caddyfile must serve Finance only on its product domain")
 
     if errors:
         print("Validation failed:")

@@ -78,7 +78,7 @@ trap rollback ERR
 bash scripts/configure-server-env.sh "$ENV_FILE" 9>&-
 
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" config 9>&- >/dev/null
-docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" build web auth 9>&-
+docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" build web auth landing 9>&-
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --remove-orphans 9>&-
 
 # Read DOMAIN without executing the env file as shell code.
@@ -99,7 +99,7 @@ for attempt in $(seq 1 24); do
       && curl --fail --silent --show-error --max-time 10 \
       --resolve "${auth_domain}:443:127.0.0.1" \
       "$auth_health_url" 9>&- >/dev/null; then
-    echo "Health checks passed: $health_url, $finance_health_url and $auth_health_url"
+    echo "Health checks passed: Landing $health_url, Finance $finance_health_url and Auth $auth_health_url"
     trap - ERR
     docker image prune -f 9>&- >/dev/null 2>&1 || true
     docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps 9>&-
