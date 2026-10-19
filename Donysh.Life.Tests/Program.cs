@@ -50,7 +50,9 @@ using (var response = await client.GetAsync("/Account/Login"))
     Check("Life login renders in Persian RTL", response.StatusCode == HttpStatusCode.OK
         && html.Contains("lang=\"fa\"", StringComparison.Ordinal)
         && html.Contains("dir=\"rtl\"", StringComparison.Ordinal)
-        && html.Contains("همان حسابی که در دونیش مالی داری", StringComparison.Ordinal));
+        && html.Contains("همان حسابی که در دونیش مالی داری", StringComparison.Ordinal)
+        && html.Contains("rel=\"preload\"", StringComparison.Ordinal)
+        && html.Contains("interaction-feedback", StringComparison.Ordinal));
     Check("Life security headers allow only same-origin scripts and block framing",
         response.Headers.TryGetValues("Content-Security-Policy", out var csp)
         && csp.Single().Contains("frame-ancestors 'none'", StringComparison.Ordinal)
@@ -59,7 +61,11 @@ using (var response = await client.GetAsync("/Account/Login"))
         && !csp.Single().Contains("'unsafe-inline'", StringComparison.Ordinal)
         && !csp.Single().Contains("'unsafe-eval'", StringComparison.Ordinal)
         && response.Headers.TryGetValues("X-Frame-Options", out var frame)
-        && frame.Single() == "DENY");
+        && frame.Single() == "DENY"
+        && response.Headers.TryGetValues("Cross-Origin-Resource-Policy", out var resourcePolicy)
+        && resourcePolicy.Single() == "same-origin"
+        && response.Headers.TryGetValues("X-Permitted-Cross-Domain-Policies", out var crossDomain)
+        && crossDomain.Single() == "none");
 }
 
 using (var response = await client.GetAsync("/"))
@@ -81,7 +87,9 @@ using (var response = await client.GetAsync("/health/live"))
 using (var response = await client.GetAsync("/css/app.css"))
 {
     Check("Life stylesheet is served", response.StatusCode == HttpStatusCode.OK
-        && response.Content.Headers.ContentType?.MediaType == "text/css");
+        && response.Content.Headers.ContentType?.MediaType == "text/css"
+        && response.Headers.CacheControl?.Public == true
+        && response.Headers.CacheControl?.MaxAge == TimeSpan.FromDays(7));
 }
 
 using (var response = await client.GetAsync("/js/week-planner.js"))
@@ -89,6 +97,34 @@ using (var response = await client.GetAsync("/js/week-planner.js"))
     Check("Life interactive planner script is served from the same origin",
         response.StatusCode == HttpStatusCode.OK
         && response.Content.Headers.ContentType?.MediaType is "text/javascript" or "application/javascript");
+}
+
+using (var response = await client.GetAsync("/js/interaction-feedback.js"))
+{
+    var script = await response.Content.ReadAsStringAsync();
+    Check("Life interaction feedback is same-origin and avoids string evaluation",
+        response.StatusCode == HttpStatusCode.OK
+        && script.Contains("aria-busy", StringComparison.Ordinal)
+        && !script.Contains("eval(", StringComparison.Ordinal)
+        && !script.Contains("new Function", StringComparison.Ordinal));
+}
+
+using (var request = new HttpRequestMessage(HttpMethod.Get, "/css/app.css"))
+{
+    request.Headers.AcceptEncoding.ParseAdd("gzip");
+    using var response = await client.SendAsync(request);
+    Check("Life compresses public assets when the client supports it",
+        response.StatusCode == HttpStatusCode.OK
+        && response.Content.Headers.ContentEncoding.Contains("gzip"));
+}
+
+using (var request = new HttpRequestMessage(HttpMethod.Get, "/Account/Login"))
+{
+    request.Headers.AcceptEncoding.ParseAdd("gzip");
+    using var response = await client.SendAsync(request);
+    Check("Life keeps token-bearing HTML outside HTTPS compression",
+        response.StatusCode == HttpStatusCode.OK
+        && response.Content.Headers.ContentEncoding.Count == 0);
 }
 
 await using (var authenticatedFactory = new AuthenticatedLifeApplicationFactory())
@@ -105,9 +141,16 @@ using (var authenticatedClient = authenticatedFactory.CreateClient(new WebApplic
         && html.Contains("برای چیزهای مهم، جا باز کن", StringComparison.Ordinal)
         && html.Contains("برنامهٔ هفته", StringComparison.Ordinal)
         && html.Contains("فعالیت‌های فعال", StringComparison.Ordinal)
-        && html.Contains("فعالیتی انجام دادی", StringComparison.Ordinal));
+        && html.Contains("فعالیتی انجام دادی", StringComparison.Ordinal)
+        && html.Contains("aria-current=\"page\"", StringComparison.Ordinal));
     Check("Life logout posts locally before central OIDC sign-out",
         html.Contains("action=\"/Account/Logout\"", StringComparison.Ordinal));
+    Check("Life antiforgery cookie is HttpOnly, secure and same-site strict",
+        response.Headers.TryGetValues("Set-Cookie", out var setCookies)
+        && setCookies.Any(cookie => cookie.Contains(".Donysh.Life.Antiforgery", StringComparison.Ordinal)
+            && cookie.Contains("httponly", StringComparison.OrdinalIgnoreCase)
+            && cookie.Contains("secure", StringComparison.OrdinalIgnoreCase)
+            && cookie.Contains("samesite=strict", StringComparison.OrdinalIgnoreCase)));
 
     using (var setupResponse = await authenticatedClient.GetAsync("/Setup?step=2"))
     {

@@ -64,7 +64,8 @@
             document.querySelectorAll(".time-slot.selected").forEach(item => item.classList.remove("selected"));
             slot.classList.add("selected");
             createForm.querySelector('[name="Input.ActivityId"]').focus({ preventScroll: true });
-            document.querySelector(".schedule-form-panel").scrollIntoView({ behavior: "smooth", block: "start" });
+            const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+            document.querySelector(".schedule-form-panel").scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
         });
     });
 

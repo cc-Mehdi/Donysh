@@ -160,6 +160,20 @@ Migrationهای غیرمخرب `AddScheduleOccurrenceOverrides`، `AddScheduleOc
 حذف نکنید تا بازگشت رو به جلو بدون ازدست‌رفتن داده ممکن باشد؛ Down کردن Migration فقط زمانی مجاز
 است که دادهٔ استثناهای رخداد دیگر موردنیاز نباشد.
 
+زیرمرحلهٔ ۸.۱ هیچ Migration یا متغیر محیطی تازه‌ای ندارد. پس از استقرار، علاوه بر سلامت سرویس، فشرده‌سازی
+و کش فایل ایستا را نیز کنترل کنید:
+
+```bash
+curl -fsSI -H 'Accept-Encoding: gzip' https://life.donysh.ir/css/app.css \
+  | grep -iE '^(HTTP|content-encoding:|cache-control:)'
+curl -fsSI https://life.donysh.ir/Account/Login \
+  | grep -iE '^(HTTP|content-security-policy:|cross-origin-resource-policy:|x-permitted-cross-domain-policies:)'
+```
+
+پاسخ فایل سبک باید `content-encoding: gzip` و `cache-control` هفت‌روزه داشته باشد. صفحهٔ ورود باید سیاست
+منبع هم‌مبدأ و منع سیاست‌های میان‌دامنه‌ای قدیمی را برگرداند. بازگشت این زیرمرحله فقط با استقرار نسخهٔ قبلی
+انجام می‌شود و به بازگردانی پایگاه‌داده یا تغییر فایل `.env` نیاز ندارد.
+
 ## اجرای محلی توسعه
 
 یک PostgreSQL محلی مطابق `appsettings.Development.json` فراهم کنید، سپس:

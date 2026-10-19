@@ -24,6 +24,8 @@ public static class LifeSecurityHeaders
             headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
             headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(), payment=(), usb=()";
             headers.Append("Cross-Origin-Opener-Policy", "same-origin");
+            headers.Append("Cross-Origin-Resource-Policy", "same-origin");
+            headers.Append("X-Permitted-Cross-Domain-Policies", "none");
             await next();
         });
 }

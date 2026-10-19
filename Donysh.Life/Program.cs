@@ -11,6 +11,8 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.ResponseCompression;
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
@@ -41,6 +43,20 @@ builder.Services.AddScoped<WeeklyScheduleService>();
 builder.Services.AddScoped<OccurrenceTrackingService>();
 builder.Services.AddScoped<ActualActivityService>();
 builder.Services.AddScoped<ProgressReportService>();
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    // Keep authenticated HTML uncompressed to avoid reflecting antiforgery tokens into a compressed response.
+    options.MimeTypes = ["text/css", "text/javascript", "application/javascript", "image/svg+xml"];
+});
+builder.Services.AddAntiforgery(options =>
+{
+    options.Cookie.Name = ".Donysh.Life.Antiforgery";
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+    options.Cookie.SameSite = SameSiteMode.Strict;
+    options.Cookie.SecurePolicy = reverseProxyEnabled ? CookieSecurePolicy.Always : CookieSecurePolicy.SameAsRequest;
+});
 
 builder.Services.AddAuthentication(options =>
     {
@@ -142,6 +158,7 @@ if (reverseProxyEnabled)
 
 var app = builder.Build();
 if (reverseProxyEnabled) app.UseForwardedHeaders();
+app.UseResponseCompression();
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");
@@ -154,15 +171,17 @@ if (Directory.Exists(sharedWebRoot))
     app.UseStaticFiles(new StaticFileOptions
     {
         FileProvider = new PhysicalFileProvider(Path.Combine(sharedWebRoot, "images")),
-        RequestPath = "/images"
+        RequestPath = "/images",
+        OnPrepareResponse = SetPublicAssetCache
     });
     app.UseStaticFiles(new StaticFileOptions
     {
         FileProvider = new PhysicalFileProvider(Path.Combine(sharedWebRoot, "fonts")),
-        RequestPath = "/fonts"
+        RequestPath = "/fonts",
+        OnPrepareResponse = SetPublicAssetCache
     });
 }
-app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions { OnPrepareResponse = SetPublicAssetCache });
 app.UseRouting();
 app.UseAuthentication();
 app.Use(async (context, next) =>
@@ -190,5 +209,8 @@ if (applyMigrations)
 }
 
 app.Run();
+
+static void SetPublicAssetCache(StaticFileResponseContext context) =>
+    context.Context.Response.Headers.CacheControl = "public,max-age=604800";
 
 public partial class LifeProgram;
