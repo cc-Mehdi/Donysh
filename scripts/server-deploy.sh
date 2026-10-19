@@ -105,6 +105,9 @@ for attempt in $(seq 1 24); do
       --resolve "${life_domain}:443:127.0.0.1" \
       "$life_health_url" 9>&- >/dev/null; then
     echo "Health checks passed: Landing $health_url, Finance $finance_health_url, Auth $auth_health_url and Life $life_health_url"
+    echo "Running production release verification ..."
+    APP_DIR="$APP_DIR" ENV_FILE="$ENV_FILE" COMPOSE_FILE="$COMPOSE_FILE" \
+      bash scripts/verify-platform-release.sh 9>&-
     trap - ERR
     docker image prune -f 9>&- >/dev/null 2>&1 || true
     docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps 9>&-

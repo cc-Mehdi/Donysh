@@ -178,6 +178,16 @@ curl -fsSI https://life.donysh.ir/Account/Login \
 [`LIFE-RELEASE.md`](LIFE-RELEASE.md) را اجرا و نتیجهٔ آزمون پذیرش را ثبت کنید. آماده‌شدن کد به‌تنهایی
 به‌معنای تأیید آزمون کاربر واقعی نیست.
 
+از زیرمرحلهٔ ۸.۳، `server-deploy.sh` پس از Health Check اولیه، اسکریپت
+`scripts/verify-platform-release.sh` را اجرا می‌کند. این دروازه با اتصال مستقیم به Caddy روی سرور، وابستگی
+به CDN را از تشخیص سلامت مبدأ جدا می‌کند و در صورت خرابی ورود مرکزی، هدر امنیتی، کش، فشرده‌سازی یا
+کانتینر ضروری، استقرار را ناموفق و Rollback را فعال می‌کند. اجرای دستی آن هیچ مقدار حساس را چاپ نمی‌کند:
+
+```bash
+cd /home/ubuntu/donysh
+sudo bash scripts/verify-platform-release.sh
+```
+
 ## اجرای محلی توسعه
 
 یک PostgreSQL محلی مطابق `appsettings.Development.json` فراهم کنید، سپس:

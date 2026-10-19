@@ -46,6 +46,17 @@ sudo docker compose --env-file .env -f docker-compose.platform.yml ps life life-
 ## ۴. بررسی پس از استقرار
 
 ```bash
+cd /home/ubuntu/donysh
+bash scripts/verify-platform-release.sh
+```
+
+این فرمان بدون نمایش Secretها، سلامت چهار سرویس، هدایت ورود Life، هدرهای امنیتی، کش و فشرده‌سازی
+فایل‌های ایستا و وضعیت کانتینرهای ضروری را کنترل می‌کند. در Deploy خودکار نیز همین دروازه پیش از اعلام
+موفقیت اجرا می‌شود و شکست آن Rollback نسخهٔ کد را فعال می‌کند.
+
+برای بررسی تکمیلی دستی:
+
+```bash
 curl -fsS https://life.donysh.ir/health/live
 curl -fsS https://life.donysh.ir/health/ready
 curl -sS -D - -o /dev/null https://life.donysh.ir/ | grep -iE '^(HTTP|location:)'
@@ -60,5 +71,5 @@ sudo docker compose --env-file .env -f docker-compose.platform.yml logs --tail=1
 ## ۵. بازگشت
 
 اگر Health Check، ورود یا ذخیره‌سازی داده مشکل داشت، استقرار را متوقف و نسخهٔ قبلی کد را Deploy کنید.
-volumeهای `life_postgres_data` و `life_dataprotection_keys` را حذف نکنید. زیرمرحله‌های ۸.۱ و ۸.۲
+volumeهای `life_postgres_data` و `life_dataprotection_keys` را حذف نکنید. زیرمرحله‌های ۸.۱ تا ۸.۳
 Migration ندارند و برای بازگشت آن‌ها هیچ تغییر دیتابیسی یا محیطی لازم نیست.

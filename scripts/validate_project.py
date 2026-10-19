@@ -55,8 +55,10 @@ REQUIRED = [
     "docs/platform/AUTH.md",
     "docs/platform/DEPLOYMENT.md",
     "docs/platform/MIGRATION.md",
+    "docs/platform/LIFE-RELEASE.md",
     ".github/workflows/deploy.yml",
     "scripts/server-deploy.sh",
+    "scripts/verify-platform-release.sh",
     "CI-CD.md",
 ]
 
@@ -195,6 +197,15 @@ def main() -> int:
     ]:
         if token not in workflow:
             errors.append(f"workflow token missing: {token}")
+
+    deploy_script = (ROOT / "scripts/server-deploy.sh").read_text(encoding="utf-8")
+    if "bash scripts/verify-platform-release.sh" not in deploy_script:
+        errors.append("server deploy must run the production release verifier")
+
+    release_verifier = (ROOT / "scripts/verify-platform-release.sh").read_text(encoding="utf-8")
+    for token in ["RELEASE_CHECK_RESOLVE_IP", "Life central login redirect", "Life browser security headers"]:
+        if token not in release_verifier:
+            errors.append(f"release verifier token missing: {token}")
 
     for dockerfile_name in [
         "HesabYar.Web/Dockerfile",

@@ -59,6 +59,9 @@ jobs:
       - name: Verify npm registry sources
         run: python scripts/validate_project.py
 
+      - name: Validate deployment scripts
+        run: bash -n scripts/*.sh
+
       - name: Install frontend dependencies
         working-directory: HesabYar.Web
         run: timeout 180s npm ci --ignore-scripts --no-audit --no-fund
