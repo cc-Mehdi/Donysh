@@ -158,6 +158,15 @@ internal static class PostgresChecks
                 """, verify);
             if (!Convert.ToBoolean(await command.ExecuteScalarAsync()))
                 throw new Exception("FAIL PostgreSQL Life migration did not create its isolated schema");
+            await using var reportingIndex = new NpgsqlCommand("""
+                SELECT count(*) = 1
+                FROM pg_indexes
+                WHERE schemaname = current_schema()
+                  AND tablename = 'LifeScheduleOccurrenceRecords'
+                  AND indexname = 'IX_LifeScheduleOccurrenceRecords_UserSubject_MovedToDate_Status'
+                """, verify);
+            if (!Convert.ToBoolean(await reportingIndex.ExecuteScalarAsync()))
+                throw new Exception("FAIL PostgreSQL Life migration did not create the moved occurrence reporting index");
 
             Console.WriteLine("PASS PostgreSQL Life migration creates an isolated schema");
             Console.WriteLine("PASS PostgreSQL Life profile keeps Saturday and Tehran defaults");
@@ -166,6 +175,7 @@ internal static class PostgresChecks
             Console.WriteLine("PASS PostgreSQL Life occurrence overrides are unique per recurring occurrence");
             Console.WriteLine("PASS PostgreSQL Life stores one actual result per recurring occurrence");
             Console.WriteLine("PASS PostgreSQL Life stores owned manual actual activities");
+            Console.WriteLine("PASS PostgreSQL Life reporting index supports moved occurrence date queries");
         }
         finally
         {

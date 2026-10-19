@@ -7,6 +7,7 @@ using Donysh.Life.Data;
 using Donysh.Life.Features.Activities;
 using Donysh.Life.Features.Scheduling;
 using Donysh.Life.Features.Tracking;
+using Donysh.Life.Features.Reporting;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
@@ -136,6 +137,17 @@ using (var authenticatedClient = authenticatedFactory.CreateClient(new WebApplic
             && weekHtml.Contains("برنامه‌ریزی تعاملی", StringComparison.Ordinal)
             && weekHtml.Contains("اول یک فعالیت بساز", StringComparison.Ordinal)
             && !weekHtml.Contains("style=", StringComparison.OrdinalIgnoreCase));
+    }
+
+    using (var progressResponse = await authenticatedClient.GetAsync("/Progress"))
+    {
+        var progressHtml = await progressResponse.Content.ReadAsStringAsync();
+        Check("Life progress report renders its weekly summary and empty guidance",
+            progressResponse.StatusCode == HttpStatusCode.OK
+            && progressHtml.Contains("تصویر واقعی هفته", StringComparison.Ordinal)
+            && progressHtml.Contains("این هفته هنوز داده‌ای برای مقایسه ندارد", StringComparison.Ordinal)
+            && progressHtml.Contains("منبع زمان واقعی", StringComparison.Ordinal)
+            && !progressHtml.Contains("style=", StringComparison.OrdinalIgnoreCase));
     }
 
     var antiforgeryMatch = Regex.Match(
@@ -340,12 +352,24 @@ await using (var activityDb = new LifeDbContext(activityOptions))
         ActualMinutes = 45, Note = "تمرین واقعی"
     });
     var actualEntry = (await actualService.ListRecentAsync()).Single();
+    var completedForReport = await tracking.RecordAsync(new OccurrenceRecordForm
+    {
+        PatternId = ownerPatternId, OriginalDate = weekStart,
+        Status = Donysh.Life.Domain.OccurrenceOutcomeStatus.Completed
+    });
+    var reportService = new ProgressReportService(activityDb, new HttpContextAccessor { HttpContext = httpContext }, scheduler);
+    var report = await reportService.GetWeekAsync(weekStart);
+    var boundedReport = await reportService.GetWeekAsync(DateOnly.MaxValue);
     var protectedByManualHistory = await service.DeleteAsync(ownerItems[0].Id);
     httpContext.User = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "activity-owner-b")], "test"));
     var ownerBActualService = new ActualActivityService(activityDb, new HttpContextAccessor { HttpContext = httpContext });
     var forbiddenActualDelete = await ownerBActualService.DeleteAsync(actualEntry.Id);
+    var emptyOwnerBScheduler = new WeeklyScheduleService(activityDb, new HttpContextAccessor { HttpContext = httpContext });
+    var ownerBReportService = new ProgressReportService(activityDb, new HttpContextAccessor { HttpContext = httpContext }, emptyOwnerBScheduler);
+    var ownerBEmptyReport = await ownerBReportService.GetWeekAsync(weekStart);
     httpContext.User = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "activity-owner-a")], "test"));
     var actualDeleted = await actualService.DeleteAsync(actualEntry.Id);
+    var clearedReportOutcome = await tracking.ClearAsync(ownerPatternId, weekStart);
     Check("Life manual actual entries validate ownership and protect history",
         actualCreated.Succeeded
         && actualEntry.ActualMinutes == 45
@@ -354,6 +378,20 @@ await using (var activityDb = new LifeDbContext(activityOptions))
         && !forbiddenActualDelete.Succeeded
         && actualDeleted.Succeeded
         && await activityDb.ActualActivityEntries.CountAsync() == 0);
+    Check("Life progress reports combine distinct actual sources without cross-user leakage",
+        completedForReport.Succeeded
+        && report.TargetMinutes == 240
+        && report.PlannedMinutes == 60
+        && report.ScheduledActualMinutes == 60
+        && report.ManualActualMinutes == 45
+        && report.ActualMinutes == 105
+        && report.CompletedCount == 1
+        && report.UnrecordedCount == 0
+        && report.Activities.Single().ActualMinutes == 105
+        && report.Days.Sum(day => day.ActualMinutes) == 105
+        && boundedReport.WeekStart == WeekCalendar.CurrentSaturday()
+        && !ownerBEmptyReport.HasData
+        && clearedReportOutcome.Succeeded);
 
     var moved = await scheduler.SaveAsync(ownerPatternId, new SchedulePatternForm
     {

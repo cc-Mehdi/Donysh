@@ -115,6 +115,7 @@ public sealed class LifeDbContext(DbContextOptions<LifeDbContext> options) : DbC
         occurrenceRecord.Property(item => item.Note).HasMaxLength(160);
         occurrenceRecord.HasIndex(item => new { item.UserSubject, item.PatternId, item.OriginalDate }).IsUnique();
         occurrenceRecord.HasIndex(item => new { item.UserSubject, item.ScheduledDate, item.Status });
+        occurrenceRecord.HasIndex(item => new { item.UserSubject, item.MovedToDate, item.Status });
         occurrenceRecord.HasOne(item => item.Pattern)
             .WithMany(item => item.OccurrenceRecords)
             .HasPrincipalKey(item => new { item.Id, item.UserSubject })

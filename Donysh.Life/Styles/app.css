@@ -255,6 +255,71 @@ h1 { margin:0; font-size:clamp(2rem,4vw,3.3rem); line-height:1.25; letter-spacin
 .timeline-list { display:grid; gap:.7rem; padding:1rem; }
 .mobile-empty { text-align:center; color:#7d8a86; padding:2rem 1rem; }
 .mobile-empty>span { display:grid; place-items:center; width:2.5rem; height:2.5rem; margin:auto; border-radius:.85rem; color:var(--life); background:#e8f8f4; font-size:1.3rem; }
+.progress-metrics { display:grid; grid-template-columns:1.15fr repeat(3,1fr); gap:.8rem; }
+.progress-primary { color:#fff; border:0; background:linear-gradient(145deg,#0d9488,#08776e); }
+.progress-primary span,.progress-primary small { color:#d9fff6; }
+.progress-primary progress { --progress-track:#ffffff2e; --progress-value:#fff; }
+.metric-card progress,.progress-activity progress,.daily-progress-item progress { width:100%; height:.48rem; overflow:hidden; border:0; border-radius:999px; background:var(--progress-track,#e5eeec); accent-color:var(--progress-value,var(--life)); }
+progress::-webkit-progress-bar { border-radius:999px; background:var(--progress-track,#e5eeec); }
+progress::-webkit-progress-value { border-radius:999px; background:var(--progress-value,var(--life)); }
+progress::-moz-progress-bar { border-radius:999px; background:var(--progress-value,var(--life)); }
+.progress-primary progress { margin-top:.8rem; }
+.source-card .secondary-value { margin-top:.7rem; font-size:1rem; }
+.progress-insight { display:flex; align-items:flex-start; gap:.8rem; margin:1rem 0; border:1px solid #b9e8dc; border-radius:1.2rem; background:linear-gradient(120deg,#effbf8,#fff); padding:1rem 1.15rem; }
+.progress-insight>span { display:grid; place-items:center; flex:0 0 auto; width:2.1rem; height:2.1rem; border-radius:.75rem; color:#08776e; background:#cff5e8; }
+.progress-insight strong { font-size:.85rem; }
+.progress-insight p { margin:.2rem 0 0; color:#61716d; line-height:1.8; font-size:.8rem; }
+.progress-empty { padding:4rem 1rem; text-align:center; }
+.progress-empty h2 { margin:.5rem 0; }
+.progress-empty p { margin:.4rem auto 1.4rem; color:#6b7976; }
+.progress-empty>div { display:flex; flex-wrap:wrap; justify-content:center; gap:.7rem; }
+.progress-empty .button { width:auto; }
+.progress-layout { display:grid; grid-template-columns:minmax(0,1.45fr) minmax(17rem,.55fr); align-items:start; gap:1rem; margin-top:1rem; }
+.section-heading { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:.8rem; }
+.section-heading>div { display:flex; align-items:center; gap:.65rem; }
+.section-heading h2,.section-heading p { margin:0; }
+.section-heading h2 { font-size:1.05rem; }
+.section-heading p { margin-top:.15rem; color:#7a8784; font-size:.72rem; }
+.progress-activity-list { display:grid; gap:.65rem; }
+.progress-activity { --activity-color:var(--life); overflow:hidden; border:1px solid var(--line); border-right:5px solid var(--activity-color); border-radius:1.2rem; background:#fff; box-shadow:0 10px 28px #173a3308; }
+.progress-activity>summary { display:grid; grid-template-columns:auto minmax(0,1fr) auto auto; align-items:center; gap:.75rem; cursor:pointer; padding:1rem; list-style:none; }
+.progress-activity>summary::-webkit-details-marker { display:none; }
+.progress-activity[open]>summary { border-bottom:1px solid #e7efed; background:#fbfdfc; }
+.progress-activity-title strong,.progress-activity-title small { display:block; }
+.progress-activity-title small { margin-top:.12rem; color:#74817e; font-size:.72rem; }
+.progress-percent { color:var(--activity-color); font-size:.85rem; font-weight:800; }
+.progress-activity>summary progress { --progress-value:var(--activity-color); grid-column:2/5; }
+.progress-activity-detail { padding:1rem; }
+.progress-number-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:.55rem; margin:0; }
+.progress-number-grid div { border:1px solid #e4ecea; border-radius:.8rem; background:#fafcfb; padding:.65rem; }
+.progress-number-grid dt { color:#7b8885; font-size:.68rem; }
+.progress-number-grid dd { margin:.2rem 0 0; color:#354541; font-size:.82rem; font-weight:700; }
+.remaining-note { margin:.75rem 0 0; color:#5f706c; font-size:.75rem; }
+.status-pills { display:flex; flex-wrap:wrap; gap:.4rem; margin-top:.75rem; }
+.status-pills span { border:1px solid; border-radius:999px; padding:.25rem .55rem; font-size:.65rem; font-weight:700; }
+.outcome-summary-panel { position:sticky; top:1rem; }
+.outcome-summary-list { display:grid; gap:.15rem; margin:1rem 0 0; }
+.outcome-summary-list>div { display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #edf2f1; padding:.7rem .1rem; }
+.outcome-summary-list>div:last-child { border-bottom:0; }
+.outcome-summary-list dt { display:flex; align-items:center; gap:.5rem; color:#586864; font-size:.78rem; }
+.outcome-summary-list dd { margin:0; font-size:1rem; font-weight:800; }
+.status-mark { width:.65rem; height:.65rem; border-radius:50%; background:#8a9794; }
+.status-mark.completed { background:#10a274; }.status-mark.partial { background:#d79a2b; }.status-mark.missed { background:#dc6857; }.status-mark.moved { background:#6688d0; }.status-mark.pending { background:#9ba7a4; }
+.outcome-summary-list .unrecorded { margin-top:.35rem; border-radius:.75rem; background:#f5f8f7; padding:.7rem; }
+.report-note { margin:1rem 0 0; border-radius:.8rem; background:#f3f8f6; padding:.7rem; color:#71807c; line-height:1.75; font-size:.7rem; }
+.daily-progress-panel { margin-top:1rem; }
+.daily-progress-grid { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:.55rem; }
+.daily-progress-item { min-width:0; border:1px solid #e3ebe9; border-radius:.9rem; background:#fbfdfc; padding:.7rem; }
+.daily-progress-item.today { border-color:#7fcdbf; background:#f0fbf8; box-shadow:inset 0 0 0 1px #bce8df; }
+.daily-progress-item header { display:flex; align-items:flex-start; justify-content:space-between; gap:.35rem; }
+.daily-progress-item header strong,.daily-progress-item header small { display:block; }
+.daily-progress-item header strong { font-size:.76rem; }.daily-progress-item header small { margin-top:.1rem; color:#84918d; direction:ltr; font-size:.58rem; }
+.daily-progress-item header>span { border-radius:999px; background:#d8f5ed; padding:.15rem .35rem; color:#08776e; font-size:.56rem; font-weight:700; }
+.daily-progress-item dl { display:grid; gap:.3rem; margin:.7rem 0; }
+.daily-progress-item dl div { display:flex; justify-content:space-between; gap:.3rem; }
+.daily-progress-item dt { color:#7a8784; font-size:.62rem; }.daily-progress-item dd { margin:0; font-size:.64rem; font-weight:700; }
+.daily-progress-item progress { --progress-value:var(--life); height:.38rem; }
+.manual-source { display:block; margin-top:.45rem; color:#6b7b77; font-size:.58rem; }
 @media (max-width:900px) {
   .app-shell { display:block; }
   .sidebar { display:none; }
@@ -268,6 +333,10 @@ h1 { margin:0; font-size:clamp(2rem,4vw,3.3rem); line-height:1.25; letter-spacin
   .dashboard-grid { grid-template-columns:1fr; }
   .activity-layout { grid-template-columns:1fr; }
   .actual-log-layout { grid-template-columns:1fr; }
+  .progress-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .progress-layout { grid-template-columns:1fr; }
+  .outcome-summary-panel { position:static; }
+  .daily-progress-grid { grid-template-columns:repeat(4,minmax(0,1fr)); }
   .create-activity-panel { position:static; }
   .week-summary { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .schedule-builder { grid-template-columns:1fr; }
@@ -302,5 +371,11 @@ h1 { margin:0; font-size:clamp(2rem,4vw,3.3rem); line-height:1.25; letter-spacin
   .actual-entry>summary { grid-template-columns:auto minmax(0,1fr) auto; }
   .actual-entry .duration-pill { grid-column:2; justify-self:start; }
   .actual-entry .expand-mark { grid-column:3; grid-row:1; }
+  .progress-metrics { grid-template-columns:1fr; }
+  .progress-number-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .progress-activity>summary { grid-template-columns:auto minmax(0,1fr) auto; }
+  .progress-activity>summary .expand-mark { grid-column:3; grid-row:1; }
+  .progress-activity>summary progress { grid-column:2/4; }
+  .daily-progress-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
 @media (prefers-reduced-motion:reduce) { *,*:before,*:after { scroll-behavior:auto!important; transition:none!important; } }

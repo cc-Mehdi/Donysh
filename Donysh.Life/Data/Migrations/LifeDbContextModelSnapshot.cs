@@ -345,6 +345,8 @@ namespace Donysh.Life.Data.Migrations
 
                     b.HasIndex("PatternId", "UserSubject");
 
+                    b.HasIndex("UserSubject", "MovedToDate", "Status");
+
                     b.HasIndex("UserSubject", "PatternId", "OriginalDate")
                         .IsUnique();
 

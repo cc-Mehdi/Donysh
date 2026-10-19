@@ -1,5 +1,61 @@
 @page
+@model ProgressModel
+@using Donysh.Life.Features.Scheduling
 @{
     ViewData["Title"] = "پیشرفت";
 }
-<partial name="Shared/_ComingSoon" model='new Donysh.Life.Pages.Shared.ComingSoonModel("پیشرفت", "هدف، زمان برنامه‌ریزی‌شده و عملکرد واقعی را کنار هم می‌بینی.", "↗")' />
+
+<section class="page-head compact">
+    <div><p class="eyebrow">تصویر واقعی هفته</p><h1>پیشرفت</h1><p>هدف، زمان برنامه‌ریزی‌شده و آنچه واقعاً انجام شده را بدون مخلوط‌شدن منبع ثبت‌ها کنار هم ببین.</p></div>
+    <div class="week-navigation"><a class="week-nav-button" asp-page="/Progress" asp-route-week="@Model.Report.WeekStart.AddDays(-7).ToString("yyyy-MM-dd")">هفتهٔ قبل</a><span class="week-chip">@Model.Report.PersianRange</span>@if (!Model.Report.IsCurrentWeek) { <a class="week-nav-button current-week" asp-page="/Progress">این هفته</a> }<a class="week-nav-button" asp-page="/Progress" asp-route-week="@Model.Report.WeekStart.AddDays(7).ToString("yyyy-MM-dd")">هفتهٔ بعد</a></div>
+</section>
+
+<section class="progress-metrics" aria-label="خلاصهٔ پیشرفت هفته">
+    <article class="metric-card progress-primary"><span>زمان واقعی</span><strong>@Model.Report.ActualLabel</strong><small>@Model.Report.GoalPercent٪ از هدف هفتگی</small><progress max="100" value="@Model.Report.GoalProgressValue">@Model.Report.GoalPercent٪</progress></article>
+    <article class="metric-card"><span>هدف هفته</span><strong>@Model.Report.TargetLabel</strong><small>مجموع هدف فعالیت‌های فعال</small></article>
+    <article class="metric-card"><span>زمان برنامه‌ریزی‌شده</span><strong>@Model.Report.PlannedLabel</strong><small>@Model.Report.PlanPercent٪ عملکرد نسبت به برنامه</small></article>
+    <article class="metric-card source-card"><span>منبع زمان واقعی</span><strong>@WeekCalendar.DurationName(Model.Report.ScheduledActualMinutes)</strong><small>از نتیجهٔ برنامه‌ها</small><strong class="secondary-value">@WeekCalendar.DurationName(Model.Report.ManualActualMinutes)</strong><small>از ثبت دستی</small></article>
+</section>
+
+<aside class="progress-insight" aria-label="برداشت این هفته"><span aria-hidden="true">✦</span><div><strong>برداشت این هفته</strong><p>@Model.Report.Insight</p></div></aside>
+
+@if (!Model.Report.HasData)
+{
+    <article class="panel progress-empty"><span class="empty-mark">↗</span><h2>این هفته هنوز داده‌ای برای مقایسه ندارد</h2><p>یک هدف هفتگی بساز، زمانی را در برنامه قرار بده یا فعالیت انجام‌شده‌ای ثبت کن.</p><div><a class="button primary" asp-page="/Activities">تنظیم فعالیت‌ها</a><a class="button secondary" asp-page="/Week">برنامه‌ریزی هفته</a></div></article>
+}
+else
+{
+    <section class="progress-layout">
+        <div class="progress-activity-column">
+            <div class="section-heading"><div><span class="section-icon">◎</span><div><h2>فعالیت‌ها</h2><p>هر ردیف، هدف و دو منبع عملکرد واقعی را جدا نشان می‌دهد.</p></div></div><span class="tag">@Model.Report.Activities.Count فعالیت</span></div>
+            <div class="progress-activity-list">
+                @foreach (var item in Model.Report.Activities)
+                {
+                    <details class="progress-activity @item.ColorClass" open="@(Model.Report.Activities.Count <= 3 ? "open" : null)">
+                        <summary><span class="activity-icon">@item.IconGlyph</span><span class="progress-activity-title"><strong>@item.Title</strong><small>@item.ActualLabel از @item.TargetLabel</small></span><span class="progress-percent">@(item.TargetMinutes == 0 ? "—" : $"{item.GoalPercent}٪")</span><span class="expand-mark" aria-hidden="true">⌄</span><progress max="100" value="@item.GoalProgressValue">@item.GoalPercent٪</progress></summary>
+                        <div class="progress-activity-detail">
+                            <dl class="progress-number-grid"><div><dt>هدف</dt><dd>@item.TargetLabel</dd></div><div><dt>برنامه</dt><dd>@item.PlannedLabel</dd></div><div><dt>نتیجهٔ برنامه‌ها</dt><dd>@WeekCalendar.DurationName(item.ScheduledActualMinutes)</dd></div><div><dt>ثبت دستی</dt><dd>@WeekCalendar.DurationName(item.ManualActualMinutes)</dd></div></dl>
+                            @if (item.TargetMinutes > 0) { <p class="remaining-note">@(item.RemainingMinutes == 0 ? "هدف این هفته پوشش داده شده است." : $"تا هدف این هفته {WeekCalendar.DurationName(item.RemainingMinutes)} باقی مانده است.")</p> }
+                            <div class="status-pills" aria-label="وضعیت نتیجه‌های ثبت‌شده">@if (item.CompletedCount > 0) { <span class="outcome-completed">@item.CompletedCount انجام‌شده</span> }@if (item.PartialCount > 0) { <span class="outcome-partial">@item.PartialCount نیمه‌تمام</span> }@if (item.MissedCount > 0) { <span class="outcome-missed">@item.MissedCount انجام‌نشده</span> }@if (item.MovedCount > 0) { <span class="outcome-moved">@item.MovedCount انتقال‌یافته</span> }</div>
+                        </div>
+                    </details>
+                }
+            </div>
+        </div>
+        <aside class="panel outcome-summary-panel">
+            <div class="panel-head"><div><span class="section-icon coral">✓</span><div><h2>وضعیت برنامه‌ها</h2><small>تنها نتیجه‌های ثبت‌شده</small></div></div></div>
+            <dl class="outcome-summary-list"><div><dt><span class="status-mark completed"></span>انجام‌شده</dt><dd>@Model.Report.CompletedCount</dd></div><div><dt><span class="status-mark partial"></span>نیمه‌تمام</dt><dd>@Model.Report.PartialCount</dd></div><div><dt><span class="status-mark missed"></span>انجام‌نشده</dt><dd>@Model.Report.MissedCount</dd></div><div><dt><span class="status-mark moved"></span>انتقال‌یافته</dt><dd>@Model.Report.MovedCount</dd></div><div class="unrecorded"><dt><span class="status-mark pending"></span>بدون ثبت نتیجه</dt><dd>@Model.Report.UnrecordedCount</dd></div></dl>
+            <p class="report-note">ثبت دستی در شمار وضعیت برنامه‌ها نمی‌آید، اما در زمان واقعی محاسبه می‌شود.</p>
+        </aside>
+    </section>
+
+    <section class="panel daily-progress-panel">
+        <div class="section-heading"><div><span class="section-icon">▦</span><div><h2>نمای روزانه</h2><p>مقایسهٔ برنامه و عملکرد در روزهای همین هفته</p></div></div></div>
+        <div class="daily-progress-grid">
+            @foreach (var day in Model.Report.Days)
+            {
+                <article class="daily-progress-item @(day.Date == WeekCalendar.Today() ? "today" : "")"><header><div><strong>@day.DayName</strong><small>@day.PersianDate</small></div>@if (day.Date == WeekCalendar.Today()) { <span>امروز</span> }</header><dl><div><dt>برنامه</dt><dd>@day.PlannedLabel</dd></div><div><dt>واقعی</dt><dd>@day.ActualLabel</dd></div></dl><progress max="@(Math.Max(1, Math.Max(day.PlannedMinutes, day.ActualMinutes)))" value="@day.ActualMinutes">@day.ActualLabel</progress>@if (day.ManualActualMinutes > 0) { <small class="manual-source">@WeekCalendar.DurationName(day.ManualActualMinutes) ثبت دستی</small> }</article>
+            }
+        </div>
+    </section>
+}
