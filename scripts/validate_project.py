@@ -99,8 +99,27 @@ def main() -> int:
         json.loads((ROOT / "Donysh.Auth/appsettings.json").read_text(encoding="utf-8"))
         json.loads((ROOT / "Donysh.Landing/package.json").read_text(encoding="utf-8"))
         json.loads((ROOT / "Donysh.Landing/appsettings.json").read_text(encoding="utf-8"))
+        json.loads((ROOT / "Donysh.Life/package.json").read_text(encoding="utf-8"))
+        json.loads((ROOT / "Donysh.Life/appsettings.json").read_text(encoding="utf-8"))
     except Exception as exc:
         errors.append(f"invalid json: {exc}")
+
+    frontend_projects = ["HesabYar.Web", "Donysh.Auth", "Donysh.Landing", "Donysh.Life"]
+    for project in frontend_projects:
+        lockfile = ROOT / project / "package-lock.json"
+        try:
+            lock = json.loads(lockfile.read_text(encoding="utf-8"))
+        except Exception as exc:
+            errors.append(f"invalid npm lockfile {project}/package-lock.json: {exc}")
+            continue
+
+        for package_name, package in lock.get("packages", {}).items():
+            resolved = package.get("resolved")
+            if resolved and not resolved.startswith("https://registry.npmjs.org/"):
+                errors.append(
+                    f"untrusted npm registry in {project}/package-lock.json "
+                    f"for {package_name or '<root>'}: {resolved}"
+                )
 
     try:
         ET.parse(ROOT / "HesabYar.Web/HesabYar.Web.csproj")

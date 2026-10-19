@@ -16,6 +16,13 @@ jobs:
   validate:
     name: Validate project
     runs-on: ubuntu-latest
+    env:
+      NPM_CONFIG_REGISTRY: https://registry.npmjs.org/
+      NPM_CONFIG_REPLACE_REGISTRY_HOST: always
+      NPM_CONFIG_FETCH_RETRIES: 3
+      NPM_CONFIG_FETCH_RETRY_MINTIMEOUT: 10000
+      NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT: 60000
+      NPM_CONFIG_FETCH_TIMEOUT: 120000
     services:
       postgres:
         image: postgres:17-alpine
@@ -48,6 +55,9 @@ jobs:
             Donysh.Auth/package-lock.json
             Donysh.Landing/package-lock.json
             Donysh.Life/package-lock.json
+
+      - name: Verify npm registry sources
+        run: python scripts/validate_project.py
 
       - name: Install frontend dependencies
         working-directory: HesabYar.Web
