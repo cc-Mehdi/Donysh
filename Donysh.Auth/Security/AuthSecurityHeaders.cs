@@ -2,7 +2,23 @@ namespace Donysh.Auth.Security;
 
 public static class AuthSecurityHeaders
 {
-    public static IApplicationBuilder UseAuthSecurityHeaders(this IApplicationBuilder app) =>
+    public static string BuildContentSecurityPolicy(IEnumerable<string> redirectUris)
+    {
+        var trustedOrigins = redirectUris
+            .Select(value => Uri.TryCreate(value, UriKind.Absolute, out var uri) ? uri : null)
+            .Where(uri => uri is { Scheme: "https" or "http" })
+            .Select(uri => uri!.GetLeftPart(UriPartial.Authority))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Order(StringComparer.OrdinalIgnoreCase);
+        var formActions = string.Join(' ', new[] { "'self'" }.Concat(trustedOrigins));
+        return $"default-src 'self'; base-uri 'self'; frame-ancestors 'none'; form-action {formActions}; " +
+            "object-src 'none'; img-src 'self' data:; font-src 'self'; style-src 'self'; " +
+            "script-src 'self'; connect-src 'self'";
+    }
+
+    public static IApplicationBuilder UseAuthSecurityHeaders(
+        this IApplicationBuilder app,
+        IEnumerable<string> redirectUris) =>
         app.Use(async (context, next) =>
         {
             context.Response.OnStarting(() =>
@@ -11,7 +27,7 @@ public static class AuthSecurityHeaders
                 headers.XContentTypeOptions = "nosniff";
                 headers.XFrameOptions = "DENY";
                 headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
-                var contentSecurityPolicy = "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; object-src 'none'; img-src 'self' data:; font-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self'";
+                var contentSecurityPolicy = BuildContentSecurityPolicy(redirectUris);
                 headers.ContentSecurityPolicy = context.Request.IsHttps
                     ? contentSecurityPolicy + "; upgrade-insecure-requests"
                     : contentSecurityPolicy;

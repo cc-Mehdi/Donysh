@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Text.Json;
 using System.Text.Encodings.Web;
 using Donysh.Life.Configuration;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Hosting;
@@ -45,6 +46,7 @@ using (var response = await client.GetAsync("/Account/Login"))
     Check("Life security headers block framing and scripts",
         response.Headers.TryGetValues("Content-Security-Policy", out var csp)
         && csp.Single().Contains("frame-ancestors 'none'", StringComparison.Ordinal)
+        && csp.Single().Contains("form-action 'self' https://auth.test", StringComparison.Ordinal)
         && csp.Single().Contains("script-src 'none'", StringComparison.Ordinal)
         && response.Headers.TryGetValues("X-Frame-Options", out var frame)
         && frame.Single() == "DENY");
@@ -78,15 +80,40 @@ using (var authenticatedClient = authenticatedFactory.CreateClient(new WebApplic
     AllowAutoRedirect = false,
     BaseAddress = new Uri("https://life.test")
 }))
-using (var response = await authenticatedClient.GetAsync("/"))
 {
+    using var response = await authenticatedClient.GetAsync("/");
     var html = await response.Content.ReadAsStringAsync();
     Check("Authenticated Life dashboard renders its initial shell",
         response.StatusCode == HttpStatusCode.OK
         && html.Contains("برای چیزهای مهم، جا باز کن", StringComparison.Ordinal)
         && html.Contains("برنامهٔ هفته", StringComparison.Ordinal)
         && html.Contains("پیشرفت واقعی", StringComparison.Ordinal));
+    Check("Life logout posts locally before central OIDC sign-out",
+        html.Contains("action=\"/Account/Logout\"", StringComparison.Ordinal));
+
+    var antiforgeryMatch = Regex.Match(
+        html,
+        "name=\"__RequestVerificationToken\" type=\"hidden\" value=\"([^\"]+)\"",
+        RegexOptions.CultureInvariant);
+    using var logoutContent = new FormUrlEncodedContent(new Dictionary<string, string>
+    {
+        ["__RequestVerificationToken"] = WebUtility.HtmlDecode(antiforgeryMatch.Groups[1].Value)
+    });
+    using var logoutResponse = await authenticatedClient.PostAsync("/Account/Logout", logoutContent);
+    var logoutLocation = logoutResponse.Headers.Location?.OriginalString ?? string.Empty;
+    Check("Life logout redirects through the central end-session endpoint",
+        antiforgeryMatch.Success
+        && logoutResponse.StatusCode == HttpStatusCode.Redirect
+        && logoutLocation.StartsWith("https://auth.test/connect/logout", StringComparison.Ordinal)
+        && logoutLocation.Contains("post_logout_redirect_uri=https%3A%2F%2Flife.test%2Fsignout-callback-oidc", StringComparison.OrdinalIgnoreCase));
 }
+
+var lifeLogout = new Donysh.Life.Pages.Account.LogoutModel().OnPost() as Microsoft.AspNetCore.Mvc.SignOutResult;
+Check("Life logout clears both the product and central sessions",
+    lifeLogout is not null
+    && lifeLogout.AuthenticationSchemes.Contains(LifeAuthOptions.CookieScheme)
+    && lifeLogout.AuthenticationSchemes.Contains(LifeAuthOptions.OidcScheme)
+    && lifeLogout.Properties?.RedirectUri == "/Account/SignedOut");
 
 var postgres = Environment.GetEnvironmentVariable("DONYSH_LIFE_TEST_POSTGRES");
 if (!string.IsNullOrWhiteSpace(postgres)) await PostgresChecks.RunAsync(postgres);

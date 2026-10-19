@@ -175,6 +175,7 @@ def main() -> int:
         "FINANCE_DOMAIN",
         "OidcClients__0__RedirectUris__1",
         "OidcClients__0__PostLogoutRedirectUris__1",
+        "Navigation__DefaultReturnUrl",
         "landing:",
         "Products__FinanceUrl",
         "life-db:",

@@ -94,6 +94,7 @@ services:
       Features__PublicRegistration: "false"
       Features__PasswordRecovery: "false"
       Features__LegacyIdentityImportCompleted: ${LEGACY_IDENTITY_IMPORT_COMPLETED:-false}
+      Navigation__DefaultReturnUrl: https://${DOMAIN:?DOMAIN is required}
       OidcClients__0__ClientId: finance-web
       OidcClients__0__DisplayName: Donysh Finance
       OidcClients__0__ClientSecret: ${FINANCE_OIDC_CLIENT_SECRET:?FINANCE_OIDC_CLIENT_SECRET is required}

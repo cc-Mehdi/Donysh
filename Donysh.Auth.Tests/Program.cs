@@ -3,11 +3,13 @@ using System.Text.Json;
 using Donysh.Auth.Domain;
 using Donysh.Auth.Pages;
 using Donysh.Auth.Security;
+using Donysh.Auth.Configuration;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 
 var failed = 0;
 
@@ -32,8 +34,24 @@ var legacyHash = legacyHasher.HashPassword(new IdentityUser(), "Migration-Test-1
 var authHasher = new PasswordHasher<AuthUser>();
 Check("Identity password hash remains compatible",
     authHasher.VerifyHashedPassword(new AuthUser(), legacyHash, "Migration-Test-123") is PasswordVerificationResult.Success or PasswordVerificationResult.SuccessRehashNeeded);
-Check("Authenticated Auth home renders without a login redirect loop",
-    new IndexModel().OnGet() is Microsoft.AspNetCore.Mvc.RazorPages.PageResult);
+var ecosystemHome = "https://donysh.test/";
+Check("Authenticated Auth home returns to the configured ecosystem destination",
+    new IndexModel(Options.Create(new AuthNavigationOptions { DefaultReturnUrl = ecosystemHome })).OnGet()
+        is Microsoft.AspNetCore.Mvc.RedirectResult { Url: var destination }
+    && destination == ecosystemHome);
+Check("Auth home rejects an unsafe configured destination",
+    new IndexModel(Options.Create(new AuthNavigationOptions { DefaultReturnUrl = "javascript:alert(1)" })).OnGet()
+        is Microsoft.AspNetCore.Mvc.RazorPages.PageResult);
+var authCsp = AuthSecurityHeaders.BuildContentSecurityPolicy([
+    "https://finance.donysh.test/signin-oidc",
+    "https://finance.donysh.test/signout-callback-oidc",
+    "https://life.donysh.test/signin-oidc",
+    "javascript:alert(1)"
+]);
+Check("Auth CSP allows only registered product origins for form redirects",
+    authCsp.Contains("form-action 'self' https://finance.donysh.test https://life.donysh.test", StringComparison.Ordinal)
+    && !authCsp.Contains("signin-oidc", StringComparison.Ordinal)
+    && !authCsp.Contains("javascript", StringComparison.Ordinal));
 var authPrefetch = new DefaultHttpContext();
 authPrefetch.Request.Method = HttpMethods.Get;
 authPrefetch.Request.Path = "/connect/authorize";
@@ -46,6 +64,10 @@ Check("Auth prefetch guard leaves ordinary endpoints unchanged",
 
 Environment.SetEnvironmentVariable("Database__ApplyMigrations", "false");
 Environment.SetEnvironmentVariable("AllowedHosts", "*");
+Environment.SetEnvironmentVariable("OidcClients__0__RedirectUris__0", "https://finance.test/signin-oidc");
+Environment.SetEnvironmentVariable("OidcClients__0__PostLogoutRedirectUris__0", "https://finance.test/signout-callback-oidc");
+Environment.SetEnvironmentVariable("OidcClients__1__RedirectUris__0", "https://life.test/signin-oidc");
+Environment.SetEnvironmentVariable("OidcClients__1__PostLogoutRedirectUris__0", "https://life.test/signout-callback-oidc");
 Environment.SetEnvironmentVariable("ConnectionStrings__AuthConnection",
     "Host=127.0.0.1;Port=1;Database=donysh_auth_test;Username=test;Password=test;Timeout=1;Command Timeout=1");
 await using var factory = new AuthApplicationFactory();
@@ -71,9 +93,13 @@ using (var response = await client.GetAsync("/Account/Login"))
         html.Contains("data-password-toggle", StringComparison.Ordinal)
         && html.Contains("aria-label=\"نمایش رمز عبور\"", StringComparison.Ordinal)
         && html.Contains("/js/password-toggle.js", StringComparison.Ordinal));
+    var hasCsp = response.Headers.TryGetValues("Content-Security-Policy", out var values);
+    var cspHeader = hasCsp ? values!.Single() : string.Empty;
     Check("Security headers are present",
-        response.Headers.TryGetValues("Content-Security-Policy", out var values)
-        && values.Single().Contains("frame-ancestors 'none'", StringComparison.Ordinal)
+        hasCsp
+        && cspHeader.Contains("frame-ancestors 'none'", StringComparison.Ordinal)
+        && cspHeader.Contains("https://finance.test", StringComparison.Ordinal)
+        && cspHeader.Contains("https://life.test", StringComparison.Ordinal)
         && response.Headers.TryGetValues("X-Frame-Options", out var frame)
         && frame.Single() == "DENY");
 }

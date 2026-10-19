@@ -137,7 +137,7 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Error");
     if (reverseProxyEnabled) app.UseHsts();
 }
-app.UseLifeSecurityHeaders();
+app.UseLifeSecurityHeaders(authority);
 var sharedWebRoot = Path.GetFullPath(Path.Combine(app.Environment.ContentRootPath, "..", "HesabYar.Web", "wwwroot"));
 if (Directory.Exists(sharedWebRoot))
 {

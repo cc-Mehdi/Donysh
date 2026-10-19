@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 // The list and member summary must share every user-selected filter.
 var selectedCategory = Guid.NewGuid();
@@ -55,6 +56,19 @@ Console.WriteLine("PASS Central authentication cannot reuse legacy Finance sessi
 if (!string.Equals(CentralAuthOptions.SecureResponseMode, "query", StringComparison.Ordinal))
     throw new Exception("Central authentication must not require an inline form_post script.");
 Console.WriteLine("PASS Central authentication callback preserves strict CSP without inline scripts");
+var financeCsp = SecurityHeaders.BuildContentSecurityPolicy(new Uri("https://auth.donysh.test/connect/authorize"));
+if (!financeCsp.Contains("form-action 'self' https://auth.donysh.test", StringComparison.Ordinal)
+    || financeCsp.Contains("connect/authorize", StringComparison.Ordinal))
+    throw new Exception("Finance CSP must allow only the trusted central Auth origin for OIDC form redirects.");
+Console.WriteLine("PASS Finance CSP allows the trusted central Auth origin");
+var financeLogout = new HesabYar.Web.Pages.Account.LogoutModel(
+    Options.Create(new CentralAuthOptions { Enabled = true })).OnPost() as Microsoft.AspNetCore.Mvc.SignOutResult;
+if (financeLogout is null
+    || !financeLogout.AuthenticationSchemes.Contains(Microsoft.AspNetCore.Identity.IdentityConstants.ApplicationScheme)
+    || !financeLogout.AuthenticationSchemes.Contains(CentralAuthOptions.Scheme)
+    || financeLogout.Properties?.RedirectUri != "/")
+    throw new Exception("Finance logout must clear both the product and central sessions.");
+Console.WriteLine("PASS Finance logout clears both the product and central sessions");
 var financePrefetch = new DefaultHttpContext();
 financePrefetch.Request.Method = HttpMethods.Get;
 financePrefetch.Request.Path = "/Account/Login";

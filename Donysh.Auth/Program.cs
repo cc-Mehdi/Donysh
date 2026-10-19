@@ -28,9 +28,14 @@ var reverseProxyEnabled = builder.Configuration.GetValue<bool>("ReverseProxy:Ena
 var applyMigrations = builder.Configuration.GetValue("Database:ApplyMigrations", true);
 var connectionString = builder.Configuration.GetConnectionString("AuthConnection")
     ?? throw new InvalidOperationException("Connection string 'AuthConnection' was not found.");
+var oidcClients = builder.Configuration
+    .GetSection(AuthClientOptions.SectionName)
+    .Get<List<AuthClientOptions>>() ?? [];
 
 builder.Services.AddOptions<AuthFeatureOptions>()
     .Bind(builder.Configuration.GetSection(AuthFeatureOptions.SectionName));
+builder.Services.AddOptions<AuthNavigationOptions>()
+    .Bind(builder.Configuration.GetSection(AuthNavigationOptions.SectionName));
 builder.Services.AddOptions<EmailOptions>()
     .Bind(builder.Configuration.GetSection(EmailOptions.SectionName));
 
@@ -178,7 +183,8 @@ if (!app.Environment.IsDevelopment())
     if (reverseProxyEnabled) app.UseHsts();
 }
 
-app.UseAuthSecurityHeaders();
+app.UseAuthSecurityHeaders(oidcClients.SelectMany(client =>
+    client.RedirectUris.Concat(client.PostLogoutRedirectUris)));
 app.Use(AuthenticationPrefetchGuard.InvokeAsync);
 app.UseStaticFiles();
 app.UseRequestLocalization(new RequestLocalizationOptions()

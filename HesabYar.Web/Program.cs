@@ -32,6 +32,7 @@ var reverseProxyEnabled = builder.Configuration.GetValue<bool>("ReverseProxy:Ena
 var centralAuth = builder.Configuration
     .GetSection(CentralAuthOptions.SectionName)
     .Get<CentralAuthOptions>() ?? new CentralAuthOptions();
+Uri? centralAuthority = null;
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' was not found.");
 
@@ -65,8 +66,8 @@ builder.Services.AddOptions<CentralAuthOptions>()
 
 if (centralAuth.Enabled)
 {
-    if (!Uri.TryCreate(centralAuth.Authority, UriKind.Absolute, out var authority)
-        || (centralAuth.RequireHttpsMetadata && authority.Scheme != Uri.UriSchemeHttps))
+    if (!Uri.TryCreate(centralAuth.Authority, UriKind.Absolute, out centralAuthority)
+        || (centralAuth.RequireHttpsMetadata && centralAuthority.Scheme != Uri.UriSchemeHttps))
     {
         throw new InvalidOperationException("CentralAuth:Authority must be an absolute HTTPS URI.");
     }
@@ -81,7 +82,7 @@ if (centralAuth.Enabled)
     builder.Services.AddAuthentication()
         .AddOpenIdConnect(CentralAuthOptions.Scheme, options =>
         {
-            options.Authority = authority.AbsoluteUri.TrimEnd('/');
+            options.Authority = centralAuthority.AbsoluteUri.TrimEnd('/');
             options.ClientId = centralAuth.ClientId;
             options.ClientSecret = centralAuth.ClientSecret;
             options.ResponseType = OpenIdConnectResponseType.Code;
@@ -266,7 +267,7 @@ if (!app.Environment.IsDevelopment())
     }
 }
 
-app.UseDonyshSecurityHeaders();
+app.UseDonyshSecurityHeaders(centralAuthority);
 app.Use(AuthenticationPrefetchGuard.InvokeAsync);
 
 app.UseStaticFiles();

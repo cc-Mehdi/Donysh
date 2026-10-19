@@ -17,13 +17,13 @@ public sealed class LogoutModel(
         if (centralAuthOptions.Value.Enabled)
         {
             return SignOut(
-                new AuthenticationProperties { RedirectUri = Url.Page("/Index") },
+                new AuthenticationProperties { RedirectUri = "/" },
                 IdentityConstants.ApplicationScheme,
                 CentralAuthOptions.Scheme);
         }
 
         return SignOut(
-            new AuthenticationProperties { RedirectUri = Url.Page("/Account/Login") },
+            new AuthenticationProperties { RedirectUri = "/Account/Login" },
             IdentityConstants.ApplicationScheme);
     }
 }
