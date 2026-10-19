@@ -78,16 +78,18 @@ trap rollback ERR
 bash scripts/configure-server-env.sh "$ENV_FILE" 9>&-
 
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" config 9>&- >/dev/null
-docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" build web auth landing 9>&-
+docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" build web auth landing life 9>&-
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --remove-orphans 9>&-
 
 # Read DOMAIN without executing the env file as shell code.
 domain="$(sed -n 's/^DOMAIN=//p' "$ENV_FILE" | tail -n 1 | tr -d '\r' | xargs)"
 finance_domain="$(sed -n 's/^FINANCE_DOMAIN=//p' "$ENV_FILE" | tail -n 1 | tr -d '\r' | xargs)"
 auth_domain="$(sed -n 's/^AUTH_DOMAIN=//p' "$ENV_FILE" | tail -n 1 | tr -d '\r' | xargs)"
+life_domain="$(sed -n 's/^LIFE_DOMAIN=//p' "$ENV_FILE" | tail -n 1 | tr -d '\r' | xargs)"
 health_url="${HEALTH_URL:-https://${domain}/health}"
 finance_health_url="${FINANCE_HEALTH_URL:-https://${finance_domain}/health}"
 auth_health_url="${AUTH_HEALTH_URL:-https://${auth_domain}/health/ready}"
+life_health_url="${LIFE_HEALTH_URL:-https://${life_domain}/health/ready}"
 
 for attempt in $(seq 1 24); do
   if curl --fail --silent --show-error --max-time 10 \
@@ -98,8 +100,11 @@ for attempt in $(seq 1 24); do
       "$finance_health_url" 9>&- >/dev/null \
       && curl --fail --silent --show-error --max-time 10 \
       --resolve "${auth_domain}:443:127.0.0.1" \
-      "$auth_health_url" 9>&- >/dev/null; then
-    echo "Health checks passed: Landing $health_url, Finance $finance_health_url and Auth $auth_health_url"
+      "$auth_health_url" 9>&- >/dev/null \
+      && curl --fail --silent --show-error --max-time 10 \
+      --resolve "${life_domain}:443:127.0.0.1" \
+      "$life_health_url" 9>&- >/dev/null; then
+    echo "Health checks passed: Landing $health_url, Finance $finance_health_url, Auth $auth_health_url and Life $life_health_url"
     trap - ERR
     docker image prune -f 9>&- >/dev/null 2>&1 || true
     docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps 9>&-
@@ -111,5 +116,5 @@ for attempt in $(seq 1 24); do
   sleep 5 9>&-
 done
 
-echo "A health check failed: $health_url, $finance_health_url or $auth_health_url"
+echo "A health check failed: $health_url, $finance_health_url, $auth_health_url or $life_health_url"
 exit 1

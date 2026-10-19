@@ -102,6 +102,12 @@ services:
       OidcClients__0__RedirectUris__1: https://${FINANCE_DOMAIN:?FINANCE_DOMAIN is required}/signin-oidc
       OidcClients__0__PostLogoutRedirectUris__0: https://${DOMAIN:?DOMAIN is required}/signout-callback-oidc
       OidcClients__0__PostLogoutRedirectUris__1: https://${FINANCE_DOMAIN:?FINANCE_DOMAIN is required}/signout-callback-oidc
+      OidcClients__1__ClientId: life-web
+      OidcClients__1__DisplayName: Donysh Life
+      OidcClients__1__ClientSecret: ${LIFE_OIDC_CLIENT_SECRET:?LIFE_OIDC_CLIENT_SECRET is required}
+      OidcClients__1__PublicClient: "false"
+      OidcClients__1__RedirectUris__0: https://${LIFE_DOMAIN:?LIFE_DOMAIN is required}/signin-oidc
+      OidcClients__1__PostLogoutRedirectUris__0: https://${LIFE_DOMAIN:?LIFE_DOMAIN is required}/signout-callback-oidc
       OpenIddict__SigningCertificate__Path: /certs/signing.pfx
       OpenIddict__SigningCertificate__Password: ${AUTH_SIGNING_CERT_PASSWORD:?AUTH_SIGNING_CERT_PASSWORD is required}
       OpenIddict__EncryptionCertificate__Path: /certs/encryption.pfx
@@ -146,11 +152,64 @@ services:
       ReverseProxy__Enabled: "true"
       Products__FinanceUrl: https://${FINANCE_DOMAIN:?FINANCE_DOMAIN is required}
       Products__AuthUrl: https://${AUTH_DOMAIN:?AUTH_DOMAIN is required}
-      Products__LifeUrl: https://life.${DOMAIN:?DOMAIN is required}
+      Products__LifeUrl: https://${LIFE_DOMAIN:?LIFE_DOMAIN is required}
       TZ: ${TZ:-Asia/Tehran}
     expose:
       - "8080"
     networks:
+      - frontend
+    logging: *default-logging
+
+  life-db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${LIFE_POSTGRES_DB:-donysh_life}
+      POSTGRES_USER: ${LIFE_POSTGRES_USER:-donysh_life}
+      POSTGRES_PASSWORD: ${LIFE_POSTGRES_PASSWORD:?LIFE_POSTGRES_PASSWORD is required}
+      TZ: ${TZ:-Asia/Tehran}
+    volumes:
+      - life_postgres_data:/var/lib/postgresql/data
+    networks:
+      - life-backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${LIFE_POSTGRES_USER:-donysh_life} -d ${LIFE_POSTGRES_DB:-donysh_life}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
+    logging: *default-logging
+
+  life:
+    build:
+      context: .
+      dockerfile: Donysh.Life/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      life-db:
+        condition: service_healthy
+      auth:
+        condition: service_started
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      AllowedHosts: ${LIFE_DOMAIN:?LIFE_DOMAIN is required}
+      ReverseProxy__Enabled: "true"
+      Database__ApplyMigrations: "true"
+      DataProtection__KeysPath: /keys
+      CentralAuth__Authority: https://${AUTH_DOMAIN:?AUTH_DOMAIN is required}
+      CentralAuth__ClientId: life-web
+      CentralAuth__ClientSecret: ${LIFE_OIDC_CLIENT_SECRET:?LIFE_OIDC_CLIENT_SECRET is required}
+      CentralAuth__RequireHttpsMetadata: "true"
+      TZ: ${TZ:-Asia/Tehran}
+      ConnectionStrings__LifeConnection: >-
+        Host=life-db;Port=5432;Database=${LIFE_POSTGRES_DB:-donysh_life};Username=${LIFE_POSTGRES_USER:-donysh_life};Password=${LIFE_POSTGRES_PASSWORD:?LIFE_POSTGRES_PASSWORD is required};Pooling=true;Maximum Pool Size=30;Timeout=15;Command Timeout=30;Include Error Detail=false
+    expose:
+      - "8080"
+    volumes:
+      - life_dataprotection_keys:/keys
+    networks:
+      - life-backend
       - frontend
     logging: *default-logging
 
@@ -164,10 +223,13 @@ services:
         condition: service_started
       landing:
         condition: service_started
+      life:
+        condition: service_started
     environment:
       DOMAIN: ${DOMAIN:?DOMAIN is required}
       FINANCE_DOMAIN: ${FINANCE_DOMAIN:?FINANCE_DOMAIN is required}
       AUTH_DOMAIN: ${AUTH_DOMAIN:?AUTH_DOMAIN is required}
+      LIFE_DOMAIN: ${LIFE_DOMAIN:?LIFE_DOMAIN is required}
       ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL is required}
     ports:
       - "80:80"
@@ -187,6 +249,8 @@ volumes:
   dataprotection_keys:
   auth_postgres_data:
   auth_dataprotection_keys:
+  life_postgres_data:
+  life_dataprotection_keys:
   caddy_data:
   caddy_config:
 
@@ -195,4 +259,6 @@ networks:
   finance-backend:
     internal: true
   auth-backend:
+    internal: true
+  life-backend:
     internal: true

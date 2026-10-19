@@ -32,6 +32,7 @@ managed_keys=(
   AUTH_DOMAIN AUTH_POSTGRES_DB AUTH_POSTGRES_USER AUTH_POSTGRES_PASSWORD
   AUTH_SIGNING_CERT_PASSWORD AUTH_ENCRYPTION_CERT_PASSWORD
   FINANCE_OIDC_CLIENT_SECRET LEGACY_IDENTITY_IMPORT_COMPLETED CENTRAL_AUTH_ENABLED
+  LIFE_DOMAIN LIFE_POSTGRES_DB LIFE_POSTGRES_USER LIFE_POSTGRES_PASSWORD LIFE_OIDC_CLIENT_SECRET
 )
 
 for key in "${managed_keys[@]}"; do
@@ -96,6 +97,7 @@ keep_or_generate_secret() {
 prompt_value DOMAIN 'دامنهٔ اصلی' 'donysh.ir'
 prompt_value FINANCE_DOMAIN 'دامنهٔ سرویس مالی' "finance.${desired[DOMAIN]}"
 prompt_value AUTH_DOMAIN 'دامنهٔ سرویس ورود مرکزی' "auth.${desired[DOMAIN]}"
+prompt_value LIFE_DOMAIN 'دامنهٔ دونیش زندگی' "life.${desired[DOMAIN]}"
 prompt_value ACME_EMAIL 'ایمیل دریافت هشدارهای گواهی HTTPS' "admin@${desired[DOMAIN]}"
 prompt_value APP_PORT 'درگاه داخلی برنامه' '8080'
 prompt_value TZ 'منطقهٔ زمانی' 'Asia/Tehran'
@@ -103,6 +105,8 @@ prompt_value POSTGRES_DB 'نام پایگاه دادهٔ مالی' 'hesabyar'
 prompt_value POSTGRES_USER 'کاربر پایگاه دادهٔ مالی' 'hesabyar'
 prompt_value AUTH_POSTGRES_DB 'نام پایگاه دادهٔ ورود مرکزی' 'donysh_auth'
 prompt_value AUTH_POSTGRES_USER 'کاربر پایگاه دادهٔ ورود مرکزی' 'donysh_auth'
+prompt_value LIFE_POSTGRES_DB 'نام پایگاه دادهٔ دونیش زندگی' 'donysh_life'
+prompt_value LIFE_POSTGRES_USER 'کاربر پایگاه دادهٔ دونیش زندگی' 'donysh_life'
 
 [[ "${desired[DOMAIN]}" =~ ^([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$ ]] \
   || fail "دامنهٔ اصلی معتبر نیست."
@@ -110,6 +114,8 @@ prompt_value AUTH_POSTGRES_USER 'کاربر پایگاه دادهٔ ورود م�
   || fail "دامنهٔ سرویس مالی معتبر نیست."
 [[ "${desired[AUTH_DOMAIN]}" =~ ^([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$ ]] \
   || fail "دامنهٔ سرویس ورود معتبر نیست."
+[[ "${desired[LIFE_DOMAIN]}" =~ ^([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$ ]] \
+  || fail "دامنهٔ دونیش زندگی معتبر نیست."
 [[ "${desired[ACME_EMAIL]}" =~ ^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$ ]] \
   || fail "ایمیل گواهی HTTPS معتبر نیست."
 [[ "${desired[APP_PORT]}" =~ ^[0-9]+$ ]] \
@@ -118,7 +124,7 @@ prompt_value AUTH_POSTGRES_USER 'کاربر پایگاه دادهٔ ورود م�
 [[ "${desired[TZ]}" =~ ^[A-Za-z_+-]+(/[A-Za-z0-9_+-]+)+$ ]] \
   || fail "منطقهٔ زمانی معتبر نیست."
 
-for key in POSTGRES_DB POSTGRES_USER AUTH_POSTGRES_DB AUTH_POSTGRES_USER; do
+for key in POSTGRES_DB POSTGRES_USER AUTH_POSTGRES_DB AUTH_POSTGRES_USER LIFE_POSTGRES_DB LIFE_POSTGRES_USER; do
   [[ "${desired[$key]}" =~ ^[A-Za-z_][A-Za-z0-9_]{0,62}$ ]] \
     || fail "مقدار $key برای PostgreSQL معتبر نیست."
 done
@@ -128,8 +134,12 @@ keep_or_generate_secret AUTH_POSTGRES_PASSWORD
 keep_or_generate_secret AUTH_SIGNING_CERT_PASSWORD
 keep_or_generate_secret AUTH_ENCRYPTION_CERT_PASSWORD
 keep_or_generate_secret FINANCE_OIDC_CLIENT_SECRET
+keep_or_generate_secret LIFE_POSTGRES_PASSWORD
+keep_or_generate_secret LIFE_OIDC_CLIENT_SECRET
 [[ "${#desired[FINANCE_OIDC_CLIENT_SECRET]}" -ge 32 ]] \
   || fail "مقدار FINANCE_OIDC_CLIENT_SECRET باید دست‌کم ۳۲ نویسه باشد."
+[[ "${#desired[LIFE_OIDC_CLIENT_SECRET]}" -ge 32 ]] \
+  || fail "مقدار LIFE_OIDC_CLIENT_SECRET باید دست‌کم ۳۲ نویسه باشد."
 
 desired[LEGACY_IDENTITY_IMPORT_COMPLETED]="$(existing_or_default LEGACY_IDENTITY_IMPORT_COMPLETED false)"
 desired[CENTRAL_AUTH_ENABLED]="$(existing_or_default CENTRAL_AUTH_ENABLED false)"

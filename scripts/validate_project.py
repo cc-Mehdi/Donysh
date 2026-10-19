@@ -37,6 +37,16 @@ REQUIRED = [
     "Donysh.Landing/package-lock.json",
     "Donysh.Landing/Dockerfile",
     "Donysh.Landing.Tests/Donysh.Landing.Tests.csproj",
+    "Donysh.Life/Donysh.Life.csproj",
+    "Donysh.Life/Program.cs",
+    "Donysh.Life/Data/LifeDbContext.cs",
+    "Donysh.Life/Data/Migrations/LifeDbContextModelSnapshot.cs",
+    "Donysh.Life/Pages/Index.cshtml",
+    "Donysh.Life/Styles/app.css",
+    "Donysh.Life/wwwroot/css/app.css",
+    "Donysh.Life/package-lock.json",
+    "Donysh.Life/Dockerfile",
+    "Donysh.Life.Tests/Donysh.Life.Tests.csproj",
     "docker-compose.platform.yml",
     "Caddyfile.platform",
     "docs/platform/BASELINE.md",
@@ -98,6 +108,8 @@ def main() -> int:
         ET.parse(ROOT / "Donysh.Auth.Tests/Donysh.Auth.Tests.csproj")
         ET.parse(ROOT / "Donysh.Landing/Donysh.Landing.csproj")
         ET.parse(ROOT / "Donysh.Landing.Tests/Donysh.Landing.Tests.csproj")
+        ET.parse(ROOT / "Donysh.Life/Donysh.Life.csproj")
+        ET.parse(ROOT / "Donysh.Life.Tests/Donysh.Life.Tests.csproj")
     except Exception as exc:
         errors.append(f"invalid csproj xml: {exc}")
 
@@ -107,6 +119,8 @@ def main() -> int:
         ROOT / "Donysh.Auth.Tests",
         ROOT / "Donysh.Landing",
         ROOT / "Donysh.Landing.Tests",
+        ROOT / "Donysh.Life",
+        ROOT / "Donysh.Life.Tests",
     ]
     for path in (path for source_root in source_roots for path in source_root.rglob("*.cs")):
         text = path.read_text(encoding="utf-8")
@@ -144,6 +158,10 @@ def main() -> int:
         "OidcClients__0__PostLogoutRedirectUris__1",
         "landing:",
         "Products__FinanceUrl",
+        "life-db:",
+        "life:",
+        "LIFE_OIDC_CLIENT_SECRET",
+        "ConnectionStrings__LifeConnection",
     ]:
         if token not in platform_compose:
             errors.append(f"platform compose token missing: {token}")
@@ -162,6 +180,7 @@ def main() -> int:
         "HesabYar.Web/Dockerfile",
         "Donysh.Auth/Dockerfile",
         "Donysh.Landing/Dockerfile",
+        "Donysh.Life/Dockerfile",
     ]:
         dockerfile = (ROOT / dockerfile_name).read_text(encoding="utf-8")
         if "npm ci" in dockerfile or "FROM node:" in dockerfile:
@@ -182,6 +201,8 @@ def main() -> int:
         errors.append("platform Caddyfile must serve Landing on the primary domain")
     if "{$FINANCE_DOMAIN} {" not in caddy or "reverse_proxy web:8080" not in caddy:
         errors.append("platform Caddyfile must serve Finance only on its product domain")
+    if "{$LIFE_DOMAIN} {" not in caddy or "reverse_proxy life:8080" not in caddy:
+        errors.append("platform Caddyfile must serve Life on its product domain")
 
     if errors:
         print("Validation failed:")

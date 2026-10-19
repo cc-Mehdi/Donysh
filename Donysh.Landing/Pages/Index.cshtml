@@ -55,7 +55,7 @@
                 <span class="product-icon product-icon-life" aria-hidden="true">
                     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>
                 </span>
-                <span><small>در مسیر ساخت</small><strong>مدیریت زندگی</strong></span>
+                <span><small>نسخهٔ آغازین</small><strong>مدیریت زندگی</strong></span>
             </article>
             <div class="pulse-dot pulse-one" aria-hidden="true"></div>
             <div class="pulse-dot pulse-two" aria-hidden="true"></div>
@@ -95,7 +95,7 @@
                     <span class="product-icon product-icon-life" aria-hidden="true">
                         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>
                     </span>
-                    <span class="status">به‌زودی</span>
+                    <span class="status status-live"><i aria-hidden="true"></i>نسخهٔ آغازین</span>
                 </div>
                 <div>
                     <p class="product-kicker">دونیش زندگی</p>
@@ -107,7 +107,7 @@
                     <li>برنامه‌ریزی ساده و منعطف</li>
                     <li>سنجش پیشرفت واقعی</li>
                 </ul>
-                <p class="product-link product-link-muted">در حال آماده‌سازی</p>
+                <a class="product-link" href="@products.LifeUrl">بازکردن دونیش زندگی <span aria-hidden="true">←</span></a>
             </article>
         </div>
     </section>
@@ -143,6 +143,7 @@
         </div>
         <div class="footer-links">
             <a href="@products.FinanceUrl">دونیش مالی</a>
+            <a href="@products.LifeUrl">دونیش زندگی</a>
             <a href="@products.AuthUrl">حساب کاربری</a>
         </div>
         <p class="copyright">© @DateTime.UtcNow.Year دونیش</p>

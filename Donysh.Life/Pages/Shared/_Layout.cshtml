@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0d9488" />
+    <title>@ViewData["Title"] | دونیش زندگی</title>
+    <link rel="stylesheet" href="~/css/app.css" asp-append-version="true" />
+</head>
+<body>
+    <a class="skip-link" href="#main-content">رفتن به محتوای اصلی</a>
+    <div class="app-shell">
+        <aside class="sidebar">
+            <a class="brand" asp-page="/Index" aria-label="دونیش زندگی، صفحهٔ اصلی">
+                <img src="~/images/donysh-mark.png" alt="" width="42" height="42" />
+                <span><strong>دونیش</strong><small>زندگی</small></span>
+            </a>
+            <nav class="side-nav" aria-label="ناوبری اصلی">
+                <a class="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Index" ? "active" : "")" asp-page="/Index"><span aria-hidden="true">⌂</span>امروز</a>
+                <a class="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Activities" ? "active" : "")" asp-page="/Activities"><span aria-hidden="true">◎</span>فعالیت‌ها</a>
+                <a class="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Week" ? "active" : "")" asp-page="/Week"><span aria-hidden="true">▦</span>برنامهٔ هفته</a>
+                <a class="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Progress" ? "active" : "")" asp-page="/Progress"><span aria-hidden="true">↗</span>پیشرفت</a>
+            </nav>
+            <form method="post" asp-page="/Account/Logout" class="logout-form">
+                <button type="submit">خروج امن</button>
+            </form>
+        </aside>
+        <div class="page-column">
+            <header class="mobile-header">
+                <a class="brand" asp-page="/Index"><img src="~/images/donysh-mark.png" alt="" width="36" height="36" /><strong>دونیش زندگی</strong></a>
+                <span class="status-dot">نسخهٔ آغازین</span>
+            </header>
+            <main id="main-content" class="content-shell">
+                @RenderBody()
+            </main>
+            <nav class="mobile-nav" aria-label="ناوبری موبایل">
+                <a asp-page="/Index"><span>⌂</span><small>امروز</small></a>
+                <a asp-page="/Activities"><span>◎</span><small>فعالیت‌ها</small></a>
+                <a asp-page="/Week"><span>▦</span><small>هفته</small></a>
+                <a asp-page="/Progress"><span>↗</span><small>پیشرفت</small></a>
+            </nav>
+        </div>
+    </div>
+</body>
+</html>

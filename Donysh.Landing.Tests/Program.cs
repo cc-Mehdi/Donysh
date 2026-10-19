@@ -32,10 +32,10 @@ using (var response = await client.GetAsync("/"))
     Check("Landing links to the dedicated Finance host",
         html.Contains("https://finance.test", StringComparison.Ordinal)
         && html.Contains("ورود به دونیش مالی", StringComparison.Ordinal));
-    Check("Landing presents Life without exposing an unfinished route",
+    Check("Landing links to the initial Life product",
         html.Contains("دونیش زندگی", StringComparison.Ordinal)
-        && html.Contains("در حال آماده‌سازی", StringComparison.Ordinal)
-        && !html.Contains("href=\"https://life.test\"", StringComparison.Ordinal));
+        && html.Contains("نسخهٔ آغازین", StringComparison.Ordinal)
+        && html.Contains("href=\"https://life.test\"", StringComparison.Ordinal));
     Check("Landing security headers block scripts and framing",
         response.Headers.TryGetValues("Content-Security-Policy", out var csp)
         && csp.Single().Contains("script-src 'none'", StringComparison.Ordinal)

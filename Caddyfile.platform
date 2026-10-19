@@ -59,3 +59,13 @@
         format json
     }
 }
+
+{$LIFE_DOMAIN} {
+    encode zstd gzip
+    import secure_headers
+    reverse_proxy life:8080
+    log {
+        output stdout
+        format json
+    }
+}

@@ -129,6 +129,32 @@ volumeهای `auth_postgres_data` و `auth_dataprotection_keys` را حذف نک
 برای بازگشت مرحلهٔ ۴، کامیت قبلی را دوباره Deploy کنید تا Caddy دامنهٔ اصلی را مستقیماً به `web`
 متصل کند. سرویس Landing هیچ volume یا دیتابیسی ندارد و Rollback نیازمند Migration نیست.
 
+## استقرار زیرساخت دونیش زندگی
+
+پیش از Deploy، رکورد `A` برای `life.donysh.ir` را به همان IP سرور اشاره دهید. اسکریپت تنظیمات
+در اولین اجرا رمز پایگاه‌داده و Secret ارتباط OIDC را روی خود سرور می‌سازد و آن‌ها را نمایش نمی‌دهد:
+
+```bash
+cd /home/ubuntu/donysh
+sudo bash scripts/configure-server-env.sh </dev/null
+sudo grep -E '^(LIFE_DOMAIN|LIFE_POSTGRES_DB|LIFE_POSTGRES_USER)=' .env
+sudo docker compose --env-file .env -f docker-compose.platform.yml config --quiet
+```
+
+پس از Deploy، سرویس‌ها و ورود مرکزی را بررسی کنید:
+
+```bash
+curl -fsS https://life.donysh.ir/health/live
+curl -fsS https://life.donysh.ir/health/ready
+curl -sS -D - -o /dev/null https://life.donysh.ir/ | grep -iE '^(HTTP|location:)'
+sudo docker compose --env-file .env -f docker-compose.platform.yml logs --tail=100 life life-db auth caddy
+```
+
+در اجرای اول فقط Migration افزایشی `InitialLifeSchema` روی دیتابیس مستقل `life-db` اجرا می‌شود؛
+دیتابیس Finance و Auth تغییر نمی‌کنند. برای Rollback، نسخهٔ قبلی کد را Deploy کنید یا سرویس‌های
+`life` و `life-db` را متوقف کنید. volumeهای `life_postgres_data` و `life_dataprotection_keys` را
+حذف نکنید تا بازگشت رو به جلو بدون ازدست‌رفتن داده ممکن باشد.
+
 ## اجرای محلی توسعه
 
 یک PostgreSQL محلی مطابق `appsettings.Development.json` فراهم کنید، سپس:

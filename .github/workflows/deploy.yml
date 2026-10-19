@@ -47,6 +47,7 @@ jobs:
             HesabYar.Web/package-lock.json
             Donysh.Auth/package-lock.json
             Donysh.Landing/package-lock.json
+            Donysh.Life/package-lock.json
 
       - name: Install frontend dependencies
         working-directory: HesabYar.Web
@@ -84,12 +85,25 @@ jobs:
         working-directory: Donysh.Landing
         run: npm run build:css
 
+      - name: Install Life frontend dependencies
+        working-directory: Donysh.Life
+        run: timeout 180s npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Audit Life frontend dependencies
+        working-directory: Donysh.Life
+        run: npm audit --audit-level=high
+
+      - name: Build Life Tailwind CSS
+        working-directory: Donysh.Life
+        run: npm run build:css
+
       - name: Verify committed frontend assets are current
         run: |
           git diff --exit-code -- \
             HesabYar.Web/wwwroot/css/app.css \
             Donysh.Auth/wwwroot/css/app.css \
-            Donysh.Landing/wwwroot/css/app.css
+            Donysh.Landing/wwwroot/css/app.css \
+            Donysh.Life/wwwroot/css/app.css
 
       - name: Restore .NET packages
         run: dotnet restore HesabYar.sln
@@ -113,6 +127,11 @@ jobs:
       - name: Run Landing rendering and security tests
         run: dotnet run --project Donysh.Landing.Tests --configuration Release
 
+      - name: Run Life shell and security tests
+        env:
+          DONYSH_LIFE_TEST_POSTGRES: Host=127.0.0.1;Port=5432;Username=postgres;Password=local-test-only
+        run: dotnet run --project Donysh.Life.Tests --configuration Release
+
       - name: Validate Docker image
         run: docker build --file HesabYar.Web/Dockerfile --tag donysh-ci:${{ github.sha }} .
 
@@ -122,12 +141,16 @@ jobs:
       - name: Validate Landing Docker image
         run: docker build --file Donysh.Landing/Dockerfile --tag donysh-landing-ci:${{ github.sha }} .
 
+      - name: Validate Life Docker image
+        run: docker build --file Donysh.Life/Dockerfile --tag donysh-life-ci:${{ github.sha }} .
+
       - name: Validate reverse proxy configuration
         run: |
           docker run --rm \
             -e DOMAIN=donysh.test \
             -e FINANCE_DOMAIN=finance.donysh.test \
             -e AUTH_DOMAIN=auth.donysh.test \
+            -e LIFE_DOMAIN=life.donysh.test \
             -e ACME_EMAIL=admin@donysh.test \
             -v "$PWD/Caddyfile.platform:/etc/caddy/Caddyfile:ro" \
             caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile
