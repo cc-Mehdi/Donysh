@@ -151,7 +151,8 @@ sudo docker compose --env-file .env -f docker-compose.platform.yml logs --tail=1
 ```
 
 در هر استقرار، Migrationهای افزایشی Life روی دیتابیس مستقل `life-db` اجرا می‌شوند. زیرمرحلهٔ ۶.۳
-Migration غیرمخرب `AddScheduleOccurrenceOverrides` را برای نگهداری تغییرات یک رخداد اضافه می‌کند؛
+Migrationهای غیرمخرب `AddScheduleOccurrenceOverrides` و `AddScheduleOccurrenceRecords` را برای نگهداری
+تغییرات یک رخداد و نتیجهٔ واقعی آن اضافه می‌کند؛
 هیچ جدول یا ستونی حذف نمی‌شود و دیتابیس‌های Finance و Auth تغییر نمی‌کنند. پیش از استقرار عملیاتی
 از volume یا دیتابیس Life نسخهٔ پشتیبان بگیرید. برای Rollback، نسخهٔ قبلی کد را Deploy کنید یا سرویس‌های
 `life` و `life-db` را متوقف کنید. volumeهای `life_postgres_data` و `life_dataprotection_keys` را

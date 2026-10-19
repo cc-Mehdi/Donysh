@@ -42,6 +42,13 @@ public sealed class WeeklyScheduleService(LifeDbContext db, IHttpContextAccessor
             if (pattern is not null && changed.ScheduledDate >= weekStart && changed.ScheduledDate <= weekEnd)
                 blocks.Add(ToBlock(pattern, changed.OriginalDate, changed.ScheduledDate, changed.StartMinute, changed.DurationMinutes, true));
         }
+        var records = await db.ScheduleOccurrenceRecords.AsNoTracking().Where(x => x.UserSubject == subject
+            && ((x.OriginalDate >= weekStart && x.OriginalDate <= weekEnd) || (x.ScheduledDate >= weekStart && x.ScheduledDate <= weekEnd)))
+            .ToListAsync(cancellationToken);
+        var recordMap = records.ToDictionary(x => (x.PatternId, x.OriginalDate));
+        blocks = blocks.Select(block => recordMap.TryGetValue((block.Id, block.OriginalDate), out var record)
+            ? block with { OutcomeStatus = record.Status, ActualMinutes = record.ActualMinutes, MovedToDate = record.MovedToDate, OutcomeNote = record.Note }
+            : block).ToList();
 
         var goals = await db.Activities.AsNoTracking().Where(x => x.UserSubject == subject && x.IsActive).OrderBy(x => x.CreatedAtUtc)
             .Select(x => new { x.Id, x.Title, x.ColorHex, Goal = x.WeeklyGoal == null ? 0 : x.WeeklyGoal.TargetMinutes }).ToListAsync(cancellationToken);
@@ -74,6 +81,8 @@ public sealed class WeeklyScheduleService(LifeDbContext db, IHttpContextAccessor
             pattern = await db.SchedulePatterns.Include(x => x.Slots).SingleOrDefaultAsync(x => x.Id == patternId && x.UserSubject == subject, cancellationToken)
                 ?? null!;
             if (pattern is null) return ActivityCommandResult.Failure("بازهٔ زمانی پیدا نشد.");
+            if (await db.ScheduleOccurrenceRecords.AnyAsync(x => x.PatternId == pattern.Id && x.UserSubject == subject, cancellationToken))
+                return ActivityCommandResult.Failure("این الگو سابقهٔ عملکرد دارد؛ برای حفظ گزارش‌ها آن را غیرفعال کنید و یک برنامهٔ تازه بسازید.");
         }
         if (pattern.IsActive)
         {
@@ -109,6 +118,9 @@ public sealed class WeeklyScheduleService(LifeDbContext db, IHttpContextAccessor
                 StartTime = FormatMinute(input.StartMinute), DurationMinutes = input.DurationMinutes, Note = pattern.Note }, cancellationToken);
         if (input.Scope != "occurrence") return ActivityCommandResult.Failure("دامنهٔ تغییر معتبر نیست.");
         if (input.OriginalDate.DayOfWeek != pattern.DayOfWeek) return ActivityCommandResult.Failure("تاریخ رخداد با الگوی برنامه هماهنگ نیست.");
+        if (await db.ScheduleOccurrenceRecords.AnyAsync(x => x.PatternId == pattern.Id && x.UserSubject == subject
+                && x.OriginalDate == input.OriginalDate, cancellationToken))
+            return ActivityCommandResult.Failure("برای این رخداد عملکرد ثبت شده است؛ ابتدا وضعیت عملکرد را پاک کنید.");
         var conflict = await FindOccurrenceConflictAsync(subject, input.TargetDate, input.StartMinute, input.DurationMinutes, pattern.Id, input.OriginalDate, cancellationToken);
         if (conflict is not null) return ActivityCommandResult.Failure($"این زمان با «{conflict.ActivityTitle}» از {conflict.StartLabel} تا {conflict.EndLabel} تداخل دارد.");
 
@@ -143,6 +155,9 @@ public sealed class WeeklyScheduleService(LifeDbContext db, IHttpContextAccessor
         var subject = GetSubject();
         var pattern = await db.SchedulePatterns.SingleOrDefaultAsync(x => x.Id == patternId && x.UserSubject == subject, cancellationToken);
         if (pattern is null || originalDate.DayOfWeek != pattern.DayOfWeek) return ActivityCommandResult.Failure("رخداد انتخاب‌شده پیدا نشد.");
+        if (await db.ScheduleOccurrenceRecords.AnyAsync(x => x.PatternId == patternId && x.UserSubject == subject
+                && x.OriginalDate == originalDate, cancellationToken))
+            return ActivityCommandResult.Failure("برای این رخداد عملکرد ثبت شده است؛ ابتدا وضعیت عملکرد را پاک کنید.");
         var changed = await db.ScheduleOccurrenceOverrides.SingleOrDefaultAsync(x => x.PatternId == patternId && x.UserSubject == subject
             && x.OriginalDate == originalDate, cancellationToken);
         var now = DateTimeOffset.UtcNow;
@@ -182,6 +197,8 @@ public sealed class WeeklyScheduleService(LifeDbContext db, IHttpContextAccessor
         var subject = GetSubject();
         var pattern = await db.SchedulePatterns.SingleOrDefaultAsync(x => x.Id == patternId && x.UserSubject == subject, cancellationToken);
         if (pattern is null) return ActivityCommandResult.Failure("بازهٔ زمانی پیدا نشد.");
+        if (await db.ScheduleOccurrenceRecords.AnyAsync(x => x.PatternId == patternId && x.UserSubject == subject, cancellationToken))
+            return ActivityCommandResult.Failure("برای این برنامه عملکرد واقعی ثبت شده است؛ برای حفظ سابقه می‌توانید الگو را غیرفعال کنید.");
         db.SchedulePatterns.Remove(pattern); await db.SaveChangesAsync(cancellationToken);
         return ActivityCommandResult.Success("الگوی تکرارشونده و همهٔ استثناهای آن حذف شد.");
     }
@@ -228,7 +245,7 @@ public sealed class WeeklyScheduleService(LifeDbContext db, IHttpContextAccessor
 
     private static ScheduleBlockItem ToBlock(RecurringSchedulePattern p, DateOnly original, DateOnly scheduled, int start, int duration, bool changed) =>
         new(p.Id, p.ActivityId, p.Activity.Title, p.Activity.ColorHex, p.Activity.IconKey, scheduled.DayOfWeek, start, duration,
-            p.Note, p.IsActive, original, scheduled, changed);
+            p.Note, p.IsActive, original, scheduled, changed, null, null, null, null);
 
     private static bool TryParse(SchedulePatternForm input, out int startMinute, out string error)
     {

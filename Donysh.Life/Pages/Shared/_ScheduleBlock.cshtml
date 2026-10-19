@@ -7,9 +7,37 @@
          data-pattern-id="@block.Id" data-original-date="@block.OriginalDate.ToString("yyyy-MM-dd")"
          data-scheduled-date="@block.ScheduledDate.ToString("yyyy-MM-dd")" data-start-minute="@block.StartMinute" data-duration="@block.DurationMinutes">
     <div class="block-main"><span class="block-icon">@block.IconGlyph</span><div><strong>@block.ActivityTitle</strong><span class="block-time">@block.StartLabel تا @block.EndLabel</span>@if (!string.IsNullOrWhiteSpace(block.Note)) { <small>@block.Note</small> }</div></div>
+    @if (block.OutcomeStatus is not null)
+    {
+        <span class="outcome-badge @block.OutcomeClass">@block.OutcomeLabel@if (block.ActualMinutes > 0) { <small> · @block.ActualMinutes دقیقه</small> }</span>
+    }
     <details class="block-actions">
         <summary aria-label="گزینه‌های @block.ActivityTitle">•••</summary>
         <div class="block-popover">
+            <section class="tracking-card" aria-label="ثبت عملکرد @block.ActivityTitle">
+                <div class="tracking-head"><div><strong>نتیجهٔ واقعی</strong><small>با یک انتخاب ثبت می‌شود</small></div>@if (block.OutcomeStatus is not null) { <span class="outcome-badge @block.OutcomeClass">@block.OutcomeLabel</span> }</div>
+                <form method="post" asp-page="/Week" asp-page-handler="RecordOccurrence" class="tracking-form">
+                    <input type="hidden" name="Occurrence.PatternId" value="@block.Id" />
+                    <input type="hidden" name="Occurrence.OriginalDate" value="@block.OriginalDate.ToString("yyyy-MM-dd")" />
+                    <input type="hidden" name="SelectedDay" value="@block.DayOfWeek" />
+                    <input type="hidden" name="WeekStart" value="@Model.WeekStart.ToString("yyyy-MM-dd")" />
+                    <div class="outcome-choices">
+                        <button type="submit" name="Occurrence.Status" value="Completed" class="outcome-choice completed" aria-pressed="@(block.OutcomeStatus == Donysh.Life.Domain.OccurrenceOutcomeStatus.Completed ? "true" : "false")"><span>✓</span>انجام شد</button>
+                        <button type="submit" name="Occurrence.Status" value="Missed" class="outcome-choice missed" aria-pressed="@(block.OutcomeStatus == Donysh.Life.Domain.OccurrenceOutcomeStatus.Missed ? "true" : "false")"><span>×</span>انجام نشد</button>
+                        <button type="submit" name="Occurrence.Status" value="Partial" class="outcome-choice partial" aria-pressed="@(block.OutcomeStatus == Donysh.Life.Domain.OccurrenceOutcomeStatus.Partial ? "true" : "false")"><span>◐</span>نیمه‌تمام</button>
+                        <button type="submit" name="Occurrence.Status" value="Moved" class="outcome-choice moved" aria-pressed="@(block.OutcomeStatus == Donysh.Life.Domain.OccurrenceOutcomeStatus.Moved ? "true" : "false")"><span>↗</span>انتقال یافت</button>
+                    </div>
+                    <div class="field-grid tracking-details">
+                        <label class="field"><span>زمان واقعی <small>اختیاری</small></span><input type="number" name="Occurrence.ActualMinutes" value="@(block.ActualMinutes > 0 ? block.ActualMinutes : null)" min="1" max="1440" inputmode="numeric" placeholder="دقیقه" /></label>
+                        <label class="field"><span>تاریخ تازه <small>برای انتقال</small></span><input type="date" name="Occurrence.MovedToDate" value="@block.MovedToDate?.ToString("yyyy-MM-dd")" min="@block.ScheduledDate.AddDays(1).ToString("yyyy-MM-dd")" /></label>
+                    </div>
+                    <label class="field"><span>یادداشت نتیجه <small>اختیاری</small></span><input name="Occurrence.Note" value="@block.OutcomeNote" maxlength="160" placeholder="چه اتفاقی افتاد؟" /></label>
+                </form>
+                @if (block.OutcomeStatus is not null)
+                {
+                    <form method="post" asp-page="/Week" asp-page-handler="ClearOccurrence" class="clear-outcome-form"><input type="hidden" name="PatternId" value="@block.Id" /><input type="hidden" name="OriginalDate" value="@block.OriginalDate.ToString("yyyy-MM-dd")" /><input type="hidden" name="SelectedDay" value="@block.DayOfWeek" /><input type="hidden" name="WeekStart" value="@Model.WeekStart.ToString("yyyy-MM-dd")" /><button type="submit" class="text-button danger">پاک‌کردن وضعیت</button></form>
+                }
+            </section>
             <form method="post" asp-page="/Week" asp-page-handler="Save" class="schedule-form compact-schedule-form">
                 <input type="hidden" name="PatternId" value="@block.Id" />
                 <input type="hidden" name="WeekStart" value="@Model.WeekStart.ToString("yyyy-MM-dd")" />

@@ -249,6 +249,69 @@ namespace Donysh.Life.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Donysh.Life.Domain.ScheduleOccurrenceRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("ActualMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly?>("MovedToDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<DateOnly>("OriginalDate")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("PatternId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("PlannedMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<DateOnly>("ScheduledDate")
+                        .HasColumnType("date");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UserSubject")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PatternId", "UserSubject");
+
+                    b.HasIndex("UserSubject", "PatternId", "OriginalDate")
+                        .IsUnique();
+
+                    b.HasIndex("UserSubject", "ScheduledDate", "Status");
+
+                    b.ToTable("LifeScheduleOccurrenceRecords", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_LifeScheduleOccurrenceRecords_ActualMinutes", "\"ActualMinutes\" IS NULL OR \"ActualMinutes\" BETWEEN 0 AND 1440");
+
+                            t.HasCheckConstraint("CK_LifeScheduleOccurrenceRecords_MovedDate", "(\"Status\" = 4 AND \"MovedToDate\" IS NOT NULL) OR (\"Status\" <> 4 AND \"MovedToDate\" IS NULL)");
+
+                            t.HasCheckConstraint("CK_LifeScheduleOccurrenceRecords_PlannedMinutes", "\"PlannedMinutes\" BETWEEN 30 AND 1440");
+
+                            t.HasCheckConstraint("CK_LifeScheduleOccurrenceRecords_Status", "\"Status\" BETWEEN 1 AND 4");
+                        });
+                });
+
             modelBuilder.Entity("Donysh.Life.Domain.WeeklyGoal", b =>
                 {
                     b.Property<Guid>("Id")
@@ -324,6 +387,18 @@ namespace Donysh.Life.Data.Migrations
                     b.Navigation("Pattern");
                 });
 
+            modelBuilder.Entity("Donysh.Life.Domain.ScheduleOccurrenceRecord", b =>
+                {
+                    b.HasOne("Donysh.Life.Domain.RecurringSchedulePattern", "Pattern")
+                        .WithMany("OccurrenceRecords")
+                        .HasForeignKey("PatternId", "UserSubject")
+                        .HasPrincipalKey("Id", "UserSubject")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Pattern");
+                });
+
             modelBuilder.Entity("Donysh.Life.Domain.WeeklyGoal", b =>
                 {
                     b.HasOne("Donysh.Life.Domain.LifeActivity", "Activity")
@@ -346,6 +421,8 @@ namespace Donysh.Life.Data.Migrations
             modelBuilder.Entity("Donysh.Life.Domain.RecurringSchedulePattern", b =>
                 {
                     b.Navigation("OccurrenceOverrides");
+
+                    b.Navigation("OccurrenceRecords");
 
                     b.Navigation("Slots");
                 });

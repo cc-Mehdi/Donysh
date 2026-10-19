@@ -11,6 +11,7 @@ public sealed class LifeDbContext(DbContextOptions<LifeDbContext> options) : DbC
     public DbSet<RecurringSchedulePattern> SchedulePatterns => Set<RecurringSchedulePattern>();
     public DbSet<RecurringScheduleSlot> ScheduleSlots => Set<RecurringScheduleSlot>();
     public DbSet<ScheduleOccurrenceOverride> ScheduleOccurrenceOverrides => Set<ScheduleOccurrenceOverride>();
+    public DbSet<ScheduleOccurrenceRecord> ScheduleOccurrenceRecords => Set<ScheduleOccurrenceRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -99,5 +100,24 @@ public sealed class LifeDbContext(DbContextOptions<LifeDbContext> options) : DbC
             .HasPrincipalKey(item => new { item.Id, item.UserSubject })
             .HasForeignKey(item => new { item.PatternId, item.UserSubject })
             .OnDelete(DeleteBehavior.Cascade);
+
+        var occurrenceRecord = modelBuilder.Entity<ScheduleOccurrenceRecord>();
+        occurrenceRecord.ToTable("LifeScheduleOccurrenceRecords", table =>
+        {
+            table.HasCheckConstraint("CK_LifeScheduleOccurrenceRecords_Status", "\"Status\" BETWEEN 1 AND 4");
+            table.HasCheckConstraint("CK_LifeScheduleOccurrenceRecords_PlannedMinutes", "\"PlannedMinutes\" BETWEEN 30 AND 1440");
+            table.HasCheckConstraint("CK_LifeScheduleOccurrenceRecords_ActualMinutes", "\"ActualMinutes\" IS NULL OR \"ActualMinutes\" BETWEEN 0 AND 1440");
+            table.HasCheckConstraint("CK_LifeScheduleOccurrenceRecords_MovedDate", "(\"Status\" = 4 AND \"MovedToDate\" IS NOT NULL) OR (\"Status\" <> 4 AND \"MovedToDate\" IS NULL)");
+        });
+        occurrenceRecord.HasKey(item => item.Id);
+        occurrenceRecord.Property(item => item.UserSubject).HasMaxLength(450).IsRequired();
+        occurrenceRecord.Property(item => item.Note).HasMaxLength(160);
+        occurrenceRecord.HasIndex(item => new { item.UserSubject, item.PatternId, item.OriginalDate }).IsUnique();
+        occurrenceRecord.HasIndex(item => new { item.UserSubject, item.ScheduledDate, item.Status });
+        occurrenceRecord.HasOne(item => item.Pattern)
+            .WithMany(item => item.OccurrenceRecords)
+            .HasPrincipalKey(item => new { item.Id, item.UserSubject })
+            .HasForeignKey(item => new { item.PatternId, item.UserSubject })
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

@@ -113,13 +113,38 @@ internal static class PostgresChecks
             if (!duplicateOverrideRejected)
                 throw new Exception("FAIL PostgreSQL Life allowed duplicate overrides for one occurrence");
 
+            db.ScheduleOccurrenceRecords.Add(new ScheduleOccurrenceRecord
+            {
+                Id = Guid.NewGuid(), PatternId = ownerAPattern.Id, UserSubject = "owner-a",
+                OriginalDate = originalDate, ScheduledDate = originalDate.AddDays(1),
+                Status = OccurrenceOutcomeStatus.Partial, PlannedMinutes = 30, ActualMinutes = 20,
+                CreatedAtUtc = DateTimeOffset.UtcNow, UpdatedAtUtc = DateTimeOffset.UtcNow
+            });
+            await db.SaveChangesAsync();
+            db.ScheduleOccurrenceRecords.Add(new ScheduleOccurrenceRecord
+            {
+                Id = Guid.NewGuid(), PatternId = ownerAPattern.Id, UserSubject = "owner-a",
+                OriginalDate = originalDate, ScheduledDate = originalDate.AddDays(1),
+                Status = OccurrenceOutcomeStatus.Completed, PlannedMinutes = 30, ActualMinutes = 30,
+                CreatedAtUtc = DateTimeOffset.UtcNow, UpdatedAtUtc = DateTimeOffset.UtcNow
+            });
+            var duplicateRecordRejected = false;
+            try { await db.SaveChangesAsync(); }
+            catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+            {
+                duplicateRecordRejected = true;
+                db.ChangeTracker.Clear();
+            }
+            if (!duplicateRecordRejected)
+                throw new Exception("FAIL PostgreSQL Life allowed duplicate results for one occurrence");
+
             await using var verify = new NpgsqlConnection(connection.ConnectionString);
             await verify.OpenAsync();
             await using var command = new NpgsqlCommand("""
-                SELECT count(*) = 6
+                SELECT count(*) = 7
                 FROM information_schema.tables
                 WHERE table_schema = current_schema()
-                  AND table_name IN ('LifeProfiles', 'LifeActivities', 'LifeWeeklyGoals', 'LifeSchedulePatterns', 'LifeScheduleSlots', 'LifeScheduleOccurrenceOverrides')
+                  AND table_name IN ('LifeProfiles', 'LifeActivities', 'LifeWeeklyGoals', 'LifeSchedulePatterns', 'LifeScheduleSlots', 'LifeScheduleOccurrenceOverrides', 'LifeScheduleOccurrenceRecords')
                 """, verify);
             if (!Convert.ToBoolean(await command.ExecuteScalarAsync()))
                 throw new Exception("FAIL PostgreSQL Life migration did not create its isolated schema");
@@ -129,6 +154,7 @@ internal static class PostgresChecks
             Console.WriteLine("PASS PostgreSQL Life activities and weekly goals preserve per-user ownership");
             Console.WriteLine("PASS PostgreSQL Life schedule slots reject overlaps and remain isolated per user");
             Console.WriteLine("PASS PostgreSQL Life occurrence overrides are unique per recurring occurrence");
+            Console.WriteLine("PASS PostgreSQL Life stores one actual result per recurring occurrence");
         }
         finally
         {

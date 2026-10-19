@@ -36,6 +36,7 @@ builder.Services.AddScoped<LifeDatabaseMigrator>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<LifeActivityService>();
 builder.Services.AddScoped<WeeklyScheduleService>();
+builder.Services.AddScoped<OccurrenceTrackingService>();
 
 builder.Services.AddAuthentication(options =>
     {

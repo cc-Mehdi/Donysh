@@ -41,7 +41,11 @@ public sealed record ScheduleBlockItem(
     bool IsActive,
     DateOnly OriginalDate,
     DateOnly ScheduledDate,
-    bool IsOccurrenceOverride)
+    bool IsOccurrenceOverride,
+    Domain.OccurrenceOutcomeStatus? OutcomeStatus,
+    int? ActualMinutes,
+    DateOnly? MovedToDate,
+    string? OutcomeNote)
 {
     public int EndMinute => StartMinute + DurationMinutes;
     public string StartLabel => FormatMinute(StartMinute);
@@ -53,6 +57,22 @@ public sealed record ScheduleBlockItem(
             : $"{DurationMinutes / 60} ساعت و {DurationMinutes % 60} دقیقه";
     public string ColorClass => ActivityCatalog.ColorClass(ColorHex);
     public string IconGlyph => ActivityCatalog.IconGlyph(IconKey);
+    public string? OutcomeLabel => OutcomeStatus switch
+    {
+        Domain.OccurrenceOutcomeStatus.Completed => "انجام‌شده",
+        Domain.OccurrenceOutcomeStatus.Missed => "انجام‌نشده",
+        Domain.OccurrenceOutcomeStatus.Partial => "نیمه‌تمام",
+        Domain.OccurrenceOutcomeStatus.Moved => "انتقال‌یافته",
+        _ => null
+    };
+    public string OutcomeClass => OutcomeStatus switch
+    {
+        Domain.OccurrenceOutcomeStatus.Completed => "outcome-completed",
+        Domain.OccurrenceOutcomeStatus.Missed => "outcome-missed",
+        Domain.OccurrenceOutcomeStatus.Partial => "outcome-partial",
+        Domain.OccurrenceOutcomeStatus.Moved => "outcome-moved",
+        _ => string.Empty
+    };
 
     private static string FormatMinute(int minute) => $"{minute / 60:00}:{minute % 60:00}";
 }
@@ -65,6 +85,18 @@ public sealed class ScheduleInteractionForm
     [Range(0, 1410)] public int StartMinute { get; set; }
     [Range(30, 1440)] public int DurationMinutes { get; set; }
     [RegularExpression("^(occurrence|series)$")] public string Scope { get; set; } = "occurrence";
+}
+
+public sealed class OccurrenceRecordForm
+{
+    [Required] public Guid PatternId { get; set; }
+    [Required] public DateOnly OriginalDate { get; set; }
+    public Domain.OccurrenceOutcomeStatus Status { get; set; }
+    [Range(0, 1440, ErrorMessage = "زمان واقعی باید بین صفر تا ۱۴۴۰ دقیقه باشد.")]
+    public int? ActualMinutes { get; set; }
+    public DateOnly? MovedToDate { get; set; }
+    [StringLength(160, ErrorMessage = "یادداشت نمی‌تواند بیشتر از ۱۶۰ نویسه باشد.")]
+    public string? Note { get; set; }
 }
 
 public sealed record ActivityPlanSummary(Guid ActivityId, string Title, string ColorHex, int GoalMinutes, int PlannedMinutes)

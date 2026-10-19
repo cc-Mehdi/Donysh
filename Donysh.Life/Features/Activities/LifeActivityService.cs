@@ -144,6 +144,11 @@ public sealed class LifeActivityService(LifeDbContext db, IHttpContextAccessor h
             cancellationToken);
         if (activity is null) return ActivityCommandResult.Failure("فعالیت پیدا نشد.");
 
+        if (await db.ScheduleOccurrenceRecords.AnyAsync(item =>
+                item.UserSubject == subject && item.Pattern.ActivityId == activityId,
+                cancellationToken))
+            return ActivityCommandResult.Failure("برای این فعالیت عملکرد واقعی ثبت شده است؛ برای حفظ سابقه آن را غیرفعال کنید.");
+
         db.Activities.Remove(activity);
         await db.SaveChangesAsync(cancellationToken);
         return ActivityCommandResult.Success("فعالیت حذف شد.");

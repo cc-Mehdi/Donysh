@@ -183,12 +183,37 @@ h1 { margin:0; font-size:clamp(2rem,4vw,3.3rem); line-height:1.25; letter-spacin
 .block-main strong { overflow:hidden; font-size:.72rem; text-overflow:ellipsis; white-space:nowrap; }
 .block-time { margin-top:.25rem; color:#43534f; direction:ltr; font-size:.66rem; text-align:right; }
 .block-main small { overflow:hidden; margin-top:.25rem; color:#6f7e7a; font-size:.61rem; text-overflow:ellipsis; white-space:nowrap; }
+.outcome-badge { display:inline-flex; align-items:center; width:max-content; margin-top:.45rem; border:1px solid; border-radius:999px; padding:.2rem .48rem; font-size:.62rem; font-weight:800; }
+.outcome-badge small { font-size:inherit; font-weight:600; }
+.outcome-completed { border-color:#86d5b4; color:#087a58; background:#eafaf3; }
+.outcome-missed { border-color:#f0b1a7; color:#a43e30; background:#fff1ef; }
+.outcome-partial { border-color:#f2cb82; color:#966313; background:#fff8e8; }
+.outcome-moved { border-color:#aabff0; color:#315da8; background:#eff4ff; }
 .block-actions { position:absolute; top:.35rem; left:.35rem; }
 .block-actions summary { display:grid; place-items:center; width:1.5rem; height:1.5rem; cursor:pointer; border-radius:.45rem; color:#63716e; background:#ffffffd9; font-size:.65rem; list-style:none; }
 .block-actions summary::-webkit-details-marker { display:none; }
 .block-actions[open] summary { color:#fff; background:var(--activity-color); }
 .block-popover { position:absolute; z-index:15; top:1.9rem; left:0; width:min(21rem,calc(100vw - 3rem)); border:1px solid var(--line); border-radius:1rem; background:#fff; padding:1rem; box-shadow:0 22px 55px #173a3330; }
 .compact-schedule-form { margin:0; }
+.tracking-card { margin:-.2rem -.2rem 1rem; border:1px solid #dbe9e6; border-radius:1rem; background:#f8fcfb; padding:.85rem; }
+.tracking-head { display:flex; align-items:start; justify-content:space-between; gap:.75rem; }
+.tracking-head strong,.tracking-head small { display:block; }
+.tracking-head strong { font-size:.88rem; }
+.tracking-head small { margin-top:.12rem; color:#788681; font-size:.65rem; }
+.tracking-head .outcome-badge { margin-top:0; }
+.tracking-form { display:grid; gap:.7rem; margin-top:.75rem; }
+.outcome-choices { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:.4rem; }
+.outcome-choice { display:grid; justify-items:center; gap:.2rem; cursor:pointer; border:1px solid #d6e1de; border-radius:.75rem; background:#fff; padding:.5rem .25rem; color:#56645f; font-size:.62rem; font-weight:700; }
+.outcome-choice span { display:grid; place-items:center; width:1.45rem; height:1.45rem; border-radius:.48rem; background:#edf3f1; font-size:.85rem; }
+.outcome-choice:hover,.outcome-choice:focus-visible,.outcome-choice[aria-pressed="true"] { outline:0; border-color:currentColor; box-shadow:0 0 0 2px #0d948812; }
+.outcome-choice.completed { color:#087a58; }
+.outcome-choice.missed { color:#a43e30; }
+.outcome-choice.partial { color:#966313; }
+.outcome-choice.moved { color:#315da8; }
+.tracking-details { gap:.55rem; }
+.tracking-card .field { font-size:.7rem; }
+.tracking-card .field input { min-height:2.45rem; background:#fff; padding:.5rem .6rem; }
+.clear-outcome-form { display:flex; justify-content:flex-end; margin-top:.55rem; border-top:1px solid #e2ece9; padding-top:.5rem; }
 .resize-actions { display:flex; justify-content:space-between; gap:.5rem; margin-top:.8rem; border-top:1px solid #edf2f1; padding-top:.75rem; }
 .resize-actions button:disabled { cursor:not-allowed; opacity:.4; }
 .block-secondary-actions { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:flex-start; gap:.75rem; margin-top:.8rem; border-top:1px solid #e8efed; padding-top:.75rem; }
@@ -237,6 +262,7 @@ h1 { margin:0; font-size:clamp(2rem,4vw,3.3rem); line-height:1.25; letter-spacin
   .mobile-day-timeline .block-main strong { font-size:.9rem; }
   .mobile-day-timeline .block-time { font-size:.78rem; }
   .block-popover { position:fixed; z-index:40; top:auto; right:1rem; bottom:5.3rem; left:1rem; width:auto; max-height:70vh; overflow:auto; }
+  .outcome-choices { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
 @media (max-width:620px) {
   .insight-grid { grid-template-columns:1fr; }

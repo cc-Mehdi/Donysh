@@ -261,6 +261,57 @@ await using (var activityDb = new LifeDbContext(activityOptions))
         && occurrenceRestored.Succeeded
         && await activityDb.SchedulePatterns.AnyAsync(item => item.Id == ownerPatternId));
 
+    var tracking = new OccurrenceTrackingService(activityDb, new HttpContextAccessor { HttpContext = httpContext });
+    var completed = await tracking.RecordAsync(new OccurrenceRecordForm
+    {
+        PatternId = ownerPatternId, OriginalDate = weekStart,
+        Status = Donysh.Life.Domain.OccurrenceOutcomeStatus.Completed
+    });
+    var completedMinutes = await activityDb.ScheduleOccurrenceRecords.Select(item => item.ActualMinutes).SingleAsync();
+    var partialWithoutMinutes = await tracking.RecordAsync(new OccurrenceRecordForm
+    {
+        PatternId = ownerPatternId, OriginalDate = weekStart,
+        Status = Donysh.Life.Domain.OccurrenceOutcomeStatus.Partial
+    });
+    var unknownPartialMinutes = await activityDb.ScheduleOccurrenceRecords.Select(item => item.ActualMinutes).SingleAsync();
+    var partial = await tracking.RecordAsync(new OccurrenceRecordForm
+    {
+        PatternId = ownerPatternId, OriginalDate = weekStart,
+        Status = Donysh.Life.Domain.OccurrenceOutcomeStatus.Partial,
+        ActualMinutes = 20, Note = "بخشی انجام شد"
+    });
+    var invalidPartial = await tracking.RecordAsync(new OccurrenceRecordForm
+    {
+        PatternId = ownerPatternId, OriginalDate = weekStart,
+        Status = Donysh.Life.Domain.OccurrenceOutcomeStatus.Partial,
+        ActualMinutes = 60
+    });
+    var invalidMoved = await tracking.RecordAsync(new OccurrenceRecordForm
+    {
+        PatternId = ownerPatternId, OriginalDate = weekStart,
+        Status = Donysh.Life.Domain.OccurrenceOutcomeStatus.Moved
+    });
+    var trackedWeek = await scheduler.GetWeekAsync(DayOfWeek.Saturday, weekStart);
+    var protectedHistory = await scheduler.DeleteAsync(ownerPatternId);
+    var protectedActivityHistory = await service.DeleteAsync(ownerItems[0].Id);
+    var trackedBlock = trackedWeek.Days.Single(day => day.DayOfWeek == DayOfWeek.Saturday).Blocks.Single();
+    Check("Life records actual outcomes idempotently and protects recorded history",
+        completed.Succeeded
+        && completedMinutes == 60
+        && partialWithoutMinutes.Succeeded
+        && unknownPartialMinutes is null
+        && partial.Succeeded
+        && !invalidPartial.Succeeded
+        && !invalidMoved.Succeeded
+        && await activityDb.ScheduleOccurrenceRecords.CountAsync() == 1
+        && trackedBlock.OutcomeStatus == Donysh.Life.Domain.OccurrenceOutcomeStatus.Partial
+        && trackedBlock.ActualMinutes == 20
+        && !protectedHistory.Succeeded
+        && !protectedActivityHistory.Succeeded);
+    var clearedOutcome = await tracking.ClearAsync(ownerPatternId, weekStart);
+    Check("Life can clear an outcome before changing its recurring schedule",
+        clearedOutcome.Succeeded && await activityDb.ScheduleOccurrenceRecords.CountAsync() == 0);
+
     var moved = await scheduler.SaveAsync(ownerPatternId, new SchedulePatternForm
     {
         ActivityId = ownerItems[0].Id,
@@ -306,11 +357,18 @@ await using (var activityDb = new LifeDbContext(activityOptions))
         PatternId = ownerPatternId, OriginalDate = weekStart, TargetDate = weekStart,
         StartMinute = 600, DurationMinutes = 30, Scope = "occurrence"
     });
+    var ownerBTracking = new OccurrenceTrackingService(activityDb, new HttpContextAccessor { HttpContext = httpContext });
+    var forbiddenOutcome = await ownerBTracking.RecordAsync(new OccurrenceRecordForm
+    {
+        PatternId = ownerPatternId, OriginalDate = weekStart,
+        Status = Donysh.Life.Domain.OccurrenceOutcomeStatus.Completed
+    });
     Check("Life weekly schedule slots are isolated per user",
         ownerBActivityResult.Succeeded
         && sameTimeForOtherUser.Succeeded
         && !forbiddenScheduleDelete.Succeeded
-        && !forbiddenOccurrenceEdit.Succeeded);
+        && !forbiddenOccurrenceEdit.Succeeded
+        && !forbiddenOutcome.Succeeded);
 }
 
 var postgres = Environment.GetEnvironmentVariable("DONYSH_LIFE_TEST_POSTGRES");
