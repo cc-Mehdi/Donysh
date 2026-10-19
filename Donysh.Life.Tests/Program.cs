@@ -109,6 +109,17 @@ using (var response = await client.GetAsync("/js/interaction-feedback.js"))
         && !script.Contains("new Function", StringComparison.Ordinal));
 }
 
+using (var response = await client.GetAsync("/js/setup-wizard.js"))
+{
+    var script = await response.Content.ReadAsStringAsync();
+    Check("Life setup guidance is same-origin and updates without string evaluation",
+        response.StatusCode == HttpStatusCode.OK
+        && script.Contains("data-selected-count", StringComparison.Ordinal)
+        && script.Contains("Intl.NumberFormat", StringComparison.Ordinal)
+        && !script.Contains("eval(", StringComparison.Ordinal)
+        && !script.Contains("new Function", StringComparison.Ordinal));
+}
+
 using (var request = new HttpRequestMessage(HttpMethod.Get, "/css/app.css"))
 {
     request.Headers.AcceptEncoding.ParseAdd("gzip");
@@ -157,8 +168,12 @@ using (var authenticatedClient = authenticatedFactory.CreateClient(new WebApplic
         var setupHtml = await setupResponse.Content.ReadAsStringAsync();
         Check("Life setup wizard offers activity templates and weekly goals",
             setupResponse.StatusCode == HttpStatusCode.OK
-            && setupHtml.Contains("این هفته برای چه چیزهایی وقت می‌گذاری", StringComparison.Ordinal)
-            && setupHtml.Contains("Suggestions[0].WeeklyHours", StringComparison.Ordinal));
+            && setupHtml.Contains("چه چیزهایی برایت مهم‌اند", StringComparison.Ordinal)
+            && setupHtml.Contains("Suggestions[0].WeeklyHours", StringComparison.Ordinal)
+            && setupHtml.Contains("data-selected-count", StringComparison.Ordinal)
+            && setupHtml.Contains("data-select-all", StringComparison.Ordinal)
+            && setupHtml.Contains("aria-current=\"step\"", StringComparison.Ordinal)
+            && setupHtml.Contains("setup-wizard", StringComparison.Ordinal));
         Check("Life setup wizard does not require inline styles",
             !setupHtml.Contains("style=", StringComparison.OrdinalIgnoreCase));
     }
@@ -190,6 +205,7 @@ using (var authenticatedClient = authenticatedFactory.CreateClient(new WebApplic
             && progressHtml.Contains("تصویر واقعی هفته", StringComparison.Ordinal)
             && progressHtml.Contains("این هفته هنوز داده‌ای برای مقایسه ندارد", StringComparison.Ordinal)
             && progressHtml.Contains("منبع زمان واقعی", StringComparison.Ordinal)
+            && progressHtml.Contains("تعیین هدف هفتگی", StringComparison.Ordinal)
             && !progressHtml.Contains("style=", StringComparison.OrdinalIgnoreCase));
     }
 

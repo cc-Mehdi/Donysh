@@ -11,13 +11,13 @@
 </section>
 
 <section class="progress-metrics" aria-label="خلاصهٔ پیشرفت هفته">
-    <article class="metric-card progress-primary"><span>زمان واقعی</span><strong>@Model.Report.ActualLabel</strong><small>@Model.Report.GoalPercent٪ از هدف هفتگی</small><progress max="100" value="@Model.Report.GoalProgressValue">@Model.Report.GoalPercent٪</progress></article>
+    <article class="metric-card progress-primary"><span>زمان واقعی</span><strong>@Model.Report.ActualLabel</strong><small>@Model.Report.GoalPercent٪ از هدف هفتگی</small><progress max="100" value="@Model.Report.GoalProgressValue" aria-label="درصد دستیابی به هدف هفتگی">@Model.Report.GoalPercent٪</progress></article>
     <article class="metric-card"><span>هدف هفته</span><strong>@Model.Report.TargetLabel</strong><small>مجموع هدف فعالیت‌های فعال</small></article>
     <article class="metric-card"><span>زمان برنامه‌ریزی‌شده</span><strong>@Model.Report.PlannedLabel</strong><small>@Model.Report.PlanPercent٪ عملکرد نسبت به برنامه</small></article>
     <article class="metric-card source-card"><span>منبع زمان واقعی</span><strong>@WeekCalendar.DurationName(Model.Report.ScheduledActualMinutes)</strong><small>از نتیجهٔ برنامه‌ها</small><strong class="secondary-value">@WeekCalendar.DurationName(Model.Report.ManualActualMinutes)</strong><small>از ثبت دستی</small></article>
 </section>
 
-<aside class="progress-insight" aria-label="برداشت این هفته"><span aria-hidden="true">✦</span><div><strong>برداشت این هفته</strong><p>@Model.Report.Insight</p></div></aside>
+<aside class="progress-insight" aria-label="برداشت و قدم بعدی این هفته"><span aria-hidden="true">✦</span><div><strong>برداشت این هفته</strong><p>@Model.Report.Insight</p>@if (Model.Report.TargetMinutes == 0) { <a class="button secondary" asp-page="/Activities">تعیین هدف هفتگی</a> } else if (Model.Report.PlannedMinutes < Model.Report.TargetMinutes) { <a class="button secondary" asp-page="/Week">تکمیل برنامهٔ هفته</a> } else if (Model.Report.ActualMinutes < Model.Report.PlannedMinutes) { <a class="button secondary" asp-page="/Week">ثبت نتیجهٔ برنامه‌ها</a> } else { <a class="button secondary" asp-page="/Index">ثبت فعالیت انجام‌شده</a> }</div></aside>
 
 @if (!Model.Report.HasData)
 {

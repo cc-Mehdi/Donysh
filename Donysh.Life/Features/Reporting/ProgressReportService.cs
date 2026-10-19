@@ -48,13 +48,19 @@ public sealed class ProgressReportService(
             .ToListAsync(cancellationToken);
 
         var blockKeys = activeBlocks.Select(block => (block.Id, block.OriginalDate)).ToHashSet();
+        var blocksByActivity = activeBlocks.ToLookup(block => block.ActivityId);
+        var recordsByActivity = records.ToLookup(record => record.ActivityId);
+        var manualByActivity = manualEntries.ToLookup(entry => entry.ActivityId);
+        var blocksByDate = activeBlocks.ToLookup(block => block.ScheduledDate);
+        var recordsByDate = records.ToLookup(record => record.EffectiveDate);
+        var manualByDate = manualEntries.ToLookup(entry => entry.OccurredDate);
         var activityRows = activities.Select(activity =>
         {
-            var activityBlocks = activeBlocks.Where(block => block.ActivityId == activity.Id).ToList();
-            var activityRecords = records.Where(record => record.ActivityId == activity.Id).ToList();
+            var activityBlocks = blocksByActivity[activity.Id];
+            var activityRecords = recordsByActivity[activity.Id];
             var snapshotMinutes = activityRecords.Where(record => !blockKeys.Contains((record.PatternId, record.OriginalDate)))
                 .Sum(record => record.PlannedMinutes);
-            var manualMinutes = manualEntries.Where(entry => entry.ActivityId == activity.Id).Sum(entry => entry.ActualMinutes);
+            var manualMinutes = manualByActivity[activity.Id].Sum(entry => entry.ActualMinutes);
             return new ActivityProgressItem(
                 activity.Id, activity.Title, activity.ColorHex, activity.IconKey, activity.IsActive, activity.TargetMinutes,
                 activityBlocks.Sum(block => block.DurationMinutes) + snapshotMinutes,
@@ -69,13 +75,13 @@ public sealed class ProgressReportService(
         var days = WeekCalendar.Days.Select((day, index) =>
         {
             var date = weekStart.AddDays(index);
-            var dayRecords = records.Where(record => record.EffectiveDate == date).ToList();
-            var plannedFromBlocks = activeBlocks.Where(block => block.ScheduledDate == date).Sum(block => block.DurationMinutes);
+            var dayRecords = recordsByDate[date];
+            var plannedFromBlocks = blocksByDate[date].Sum(block => block.DurationMinutes);
             var snapshotMinutes = dayRecords.Where(record => !blockKeys.Contains((record.PatternId, record.OriginalDate)))
                 .Sum(record => record.PlannedMinutes);
             return new DailyProgressItem(date, day, plannedFromBlocks + snapshotMinutes,
                 dayRecords.Sum(record => record.ActualMinutes ?? 0),
-                manualEntries.Where(entry => entry.OccurredDate == date).Sum(entry => entry.ActualMinutes));
+                manualByDate[date].Sum(entry => entry.ActualMinutes));
         }).ToList();
 
         var recordKeys = records.Select(record => (record.PatternId, record.OriginalDate)).ToHashSet();
