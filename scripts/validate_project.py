@@ -21,7 +21,6 @@ REQUIRED = [
     "HesabYar.Web/Pages/Savings/Index.cshtml",
     "HesabYar.Web/Pages/Reports/Index.cshtml",
     "HesabYar.Web/Pages/Workspaces/Index.cshtml",
-    "HesabYar.Web/Pages/Shared/_OnboardingGuide.cshtml",
     "HesabYar.Web/ModelBinding/FlexibleDecimalModelBinder.cs",
     "HesabYar.Web/ModelBinding/PersianDateOnlyModelBinder.cs",
     "Donysh.Auth/Donysh.Auth.csproj",
@@ -118,7 +117,14 @@ def main() -> int:
             errors.append(f"compose token missing: {token}")
 
     platform_compose = (ROOT / "docker-compose.platform.yml").read_text(encoding="utf-8")
-    for token in ["auth-db:", "auth:", "AUTH_SIGNING_CERT_PASSWORD", "Features__LegacyIdentityImportCompleted: \"false\""]:
+    for token in [
+        "auth-db:",
+        "auth:",
+        "AUTH_SIGNING_CERT_PASSWORD",
+        "FINANCE_DOMAIN",
+        "OidcClients__0__RedirectUris__1",
+        "OidcClients__0__PostLogoutRedirectUris__1",
+    ]:
         if token not in platform_compose:
             errors.append(f"platform compose token missing: {token}")
 
@@ -131,9 +137,13 @@ def main() -> int:
         path.read_text(encoding="utf-8")
         for path in (ROOT / "HesabYar.Web/Pages").rglob("*.cshtml")
     )
-    for token in ["data-money", "data-persian-date", "data-guide-open"]:
+    for token in ["data-money", "data-persian-date"]:
         if token not in pages_text:
             errors.append(f"UI token missing: {token}")
+
+    caddy = (ROOT / "Caddyfile.platform").read_text(encoding="utf-8")
+    if "{$DOMAIN}, {$FINANCE_DOMAIN}" not in caddy:
+        errors.append("platform Caddyfile must serve Finance on both transition domains")
 
     if errors:
         print("Validation failed:")

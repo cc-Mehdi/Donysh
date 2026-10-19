@@ -14,7 +14,7 @@
     }
 }
 
-{$DOMAIN} {
+{$DOMAIN}, {$FINANCE_DOMAIN} {
     encode zstd gzip
     import secure_headers
     reverse_proxy web:8080

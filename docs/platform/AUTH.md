@@ -46,7 +46,15 @@ OidcClients__0__RedirectUris__0=https://finance.donysh.ir/signin-oidc
 OidcClients__0__PostLogoutRedirectUris__0=https://finance.donysh.ir/signout-callback-oidc
 ```
 
-این مقادیر در مرحلهٔ ۱ عمداً به Compose اضافه نشده‌اند، چون Finance هنوز OIDC client نیست.
+در دورهٔ انتقال مرحلهٔ ۳، هر دو Redirect دقیق زیر برای همان client ثبت می‌شوند:
+
+```text
+https://donysh.ir/signin-oidc
+https://finance.donysh.ir/signin-oidc
+```
+
+هر دو Post-logout redirect متناظر نیز ثبت می‌شوند. Wildcard استفاده نمی‌شود و پس از انتقال کامل،
+حذف آدرس قدیمی فقط در یک مرحلهٔ مستقل و پس از پایان دورهٔ سازگاری انجام خواهد شد.
 
 ## راهبرد کاربران قدیمی
 

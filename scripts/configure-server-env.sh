@@ -28,7 +28,7 @@ declare -A desired=()
 declare -A managed=()
 
 managed_keys=(
-  POSTGRES_DB POSTGRES_USER POSTGRES_PASSWORD TZ APP_PORT DOMAIN ACME_EMAIL
+  POSTGRES_DB POSTGRES_USER POSTGRES_PASSWORD TZ APP_PORT DOMAIN FINANCE_DOMAIN ACME_EMAIL
   AUTH_DOMAIN AUTH_POSTGRES_DB AUTH_POSTGRES_USER AUTH_POSTGRES_PASSWORD
   AUTH_SIGNING_CERT_PASSWORD AUTH_ENCRYPTION_CERT_PASSWORD
   FINANCE_OIDC_CLIENT_SECRET LEGACY_IDENTITY_IMPORT_COMPLETED CENTRAL_AUTH_ENABLED
@@ -94,6 +94,7 @@ keep_or_generate_secret() {
 }
 
 prompt_value DOMAIN 'دامنهٔ اصلی' 'donysh.ir'
+prompt_value FINANCE_DOMAIN 'دامنهٔ سرویس مالی' "finance.${desired[DOMAIN]}"
 prompt_value AUTH_DOMAIN 'دامنهٔ سرویس ورود مرکزی' "auth.${desired[DOMAIN]}"
 prompt_value ACME_EMAIL 'ایمیل دریافت هشدارهای گواهی HTTPS' "admin@${desired[DOMAIN]}"
 prompt_value APP_PORT 'درگاه داخلی برنامه' '8080'
@@ -105,6 +106,8 @@ prompt_value AUTH_POSTGRES_USER 'کاربر پایگاه دادهٔ ورود م�
 
 [[ "${desired[DOMAIN]}" =~ ^([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$ ]] \
   || fail "دامنهٔ اصلی معتبر نیست."
+[[ "${desired[FINANCE_DOMAIN]}" =~ ^([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$ ]] \
+  || fail "دامنهٔ سرویس مالی معتبر نیست."
 [[ "${desired[AUTH_DOMAIN]}" =~ ^([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$ ]] \
   || fail "دامنهٔ سرویس ورود معتبر نیست."
 [[ "${desired[ACME_EMAIL]}" =~ ^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$ ]] \

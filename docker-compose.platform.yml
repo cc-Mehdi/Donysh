@@ -36,7 +36,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:8080
-      AllowedHosts: ${DOMAIN:?DOMAIN is required}
+      AllowedHosts: ${DOMAIN:?DOMAIN is required};${FINANCE_DOMAIN:?FINANCE_DOMAIN is required}
       ReverseProxy__Enabled: "true"
       DataProtection__KeysPath: /keys
       CentralAuth__Enabled: ${CENTRAL_AUTH_ENABLED:-false}
@@ -99,7 +99,9 @@ services:
       OidcClients__0__ClientSecret: ${FINANCE_OIDC_CLIENT_SECRET:?FINANCE_OIDC_CLIENT_SECRET is required}
       OidcClients__0__PublicClient: "false"
       OidcClients__0__RedirectUris__0: https://${DOMAIN:?DOMAIN is required}/signin-oidc
+      OidcClients__0__RedirectUris__1: https://${FINANCE_DOMAIN:?FINANCE_DOMAIN is required}/signin-oidc
       OidcClients__0__PostLogoutRedirectUris__0: https://${DOMAIN:?DOMAIN is required}/signout-callback-oidc
+      OidcClients__0__PostLogoutRedirectUris__1: https://${FINANCE_DOMAIN:?FINANCE_DOMAIN is required}/signout-callback-oidc
       OpenIddict__SigningCertificate__Path: /certs/signing.pfx
       OpenIddict__SigningCertificate__Password: ${AUTH_SIGNING_CERT_PASSWORD:?AUTH_SIGNING_CERT_PASSWORD is required}
       OpenIddict__EncryptionCertificate__Path: /certs/encryption.pfx
@@ -142,6 +144,7 @@ services:
         condition: service_started
     environment:
       DOMAIN: ${DOMAIN:?DOMAIN is required}
+      FINANCE_DOMAIN: ${FINANCE_DOMAIN:?FINANCE_DOMAIN is required}
       AUTH_DOMAIN: ${AUTH_DOMAIN:?AUTH_DOMAIN is required}
       ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL is required}
     ports:

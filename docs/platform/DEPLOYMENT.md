@@ -7,6 +7,7 @@
 ## پیش‌نیاز سرور
 
 - رکورد DNS نوع A/AAAA برای `auth.donysh.ir` به سرور فعلی.
+- پیش از استقرار مرحلهٔ ۳، رکورد DNS نوع A برای `finance.donysh.ir` به همان IP سرور.
 - Docker Compose و OpenSSL.
 - Backup معتبر volume دیتابیس Finance قبل از نخستین جابه‌جایی فایل Compose.
 - پورت‌های ۸۰ و ۴۴۳ در اختیار Caddy.
@@ -29,6 +30,8 @@ docker compose --env-file .env -f docker-compose.platform.yml config >/dev/null
 روی خود سرور تولید می‌کند و فایل را با سطح دسترسی `600` به‌شکل اتمی می‌نویسد. رمزهای معتبر موجود
 بدون تغییر حفظ می‌شوند تا اتصال volume فعلی PostgreSQL قطع نشود. مقدارهای حساس در خروجی نمایش داده
 نمی‌شوند و فایل پیوند نمادین نیز پذیرفته نمی‌شود.
+در مرحلهٔ ۳ مقدار `FINANCE_DOMAIN` را برابر `finance.donysh.ir` قرار دهید. مقدار `DOMAIN=donysh.ir`
+عمداً بدون تغییر می‌ماند تا سرویس مالی روی هر دو دامنه به‌صورت موازی در دسترس باشد.
 فایل `.env` عمداً با `source` اجرا نمی‌شود؛ فقط دو رمز لازم برای ساخت گواهی‌ها به‌عنوان داده خوانده
 می‌شوند تا هیچ محتوایی از فایل به‌عنوان دستور پوسته اجرا نشود.
 
@@ -45,6 +48,36 @@ curl -fsS https://auth.donysh.ir/health/live
 curl -fsS https://auth.donysh.ir/health/ready
 curl -fsS https://auth.donysh.ir/.well-known/openid-configuration
 ```
+
+## استقرار کنترل‌شدهٔ دامنهٔ Finance
+
+ابتدا انتشار DNS را بررسی کنید؛ هر دو پاسخ باید IP همین سرور باشند:
+
+```bash
+getent ahostsv4 donysh.ir | head -n 1
+getent ahostsv4 finance.donysh.ir | head -n 1
+```
+
+سپس مقدار جدید را بدون نمایش Secretها ایجاد و پیکربندی را بررسی کنید:
+
+```bash
+cd /home/ubuntu/donysh
+sudo bash scripts/configure-server-env.sh </dev/null
+sudo grep -E '^(DOMAIN|FINANCE_DOMAIN|AUTH_DOMAIN)=' .env
+sudo docker compose --env-file .env -f docker-compose.platform.yml config --quiet
+```
+
+بعد از استقرار، سلامت و مسیر ورود هر دو دامنه را بررسی کنید:
+
+```bash
+curl -fsS https://donysh.ir/health
+curl -fsS https://finance.donysh.ir/health
+curl -sS -D - -o /dev/null https://finance.donysh.ir/Account/Login | grep -iE '^(HTTP|location:)'
+```
+
+در مرورگر ناشناس، ورود و خروج و سپس ایجاد، ویرایش و حذف یک دادهٔ آزمایشی کنترل‌شده را روی
+دامنهٔ جدید بررسی کنید. گزارش‌ها و فایل‌های ایستا نیز باید بدون خطای شبکه بارگذاری شوند. دامنهٔ
+قدیم در این مرحله Redirect نمی‌شود.
 
 در اولین شروع، Migration فقط روی `auth-db` اجرا می‌شود. تا قبل از اجرای راهنمای `MIGRATION.md`، مقدارهای `CENTRAL_AUTH_ENABLED` و `LEGACY_IDENTITY_IMPORT_COMPLETED` را `false` نگه دارید. برنامهٔ مالی در این وضعیت از ورود قبلی استفاده می‌کند.
 
@@ -64,6 +97,9 @@ docker compose --env-file .env -f docker-compose.platform.yml up -d web
 ```
 
 volumeهای `auth_postgres_data` و `auth_dataprotection_keys` را حذف نکنید. با خاموش‌کردن پرچم، ورود محلی قبلی بدون حذف داده‌ها بازمی‌گردد.
+
+اگر فقط دامنهٔ جدید مشکل داشت، رکورد DNS آن را حذف کنید و نسخهٔ قبلی کد را دوباره مستقر کنید؛
+`donysh.ir` و دیتابیس مالی دست‌نخورده می‌مانند. هیچ volume یا جدول دیتابیسی را برای بازگشت مرحلهٔ ۳ حذف نکنید.
 
 ## اجرای محلی توسعه
 

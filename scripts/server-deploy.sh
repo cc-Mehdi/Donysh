@@ -83,8 +83,10 @@ docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --remove-orphans 
 
 # Read DOMAIN without executing the env file as shell code.
 domain="$(sed -n 's/^DOMAIN=//p' "$ENV_FILE" | tail -n 1 | tr -d '\r' | xargs)"
+finance_domain="$(sed -n 's/^FINANCE_DOMAIN=//p' "$ENV_FILE" | tail -n 1 | tr -d '\r' | xargs)"
 auth_domain="$(sed -n 's/^AUTH_DOMAIN=//p' "$ENV_FILE" | tail -n 1 | tr -d '\r' | xargs)"
 health_url="${HEALTH_URL:-https://${domain}/health}"
+finance_health_url="${FINANCE_HEALTH_URL:-https://${finance_domain}/health}"
 auth_health_url="${AUTH_HEALTH_URL:-https://${auth_domain}/health/ready}"
 
 for attempt in $(seq 1 24); do
@@ -92,9 +94,12 @@ for attempt in $(seq 1 24); do
       --resolve "${domain}:443:127.0.0.1" \
       "$health_url" 9>&- >/dev/null \
       && curl --fail --silent --show-error --max-time 10 \
+      --resolve "${finance_domain}:443:127.0.0.1" \
+      "$finance_health_url" 9>&- >/dev/null \
+      && curl --fail --silent --show-error --max-time 10 \
       --resolve "${auth_domain}:443:127.0.0.1" \
       "$auth_health_url" 9>&- >/dev/null; then
-    echo "Health checks passed: $health_url and $auth_health_url"
+    echo "Health checks passed: $health_url, $finance_health_url and $auth_health_url"
     trap - ERR
     docker image prune -f 9>&- >/dev/null 2>&1 || true
     docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps 9>&-
@@ -106,5 +111,5 @@ for attempt in $(seq 1 24); do
   sleep 5 9>&-
 done
 
-echo "A health check failed: $health_url or $auth_health_url"
+echo "A health check failed: $health_url, $finance_health_url or $auth_health_url"
 exit 1
