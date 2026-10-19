@@ -176,6 +176,9 @@ jobs:
     needs: validate
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout deployment script
+        uses: actions/checkout@v4
+
       - name: Configure SSH
         env:
           SERVER_HOST: ${{ secrets.SERVER_HOST }}
@@ -199,4 +202,5 @@ jobs:
           ssh -i ~/.ssh/donysh_deploy_key \
             -p "$SERVER_PORT" \
             "$SERVER_USER@$SERVER_HOST" \
-            "cd '$SERVER_APP_PATH' && DEPLOY_BRANCH=main bash scripts/server-deploy.sh"
+            "cd '$SERVER_APP_PATH' && APP_DIR='$SERVER_APP_PATH' DEPLOY_BRANCH=main bash -s" \
+            < scripts/server-deploy.sh

@@ -188,6 +188,29 @@ cd /home/ubuntu/donysh
 sudo bash scripts/verify-platform-release.sh
 ```
 
+## عیب‌یابی و بازیابی Deploy روی سرور کم‌حافظه
+
+اسکریپت Deploy پیش از تغییر Git و دوباره پس از Build، سلامت `db`، `auth-db` و `life-db` را بررسی می‌کند.
+یک دیتابیس ناسالم فقط یک‌بار Restart می‌شود؛ اگر بازیابی نشود، وضعیت، خروج به‌علت کمبود حافظه و پنج نتیجهٔ
+آخر Health Check چاپ می‌شوند و Deploy پیش از اتلاف زمان بیشتر متوقف می‌شود. هیچ volume یا داده‌ای حذف نمی‌شود.
+
+ساخت Docker فقط برای محصولاتی انجام می‌شود که فایل‌های مؤثرشان میان کامیت نصب‌شده و کامیت مقصد تغییر کرده‌اند.
+ساخت‌ها با `COMPOSE_PARALLEL_LIMIT=1` اجرا می‌شوند تا روی سرور یک‌گیگابایتی چند Build سنگین هم‌زمان اجرا نشود.
+همچنین GitHub Actions نسخهٔ جاری اسکریپت Deploy را از همان کامیت روی ورودی SSH اجرا می‌کند؛ در نتیجه اصلاح
+خود اسکریپت برای اعمال‌شدن به یک Deploy موفق قبلی وابسته نیست.
+
+برای بررسی فوری دیتابیس Life:
+
+```bash
+cd /home/ubuntu/donysh
+sudo docker compose --env-file .env -f docker-compose.platform.yml ps life-db
+life_db_id="$(sudo docker compose --env-file .env -f docker-compose.platform.yml ps -q life-db)"
+sudo docker inspect --format 'status={{.State.Status}} oom={{.State.OOMKilled}} exit={{.State.ExitCode}} health={{if .State.Health}}{{.State.Health.Status}}{{end}}' "$life_db_id"
+sudo docker compose --env-file .env -f docker-compose.platform.yml logs --tail=100 life-db
+df -h / /var/lib/docker
+free -m
+```
+
 ## اجرای محلی توسعه
 
 یک PostgreSQL محلی مطابق `appsettings.Development.json` فراهم کنید، سپس:

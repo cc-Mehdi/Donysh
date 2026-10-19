@@ -201,6 +201,12 @@ def main() -> int:
     deploy_script = (ROOT / "scripts/server-deploy.sh").read_text(encoding="utf-8")
     if "bash scripts/verify-platform-release.sh" not in deploy_script:
         errors.append("server deploy must run the production release verifier")
+    for token in ["ensure_database", "git diff --name-only", "COMPOSE_PARALLEL_LIMIT=1", "oomKilled"]:
+        if token not in deploy_script:
+            errors.append(f"server deploy resilience token missing: {token}")
+
+    if "< scripts/server-deploy.sh" not in workflow:
+        errors.append("workflow must stream the current deployment script to the server")
 
     release_verifier = (ROOT / "scripts/verify-platform-release.sh").read_text(encoding="utf-8")
     for token in ["RELEASE_CHECK_RESOLVE_IP", "Life central login redirect", "Life browser security headers"]:

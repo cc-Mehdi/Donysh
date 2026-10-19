@@ -120,6 +120,10 @@ git push origin main
 DEPLOY_LOCK_WAIT_SECONDS=1200 DEPLOY_BRANCH=main bash scripts/server-deploy.sh
 ```
 
+Workflow نسخهٔ `server-deploy.sh` همان کامیت را از طریق ورودی امن SSH اجرا می‌کند؛ بنابراین برای اعمال تغییرات
+این اسکریپت نیازی به کپی دستی آن روی سرور نیست. اسکریپت فقط Imageهای تغییرکرده را به‌صورت ترتیبی می‌سازد و
+پیش از Build، ناسالم‌بودن دیتابیس‌ها و کمبود فضای دیسک را سریع گزارش می‌کند.
+
 ## دستورات بررسی روی سرور
 
 ```bash
