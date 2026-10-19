@@ -1,4 +1,5 @@
 @page
+@model IndexModel
 @{
     ViewData["Title"] = "امروز";
 }
@@ -6,25 +7,34 @@
     <div>
         <p class="eyebrow">نمای آرام این هفته</p>
         <h1>برای چیزهای مهم، جا باز کن.</h1>
-        <p>دونیش زندگی به‌زودی هدف‌ها، برنامه و عملکرد واقعی را کنار هم نشان می‌دهد.</p>
+        <p>فعالیت‌های مهمت را مشخص کن و برای هرکدام یک هدف زمانی روشن داشته باش.</p>
     </div>
     <span class="week-chip">هفته از شنبه آغاز می‌شود</span>
 </section>
 
 <section class="insight-grid" aria-label="خلاصهٔ هفته">
-    <article class="metric-card primary"><span>هدف این هفته</span><strong>هنوز تنظیم نشده</strong><small>در مرحلهٔ بعد فعالیت‌هایت را تعریف می‌کنی.</small></article>
+    <article class="metric-card primary"><span>هدف این هفته</span><strong>@(Model.Overview.WeeklyTargetMinutes == 0 ? "هنوز تنظیم نشده" : $"{Model.Overview.WeeklyTargetHours:0.#} ساعت")</strong><small>مجموع هدف فعالیت‌های فعال</small></article>
     <article class="metric-card"><span>زمان برنامه‌ریزی‌شده</span><strong>۰ ساعت</strong><small>هفتهٔ تو هنوز فضای خالی دارد.</small></article>
-    <article class="metric-card"><span>پیشرفت واقعی</span><strong>—</strong><small>پس از ثبت فعالیت‌ها محاسبه می‌شود.</small></article>
+    <article class="metric-card"><span>فعالیت‌های فعال</span><strong>@Model.Overview.ActiveActivityCount فعالیت</strong><small>از @Model.Overview.ActivityCount فعالیت تعریف‌شده</small></article>
 </section>
 
 <section class="dashboard-grid">
     <article class="panel focus-panel">
-        <div class="panel-head"><div><span class="section-icon">◷</span><h2>قدم بعدی روشن</h2></div><span class="tag">مرحلهٔ آغازین</span></div>
+        <div class="panel-head"><div><span class="section-icon">◷</span><h2>قدم بعدی روشن</h2></div><span class="tag">آمادهٔ برنامه‌ریزی</span></div>
         <div class="empty-state">
             <span class="empty-mark">◎</span>
-            <h3>اول فعالیت‌های مهمت را مشخص کن</h3>
-            <p>در مرحلهٔ بعد می‌توانی برای کار، ورزش، مطالعه و هدف‌های شخصی زمان هفتگی تعیین کنی.</p>
-            <a class="button disabled" asp-page="/Activities" aria-disabled="true">مشاهدهٔ فضای فعالیت‌ها</a>
+            @if (Model.Overview.ActivityCount == 0)
+            {
+                <h3>در دو قدم ساده شروع کن</h3>
+                <p>چند فعالیت پیشنهادی را انتخاب کن، هدف زمانی‌شان را تنظیم کن و بعداً هر زمان خواستی تغییرشان بده.</p>
+                <a class="button secondary" asp-page="/Setup">شروع راه‌اندازی</a>
+            }
+            else
+            {
+                <h3>فعالیت‌هایت آماده‌اند</h3>
+                <p>عنوان، رنگ، نماد یا هدف زمانی هر فعالیت را از یک جای ساده مدیریت کن.</p>
+                <a class="button secondary" asp-page="/Activities">مدیریت فعالیت‌ها</a>
+            }
         </div>
     </article>
     <aside class="panel quiet-panel">
@@ -32,7 +42,7 @@
         <ul class="readiness-list">
             <li><span>۱</span><div><strong>حساب مشترک</strong><small>ورود مرکزی دونیش فعال است.</small></div></li>
             <li><span>۲</span><div><strong>اطلاعات مستقل</strong><small>داده‌های زندگی از بخش مالی جداست.</small></div></li>
-            <li><span>۳</span><div><strong>زمان محلی</strong><small>ساختار هفته و منطقهٔ زمانی آماده است.</small></div></li>
+            <li><span>۳</span><div><strong>شروع هفته از شنبه</strong><small>هدف‌ها با ساختار هفتهٔ ایرانی هماهنگ‌اند.</small></div></li>
         </ul>
     </aside>
 </section>

@@ -1,0 +1,52 @@
+@page
+@model SetupModel
+@using Donysh.Life.Features.Activities
+@{
+    ViewData["Title"] = "راه‌اندازی";
+}
+
+<section class="setup-shell">
+    <ol class="stepper" aria-label="مراحل راه‌اندازی">
+        <li class="@(Model.Step >= 1 ? "active" : "")"><span>۱</span>آشنایی</li>
+        <li class="@(Model.Step >= 2 ? "active" : "")"><span>۲</span>فعالیت‌ها و هدف‌ها</li>
+    </ol>
+
+    @if (Model.HasActivities && Model.Step == 1)
+    {
+        <article class="panel setup-card"><span class="setup-hero-icon">✓</span><p class="eyebrow">راه‌اندازی انجام شده</p><h1>همه‌چیز برای ادامه آماده است.</h1><p>می‌توانی فعالیت تازه بسازی یا هدف‌های هفتگی را ویرایش کنی.</p><a class="button primary" asp-page="/Activities">رفتن به فعالیت‌ها</a></article>
+    }
+    else if (Model.Step == 1)
+    {
+        <article class="panel setup-card">
+            <span class="setup-hero-icon">◎</span><p class="eyebrow">دو دقیقه تا یک برنامهٔ روشن</p><h1>از چیزهایی شروع کن که واقعاً برایت مهم‌اند.</h1>
+            <p>در قدم بعد چند فعالیت را انتخاب می‌کنی و می‌گویی در هر هفته چقدر زمان برایشان می‌خواهی. همهٔ این موارد بعداً قابل تغییرند.</p>
+            <ul class="setup-benefits"><li><span>✓</span>بدون دادهٔ پیش‌فرض اجباری</li><li><span>✓</span>شروع هفته از شنبه</li><li><span>✓</span>قابل ویرایش در هر زمان</li></ul>
+            <form method="post" asp-page-handler="Begin"><button class="button primary" type="submit">انتخاب فعالیت‌ها</button></form>
+        </article>
+    }
+    else
+    {
+        <form method="post" asp-page-handler="Complete" class="setup-form">
+            <header class="setup-list-head"><div><p class="eyebrow">قدم دوم</p><h1>این هفته برای چه چیزهایی وقت می‌گذاری؟</h1><p>هر موردی را که می‌خواهی انتخاب کن و هدف زمانی‌اش را تغییر بده.</p></div><button class="button primary desktop-submit" type="submit">ذخیره و شروع</button></header>
+            @if (!string.IsNullOrWhiteSpace(Model.CommandError)) { <div class="notice error" role="alert">@Model.CommandError</div> }
+            @if (!ViewData.ModelState.IsValid)
+            {
+                <div class="validation-summary" role="alert"><ul>@foreach (var error in ViewData.ModelState.Values.SelectMany(entry => entry.Errors)) { <li>@error.ErrorMessage</li> }</ul></div>
+            }
+            <div class="template-grid">
+                @for (var index = 0; index < Model.Suggestions.Count; index++)
+                {
+                    var suggestion = Model.Suggestions[index];
+                    var template = ActivityCatalog.FindTemplate(suggestion.TemplateKey)!;
+                    <article class="template-card @ActivityCatalog.ColorClass(template.ColorHex)">
+                        <input type="hidden" asp-for="Suggestions[index].TemplateKey" />
+                        <label class="template-choice"><input asp-for="Suggestions[index].IsSelected" /><span class="template-check" aria-hidden="true">✓</span><span class="activity-icon">@ActivityCatalog.IconGlyph(template.IconKey)</span><span><strong>@template.Title</strong><small>@template.Category</small></span></label>
+                        <label class="goal-input"><span>هدف در هفته</span><span><input asp-for="Suggestions[index].WeeklyHours" type="number" min="0.5" max="168" step="0.5" inputmode="decimal" /> ساعت</span></label>
+                        <span asp-validation-for="Suggestions[index].WeeklyHours" class="field-error"></span>
+                    </article>
+                }
+            </div>
+            <button class="button primary mobile-submit" type="submit">ذخیره و شروع</button>
+        </form>
+    }
+</section>

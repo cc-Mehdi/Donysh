@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Donysh.Life.Configuration;
 using Donysh.Life.Data;
+using Donysh.Life.Features.Activities;
 using Donysh.Life.Security;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -31,6 +32,8 @@ if (string.IsNullOrWhiteSpace(auth.ClientId)
 builder.Services.AddDbContext<LifeDbContext>(options => options.UseNpgsql(connectionString, npgsql =>
     npgsql.EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null)));
 builder.Services.AddScoped<LifeDatabaseMigrator>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<LifeActivityService>();
 
 builder.Services.AddAuthentication(options =>
     {

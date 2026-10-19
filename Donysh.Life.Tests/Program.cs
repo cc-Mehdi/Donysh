@@ -3,16 +3,21 @@ using System.Security.Claims;
 using System.Text.Json;
 using System.Text.Encodings.Web;
 using Donysh.Life.Configuration;
+using Donysh.Life.Data;
+using Donysh.Life.Features.Activities;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
+using Microsoft.EntityFrameworkCore;
 
 var failed = 0;
 void Check(string name, bool condition)
@@ -87,9 +92,29 @@ using (var authenticatedClient = authenticatedFactory.CreateClient(new WebApplic
         response.StatusCode == HttpStatusCode.OK
         && html.Contains("برای چیزهای مهم، جا باز کن", StringComparison.Ordinal)
         && html.Contains("برنامهٔ هفته", StringComparison.Ordinal)
-        && html.Contains("پیشرفت واقعی", StringComparison.Ordinal));
+        && html.Contains("فعالیت‌های فعال", StringComparison.Ordinal));
     Check("Life logout posts locally before central OIDC sign-out",
         html.Contains("action=\"/Account/Logout\"", StringComparison.Ordinal));
+
+    using (var setupResponse = await authenticatedClient.GetAsync("/Setup?step=2"))
+    {
+        var setupHtml = await setupResponse.Content.ReadAsStringAsync();
+        Check("Life setup wizard offers activity templates and weekly goals",
+            setupResponse.StatusCode == HttpStatusCode.OK
+            && setupHtml.Contains("این هفته برای چه چیزهایی وقت می‌گذاری", StringComparison.Ordinal)
+            && setupHtml.Contains("Suggestions[0].WeeklyHours", StringComparison.Ordinal));
+        Check("Life setup wizard does not require inline styles",
+            !setupHtml.Contains("style=", StringComparison.OrdinalIgnoreCase));
+    }
+
+    using (var activitiesResponse = await authenticatedClient.GetAsync("/Activities"))
+    {
+        var activitiesHtml = await activitiesResponse.Content.ReadAsStringAsync();
+        Check("Life activity management renders create and empty states",
+            activitiesResponse.StatusCode == HttpStatusCode.OK
+            && activitiesHtml.Contains("فعالیت تازه", StringComparison.Ordinal)
+            && activitiesHtml.Contains("هنوز فعالیتی نداری", StringComparison.Ordinal));
+    }
 
     var antiforgeryMatch = Regex.Match(
         html,
@@ -114,6 +139,41 @@ Check("Life logout clears both the product and central sessions",
     && lifeLogout.AuthenticationSchemes.Contains(LifeAuthOptions.CookieScheme)
     && lifeLogout.AuthenticationSchemes.Contains(LifeAuthOptions.OidcScheme)
     && lifeLogout.Properties?.RedirectUri == "/Account/SignedOut");
+
+var activityDatabase = "life-activity-tests-" + Guid.NewGuid().ToString("N");
+var activityOptions = new DbContextOptionsBuilder<LifeDbContext>()
+    .UseInMemoryDatabase(activityDatabase)
+    .Options;
+await using (var activityDb = new LifeDbContext(activityOptions))
+{
+    var httpContext = new DefaultHttpContext
+    {
+        User = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "activity-owner-a")], "test"))
+    };
+    var service = new LifeActivityService(activityDb, new HttpContextAccessor { HttpContext = httpContext });
+    var created = await service.SaveAsync(null, new ActivityForm
+    {
+        Title = "ورزش",
+        Category = "سلامت",
+        ColorHex = "#EA580C",
+        IconKey = "activity",
+        WeeklyHours = 4
+    });
+    var ownerItems = await service.ListAsync();
+    Check("Life activity creation keeps the weekly goal separate",
+        created.Succeeded
+        && ownerItems.Count == 1
+        && ownerItems[0].TargetMinutes == 240);
+
+    httpContext.User = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "activity-owner-b")], "test"));
+    var otherItems = await service.ListAsync();
+    var forbiddenToggle = await service.ToggleAsync(ownerItems[0].Id);
+    var forbiddenDelete = await service.DeleteAsync(ownerItems[0].Id);
+    Check("Life activity reads and mutations are isolated by central subject",
+        otherItems.Count == 0
+        && !forbiddenToggle.Succeeded
+        && !forbiddenDelete.Succeeded);
+}
 
 var postgres = Environment.GetEnvironmentVariable("DONYSH_LIFE_TEST_POSTGRES");
 if (!string.IsNullOrWhiteSpace(postgres)) await PostgresChecks.RunAsync(postgres);
@@ -164,6 +224,14 @@ internal sealed class AuthenticatedLifeApplicationFactory : LifeApplicationFacto
                 options.DefaultChallengeScheme = TestAuthHandler.SchemeName;
             })
             .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, _ => { }));
+        builder.ConfigureServices(services =>
+        {
+            services.RemoveAll<LifeDbContext>();
+            services.AddScoped(_ => new LifeDbContext(
+                new DbContextOptionsBuilder<LifeDbContext>()
+                    .UseInMemoryDatabase("life-http-tests")
+                    .Options));
+        });
     }
 }
 

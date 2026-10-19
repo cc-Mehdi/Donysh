@@ -1,5 +1,62 @@
 @page
+@model ActivitiesModel
+@using Donysh.Life.Features.Activities
 @{
     ViewData["Title"] = "فعالیت‌ها";
 }
-<partial name="Shared/_ComingSoon" model='new Donysh.Life.Pages.Shared.ComingSoonModel("فعالیت‌ها", "کار، دانشگاه، ورزش و چیزهایی را که برایت مهم‌اند اینجا تعریف می‌کنی.", "◎")' />
+
+<section class="page-head compact">
+    <div><p class="eyebrow">ساختن یک هفتهٔ واقعی</p><h1>فعالیت‌های من</h1><p>برای هر فعالیت یک رنگ، نماد و هدف زمانی هفتگی تعیین کن. فعالیت غیرفعال در جمع هدف هفته حساب نمی‌شود.</p></div>
+    <a class="button secondary" asp-page="/Setup" asp-route-step="2">انتخاب از پیشنهادها</a>
+</section>
+
+@if (TempData["ActivityMessage"] is string message) { <div class="notice success" role="status">@message</div> }
+@if (!string.IsNullOrWhiteSpace(Model.CommandError)) { <div class="notice error" role="alert">@Model.CommandError</div> }
+
+<section class="activity-layout">
+    <article class="panel create-activity-panel">
+        <div class="panel-head"><div><span class="section-icon">＋</span><h2>فعالیت تازه</h2></div></div>
+        <form method="post" asp-page-handler="Save" class="activity-form">
+            @if (!ViewData.ModelState.IsValid)
+            {
+                <div class="validation-summary" role="alert"><ul>@foreach (var error in ViewData.ModelState.Values.SelectMany(entry => entry.Errors)) { <li>@error.ErrorMessage</li> }</ul></div>
+            }
+            <partial name="Shared/_ActivityFields" model="Model.Input" />
+            <button class="button primary" type="submit">افزودن فعالیت</button>
+        </form>
+    </article>
+
+    <section class="activity-list" aria-label="فهرست فعالیت‌ها">
+        @if (Model.Items.Count == 0)
+        {
+            <article class="panel empty-activity-list"><span class="empty-mark">◎</span><h2>هنوز فعالیتی نداری</h2><p>از فرم کنار صفحه یک فعالیت بساز یا از پیشنهادهای آماده شروع کن.</p></article>
+        }
+        @foreach (var item in Model.Items)
+        {
+            <article class="activity-card @ActivityCatalog.ColorClass(item.ColorHex) @(item.IsActive ? "" : "inactive")">
+                <div class="activity-summary">
+                    <span class="activity-icon" aria-hidden="true">@item.IconGlyph</span>
+                    <div><div class="activity-title-row"><h2>@item.Title</h2><span class="activity-state">@(item.IsActive ? "فعال" : "غیرفعال")</span></div><p>@(string.IsNullOrWhiteSpace(item.Category) ? "بدون دسته‌بندی" : item.Category) · هدف @item.TargetHours.ToString("0.#") ساعت در هفته</p></div>
+                </div>
+                <details class="activity-actions">
+                    <summary>ویرایش و گزینه‌ها</summary>
+                    <form method="post" asp-page-handler="Save" class="activity-form compact-form">
+                        <input type="hidden" name="ActivityId" value="@item.Id" />
+                        <div class="field-grid">
+                            <label class="field"><span>عنوان</span><input name="Input.Title" value="@item.Title" maxlength="80" required /></label>
+                            <label class="field"><span>دسته‌بندی</span><input name="Input.Category" value="@item.Category" maxlength="60" /></label>
+                            <label class="field"><span>هدف هفتگی (ساعت)</span><input name="Input.WeeklyHours" value="@item.TargetHours.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)" type="number" min="0.5" max="168" step="0.5" inputmode="decimal" required /></label>
+                            <label class="field"><span>رنگ</span><select name="Input.ColorHex" required>@foreach (var color in ActivityCatalog.Colors) { <option value="@color.Key" selected="@(color.Key == item.ColorHex ? "selected" : null)">@color.Value</option> }</select></label>
+                            <label class="field"><span>نماد</span><select name="Input.IconKey" required>@foreach (var icon in ActivityCatalog.Icons) { <option value="@icon.Key" selected="@(icon.Key == item.IconKey ? "selected" : null)">@icon.Value @ActivityCatalog.IconLabel(icon.Key)</option> }</select></label>
+                        </div>
+                        <button class="button primary" type="submit">ذخیرهٔ تغییرات</button>
+                    </form>
+                    <div class="secondary-actions">
+                        <form method="post" asp-page-handler="Toggle"><input type="hidden" name="ActivityId" value="@item.Id" /><button class="text-button" type="submit">@(item.IsActive ? "غیرفعال‌کردن" : "فعال‌کردن")</button></form>
+                        <form method="post" asp-page-handler="Delete" class="delete-form"><input type="hidden" name="ActivityId" value="@item.Id" /><label><input type="checkbox" name="ConfirmDelete" value="true" required /> حذف این فعالیت را تأیید می‌کنم</label><button class="text-button danger" type="submit">حذف</button></form>
+                    </div>
+                </details>
+            </article>
+        }
+    </section>
+</section>

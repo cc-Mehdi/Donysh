@@ -22,6 +22,65 @@ namespace Donysh.Life.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Donysh.Life.Domain.LifeActivity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Category")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<string>("ColorHex")
+                        .IsRequired()
+                        .HasMaxLength(7)
+                        .HasColumnType("character varying(7)");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("IconKey")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("NormalizedTitle")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UserSubject")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserSubject", "IsActive");
+
+                    b.HasIndex("UserSubject", "NormalizedTitle")
+                        .IsUnique();
+
+                    b.ToTable("LifeActivities", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_LifeActivities_ColorHex", "\"ColorHex\" ~ '^#[0-9A-F]{6}$'");
+
+                            t.HasCheckConstraint("CK_LifeActivities_IconKey", "length(\"IconKey\") BETWEEN 1 AND 32");
+                        });
+                });
+
             modelBuilder.Entity("Donysh.Life.Domain.LifeProfile", b =>
                 {
                     b.Property<Guid>("Id")
@@ -53,6 +112,62 @@ namespace Donysh.Life.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("LifeProfiles", (string)null);
+                });
+
+            modelBuilder.Entity("Donysh.Life.Domain.WeeklyGoal", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ActivityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("TargetMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UserSubject")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActivityId")
+                        .IsUnique();
+
+                    b.HasIndex("UserSubject");
+
+                    b.HasIndex("ActivityId", "UserSubject")
+                        .IsUnique();
+
+                    b.ToTable("LifeWeeklyGoals", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_LifeWeeklyGoals_TargetMinutes", "\"TargetMinutes\" BETWEEN 30 AND 10080");
+                        });
+                });
+
+            modelBuilder.Entity("Donysh.Life.Domain.WeeklyGoal", b =>
+                {
+                    b.HasOne("Donysh.Life.Domain.LifeActivity", "Activity")
+                        .WithOne("WeeklyGoal")
+                        .HasForeignKey("Donysh.Life.Domain.WeeklyGoal", "ActivityId", "UserSubject")
+                        .HasPrincipalKey("Donysh.Life.Domain.LifeActivity", "Id", "UserSubject")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Activity");
+                });
+
+            modelBuilder.Entity("Donysh.Life.Domain.LifeActivity", b =>
+                {
+                    b.Navigation("WeeklyGoal");
                 });
 #pragma warning restore 612, 618
         }
