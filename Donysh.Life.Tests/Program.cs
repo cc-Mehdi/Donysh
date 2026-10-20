@@ -54,6 +54,7 @@ using (var response = await client.GetAsync("/Account/Login"))
         && html.Contains("lang=\"fa\"", StringComparison.Ordinal)
         && html.Contains("dir=\"rtl\"", StringComparison.Ordinal)
         && html.Contains("همان حسابی که در دُنیش مالی داری", StringComparison.Ordinal)
+        && html.Contains("rel=\"icon\" type=\"image/png\" href=\"/images/donysh-life-logo.png\"", StringComparison.Ordinal)
         && html.Contains("rel=\"preload\"", StringComparison.Ordinal)
         && html.Contains("interaction-feedback", StringComparison.Ordinal));
     Check("Life security headers allow only same-origin scripts and block framing",
@@ -166,6 +167,7 @@ using (var authenticatedClient = authenticatedFactory.CreateClient(new WebApplic
     Check("Authenticated Life dashboard renders its initial shell",
         response.StatusCode == HttpStatusCode.OK
         && html.Contains("/images/donysh-life-logo.png", StringComparison.Ordinal)
+        && html.Contains("rel=\"icon\" type=\"image/png\" href=\"/images/donysh-life-logo.png\"", StringComparison.Ordinal)
         && html.Contains("برای چیزهای مهم، جا باز کن", StringComparison.Ordinal)
         && html.Contains("برنامهٔ هفته", StringComparison.Ordinal)
         && html.Contains("فعالیت‌های فعال", StringComparison.Ordinal)

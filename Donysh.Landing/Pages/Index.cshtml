@@ -4,7 +4,9 @@
 @{
     ViewData["Title"] = "دُنیش | پول و زمان، روشن‌تر";
     var products = ProductOptions.Value;
-    var loginUrl = products.AuthUrl.TrimEnd('/') + "/Account/Login";
+    // Start sign-in from a relying product so the central account service receives
+    // a valid OIDC return path and can bring the user back after authentication.
+    var loginUrl = products.FinanceUrl.TrimEnd('/') + "/Account/Login";
 }
 
 <header class="site-header">

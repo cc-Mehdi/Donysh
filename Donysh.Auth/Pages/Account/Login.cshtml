@@ -28,9 +28,14 @@
             </div>
         }
         <header class="panel-header">
-            <p class="eyebrow">حساب مرکزی دُنیش</p>
+            <div class="panel-heading-row">
+                <span class="panel-heading-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3 5 6v5c0 4.6 2.9 8.1 7 10 4.1-1.9 7-5.4 7-10V6l-7-3Z"/><path d="m9.5 12 1.6 1.6 3.7-4"/></svg>
+                </span>
+                <span><p class="eyebrow">حساب مرکزی دُنیش</p><span class="secure-label">ارتباط امن</span></span>
+            </div>
             <h2 id="login-title">خوش آمدید</h2>
-            <p>برای ادامه، ایمیل و رمز عبور حساب مرکزی را وارد کنید.</p>
+            <p>برای ادامه، اطلاعات حساب دُنیش خود را وارد کنید.</p>
         </header>
 
         <form method="post" asp-page="/Account/Login" class="auth-form">
@@ -68,8 +73,13 @@
                 <input asp-for="Input.RememberMe" />
                 <span>ورود من را روی این دستگاه حفظ کن</span>
             </label>
-            <button class="primary-button" type="submit">ورود امن</button>
+            <button class="primary-button" type="submit"><span>ورود امن</span><span aria-hidden="true">←</span></button>
         </form>
+
+        <div class="product-path" aria-label="محصول‌های متصل به حساب دُنیش">
+            <span><i class="product-dot finance-dot" aria-hidden="true"></i>دُنیش مالی</span>
+            <span><i class="product-dot life-dot" aria-hidden="true"></i>دُنیش زندگی</span>
+        </div>
 
         @if (Model.RegistrationAvailable)
         {

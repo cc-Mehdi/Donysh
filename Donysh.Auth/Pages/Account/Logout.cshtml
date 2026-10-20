@@ -3,9 +3,13 @@
 @{
     ViewData["Title"] = "خروج";
 }
-<section class="simple-card">
+<section class="simple-card status-card">
     <partial name="_Brand" />
-    <h1>خروج از حساب</h1>
-    <p>برای پایان‌دادن به نشست حساب مرکزی، دکمه زیر را بزنید.</p>
-    <form method="post"><button class="primary-button" type="submit">خروج امن</button></form>
+    <div class="status-illustration logout-illustration" aria-hidden="true"><span>↗</span></div>
+    <p class="eyebrow">پایان نشست</p>
+    <h1>می‌خواهید خارج شوید؟</h1>
+    <p>با خروج، نشست حساب مرکزی در این مرورگر پایان می‌یابد و برای ورود دوباره باید رمز عبور خود را وارد کنید.</p>
+    <form method="post"><button class="primary-button" type="submit"><span>بله، خارج می‌شوم</span><span aria-hidden="true">←</span></button></form>
+    <a href="/" class="secondary-button">بازگشت به حساب</a>
+    <p class="privacy-note"><span aria-hidden="true">⌁</span> اطلاعات ذخیره‌شده در محصولات دُنیش حذف نمی‌شود.</p>
 </section>

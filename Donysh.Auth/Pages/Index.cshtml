@@ -3,12 +3,17 @@
 @{
     ViewData["Title"] = "حساب مرکزی";
 }
-<section class="simple-card">
+<section class="simple-card status-card">
     <partial name="_Brand" />
-    <div class="success-icon" aria-hidden="true">✓</div>
+    <div class="status-illustration success-illustration" aria-hidden="true"><span>✓</span></div>
+    <p class="eyebrow">حساب آماده است</p>
     <h1>ورود با موفقیت انجام شد</h1>
-    <p>نشست حساب مرکزی شما فعال است. اکنون می‌توانید با خیال راحت به سرویس درخواست‌کننده بازگردید.</p>
-    <form method="post" asp-page="/Account/Logout">
-        <button class="secondary-button" type="submit">خروج از حساب مرکزی</button>
+    <p>حساب مرکزی شما فعال است. یکی از محصولات دُنیش را برای ادامه انتخاب کنید.</p>
+    <div class="destination-grid">
+        <a href="https://finance.donysh.ir/" class="destination-card"><span class="destination-icon finance-destination" aria-hidden="true">◒</span><span><strong>دُنیش مالی</strong><small>بودجه، مخارج و هدف‌ها</small></span><b aria-hidden="true">←</b></a>
+        <a href="https://life.donysh.ir/" class="destination-card"><span class="destination-icon life-destination" aria-hidden="true">◫</span><span><strong>دُنیش زندگی</strong><small>برنامهٔ روز و هفته</small></span><b aria-hidden="true">←</b></a>
+    </div>
+    <form method="post" asp-page="/Account/Logout" class="quiet-form">
+        <button class="text-button" type="submit">خروج از حساب مرکزی</button>
     </form>
 </section>

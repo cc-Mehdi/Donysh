@@ -32,6 +32,9 @@ using (var response = await client.GetAsync("/"))
     Check("Landing links to the dedicated Finance host",
         html.Contains("https://finance.test", StringComparison.Ordinal)
         && html.Contains("ورود به دُنیش مالی", StringComparison.Ordinal));
+    Check("Landing account links start a complete Finance sign-in flow",
+        html.Contains("href=\"https://finance.test/Account/Login\"", StringComparison.Ordinal)
+        && !html.Contains("href=\"https://auth.test/Account/Login\"", StringComparison.Ordinal));
     Check("Landing links to the initial Life product",
         html.Contains("دُنیش زندگی", StringComparison.Ordinal)
         && html.Contains("نسخهٔ آغازین", StringComparison.Ordinal)

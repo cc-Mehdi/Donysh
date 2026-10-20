@@ -35,15 +35,16 @@
 @layer components {
     .auth-body {
         @apply min-h-screen overflow-x-hidden bg-slate-950 text-slate-900 antialiased;
-        background-image: radial-gradient(circle at 15% 10%, rgba(79, 70, 229, .2), transparent 32%), radial-gradient(circle at 85% 85%, rgba(14, 165, 233, .13), transparent 34%);
+        background-image: radial-gradient(circle at 12% 8%, rgba(99, 102, 241, .24), transparent 30%), radial-gradient(circle at 88% 88%, rgba(20, 184, 166, .16), transparent 32%), linear-gradient(145deg, #020617 0%, #111827 55%, #0f172a 100%);
     }
     .skip-link { @apply fixed start-4 top-4 z-50 -translate-y-24 rounded-xl bg-white px-4 py-2 text-sm font-bold text-slate-900 transition focus:translate-y-0; }
     .auth-shell { @apply relative z-10 grid min-h-screen place-items-center p-3 sm:p-6 lg:p-10; }
     .ambient { @apply pointer-events-none fixed rounded-full blur-3xl; }
     .ambient-one { @apply -start-24 -top-28 size-80 bg-indigo-500/15; }
     .ambient-two { @apply -bottom-32 -end-20 size-96 bg-sky-400/10; }
-    .auth-frame { @apply grid w-full max-w-5xl overflow-hidden rounded-[2rem] border border-white/10 bg-white shadow-2xl shadow-black/30 lg:grid-cols-[1.05fr_.95fr]; }
-    .auth-story { @apply relative hidden min-h-[42rem] flex-col justify-between overflow-hidden bg-slate-900 p-10 text-white lg:flex; }
+    .auth-frame { @apply grid w-full max-w-5xl overflow-hidden rounded-[2rem] border border-white/10 bg-white shadow-2xl shadow-black/30 lg:grid-cols-[1.05fr_.95fr]; box-shadow: 0 36px 100px rgba(2, 6, 23, .5); }
+    .auth-story { @apply relative hidden min-h-[42rem] flex-col justify-between overflow-hidden bg-slate-900 p-10 text-white lg:flex; background-image: radial-gradient(circle at 76% 22%, rgba(45, 212, 191, .15), transparent 28%), linear-gradient(155deg, rgba(30, 41, 59, .98), #020617); }
+    .auth-story::before { content: ""; @apply absolute end-[-4rem] top-[8.5rem] size-64 rotate-12 rounded-[4rem] border border-white/10 bg-white/[.035]; }
     .auth-story::after { content: ""; @apply absolute -bottom-32 -start-28 size-96 rounded-full border-[4rem] border-indigo-500/15; }
     .story-copy { @apply relative z-10 max-w-lg; }
     .story-copy h1 { @apply mt-4 text-4xl font-black leading-[1.55] tracking-tight; }
@@ -67,6 +68,12 @@
     .phase-notice p { @apply m-0; }
     .panel-header h1, .panel-header h2 { @apply mt-2 text-3xl font-black tracking-tight text-slate-950; }
     .panel-header > p:last-child { @apply mt-3 text-sm leading-7 text-slate-500; }
+    .panel-heading-row { @apply mb-6 flex items-center justify-between gap-4; }
+    .panel-heading-row > span:last-child { @apply flex flex-1 items-center justify-between gap-3; }
+    .panel-heading-row .eyebrow { @apply m-0; }
+    .panel-heading-icon { @apply grid size-11 shrink-0 place-items-center rounded-2xl bg-indigo-50 text-indigo-700 ring-1 ring-indigo-100; }
+    .panel-heading-icon svg { @apply size-6; }
+    .secure-label { @apply rounded-full bg-emerald-50 px-3 py-1 text-[.68rem] font-bold text-emerald-700 ring-1 ring-emerald-100; }
     .auth-form { @apply mt-7 space-y-5; }
     .field { @apply grid gap-2; }
     .field-heading { @apply flex items-center justify-between gap-3; }
@@ -81,14 +88,19 @@
     .check-row { @apply flex cursor-pointer items-center gap-3 text-sm text-slate-600; }
     .check-row input { @apply size-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500; }
     .primary-button, .secondary-button { @apply inline-flex min-h-12 w-full items-center justify-center rounded-xl px-5 text-sm font-bold no-underline transition disabled:cursor-not-allowed disabled:opacity-60; }
-    .primary-button { @apply bg-indigo-600 text-white shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 active:translate-y-px; }
+    .primary-button { @apply justify-between gap-3 bg-indigo-600 text-white shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 active:translate-y-px; }
     .secondary-button { @apply border border-slate-300 bg-white text-slate-700 hover:bg-slate-50; }
     .panel-foot { @apply mt-7 text-center text-sm text-slate-500; }
     .panel-foot a { @apply font-bold text-indigo-700 no-underline hover:underline; }
+    .product-path { @apply mt-6 flex items-center justify-center gap-5 border-t border-slate-200 pt-5 text-xs font-bold text-slate-500; }
+    .product-path > span { @apply flex items-center gap-2; }
+    .product-dot { @apply size-2 rounded-full; }
+    .finance-dot { @apply bg-indigo-500; }
+    .life-dot { @apply bg-teal-500; }
     .muted { @apply text-slate-500; }
     .validation-summary { @apply empty:hidden rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800; }
     .validation-summary ul { @apply m-0 list-inside list-disc p-0; }
-    .form-card, .simple-card { @apply w-full max-w-lg rounded-[2rem] border border-white/10 bg-slate-50 p-6 shadow-2xl shadow-black/30 sm:p-10; }
+    .form-card, .simple-card { @apply w-full max-w-lg rounded-[2rem] border border-white/10 bg-slate-50 p-6 shadow-2xl shadow-black/30 sm:p-10; box-shadow: 0 34px 90px rgba(2, 6, 23, .48); }
     .form-card > .brand, .simple-card > .brand { @apply mb-8; }
     .simple-card { @apply text-center; }
     .simple-card .brand { @apply mx-auto; }
@@ -97,6 +109,33 @@
     .simple-card form, .simple-card .primary-button, .simple-card .secondary-button { @apply mt-5; }
     .success-icon { @apply mx-auto mt-5 grid size-14 place-items-center rounded-2xl bg-emerald-100 text-2xl font-black text-emerald-700; }
     .form-card > .text-link { @apply mt-6 inline-block; }
+    .status-card { @apply relative max-w-xl overflow-hidden; }
+    .status-card::before { content: ""; @apply pointer-events-none absolute -end-14 -top-16 size-44 rounded-full bg-indigo-100/70 blur-2xl; }
+    .status-card > * { @apply relative z-10; }
+    .status-card > .brand { @apply mb-5; }
+    .status-card > .eyebrow { @apply mt-5 block; }
+    .status-card h1 { @apply mt-2 text-3xl; }
+    .status-illustration { @apply mx-auto mt-5 grid size-20 place-items-center rounded-[1.75rem] ring-8; }
+    .status-illustration span { @apply grid size-11 place-items-center rounded-2xl text-2xl font-black text-white shadow-lg; }
+    .success-illustration { @apply bg-emerald-50 ring-emerald-50/60; }
+    .success-illustration span { @apply bg-emerald-500 shadow-emerald-500/25; }
+    .logout-illustration { @apply bg-amber-50 ring-amber-50/60; }
+    .logout-illustration span { @apply bg-amber-500 shadow-amber-500/25; }
+    .simple-actions { @apply mt-6 grid gap-3; }
+    .simple-actions .primary-button, .simple-actions .secondary-button { @apply mt-0; }
+    .privacy-note { @apply flex items-center justify-center gap-2 border-t border-slate-200 pt-5 text-xs text-slate-400!; }
+    .privacy-note span { @apply text-indigo-500; }
+    .destination-grid { @apply mt-7 grid gap-3 text-start sm:grid-cols-2; }
+    .destination-card { @apply grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-slate-800 no-underline shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-lg; }
+    .destination-card > span:nth-child(2) { @apply grid gap-1; }
+    .destination-card strong { @apply text-sm font-black; }
+    .destination-card small { @apply text-[.68rem] text-slate-500; }
+    .destination-card b { @apply text-indigo-600; }
+    .destination-icon { @apply grid size-10 place-items-center rounded-xl font-black; }
+    .finance-destination { @apply bg-indigo-50 text-indigo-700; }
+    .life-destination { @apply bg-teal-50 text-teal-700; }
+    .quiet-form { @apply mt-6!; }
+    .text-button { @apply border-0 bg-transparent text-xs font-bold text-slate-500 underline-offset-4 hover:text-slate-800 hover:underline; }
 }
 
 @media (prefers-reduced-motion: reduce) {

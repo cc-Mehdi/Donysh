@@ -93,6 +93,10 @@ using (var response = await client.GetAsync("/Account/Login"))
         html.Contains("data-password-toggle", StringComparison.Ordinal)
         && html.Contains("aria-label=\"نمایش رمز عبور\"", StringComparison.Ordinal)
         && html.Contains("/js/password-toggle.js", StringComparison.Ordinal));
+    Check("Login page explains its secure product handoff",
+        html.Contains("ارتباط امن", StringComparison.Ordinal)
+        && html.Contains("دُنیش مالی", StringComparison.Ordinal)
+        && html.Contains("دُنیش زندگی", StringComparison.Ordinal));
     var hasCsp = response.Headers.TryGetValues("Content-Security-Policy", out var values);
     var cspHeader = hasCsp ? values!.Single() : string.Empty;
     Check("Security headers are present",
@@ -128,6 +132,23 @@ using (var response = await client.GetAsync("/Account/Logout"))
     var locationPath = location?.IsAbsoluteUri == true ? location.AbsolutePath : location?.OriginalString;
     Check("Anonymous logout page is protected", response.StatusCode == HttpStatusCode.Redirect
         && locationPath?.StartsWith("/Account/Login", StringComparison.Ordinal) == true);
+}
+
+using (var response = await client.GetAsync("/Account/SignedOut"))
+{
+    var html = await response.Content.ReadAsStringAsync();
+    Check("Signed-out page offers clear next steps",
+        response.StatusCode == HttpStatusCode.OK
+        && html.Contains("با خیال راحت خارج شدید", StringComparison.Ordinal)
+        && html.Contains("ورود دوباره", StringComparison.Ordinal)
+        && html.Contains("https://donysh.ir/", StringComparison.Ordinal));
+}
+
+using (var response = await client.GetAsync("/images/logo-mark.svg"))
+{
+    Check("Auth brand mark is served in development and published builds",
+        response.StatusCode == HttpStatusCode.OK
+        && response.Content.Headers.ContentType?.MediaType == "image/svg+xml");
 }
 
 using (var response = await client.GetAsync("/.well-known/openid-configuration"))

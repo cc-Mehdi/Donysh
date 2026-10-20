@@ -21,7 +21,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="../HesabYar.Web/wwwroot/images/logo-mark.svg" Link="wwwroot/images/logo-mark.svg" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="../HesabYar.Web/wwwroot/fonts/YekanBakh-Regular.woff2" Link="wwwroot/fonts/YekanBakh-Regular.woff2" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="../HesabYar.Web/wwwroot/fonts/YekanBakh-Bold.woff2" Link="wwwroot/fonts/YekanBakh-Bold.woff2" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
