@@ -33,6 +33,9 @@ if (string.IsNullOrWhiteSpace(auth.ClientId)
     || string.IsNullOrWhiteSpace(auth.ClientSecret)
     || auth.ClientSecret.Length < 32)
     throw new InvalidOperationException("Life requires an OIDC client ID and a secret of at least 32 characters.");
+var crossAppLogoutSecret = builder.Configuration["CrossAppLogout:Secret"];
+if (string.IsNullOrWhiteSpace(crossAppLogoutSecret) || crossAppLogoutSecret.Length < 32)
+    throw new InvalidOperationException("CrossAppLogout:Secret must contain at least 32 characters.");
 
 builder.Services.AddDbContext<LifeDbContext>(options => options.UseNpgsql(connectionString, npgsql =>
     npgsql.EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null)));

@@ -79,6 +79,10 @@ if (centralAuth.Enabled)
         throw new InvalidOperationException("CentralAuth requires a client ID and a secret of at least 32 characters.");
     }
 
+    var crossAppLogoutSecret = builder.Configuration["CrossAppLogout:Secret"];
+    if (string.IsNullOrWhiteSpace(crossAppLogoutSecret) || crossAppLogoutSecret.Length < 32)
+        throw new InvalidOperationException("CrossAppLogout:Secret must contain at least 32 characters.");
+
     builder.Services.AddAuthentication()
         .AddOpenIdConnect(CentralAuthOptions.Scheme, options =>
         {

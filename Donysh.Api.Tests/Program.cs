@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -75,14 +76,28 @@ if (!financeCsp.Contains("form-action 'self' https://auth.donysh.test", StringCo
     || financeCsp.Contains("connect/authorize", StringComparison.Ordinal))
     throw new Exception("Finance CSP must allow only the trusted central Auth origin for OIDC form redirects.");
 Console.WriteLine("PASS Finance CSP allows the trusted central Auth origin");
+const string financeLogoutSecret = "test-only-shared-logout-secret-0000000000000000";
+var financeLogoutConfiguration = new Microsoft.Extensions.Configuration.ConfigurationBuilder()
+    .AddInMemoryCollection(new Dictionary<string, string?>
+    {
+        ["Products:LifeUrl"] = "https://life.test",
+        ["CrossAppLogout:Secret"] = financeLogoutSecret
+    }).Build();
+var financeContinueToken = CrossAppLogoutToken.Create(financeLogoutSecret, "finance-continue");
 var financeLogout = new HesabYar.Web.Pages.Account.LogoutModel(
-    Options.Create(new CentralAuthOptions { Enabled = true })).OnPost() as Microsoft.AspNetCore.Mvc.SignOutResult;
+    Options.Create(new CentralAuthOptions { Enabled = true }), financeLogoutConfiguration)
+    .OnGetComplete(financeContinueToken) as Microsoft.AspNetCore.Mvc.SignOutResult;
 if (financeLogout is null
     || !financeLogout.AuthenticationSchemes.Contains(Microsoft.AspNetCore.Identity.IdentityConstants.ApplicationScheme)
     || !financeLogout.AuthenticationSchemes.Contains(CentralAuthOptions.Scheme)
-    || financeLogout.Properties?.RedirectUri != "/")
+    || financeLogout.Properties?.RedirectUri?.StartsWith("https://life.test/Account/FederatedLogout?proof=", StringComparison.Ordinal) != true)
     throw new Exception("Finance logout must clear both the product and central sessions.");
 Console.WriteLine("PASS Finance logout clears both the product and central sessions");
+var financePeerProof = new Uri(financeLogout.Properties!.RedirectUri!).Query["?proof=".Length..];
+if (!CrossAppLogoutToken.TryValidate(financePeerProof, financeLogoutSecret, "life")
+    || CrossAppLogoutToken.TryValidate(financePeerProof, financeLogoutSecret, "finance"))
+    throw new Exception("Finance logout must create a signed proof scoped to Life.");
+Console.WriteLine("PASS Finance logout proof is short-lived and scoped to Life");
 var financePrefetch = new DefaultHttpContext();
 financePrefetch.Request.Method = HttpMethods.Get;
 financePrefetch.Request.Path = "/Account/Login";

@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -35,6 +36,7 @@ Environment.SetEnvironmentVariable("CentralAuth__ClientId", "life-web");
 Environment.SetEnvironmentVariable("CentralAuth__ClientSecret", "test-only-life-client-secret-000000000000");
 Environment.SetEnvironmentVariable("CentralAuth__RequireHttpsMetadata", "false");
 Environment.SetEnvironmentVariable("Products__FinanceUrl", "https://finance.test");
+Environment.SetEnvironmentVariable("CrossAppLogout__Secret", "test-only-shared-logout-secret-0000000000000000");
 Environment.SetEnvironmentVariable("Database__ApplyMigrations", "false");
 Environment.SetEnvironmentVariable("ReverseProxy__Enabled", "false");
 
@@ -373,19 +375,78 @@ using (var authenticatedClient = authenticatedFactory.CreateClient(new WebApplic
     });
     using var logoutResponse = await authenticatedClient.PostAsync("/Account/Logout", logoutContent);
     var logoutLocation = logoutResponse.Headers.Location?.OriginalString ?? string.Empty;
-    Check("Life logout redirects through the central end-session endpoint",
+    Check("Life logout uses a Safari-safe same-origin continuation",
         antiforgeryMatch.Success
-        && logoutResponse.StatusCode == HttpStatusCode.Redirect
-        && logoutLocation.StartsWith("https://auth.test/connect/logout", StringComparison.Ordinal)
-        && logoutLocation.Contains("post_logout_redirect_uri=https%3A%2F%2Flife.test%2Fsignout-callback-oidc", StringComparison.OrdinalIgnoreCase));
+        && (int)logoutResponse.StatusCode == StatusCodes.Status303SeeOther
+        && logoutLocation.StartsWith("/Account/Logout?", StringComparison.Ordinal)
+        && logoutLocation.Contains("handler=Complete", StringComparison.Ordinal)
+        && logoutLocation.Contains("token=", StringComparison.Ordinal)
+        && logoutResponse.Content.Headers.ContentDisposition is null);
+
+    using var completeLogoutResponse = await authenticatedClient.GetAsync(logoutLocation);
+    var centralLogoutLocation = completeLogoutResponse.Headers.Location?.OriginalString ?? string.Empty;
+    Check("Life logout redirects through the central end-session endpoint",
+        completeLogoutResponse.StatusCode == HttpStatusCode.Redirect
+        && centralLogoutLocation.StartsWith("https://auth.test/connect/logout", StringComparison.Ordinal)
+        && centralLogoutLocation.Contains("post_logout_redirect_uri=https%3A%2F%2Flife.test%2Fsignout-callback-oidc", StringComparison.OrdinalIgnoreCase));
+
+    var logoutState = QueryHelpers.ParseQuery(new Uri(centralLogoutLocation).Query)["state"].ToString();
+    using var logoutCallbackResponse = await authenticatedClient.GetAsync(
+        "/signout-callback-oidc?state=" + Uri.EscapeDataString(logoutState));
+    Check("Life OIDC callback continues to the signed Finance logout endpoint",
+        !string.IsNullOrWhiteSpace(logoutState)
+        && logoutCallbackResponse.StatusCode == HttpStatusCode.Redirect
+        && logoutCallbackResponse.Headers.Location?.OriginalString.StartsWith(
+            "https://finance.test/Account/FederatedLogout?proof=", StringComparison.Ordinal) == true
+        && logoutCallbackResponse.Content.Headers.ContentDisposition is null);
 }
 
-var lifeLogout = new Donysh.Life.Pages.Account.LogoutModel().OnPost() as Microsoft.AspNetCore.Mvc.SignOutResult;
-Check("Life logout clears both the product and central sessions",
+const string sharedLogoutSecret = "test-only-shared-logout-secret-0000000000000000";
+var lifeLogoutConfiguration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+{
+    ["Products:FinanceUrl"] = "https://finance.test",
+    ["CrossAppLogout:Secret"] = sharedLogoutSecret
+}).Build();
+var lifeContinueToken = Donysh.Life.Security.CrossAppLogoutToken.Create(sharedLogoutSecret, "life-continue");
+var lifeLogout = new Donysh.Life.Pages.Account.LogoutModel(lifeLogoutConfiguration)
+    .OnGetComplete(lifeContinueToken) as Microsoft.AspNetCore.Mvc.SignOutResult;
+Check("Life logout clears its session and continues to Finance",
     lifeLogout is not null
     && lifeLogout.AuthenticationSchemes.Contains(LifeAuthOptions.CookieScheme)
     && lifeLogout.AuthenticationSchemes.Contains(LifeAuthOptions.OidcScheme)
-    && lifeLogout.Properties?.RedirectUri == "/Account/SignedOut");
+    && lifeLogout.Properties?.RedirectUri?.StartsWith("https://finance.test/Account/FederatedLogout?proof=", StringComparison.Ordinal) == true);
+var lifePeerProof = new Uri(lifeLogout!.Properties!.RedirectUri!).Query["?proof=".Length..];
+Check("Life creates a short-lived signed proof for Finance logout",
+    Donysh.Life.Security.CrossAppLogoutToken.TryValidate(lifePeerProof, sharedLogoutSecret, "finance")
+    && !Donysh.Life.Security.CrossAppLogoutToken.TryValidate(lifePeerProof, sharedLogoutSecret, "life"));
+var expiredLogoutProof = Donysh.Life.Security.CrossAppLogoutToken.Create(
+    sharedLogoutSecret, "life", DateTimeOffset.UtcNow.AddMinutes(-5));
+Check("Cross-app logout rejects expired and tampered proofs",
+    !Donysh.Life.Security.CrossAppLogoutToken.TryValidate(expiredLogoutProof, sharedLogoutSecret, "life")
+    && !Donysh.Life.Security.CrossAppLogoutToken.TryValidate(lifePeerProof + "x", sharedLogoutSecret, "finance"));
+
+await using (var federatedFactory = new AuthenticatedLifeApplicationFactory())
+using (var federatedClient = federatedFactory.CreateClient(new WebApplicationFactoryClientOptions
+{
+    AllowAutoRedirect = false,
+    BaseAddress = new Uri("https://life.test")
+}))
+{
+    using (var invalidFederatedLogout = await federatedClient.GetAsync("/Account/FederatedLogout?proof=invalid"))
+        Check("Life federated logout rejects unsigned requests", invalidFederatedLogout.StatusCode == HttpStatusCode.NotFound);
+
+    var validLifeProof = Donysh.Life.Security.CrossAppLogoutToken.Create(sharedLogoutSecret, "life");
+    using (var federatedLogout = await federatedClient.GetAsync(
+        "/Account/FederatedLogout?proof=" + Uri.EscapeDataString(validLifeProof)))
+    {
+        Check("Life federated logout clears the local session without a download response",
+            federatedLogout.StatusCode == HttpStatusCode.Redirect
+            && federatedLogout.Headers.Location?.OriginalString == "/Account/SignedOut"
+            && federatedLogout.Content.Headers.ContentDisposition is null
+            && federatedLogout.Headers.TryGetValues("Set-Cookie", out var logoutCookies)
+            && logoutCookies.Any(value => value.Contains(".Donysh.Life.Session=", StringComparison.Ordinal)));
+    }
+}
 
 var activityDatabase = "life-activity-tests-" + Guid.NewGuid().ToString("N");
 var activityOptions = new DbContextOptionsBuilder<LifeDbContext>()
@@ -687,6 +748,7 @@ internal class LifeApplicationFactory : WebApplicationFactory<global::LifeProgra
                 ["CentralAuth:ClientSecret"] = "test-only-life-client-secret-000000000000",
                 ["CentralAuth:RequireHttpsMetadata"] = "false",
                 ["Products:FinanceUrl"] = "https://finance.test",
+                ["CrossAppLogout:Secret"] = "test-only-shared-logout-secret-0000000000000000",
                 ["Database:ApplyMigrations"] = "false",
                 ["ReverseProxy:Enabled"] = "false"
             }));
