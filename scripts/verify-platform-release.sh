@@ -7,7 +7,7 @@ COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.platform.yml}"
 RESOLVE_IP="${RELEASE_CHECK_RESOLVE_IP:-127.0.0.1}"
 REQUEST_TIMEOUT_SECONDS="${RELEASE_CHECK_TIMEOUT_SECONDS:-15}"
 
-for command in curl grep sed mktemp tail tr xargs; do
+for command in curl grep head sed mktemp tail tr xargs; do
   command -v "$command" >/dev/null 2>&1 || { echo "Required command not found: $command"; exit 1; }
 done
 
@@ -82,6 +82,31 @@ assert_health "Landing health" "https://${domain}/health" "ok"
 assert_health "Finance health" "https://${finance_domain}/health" "ok"
 assert_health "Auth readiness" "https://${auth_domain}/health/ready" "ready"
 assert_health "Life readiness" "https://${life_domain}/health/ready" "ready"
+
+landing_html="$(curl "${curl_args[@]}" "https://${domain}/")"
+landing_css_path="$(grep -oE '/landing-assets/css/app\.css\?v=[A-Za-z0-9_-]+' <<<"$landing_html" | head -n 1)"
+if [[ -z "$landing_css_path" ]]; then
+  echo "Landing page does not reference a content-versioned stylesheet."
+  exit 1
+fi
+
+: >"$headers_file"
+landing_css="$(curl "${curl_args[@]}" -D "$headers_file" "https://${domain}${landing_css_path}")"
+assert_status "200"
+assert_header "cache-control" ".*public.*max-age=31536000.*immutable"
+if ! grep -Fq -- '--paper:#f5f7fb' <<<"$landing_css" \
+    || ! grep -Fq '.hero-stage' <<<"$landing_css"; then
+  echo "Landing stylesheet is missing the current design tokens or hero layout."
+  exit 1
+fi
+echo "PASS Landing versioned stylesheet and current design"
+
+: >"$headers_file"
+curl "${curl_args[@]}" -D "$headers_file" -o /dev/null \
+  "https://${domain}/landing-assets/css/app.css"
+assert_status "200"
+assert_header "cache-control" ".*no-cache.*must-revalidate"
+echo "PASS Landing unversioned stylesheet revalidation"
 
 curl "${curl_args[@]}" -D "$headers_file" -o /dev/null "https://${life_domain}/"
 assert_status "30[1278]"

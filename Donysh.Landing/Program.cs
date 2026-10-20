@@ -1,4 +1,5 @@
 using Donysh.Landing.Configuration;
+using Donysh.Landing.Infrastructure;
 using Donysh.Landing.Security;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.FileProviders;
@@ -27,6 +28,7 @@ foreach (var (name, value) in new[]
 builder.Services.Configure<LandingLinksOptions>(
     builder.Configuration.GetSection(LandingLinksOptions.SectionName));
 builder.Services.AddRazorPages();
+builder.Services.AddSingleton<LandingAssetUrlBuilder>();
 
 if (reverseProxyEnabled)
 {
@@ -84,7 +86,15 @@ app.UseStaticFiles(new StaticFileOptions
 {
     RequestPath = "/landing-assets",
     OnPrepareResponse = context =>
-        context.Context.Response.Headers.CacheControl = "public,max-age=3600"
+    {
+        // Versioned references can be cached permanently, while an unversioned
+        // request must revalidate so a previously cached stylesheet can never
+        // outlive a deployment.
+        context.Context.Response.Headers.CacheControl =
+            context.Context.Request.Query.ContainsKey("v")
+                ? "public,max-age=31536000,immutable"
+                : "public,no-cache,must-revalidate";
+    }
 });
 app.UseRouting();
 app.MapRazorPages();

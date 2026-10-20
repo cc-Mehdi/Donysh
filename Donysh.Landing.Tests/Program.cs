@@ -39,6 +39,8 @@ using (var response = await client.GetAsync("/"))
     Check("Landing exposes the fixed Android download URL",
         html.Contains("دانلود برنامهٔ اندروید", StringComparison.Ordinal)
         && html.Contains("href=\"/downloads/donysh-mobile.apk\"", StringComparison.Ordinal));
+    Check("Landing cache-busts its stylesheet",
+        html.Contains("href=\"/landing-assets/css/app.css?v=", StringComparison.Ordinal));
     Check("Landing security headers block scripts and framing",
         response.Headers.TryGetValues("Content-Security-Policy", out var csp)
         && csp.Single().Contains("script-src 'none'", StringComparison.Ordinal)
@@ -60,6 +62,19 @@ using (var response = await client.GetAsync("/landing-assets/css/app.css"))
 {
     Check("Landing stylesheet is served", response.StatusCode == HttpStatusCode.OK
         && response.Content.Headers.ContentType?.MediaType == "text/css");
+    Check("Unversioned landing assets must revalidate",
+        response.Headers.CacheControl?.NoCache == true
+        && response.Headers.CacheControl?.MustRevalidate == true);
+}
+
+using (var response = await client.GetAsync("/landing-assets/css/app.css?v=test-version"))
+{
+    Check("Versioned landing assets are immutable",
+        response.StatusCode == HttpStatusCode.OK
+        && response.Headers.CacheControl?.Public == true
+        && response.Headers.CacheControl?.MaxAge == TimeSpan.FromDays(365)
+        && response.Headers.CacheControl?.Extensions.Any(extension =>
+            extension.Name.Equals("immutable", StringComparison.OrdinalIgnoreCase)) == true);
 }
 
 using (var response = await client.GetAsync("/landing-assets/images/donysh-wordmark.png"))
