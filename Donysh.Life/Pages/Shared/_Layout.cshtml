@@ -5,6 +5,15 @@
         && parsedFinanceUrl.Scheme == Uri.UriSchemeHttps
             ? parsedFinanceUrl.AbsoluteUri
             : "https://finance.donysh.ir/";
+    var accountName = User.FindFirst("name")?.Value
+        ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value
+        ?? User.Identity?.Name
+        ?? "کاربر دنیش";
+    var accountEmail = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value
+        ?? User.FindFirst("email")?.Value;
+    var accountInitial = string.IsNullOrWhiteSpace(accountName)
+        ? "د"
+        : accountName.Trim()[..1];
 }
 <!doctype html>
 <html lang="fa" dir="rtl">
@@ -21,8 +30,9 @@
     <div class="app-shell">
         <aside class="sidebar">
             <a class="brand life-brand" asp-page="/Index" aria-label="دُنیش زندگی، صفحهٔ اصلی">
-                <img class="life-brand-logo" src="~/images/donysh-life-logo.png" alt="Donysh Life" width="124" height="124" />
+                <img class="life-brand-logo" src="~/images/donysh-life-logo.png" alt="دنیش زندگی" width="176" height="176" />
             </a>
+            <p class="sidebar-caption">زمانت را آگاهانه زندگی کن</p>
             <nav class="side-nav" aria-label="ناوبری اصلی">
                 <a class="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Index" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Index" ? "page" : null)" asp-page="/Index"><span aria-hidden="true">⌂</span>امروز</a>
                 <a class="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Activities" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Activities" ? "page" : null)" asp-page="/Activities"><span aria-hidden="true">◎</span>فعالیت‌ها</a>
@@ -30,6 +40,18 @@
                 <a class="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Progress" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Progress" ? "page" : null)" asp-page="/Progress"><span aria-hidden="true">↗</span>پیشرفت</a>
             </nav>
             <div class="sidebar-footer">
+                <section class="account-card" aria-label="حساب واردشده">
+                    <span class="account-avatar" aria-hidden="true">@accountInitial</span>
+                    <span class="account-copy">
+                        <small>واردشده با حساب</small>
+                        <strong>@accountName</strong>
+                        @if (!string.IsNullOrWhiteSpace(accountEmail))
+                        {
+                            <span dir="ltr">@accountEmail</span>
+                        }
+                    </span>
+                    <span class="account-status" title="حساب فعال" aria-label="حساب فعال"></span>
+                </section>
                 <a class="product-switcher" href="@financeUrl" aria-label="رفتن به دُنیش مالی">
                     <span class="product-switcher-icon" aria-hidden="true">
                         <svg viewBox="0 0 24 24"><path d="M4 7.5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-12a2 2 0 0 1 2-2h11" /><path d="M16 12h4v3h-4a1.5 1.5 0 0 1 0-3Z" /></svg>
@@ -44,11 +66,17 @@
         </aside>
         <div class="page-column">
             <header class="mobile-header">
-                <a class="brand life-brand compact-brand" asp-page="/Index"><img class="life-brand-logo" src="~/images/donysh-life-logo.png" alt="Donysh Life" width="72" height="72" /></a>
-                <a class="product-switcher compact" href="@financeUrl" aria-label="رفتن به دُنیش مالی">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-12a2 2 0 0 1 2-2h11" /><path d="M16 12h4v3h-4a1.5 1.5 0 0 1 0-3Z" /></svg>
-                    <span>مالی</span>
-                </a>
+                <a class="brand life-brand compact-brand" asp-page="/Index"><img class="life-brand-logo" src="~/images/donysh-life-logo.png" alt="دنیش زندگی" width="104" height="104" /></a>
+                <div class="mobile-header-actions">
+                    <span class="mobile-account" title="حساب واردشده: @accountName">
+                        <span class="account-avatar" aria-hidden="true">@accountInitial</span>
+                        <strong>@accountName</strong>
+                    </span>
+                    <a class="product-switcher compact" href="@financeUrl" aria-label="رفتن به دُنیش مالی">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-12a2 2 0 0 1 2-2h11" /><path d="M16 12h4v3h-4a1.5 1.5 0 0 1 0-3Z" /></svg>
+                        <span>مالی</span>
+                    </a>
+                </div>
             </header>
             <main id="main-content" class="content-shell @ViewData["ContentClass"]">
                 @RenderBody()

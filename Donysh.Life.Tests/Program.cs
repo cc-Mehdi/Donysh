@@ -162,6 +162,7 @@ using (var authenticatedClient = authenticatedFactory.CreateClient(new WebApplic
 {
     using var response = await authenticatedClient.GetAsync("/");
     var html = await response.Content.ReadAsStringAsync();
+    var decodedHtml = WebUtility.HtmlDecode(html);
     Check("Authenticated Life dashboard renders its initial shell",
         response.StatusCode == HttpStatusCode.OK
         && html.Contains("/images/donysh-life-logo.png", StringComparison.Ordinal)
@@ -174,6 +175,11 @@ using (var authenticatedClient = authenticatedFactory.CreateClient(new WebApplic
         html.Contains("href=\"https://finance.test/\"", StringComparison.Ordinal)
         && html.Contains("دُنیش مالی", StringComparison.Ordinal)
         && html.Contains("رفتن به دُنیش مالی", StringComparison.Ordinal));
+    Check("Life shell identifies the signed-in account",
+        html.Contains("حساب واردشده", StringComparison.Ordinal)
+        && decodedHtml.Contains("کاربر آزمایشی", StringComparison.Ordinal));
+    Check("Life shell shows the signed-in account email",
+        html.Contains("life-user@example.test", StringComparison.Ordinal));
     Check("Life logout posts locally before central OIDC sign-out",
         html.Contains("action=\"/Account/Logout\"", StringComparison.Ordinal));
     Check("Life antiforgery cookie is HttpOnly, secure and same-site strict",
@@ -804,7 +810,16 @@ internal sealed class TestAuthHandler(
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        var identity = new ClaimsIdentity([new Claim("sub", "life-test-user")], SchemeName);
+        var identity = new ClaimsIdentity(
+        [
+            new Claim("sub", "life-test-user"),
+            new Claim("name", "کاربر آزمایشی"),
+            new Claim(ClaimTypes.Name, "کاربر آزمایشی"),
+            new Claim(ClaimTypes.Email, "life-user@example.test")
+        ],
+        SchemeName,
+        ClaimTypes.Name,
+        ClaimTypes.Role);
         return Task.FromResult(AuthenticateResult.Success(
             new AuthenticationTicket(new ClaimsPrincipal(identity), SchemeName)));
     }
