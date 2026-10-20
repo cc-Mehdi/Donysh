@@ -562,6 +562,93 @@
         }
     }
 
+    const expenseTransferModal = document.querySelector('[data-expense-transfer-modal]');
+    if (expenseTransferModal) {
+        const transferForm = expenseTransferModal.querySelector('[data-expense-transfer-form]');
+        const expenseId = expenseTransferModal.querySelector('[data-expense-transfer-id]');
+        const destination = expenseTransferModal.querySelector('[data-expense-transfer-workspace]');
+        const category = expenseTransferModal.querySelector('[data-expense-transfer-category]');
+        const reason = expenseTransferModal.querySelector('[data-expense-transfer-reason]');
+        const titleSummary = expenseTransferModal.querySelector('[data-expense-transfer-summary-title]');
+        const amountSummary = expenseTransferModal.querySelector('[data-expense-transfer-summary-amount]');
+        const noCategory = expenseTransferModal.querySelector('[data-expense-transfer-no-category]');
+        const submit = expenseTransferModal.querySelector('[data-expense-transfer-submit]');
+        const categoryOptions = [...(category?.querySelectorAll('[data-workspace-id]') ?? [])];
+        let transferTrigger = null;
+
+        const syncTransferCategories = () => {
+            const workspaceId = destination?.value ?? '';
+            const available = categoryOptions.filter((option) => option.dataset.workspaceId === workspaceId);
+            categoryOptions.forEach((option) => {
+                const visible = option.dataset.workspaceId === workspaceId;
+                option.hidden = !visible;
+                option.disabled = !visible;
+            });
+            if (category && !available.some((option) => option.value === category.value)) {
+                category.value = available[0]?.value ?? '';
+            }
+            if (category) category.disabled = available.length === 0;
+            if (submit) submit.disabled = available.length === 0;
+            noCategory?.classList.toggle('hidden', available.length > 0);
+        };
+
+        const closeTransferModal = () => {
+            expenseTransferModal.hidden = true;
+            document.body.classList.remove('overflow-hidden');
+            transferTrigger?.focus();
+            transferTrigger = null;
+        };
+
+        document.querySelectorAll('[data-expense-transfer-open]').forEach((button) => {
+            button.addEventListener('click', () => {
+                transferTrigger = button;
+                if (expenseId) expenseId.value = button.dataset.expenseId ?? '';
+                if (reason) reason.value = button.dataset.expenseTitle ?? '';
+                if (titleSummary) titleSummary.textContent = button.dataset.expenseTitle ?? '';
+                if (amountSummary) amountSummary.textContent = button.dataset.expenseAmount ?? '';
+                syncTransferCategories();
+                expenseTransferModal.hidden = false;
+                document.body.classList.add('overflow-hidden');
+                destination?.focus();
+            });
+        });
+
+        destination?.addEventListener('change', syncTransferCategories);
+        expenseTransferModal.querySelectorAll('[data-expense-transfer-close]').forEach((button) => {
+            button.addEventListener('click', closeTransferModal);
+        });
+        expenseTransferModal.addEventListener('click', (event) => {
+            if (event.target === expenseTransferModal) closeTransferModal();
+        });
+        document.addEventListener('keydown', (event) => {
+            if (expenseTransferModal.hidden) return;
+            if (event.key === 'Escape') {
+                closeTransferModal();
+                return;
+            }
+            if (event.key !== 'Tab') return;
+            const focusable = [...expenseTransferModal.querySelectorAll(
+                'button:not(:disabled), select:not(:disabled), input:not(:disabled), [href]')]
+                .filter((element) => !element.hidden);
+            if (focusable.length === 0) return;
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (event.shiftKey && document.activeElement === first) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault();
+                first.focus();
+            }
+        });
+        transferForm?.addEventListener('submit', () => {
+            if (!submit) return;
+            submit.disabled = true;
+            submit.textContent = 'در حال انتقال…';
+        });
+        syncTransferCategories();
+    }
+
     window.setTimeout(() => {
         document.querySelectorAll('[data-toast]').forEach((toast) => toast.remove());
     }, 5000);

@@ -108,7 +108,7 @@ else
 {
     <div class="hidden md:block table-wrap">
         <table class="table">
-            <thead><tr><th>شرح</th><th>دسته</th><th>تاریخ</th><th>ثبت‌کننده</th><th>مبلغ</th><th class="w-32">عملیات</th></tr></thead>
+            <thead><tr><th>شرح</th><th>دسته</th><th>تاریخ</th><th>ثبت‌کننده</th><th>مبلغ</th><th class="w-52">عملیات</th></tr></thead>
             <tbody>
             @foreach (var item in Model.Items)
             {
@@ -121,6 +121,16 @@ else
                     <td>
                         <div class="flex gap-1">
                             <a asp-page="Edit" asp-route-id="@item.Id" class="btn-secondary px-3 py-2">ویرایش</a>
+                            @if (Model.TransferDestinations.Count > 0)
+                            {
+                                <button type="button" class="btn-secondary px-3 py-2 text-indigo-700"
+                                        data-expense-transfer-open
+                                        data-expense-id="@item.Id"
+                                        data-expense-title="@item.Reason"
+                                        data-expense-amount="@Formatters.Money(item.Amount)">
+                                    انتقال
+                                </button>
+                            }
                             <form method="post" asp-page-handler="Delete" asp-route-id="@item.Id">
                                 <button class="btn-secondary px-3 py-2 text-rose-600" data-confirm="این خرج حذف شود؟" type="submit">حذف</button>
                             </form>
@@ -148,10 +158,95 @@ else
                     <span class="text-xs text-slate-500">ثبت توسط @item.CreatedByUser.DisplayName</span>
                     <div class="flex gap-2">
                         <a asp-page="Edit" asp-route-id="@item.Id" class="text-xs font-bold text-indigo-700">ویرایش</a>
+                        @if (Model.TransferDestinations.Count > 0)
+                        {
+                            <button type="button" class="text-xs font-bold text-indigo-700"
+                                    data-expense-transfer-open
+                                    data-expense-id="@item.Id"
+                                    data-expense-title="@item.Reason"
+                                    data-expense-amount="@Formatters.Money(item.Amount)">
+                                انتقال
+                            </button>
+                        }
                         <form method="post" asp-page-handler="Delete" asp-route-id="@item.Id"><button type="submit" class="text-xs font-bold text-rose-600" data-confirm="این خرج حذف شود؟">حذف</button></form>
                     </div>
                 </div>
             </article>
         }
+    </div>
+}
+
+@if (Model.TransferDestinations.Count > 0)
+{
+    <div hidden data-expense-transfer-modal
+         class="fixed inset-0 z-50 grid place-items-end bg-slate-950/55 p-0 backdrop-blur-sm sm:place-items-center sm:p-5"
+         role="dialog" aria-modal="true" aria-labelledby="expense-transfer-title">
+        <section class="max-h-[92vh] w-full overflow-y-auto rounded-t-3xl bg-white shadow-2xl sm:max-w-xl sm:rounded-3xl">
+            <header class="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-100 bg-white/95 px-5 py-4 backdrop-blur sm:px-6">
+                <div>
+                    <p class="mb-1 text-xs font-bold text-indigo-600">جابجایی بین فضاهای مالی</p>
+                    <h2 id="expense-transfer-title" class="text-xl font-black">انتقال خرج</h2>
+                    <p class="mt-1 text-sm text-slate-500">مقصد، دسته و عنوان نهایی خرج را انتخاب کنید.</p>
+                </div>
+                <button type="button" data-expense-transfer-close
+                        class="grid size-10 shrink-0 place-items-center rounded-xl bg-slate-100 text-xl text-slate-600"
+                        aria-label="بستن پنجره">×</button>
+            </header>
+
+            <form method="post" asp-page-handler="Transfer" data-expense-transfer-form class="space-y-5 p-5 sm:p-6">
+                <input asp-for="Transfer.ExpenseId" type="hidden" data-expense-transfer-id />
+
+                <div class="rounded-2xl border border-indigo-100 bg-indigo-50 p-4">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <p class="text-xs font-bold text-indigo-600">خرج انتخاب‌شده</p>
+                            <p class="mt-1 truncate font-black text-slate-900" data-expense-transfer-summary-title></p>
+                            <p class="mt-1 text-xs text-slate-500">از فضای «@Model.CurrentWorkspaceName»</p>
+                        </div>
+                        <strong class="shrink-0 text-sm text-rose-600" data-expense-transfer-summary-amount></strong>
+                    </div>
+                </div>
+
+                <div>
+                    <label asp-for="Transfer.DestinationWorkspaceId" class="label">فضای مالی مقصد</label>
+                    <select asp-for="Transfer.DestinationWorkspaceId" class="input" data-expense-transfer-workspace required>
+                        @foreach (var workspace in Model.TransferDestinations)
+                        {
+                            <option value="@workspace.Id">@workspace.Name · @(workspace.Type == WorkspaceType.Shared ? "مشترک" : "شخصی")</option>
+                        }
+                    </select>
+                    <p class="muted mt-1">فقط فضاهایی نمایش داده می‌شوند که به آن‌ها دسترسی دارید.</p>
+                </div>
+
+                <div>
+                    <label asp-for="Transfer.DestinationCategoryId" class="label">دسته در فضای مقصد</label>
+                    <select asp-for="Transfer.DestinationCategoryId" class="input" data-expense-transfer-category required>
+                        @foreach (var category in Model.TransferCategories)
+                        {
+                            <option value="@category.Id" data-workspace-id="@category.WorkspaceId">@category.Icon @category.Name</option>
+                        }
+                    </select>
+                    <p class="mt-1 hidden text-xs font-bold text-amber-700" data-expense-transfer-no-category>
+                        این فضای مالی دستهٔ فعالی ندارد؛ ابتدا برای آن یک دسته بسازید.
+                    </p>
+                </div>
+
+                <div>
+                    <label asp-for="Transfer.Reason" class="label">عنوان خرج در مقصد</label>
+                    <input asp-for="Transfer.Reason" class="input" maxlength="200" required
+                           data-expense-transfer-reason placeholder="مثلاً خرید هفتگی" />
+                    <span asp-validation-for="Transfer.Reason" class="field-error"></span>
+                </div>
+
+                <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-7 text-amber-900">
+                    پس از تأیید، خرج از فضای «@Model.CurrentWorkspaceName» برداشته می‌شود و با همان مبلغ و تاریخ در فضای مقصد قرار می‌گیرد.
+                </div>
+
+                <div class="grid gap-2 sm:grid-cols-2">
+                    <button type="submit" class="btn-primary w-full" data-expense-transfer-submit>تأیید انتقال</button>
+                    <button type="button" class="btn-secondary w-full" data-expense-transfer-close>انصراف</button>
+                </div>
+            </form>
+        </section>
     </div>
 }

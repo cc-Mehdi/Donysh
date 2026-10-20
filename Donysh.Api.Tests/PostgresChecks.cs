@@ -79,8 +79,84 @@ internal static class PostgresChecks
                 PairCodeHash = MobileApi.Hash(code), PairExpiresAtUtc = DateTime.UtcNow.AddMinutes(10) };
             db.AddRange(user, workspace, other, category, otherCategory, device,
                 new WorkspaceMember { UserId = user.Id, WorkspaceId = workspace.Id, Role = WorkspaceRole.Owner },
-                new WorkspaceMember { UserId = user.Id, WorkspaceId = other.Id, Role = WorkspaceRole.Owner });
+                new WorkspaceMember { UserId = user.Id, WorkspaceId = other.Id, Role = WorkspaceRole.Owner },
+                new WorkspaceMember { UserId = successor.Id, WorkspaceId = workspace.Id, Role = WorkspaceRole.Member },
+                new WorkspaceMember { UserId = successor.Id, WorkspaceId = other.Id, Role = WorkspaceRole.Member });
             await db.SaveChangesAsync();
+
+            var transferableExpense = new Expense
+            {
+                WorkspaceId = workspace.Id,
+                CategoryId = category.Id,
+                CreatedByUserId = user.Id,
+                Reason = "عنوان پیش از انتقال",
+                Amount = 250_000,
+                ExpenseDate = DateOnly.FromDateTime(DateTime.UtcNow)
+            };
+            db.Expenses.Add(transferableExpense);
+            await db.SaveChangesAsync();
+            var expenseTransfer = new ExpenseTransferService(db);
+            Check(await expenseTransfer.TransferAsync(workspace.Id, transferableExpense.Id, sharedWorkspace.Id,
+                      otherCategory.Id, "عنوان مقصد", user.Id) == ExpenseTransferResult.AccessDenied,
+                "expense transfer rejects a destination outside the user's workspaces");
+            Check(await expenseTransfer.TransferAsync(workspace.Id, transferableExpense.Id, other.Id,
+                      category.Id, "عنوان مقصد", user.Id) == ExpenseTransferResult.CategoryNotFound,
+                "expense transfer rejects a category from another workspace");
+            Check(await expenseTransfer.TransferAsync(workspace.Id, transferableExpense.Id, other.Id,
+                      otherCategory.Id, "عنوان مقصد", successor.Id) == ExpenseTransferResult.NotAllowed,
+                "ordinary members cannot move another member's expense");
+            Check(await expenseTransfer.TransferAsync(workspace.Id, transferableExpense.Id, other.Id,
+                      otherCategory.Id, "  عنوان مقصد  ", user.Id) == ExpenseTransferResult.Success,
+                "expense transfer succeeds between two accessible workspaces");
+            db.ChangeTracker.Clear();
+            var movedExpense = await db.Expenses.SingleAsync(x => x.Id == transferableExpense.Id);
+            Check(movedExpense.WorkspaceId == other.Id
+                  && movedExpense.CategoryId == otherCategory.Id
+                  && movedExpense.Reason == "عنوان مقصد"
+                  && movedExpense.Amount == 250_000,
+                "expense transfer preserves financial values and applies destination fields");
+            db.Expenses.Remove(movedExpense);
+            await db.SaveChangesAsync();
+
+            var obligation = new RecurringObligation
+            {
+                WorkspaceId = workspace.Id,
+                CategoryId = category.Id,
+                CreatedByUserId = user.Id,
+                Title = "قسط آزمون انتقال",
+                Type = RecurringObligationType.Installment,
+                Amount = 300_000,
+                StartYear = 1405,
+                StartMonth = 8,
+                DurationMonths = 2
+            };
+            var obligationExpense = new Expense
+            {
+                WorkspaceId = workspace.Id,
+                CategoryId = category.Id,
+                CreatedByUserId = user.Id,
+                Reason = obligation.Title,
+                Amount = obligation.Amount,
+                ExpenseDate = DateOnly.FromDateTime(DateTime.UtcNow)
+            };
+            var obligationPayment = new RecurringObligationPayment
+            {
+                RecurringObligationId = obligation.Id,
+                ExpenseId = obligationExpense.Id,
+                PaidByUserId = user.Id,
+                PeriodYear = 1405,
+                PeriodMonth = 8,
+                Amount = obligation.Amount,
+                PaidDate = obligationExpense.ExpenseDate
+            };
+            db.AddRange(obligation, obligationExpense, obligationPayment);
+            await db.SaveChangesAsync();
+            Check(await expenseTransfer.TransferAsync(workspace.Id, obligationExpense.Id, other.Id,
+                      otherCategory.Id, "قسط منتقل‌شده", user.Id) == ExpenseTransferResult.LinkedToObligation,
+                "expense transfer cannot detach a recorded obligation payment");
+            db.RemoveRange(obligationPayment, obligationExpense, obligation);
+            await db.SaveChangesAsync();
+
             var historical = new Expense
             {
                 WorkspaceId = workspace.Id, CategoryId = category.Id, CreatedByUserId = user.Id,

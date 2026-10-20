@@ -235,6 +235,7 @@ builder.Services.AddScoped<DatabaseInitializer>();
 builder.Services.AddScoped<BudgetRolloverService>();
 builder.Services.AddScoped<BudgetBalanceService>();
 builder.Services.AddScoped<WorkspaceOwnershipService>();
+builder.Services.AddScoped<ExpenseTransferService>();
 
 builder.Services
     .AddRazorPages(options =>

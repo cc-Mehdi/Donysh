@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using HesabYar.Web.Data;
 using HesabYar.Web.Domain;
 using HesabYar.Web.Helpers;
@@ -8,7 +9,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HesabYar.Web.Pages.Expenses;
 
-public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext workspaceContext) : PageModel
+public sealed class IndexModel(
+    ApplicationDbContext db,
+    IWorkspaceContext workspaceContext,
+    ExpenseTransferService expenseTransferService) : PageModel
 {
     [BindProperty(SupportsGet = true)]
     public string? Q { get; set; }
@@ -26,12 +30,36 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
     public IReadOnlyList<Expense> Items { get; private set; } = [];
     public IReadOnlyList<ExpenseCategory> Categories { get; private set; } = [];
     public IReadOnlyList<MemberExpenseSummary> MemberExpenses { get; private set; } = [];
+    public IReadOnlyList<Workspace> TransferDestinations { get; private set; } = [];
+    public IReadOnlyList<TransferCategoryOption> TransferCategories { get; private set; } = [];
+    public string CurrentWorkspaceName { get; private set; } = string.Empty;
     public decimal Total { get; private set; }
     public decimal MemberExpensesTotal { get; private set; }
     public string MemberExpensesPeriodTitle { get; private set; } = string.Empty;
     public bool HasDateFilter => From.HasValue || To.HasValue;
     public bool HasActiveFilter => ExpenseListFilter.HasAny(Q, CategoryId, NeedsReview, From, To);
     public bool IsSharedWorkspace { get; private set; }
+
+    [BindProperty]
+    public TransferExpenseInput Transfer { get; set; } = new();
+
+    public sealed class TransferExpenseInput
+    {
+        [Required]
+        public Guid ExpenseId { get; set; }
+
+        [Required]
+        public Guid DestinationWorkspaceId { get; set; }
+
+        [Required]
+        public Guid DestinationCategoryId { get; set; }
+
+        [Required(ErrorMessage = "عنوان خرج را وارد کنید.")]
+        [StringLength(200, MinimumLength = 2, ErrorMessage = "عنوان خرج باید بین ۲ تا ۲۰۰ کاراکتر باشد.")]
+        public string Reason { get; set; } = string.Empty;
+    }
+
+    public sealed record TransferCategoryOption(Guid Id, Guid WorkspaceId, string Name, string Icon);
 
     public sealed record MemberExpenseCategory(Guid CategoryId, string Name, string Icon, decimal Amount, int Count);
 
@@ -47,6 +75,7 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
     {
         var workspace = await workspaceContext.RequireCurrentAsync(cancellationToken);
         IsSharedWorkspace = workspace.Type == WorkspaceType.Shared;
+        CurrentWorkspaceName = workspace.Name;
 
         Categories = await db.ExpenseCategories
             .Where(x => x.WorkspaceId == workspace.Id && !x.IsArchived)
@@ -70,6 +99,7 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
 
         Total = Items.Sum(x => x.Amount);
         await LoadMemberExpenseSummaryAsync(workspace.Id, cancellationToken);
+        await LoadTransferOptionsAsync(workspace.Id, cancellationToken);
     }
 
     public async Task<IActionResult> OnPostDeleteAsync(Guid id, CancellationToken cancellationToken)
@@ -94,6 +124,74 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
             ? "خرج حذف شد."
             : "خرج حذف شد و پرداخت تعهد ماهانه مرتبط دوباره به حالت پرداخت‌نشده برگشت.";
         return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostTransferAsync(CancellationToken cancellationToken)
+    {
+        var sourceWorkspace = await workspaceContext.RequireCurrentAsync(cancellationToken);
+        if (!ModelState.IsValid)
+        {
+            TempData["Error"] = "اطلاعات انتقال را کامل و درست وارد کنید.";
+            return RedirectToPage();
+        }
+
+        var userId = workspaceContext.UserId;
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return Forbid();
+        }
+
+        var result = await expenseTransferService.TransferAsync(
+            sourceWorkspace.Id,
+            Transfer.ExpenseId,
+            Transfer.DestinationWorkspaceId,
+            Transfer.DestinationCategoryId,
+            Transfer.Reason,
+            userId,
+            cancellationToken);
+
+        if (result == ExpenseTransferResult.Success)
+        {
+            var destinationName = await db.Workspaces
+                .Where(x => x.Id == Transfer.DestinationWorkspaceId)
+                .Select(x => x.Name)
+                .SingleAsync(cancellationToken);
+            TempData["Success"] = $"خرج با موفقیت به فضای «{destinationName}» منتقل شد.";
+            return RedirectToPage();
+        }
+
+        TempData["Error"] = result switch
+        {
+            ExpenseTransferResult.AccessDenied => "به فضای مبدأ یا مقصد دسترسی ندارید.",
+            ExpenseTransferResult.ExpenseNotFound => "خرج موردنظر پیدا نشد یا دیگر در این فضا نیست.",
+            ExpenseTransferResult.CategoryNotFound => "دستهٔ انتخاب‌شده در فضای مقصد معتبر نیست.",
+            ExpenseTransferResult.NotAllowed => "فقط ثبت‌کنندهٔ خرج یا مالک فضای مالی می‌تواند آن را منتقل کند.",
+            ExpenseTransferResult.LinkedToObligation => "خرجی که از پرداخت قسط یا هزینهٔ ثابت ساخته شده است قابل انتقال نیست.",
+            _ => "اطلاعات انتقال معتبر نیست. دوباره تلاش کنید."
+        };
+        return RedirectToPage();
+    }
+
+    private async Task LoadTransferOptionsAsync(Guid currentWorkspaceId, CancellationToken cancellationToken)
+    {
+        TransferDestinations = (await workspaceContext.GetAccessibleAsync(cancellationToken))
+            .Where(x => x.Id != currentWorkspaceId)
+            .OrderBy(x => x.Type)
+            .ThenBy(x => x.Name)
+            .ToList();
+
+        if (TransferDestinations.Count == 0)
+        {
+            return;
+        }
+
+        var destinationIds = TransferDestinations.Select(x => x.Id).ToArray();
+        TransferCategories = await db.ExpenseCategories
+            .Where(x => destinationIds.Contains(x.WorkspaceId) && !x.IsArchived)
+            .OrderBy(x => x.Name)
+            .Select(x => new TransferCategoryOption(x.Id, x.WorkspaceId, x.Name, x.Icon))
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
     }
 
     private async Task LoadMemberExpenseSummaryAsync(Guid workspaceId, CancellationToken cancellationToken)
