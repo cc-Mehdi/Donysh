@@ -3,7 +3,7 @@
 @{
     var block = Model.Block;
 }
-<article class="schedule-block @block.ColorClass @(block.IsActive ? "" : "inactive")" draggable="true"
+<article class="schedule-block calendar-event @block.ColorClass @(block.IsActive ? "" : "inactive")" draggable="true"
          data-pattern-id="@block.Id" data-original-date="@block.OriginalDate.ToString("yyyy-MM-dd")"
          data-scheduled-date="@block.ScheduledDate.ToString("yyyy-MM-dd")" data-start-minute="@block.StartMinute" data-duration="@block.DurationMinutes">
     <div class="block-main"><span class="block-icon">@block.IconGlyph</span><div><strong>@block.ActivityTitle</strong><span class="block-time">@block.StartLabel تا @block.EndLabel</span>@if (!string.IsNullOrWhiteSpace(block.Note)) { <small>@block.Note</small> }</div></div>
@@ -58,4 +58,5 @@
             </div>
         </div>
     </details>
+    <button type="button" class="schedule-resize-handle" aria-label="تغییر مدت @block.ActivityTitle؛ اکنون @block.DurationLabel" title="برای تغییر مدت بکشید"><span aria-hidden="true"></span></button>
 </article>

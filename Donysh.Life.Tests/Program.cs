@@ -95,9 +95,15 @@ using (var response = await client.GetAsync("/css/app.css"))
 
 using (var response = await client.GetAsync("/js/week-planner.js"))
 {
+    var script = await response.Content.ReadAsStringAsync();
     Check("Life interactive planner script is served from the same origin",
         response.StatusCode == HttpStatusCode.OK
-        && response.Content.Headers.ContentType?.MediaType is "text/javascript" or "application/javascript");
+        && response.Content.Headers.ContentType?.MediaType is "text/javascript" or "application/javascript"
+        && script.Contains("schedule-resize-handle", StringComparison.Ordinal)
+        && script.Contains("pointerdown", StringComparison.Ordinal)
+        && script.Contains("data-calendar-board", StringComparison.Ordinal)
+        && !script.Contains("eval(", StringComparison.Ordinal)
+        && !script.Contains("new Function", StringComparison.Ordinal));
 }
 
 using (var response = await client.GetAsync("/js/interaction-feedback.js"))
@@ -198,8 +204,75 @@ using (var authenticatedClient = authenticatedFactory.CreateClient(new WebApplic
         Check("Life weekly planner renders its responsive empty state",
             weekResponse.StatusCode == HttpStatusCode.OK
             && weekHtml.Contains("برنامه‌ریزی تعاملی", StringComparison.Ordinal)
+            && weekHtml.Contains("نوع نمایش", StringComparison.Ordinal)
+            && weekHtml.Contains("افزودن برنامه", StringComparison.Ordinal) == false
             && weekHtml.Contains("اول یک فعالیت بساز", StringComparison.Ordinal)
             && !weekHtml.Contains("style=", StringComparison.OrdinalIgnoreCase));
+    }
+
+    var calendarActivityId = Guid.NewGuid();
+    await using (var seedScope = authenticatedFactory.Services.CreateAsyncScope())
+    {
+        var db = seedScope.ServiceProvider.GetRequiredService<LifeDbContext>();
+        var now = DateTimeOffset.UtcNow;
+        db.Activities.Add(new Donysh.Life.Domain.LifeActivity
+        {
+            Id = calendarActivityId,
+            UserSubject = "life-test-user",
+            Title = "برنامهٔ نمونهٔ بلند",
+            NormalizedTitle = "برنامه نمونه بلند",
+            ColorHex = "#0D9488",
+            IconKey = "book",
+            IsActive = true,
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now
+        });
+        db.SchedulePatterns.Add(new Donysh.Life.Domain.RecurringSchedulePattern
+        {
+            Id = Guid.NewGuid(),
+            UserSubject = "life-test-user",
+            ActivityId = calendarActivityId,
+            DayOfWeek = DayOfWeek.Wednesday,
+            StartMinute = 510,
+            DurationMinutes = 90,
+            Note = "جزئیات برنامه",
+            IsActive = true,
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now
+        });
+        await db.SaveChangesAsync();
+    }
+
+    using (var calendarWeekResponse = await authenticatedClient.GetAsync("/Week?day=Wednesday&view=week"))
+    {
+        var calendarWeekHtml = await calendarWeekResponse.Content.ReadAsStringAsync();
+        Check("Life weekly calendar positions complete event cards on a 30-minute time grid",
+            calendarWeekResponse.StatusCode == HttpStatusCode.OK
+            && calendarWeekHtml.Contains("calendar-board week-view", StringComparison.Ordinal)
+            && calendarWeekHtml.Contains("data-column-count=\"7\"", StringComparison.Ordinal)
+            && calendarWeekHtml.Contains("08:30 تا 10:00", StringComparison.Ordinal)
+            && calendarWeekHtml.Contains("schedule-resize-handle", StringComparison.Ordinal)
+            && calendarWeekHtml.Contains("data-duration=\"90\"", StringComparison.Ordinal)
+            && !calendarWeekHtml.Contains("style=", StringComparison.OrdinalIgnoreCase));
+    }
+
+    using (var calendarDayResponse = await authenticatedClient.GetAsync("/Week?day=Wednesday&view=day"))
+    {
+        var calendarDayHtml = await calendarDayResponse.Content.ReadAsStringAsync();
+        Check("Life day view keeps the selected day and creation dialog accessible",
+            calendarDayResponse.StatusCode == HttpStatusCode.OK
+            && calendarDayHtml.Contains("calendar-board day-view", StringComparison.Ordinal)
+            && calendarDayHtml.Contains("data-column-count=\"1\"", StringComparison.Ordinal)
+            && calendarDayHtml.Contains("schedule-create-dialog", StringComparison.Ordinal)
+            && calendarDayHtml.Contains("aria-current=\"page\"", StringComparison.Ordinal));
+    }
+
+    await using (var cleanupScope = authenticatedFactory.Services.CreateAsyncScope())
+    {
+        var db = cleanupScope.ServiceProvider.GetRequiredService<LifeDbContext>();
+        db.SchedulePatterns.RemoveRange(db.SchedulePatterns.Where(item => item.UserSubject == "life-test-user"));
+        db.Activities.RemoveRange(db.Activities.Where(item => item.Id == calendarActivityId));
+        await db.SaveChangesAsync();
     }
 
     using (var progressResponse = await authenticatedClient.GetAsync("/Progress"))

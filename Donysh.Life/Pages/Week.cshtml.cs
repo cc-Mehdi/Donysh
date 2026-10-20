@@ -15,6 +15,7 @@ public sealed class WeekModel(WeeklyScheduleService schedules, OccurrenceTrackin
     [BindProperty] public ScheduleInteractionForm Interaction { get; set; } = new();
     [BindProperty] public DateOnly OriginalDate { get; set; }
     [BindProperty] public OccurrenceRecordForm Occurrence { get; set; } = new();
+    [BindProperty(SupportsGet = true, Name = "view")] public string DisplayMode { get; set; } = "week";
 
     public WeekScheduleView View { get; private set; } = new(
         DateOnly.MinValue, [], [], [], 0);
@@ -22,6 +23,7 @@ public sealed class WeekModel(WeeklyScheduleService schedules, OccurrenceTrackin
 
     public async Task OnGetAsync(DayOfWeek? day, DateOnly? week, CancellationToken cancellationToken)
     {
+        DisplayMode = DisplayMode == "day" ? "day" : "week";
         SelectedDay = day is not null && WeekCalendar.Days.Contains(day.Value) ? day.Value : DayOfWeek.Saturday;
         Input.DayOfWeek = SelectedDay;
         await LoadAsync(SelectedDay, week, cancellationToken);
@@ -34,7 +36,7 @@ public sealed class WeekModel(WeeklyScheduleService schedules, OccurrenceTrackin
         var result = await schedules.SaveAsync(PatternId, Input, cancellationToken);
         if (!result.Succeeded) { CommandError = result.Message; await LoadAsync(SelectedDay, WeekStart == default ? null : WeekStart, cancellationToken); return Page(); }
         TempData["ScheduleMessage"] = result.Message;
-        return RedirectToPage(new { day = Input.DayOfWeek, week = WeekStart == default ? null : WeekStart.ToString("yyyy-MM-dd") });
+        return RedirectToCalendar(Input.DayOfWeek);
     }
 
     public async Task<IActionResult> OnPostToggleAsync(CancellationToken cancellationToken)
@@ -42,7 +44,7 @@ public sealed class WeekModel(WeeklyScheduleService schedules, OccurrenceTrackin
         if (PatternId is null) return BadRequest();
         var result = await schedules.ToggleAsync(PatternId.Value, cancellationToken);
         TempData[result.Succeeded ? "ScheduleMessage" : "ScheduleError"] = result.Message;
-        return RedirectToPage(new { day = SelectedDay, week = WeekStart.ToString("yyyy-MM-dd") });
+        return RedirectToCalendar(SelectedDay);
     }
 
     public async Task<IActionResult> OnPostDeleteAsync(CancellationToken cancellationToken)
@@ -50,7 +52,7 @@ public sealed class WeekModel(WeeklyScheduleService schedules, OccurrenceTrackin
         if (PatternId is null || !ConfirmDelete) return BadRequest();
         var result = await schedules.DeleteAsync(PatternId.Value, cancellationToken);
         TempData[result.Succeeded ? "ScheduleMessage" : "ScheduleError"] = result.Message;
-        return RedirectToPage(new { day = SelectedDay, week = WeekStart.ToString("yyyy-MM-dd") });
+        return RedirectToCalendar(SelectedDay);
     }
 
     public async Task<IActionResult> OnPostInteractAsync(CancellationToken cancellationToken)
@@ -59,7 +61,7 @@ public sealed class WeekModel(WeeklyScheduleService schedules, OccurrenceTrackin
             ? await schedules.ApplyInteractionAsync(Interaction, cancellationToken)
             : ActivityCommandResult.Failure("اطلاعات جابه‌جایی معتبر نیست.");
         TempData[result.Succeeded ? "ScheduleMessage" : "ScheduleError"] = result.Message;
-        return RedirectToPage(new { day = Interaction.TargetDate.DayOfWeek, week = WeekStart.ToString("yyyy-MM-dd") });
+        return RedirectToCalendar(Interaction.TargetDate.DayOfWeek);
     }
 
     public async Task<IActionResult> OnPostCancelOccurrenceAsync(CancellationToken cancellationToken)
@@ -67,7 +69,7 @@ public sealed class WeekModel(WeeklyScheduleService schedules, OccurrenceTrackin
         if (PatternId is null || OriginalDate == default) return BadRequest();
         var result = await schedules.CancelOccurrenceAsync(PatternId.Value, OriginalDate, cancellationToken);
         TempData[result.Succeeded ? "ScheduleMessage" : "ScheduleError"] = result.Message;
-        return RedirectToPage(new { day = SelectedDay, week = WeekStart.ToString("yyyy-MM-dd") });
+        return RedirectToCalendar(SelectedDay);
     }
 
     public async Task<IActionResult> OnPostRecordOccurrenceAsync(CancellationToken cancellationToken)
@@ -76,7 +78,7 @@ public sealed class WeekModel(WeeklyScheduleService schedules, OccurrenceTrackin
             ? await tracking.RecordAsync(Occurrence, cancellationToken)
             : ActivityCommandResult.Failure("اطلاعات عملکرد معتبر نیست.");
         TempData[result.Succeeded ? "ScheduleMessage" : "ScheduleError"] = result.Message;
-        return RedirectToPage(new { day = SelectedDay, week = WeekStart.ToString("yyyy-MM-dd") });
+        return RedirectToCalendar(SelectedDay);
     }
 
     public async Task<IActionResult> OnPostClearOccurrenceAsync(CancellationToken cancellationToken)
@@ -84,7 +86,7 @@ public sealed class WeekModel(WeeklyScheduleService schedules, OccurrenceTrackin
         if (PatternId is null || OriginalDate == default) return BadRequest();
         var result = await tracking.ClearAsync(PatternId.Value, OriginalDate, cancellationToken);
         TempData[result.Succeeded ? "ScheduleMessage" : "ScheduleError"] = result.Message;
-        return RedirectToPage(new { day = SelectedDay, week = WeekStart.ToString("yyyy-MM-dd") });
+        return RedirectToCalendar(SelectedDay);
     }
 
     private async Task LoadAsync(DayOfWeek day, DateOnly? week, CancellationToken cancellationToken)
@@ -92,4 +94,11 @@ public sealed class WeekModel(WeeklyScheduleService schedules, OccurrenceTrackin
         View = await schedules.GetWeekAsync(day, week, cancellationToken);
         WeekStart = View.WeekStart;
     }
+
+    private RedirectToPageResult RedirectToCalendar(DayOfWeek day) => RedirectToPage(new
+    {
+        day,
+        week = WeekStart == default ? null : WeekStart.ToString("yyyy-MM-dd"),
+        view = DisplayMode == "day" ? "day" : "week"
+    });
 }
