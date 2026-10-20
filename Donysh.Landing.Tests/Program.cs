@@ -36,6 +36,9 @@ using (var response = await client.GetAsync("/"))
         html.Contains("دونیش زندگی", StringComparison.Ordinal)
         && html.Contains("نسخهٔ آغازین", StringComparison.Ordinal)
         && html.Contains("href=\"https://life.test\"", StringComparison.Ordinal));
+    Check("Landing exposes the fixed Android download URL",
+        html.Contains("دانلود برنامهٔ اندروید", StringComparison.Ordinal)
+        && html.Contains("href=\"/downloads/donysh-mobile.apk\"", StringComparison.Ordinal));
     Check("Landing security headers block scripts and framing",
         response.Headers.TryGetValues("Content-Security-Policy", out var csp)
         && csp.Single().Contains("script-src 'none'", StringComparison.Ordinal)

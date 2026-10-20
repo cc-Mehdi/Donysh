@@ -188,6 +188,8 @@ def main() -> int:
     ]:
         if token not in platform_compose:
             errors.append(f"platform compose token missing: {token}")
+    if "./artifacts/mobile:/srv/mobile-downloads:ro" not in platform_compose:
+        errors.append("platform compose must mount mobile downloads read-only")
 
     workflow = (ROOT / ".github/workflows/deploy.yml").read_text(encoding="utf-8")
     for token in [
@@ -257,6 +259,24 @@ def main() -> int:
         errors.append("platform Caddyfile must serve Finance only on its product domain")
     if "{$LIFE_DOMAIN} {" not in caddy or "reverse_proxy life:8080" not in caddy:
         errors.append("platform Caddyfile must serve Life on its product domain")
+    for token in [
+        "handle /downloads/donysh-mobile.apk",
+        "root * /srv/mobile-downloads",
+        "application/vnd.android.package-archive",
+        "Content-Disposition",
+    ]:
+        if token not in caddy:
+            errors.append(f"secure mobile download token missing: {token}")
+
+    landing_page = (ROOT / "Donysh.Landing/Pages/Index.cshtml").read_text(encoding="utf-8")
+    finance_mobile_page = (ROOT / "HesabYar.Web/Pages/Mobile/Index.cshtml").read_text(encoding="utf-8")
+    fixed_download_url = "https://donysh.ir/downloads/donysh-mobile.apk"
+    if "/downloads/donysh-mobile.apk" not in landing_page:
+        errors.append("Landing must link to the fixed mobile download")
+    if fixed_download_url not in finance_mobile_page:
+        errors.append("Finance companion page must link to the fixed mobile download")
+    if not (ROOT / "scripts/publish-mobile-apk.sh").is_file():
+        errors.append("missing secure APK publishing helper")
 
     if errors:
         print("Validation failed:")

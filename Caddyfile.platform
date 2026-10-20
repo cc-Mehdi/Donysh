@@ -18,6 +18,20 @@
     encode zstd gzip
     import secure_headers
     route {
+        # Serve only the fixed public APK name. The host directory is mounted
+        # read-only, directory browsing is disabled, and clients revalidate so
+        # replacing the file publishes a new version without changing the URL.
+        handle /downloads/donysh-mobile.apk {
+            root * /srv/mobile-downloads
+            rewrite * /donysh-mobile.apk
+            header {
+                Content-Type "application/vnd.android.package-archive"
+                Content-Disposition "attachment; filename=donysh-mobile.apk"
+                Cache-Control "public, no-cache, must-revalidate"
+            }
+            file_server
+        }
+
         # Keep installed mobile clients, in-flight OIDC callbacks and already-open
         # Finance tabs functional during the public-domain cutover.
         @legacy_backend path /api/* /signin-oidc /signout-callback-oidc /css/* /js/* /fonts/* /images/*

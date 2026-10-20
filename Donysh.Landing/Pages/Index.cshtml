@@ -13,6 +13,7 @@
         </a>
         <div class="nav-links">
             <a href="#products">محصول‌ها</a>
+            <a href="#mobile-app">دانلود برنامه</a>
             <a href="#approach">نگاه دونیش</a>
         </div>
         <a class="nav-action" href="@(products.FinanceUrl.TrimEnd('/') + "/Account/Login")">ورود به بخش مالی</a>
@@ -112,6 +113,38 @@
         </div>
     </section>
 
+    <section id="mobile-app" class="download-section section-shell" aria-labelledby="mobile-app-title">
+        <div class="download-panel">
+            <div class="download-visual" aria-hidden="true">
+                <span class="download-logo"><img src="/landing-assets/images/donysh-mark.png" alt="" width="80" height="80" /></span>
+                <svg class="download-phone" viewBox="0 0 160 280">
+                    <rect x="14" y="5" width="132" height="270" rx="28" />
+                    <path d="M62 22h36" />
+                    <circle cx="80" cy="244" r="8" />
+                    <path d="M48 104h64M48 132h44M48 160h56" />
+                </svg>
+            </div>
+            <div class="download-copy">
+                <p class="eyebrow">دونیش مالی روی گوشی</p>
+                <h2 id="mobile-app-title">خرج‌های بانکی را همان موقع ثبت کن.</h2>
+                <p>برنامهٔ اندروید دونیش پیامک‌های بانکی انتخاب‌شده را روی گوشی بررسی می‌کند و خرج‌های مورد تأییدت را برای فضای مالی دلخواه می‌فرستد.</p>
+                <ul class="download-benefits">
+                    <li>انتخاب فرستنده‌ها و فضای مالی مقصد</li>
+                    <li>نگهداری امن پیام‌های ارسال‌نشده روی گوشی</li>
+                    <li>امکان بازبینی عنوان و جزئیات پیش از ارسال</li>
+                </ul>
+                <div class="download-actions">
+                    <a class="button button-primary" href="/downloads/donysh-mobile.apk" download>
+                        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3v12m0 0 5-5m-5 5-5-5M5 21h14" /></svg>
+                        دانلود برنامهٔ اندروید
+                    </a>
+                    <span>دریافت مستقیم و امن از سرور دونیش</span>
+                </div>
+                <p class="download-note">برای نصب مستقیم، ممکن است لازم باشد اجازهٔ نصب از مرورگر را فقط برای همین بار فعال کنید. فایل برنامه در فروشگاه‌های عمومی منتشر نشده است.</p>
+            </div>
+        </div>
+    </section>
+
     <section id="approach" class="approach-section section-shell" aria-labelledby="approach-title">
         <div class="approach-panel">
             <div class="section-heading compact">
@@ -143,6 +176,7 @@
         </div>
         <div class="footer-links">
             <a href="@products.FinanceUrl">دونیش مالی</a>
+            <a href="/downloads/donysh-mobile.apk" download>دانلود برنامه</a>
             <a href="@products.LifeUrl">دونیش زندگی</a>
             <a href="@products.AuthUrl">حساب کاربری</a>
         </div>

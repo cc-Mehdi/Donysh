@@ -2,11 +2,25 @@
 @model HesabYar.Web.Pages.Mobile.IndexModel
 @{ ViewData["Title"] = "همراه دونیش"; }
 <div class="mb-6"><h2 class="text-2xl font-black">همراه دونیش · پیامک بانکی</h2>
-<p class="mt-2 text-sm text-slate-500">ثبت خودکار برداشت‌های ملت، بلو و رسالت با اپ Android؛ همه خرج‌ها ابتدا «نیازمند بررسی» هستند.</p></div>
+<p class="mt-2 text-sm text-slate-500">ثبت خودکار برداشت‌های ملت، بلو و رسالت با برنامهٔ اندروید؛ همه خرج‌ها ابتدا «نیازمند بررسی» هستند.</p></div>
+<section class="card mb-5 overflow-hidden border-indigo-200 bg-gradient-to-l from-indigo-50 to-white">
+    <div class="flex flex-col items-start justify-between gap-5 sm:flex-row sm:items-center">
+        <div class="flex items-start gap-4">
+            <span class="grid size-14 shrink-0 place-items-center rounded-2xl bg-indigo-100 text-indigo-700" aria-hidden="true">
+                <svg class="size-7 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M10 5h4M10 18h4"/></svg>
+            </span>
+            <div>
+                <h3 class="card-title">دریافت برنامهٔ اندروید دونیش</h3>
+                <p class="mt-2 max-w-2xl text-sm leading-7 text-slate-600">نسخهٔ رسمی را مستقیم از سرور دونیش دریافت کنید. پس از نصب، همین صفحه را برای ساخت کد اتصال باز نگه دارید.</p>
+            </div>
+        </div>
+        <a href="https://donysh.ir/downloads/donysh-mobile.apk" class="btn-primary w-full shrink-0 sm:w-auto" download>دانلود فایل نصب</a>
+    </div>
+</section>
 <section class="card mb-5 space-y-4">
     <h3 class="card-title">اتصال گوشی به «@Model.Workspace.Name»</h3>
     <p>برای تغییر مقصد، ابتدا فضای مالی را از منو انتخاب کنید و سپس اتصال بسازید. تغییر فضای فعال سایت، مقصد اتصال‌های قبلی را تغییر نمی‌دهد.</p>
-    <p class="text-sm text-slate-500">اپ فقط پیامک‌های جدیدِ فرستنده‌هایی را که خودتان فعال می‌کنید می‌خواند. متن برداشت شامل اطلاعات حساب و مانده در این فضای مالی ذخیره می‌شود؛ در فضای مشترک برای اعضا قابل مشاهده است. ارسال ممکن است به علت محدودیت باتری Android با تأخیر انجام شود.</p>
+    <p class="text-sm text-slate-500">برنامه فقط پیامک‌های فرستنده‌هایی را که خودتان فعال می‌کنید بررسی می‌کند. اطلاعات حساس مانند ماندهٔ حساب به سرور فرستاده نمی‌شود و پیام‌های ناموفق تا زمان ارسال دوباره روی گوشی می‌مانند. ارسال ممکن است به علت محدودیت باتری اندروید با تأخیر انجام شود.</p>
     <form method="post" class="space-y-4">
         <div asp-validation-summary="All" class="field-error"></div>
         <div><label asp-for="DeviceName" class="label">نام اتصال</label><input asp-for="DeviceName" class="input" maxlength="80" /></div>
