@@ -17,7 +17,7 @@ internal static class TemplateFlowSmokeCheck
     public static Window CreateWindow()
     {
         var status = new Label { Text = "در حال بررسی قالب‌های پیامک…", Margin = 24 };
-        var root = new ContentPage { Title = "آزمون جداگانهٔ دونیش", Content = status };
+        var root = new ContentPage { Title = "آزمون جداگانهٔ دُنیش", Content = status };
         root.Loaded += async (_, _) =>
         {
             if (Interlocked.Exchange(ref _started, 1) != 0) return;

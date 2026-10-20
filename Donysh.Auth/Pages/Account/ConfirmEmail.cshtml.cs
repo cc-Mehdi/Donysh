@@ -23,7 +23,7 @@ public sealed class ConfirmEmailModel(UserManager<AuthUser> users) : PageModel
             var token = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(code));
             var result = await users.ConfirmEmailAsync(user, token);
             Succeeded = result.Succeeded;
-            Message = result.Succeeded ? "اکنون می‌توانید وارد حساب مرکزی دونیش شوید." : "این پیوند منقضی یا قبلاً استفاده شده است.";
+            Message = result.Succeeded ? "اکنون می‌توانید وارد حساب مرکزی دُنیش شوید." : "این پیوند منقضی یا قبلاً استفاده شده است.";
         }
         catch (FormatException) { }
     }

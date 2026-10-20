@@ -127,7 +127,7 @@ public partial class MainPage : DonyshPage
             else if (status == PermissionStatus.Granted) AppInfo.ShowSettingsUI();
             else status = await Permissions.RequestAsync<ReceiveSmsPermission>();
             if (status != PermissionStatus.Granted)
-                await UiSafety.AlertAsync(this, "اجازهٔ دریافت پیامک", "در تنظیمات گوشی، اجازهٔ دریافت پیامک را برای دونیش فعال کنید.");
+                await UiSafety.AlertAsync(this, "اجازهٔ دریافت پیامک", "در تنظیمات گوشی، اجازهٔ دریافت پیامک را برای دُنیش فعال کنید.");
             else
             {
                 if (SmsSyncSettings.RecoverRecent
@@ -145,7 +145,7 @@ public partial class MainPage : DonyshPage
         catch (Exception exception)
         {
             UiSafety.Log(exception);
-            await UiSafety.AlertAsync(this, "دسترسی فعال نشد", "از تنظیمات گوشی، بخش برنامه‌ها و سپس اجازه‌های دونیش را بررسی کنید.");
+            await UiSafety.AlertAsync(this, "دسترسی فعال نشد", "از تنظیمات گوشی، بخش برنامه‌ها و سپس اجازه‌های دُنیش را بررسی کنید.");
         }
         finally { _requestingPermission = false; }
     }
@@ -361,7 +361,7 @@ public partial class MainPage : DonyshPage
         }
         catch (UnauthorizedAccessException)
         {
-            await UiSafety.AlertAsync(this, "ورود دوباره لازم است", "نشست این گوشی پایان یافته است. از تنظیمات دوباره وارد حساب دونیش شوید.");
+            await UiSafety.AlertAsync(this, "ورود دوباره لازم است", "نشست این گوشی پایان یافته است. از تنظیمات دوباره وارد حساب دُنیش شوید.");
         }
         catch (Exception exception)
         {

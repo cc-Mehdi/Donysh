@@ -70,17 +70,15 @@
                 <a asp-page="/Savings/Index" class="@NavClass("/Savings")"><span>◇</span><span>پس‌انداز</span></a>
                 <a asp-page="/Reports/Index" class="@NavClass("/Reports")"><span>▥</span><span>گزارش‌ها</span></a>
                 <a asp-page="/Ai/Index" class="@NavClass("/Ai")"><span>✦</span><span>دستیار هوشمند</span></a>
-                <a asp-page="/Mobile/Index" class="@NavClass("/Mobile")"><span>▣</span><span>همراه دونیش</span></a>
+                <a asp-page="/Mobile/Index" class="@NavClass("/Mobile")"><span>▣</span><span>همراه دُنیش</span></a>
                 <a asp-page="/Workspaces/Index" class="@NavClass("/Workspaces")"><span>♧</span><span>فضاهای مالی</span></a>
                 <a asp-page="/Settings/Index" class="@NavClass("/Settings")"><span>⚙</span><span>تنظیمات</span></a>
             </nav>
 
             <div class="absolute inset-x-5 bottom-5 lg:static lg:mt-10">
-                <a href="@lifeUrl" class="product-switcher mb-3 hidden lg:flex" aria-label="رفتن به دونیش زندگی">
-                    <span class="product-switcher-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24"><path d="M12 21s-7-4.35-7-10a4 4 0 0 1 7-2.65A4 4 0 0 1 19 11c0 5.65-7 10-7 10Z" /></svg>
-                    </span>
-                    <span class="product-switcher-copy"><small>برنامه‌ریزی و عادت‌ها</small><strong>دونیش زندگی</strong></span>
+                <a href="@lifeUrl" class="product-switcher mb-3 hidden lg:flex" aria-label="رفتن به دُنیش زندگی">
+                    <img class="product-switcher-life-logo" src="~/images/donysh-life-logo.png" alt="" width="48" height="48" />
+                    <span class="product-switcher-copy"><small>برنامه‌ریزی و عادت‌ها</small><strong>دُنیش زندگی</strong></span>
                     <span class="product-switcher-arrow" aria-hidden="true">←</span>
                 </a>
                 <div class="rounded-2xl border border-slate-200 p-3">
@@ -113,8 +111,8 @@
                     </div>
                     <div class="flex items-center gap-2">
                         @await Component.InvokeAsync("ObligationAlert")
-                        <a href="@lifeUrl" class="product-switcher-compact lg:hidden" aria-label="رفتن به دونیش زندگی">
-                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-4.35-7-10a4 4 0 0 1 7-2.65A4 4 0 0 1 19 11c0 5.65-7 10-7 10Z" /></svg>
+                        <a href="@lifeUrl" class="product-switcher-compact lg:hidden" aria-label="رفتن به دُنیش زندگی">
+                            <img class="product-switcher-life-logo compact" src="~/images/donysh-life-logo.png" alt="" width="28" height="28" />
                             <span>زندگی</span>
                         </a>
                         <a asp-page="/Expenses/Create" class="btn-primary"><span class="text-lg">＋</span><span class="hidden sm:inline">ثبت خرج</span></a>

@@ -6,14 +6,14 @@
              x:Class="DonyshMobile.SetupWizardPage"
              x:DataType="local:SetupWizardPage"
              FlowDirection="RightToLeft"
-             Title="راه‌اندازی دونیش">
+             Title="راه‌اندازی دُنیش">
     <ScrollView>
         <VerticalStackLayout x:Name="WizardContent" Padding="20,18,20,34" Spacing="18" MaximumWidthRequest="620" HorizontalOptions="Fill">
             <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
                 <Image Source="donysh_logo.svg" WidthRequest="54" HeightRequest="54"
-                       SemanticProperties.Description="نشان دونیش" />
+                       SemanticProperties.Description="نشان دُنیش" />
                 <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
-                    <Label Text="راه‌اندازی دونیش همراه" Style="{StaticResource PageTitle}" FontSize="22" />
+                    <Label Text="راه‌اندازی دُنیش همراه" Style="{StaticResource PageTitle}" FontSize="22" />
                     <Label Text="هر بار فقط یک قدم" Style="{StaticResource MutedText}" />
                 </VerticalStackLayout>
             </Grid>
@@ -36,9 +36,9 @@
                     <Border Style="{StaticResource InfoCard}" WidthRequest="54" HeightRequest="54" HorizontalOptions="Start" StrokeThickness="0">
                         <Label Text="{x:Static ui:AppIcons.Link}" FontFamily="MaterialIconsRound" FontSize="24" HorizontalOptions="Center" VerticalOptions="Center" />
                     </Border>
-                    <Label Text="وارد حساب دونیش شوید" Style="{StaticResource SectionTitle}" FontSize="20" />
+                    <Label Text="وارد حساب دُنیش شوید" Style="{StaticResource SectionTitle}" FontSize="20" />
                     <Label Text="با همان رایانامه و گذرواژهٔ سایت وارد شوید. پس از ورود، فضاهای مالی شما نمایش داده می‌شوند." Style="{StaticResource MutedText}" LineHeight="1.35" />
-                    <ui:DonyshButton x:Name="OpenConnectionButton" Glyph="{x:Static ui:AppIcons.Security}" Text="ورود به حساب دونیش" Clicked="OnConnectionClicked"
+                    <ui:DonyshButton x:Name="OpenConnectionButton" Glyph="{x:Static ui:AppIcons.Security}" Text="ورود به حساب دُنیش" Clicked="OnConnectionClicked"
                             Style="{StaticResource PrimaryAction}" AutomationId="SetupConnectionButton" />
                     <Label Text="گذرواژه روی گوشی ذخیره نمی‌شود و این گوشی دسترسی جداگانه دریافت می‌کند." Style="{StaticResource Caption}" HorizontalTextAlignment="Center" />
                 </VerticalStackLayout>
@@ -71,7 +71,7 @@
                         <Label Text="{x:Static ui:AppIcons.Security}" FontFamily="MaterialIconsRound" FontSize="24" HorizontalOptions="Center" VerticalOptions="Center" />
                     </Border>
                     <Label Text="دریافت پیامک را فعال کنید" Style="{StaticResource SectionTitle}" FontSize="20" />
-                    <Label Text="دونیش فقط پیام‌های فرستنده‌هایی را که خودتان انتخاب کرده‌اید نگه می‌دارد. پیام‌های دیگر خوانده یا ارسال نمی‌شوند." Style="{StaticResource MutedText}" LineHeight="1.35" />
+                    <Label Text="دُنیش فقط پیام‌های فرستنده‌هایی را که خودتان انتخاب کرده‌اید نگه می‌دارد. پیام‌های دیگر خوانده یا ارسال نمی‌شوند." Style="{StaticResource MutedText}" LineHeight="1.35" />
                     <ui:DonyshButton x:Name="PermissionButton" Glyph="{x:Static ui:AppIcons.Notification}" Text="فعال‌کردن دریافت پیامک" Clicked="OnPermissionClicked"
                             Style="{StaticResource PrimaryAction}" AutomationId="SetupPermissionButton" />
                     <Label Text="فرستنده ثبت شد؛ پس از دادن اجازه، خودکار به قدم بعد می‌روید." Style="{StaticResource Caption}" HorizontalTextAlignment="Center" />
@@ -96,7 +96,7 @@
             <Border x:Name="CompleteStepCard" Style="{StaticResource AccentCard}" Padding="22" IsVisible="{Binding IsCompleteStep}">
                 <VerticalStackLayout Spacing="14">
                     <Label Text="{x:Static ui:AppIcons.CheckCircle}" FontFamily="MaterialIconsRound" FontSize="40" TextColor="#059669" HorizontalTextAlignment="Center" />
-                    <Label Text="دونیش آماده است" Style="{StaticResource PageTitle}" HorizontalTextAlignment="Center" />
+                    <Label Text="دُنیش آماده است" Style="{StaticResource PageTitle}" HorizontalTextAlignment="Center" />
                     <Label Text="اتصال، فرستنده و قالب ثبت شدند. از این پس پیام‌های تازه طبق انتخاب شما بررسی می‌شوند." Style="{StaticResource MutedText}" HorizontalTextAlignment="Center" LineHeight="1.35" />
                     <ui:DonyshButton x:Name="FinishButton" Glyph="{x:Static ui:AppIcons.Check}" Text="ورود به برنامه" Clicked="OnFinishClicked"
                             Style="{StaticResource SuccessAction}" AutomationId="SetupFinishButton" />

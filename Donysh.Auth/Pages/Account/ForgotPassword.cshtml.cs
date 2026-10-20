@@ -48,7 +48,7 @@ public sealed class ForgotPasswordModel(
                 var callback = Url.Page("/Account/ResetPassword", null,
                     new { email = user.Email, code }, Request.Scheme);
                 if (callback is not null)
-                    await sender.SendAsync(user.Email, "بازیابی رمز عبور دونیش",
+                    await sender.SendAsync(user.Email, "بازیابی رمز عبور دُنیش",
                         $"<p>برای تعیین رمز عبور جدید، روی پیوند زیر بزنید:</p><p><a href=\"{WebUtility.HtmlEncode(callback)}\">بازیابی رمز عبور</a></p>",
                         cancellationToken);
             }

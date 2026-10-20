@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <Content Include="../HesabYar.Web/wwwroot/images/donysh-mark.png" Link="wwwroot/images/donysh-mark.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="../HesabYar.Web/wwwroot/images/donysh-life-logo.png" Link="wwwroot/images/donysh-life-logo.png" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="../HesabYar.Web/wwwroot/fonts/YekanBakh-Regular.woff2" Link="wwwroot/fonts/YekanBakh-Regular.woff2" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="../HesabYar.Web/wwwroot/fonts/YekanBakh-SemiBold.woff2" Link="wwwroot/fonts/YekanBakh-SemiBold.woff2" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="../HesabYar.Web/wwwroot/fonts/YekanBakh-ExtraBold.woff2" Link="wwwroot/fonts/YekanBakh-ExtraBold.woff2" CopyToOutputDirectory="PreserveNewest" />

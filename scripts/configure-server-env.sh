@@ -97,7 +97,7 @@ keep_or_generate_secret() {
 prompt_value DOMAIN 'دامنهٔ اصلی' 'donysh.ir'
 prompt_value FINANCE_DOMAIN 'دامنهٔ سرویس مالی' "finance.${desired[DOMAIN]}"
 prompt_value AUTH_DOMAIN 'دامنهٔ سرویس ورود مرکزی' "auth.${desired[DOMAIN]}"
-prompt_value LIFE_DOMAIN 'دامنهٔ دونیش زندگی' "life.${desired[DOMAIN]}"
+prompt_value LIFE_DOMAIN 'دامنهٔ دُنیش زندگی' "life.${desired[DOMAIN]}"
 prompt_value ACME_EMAIL 'ایمیل دریافت هشدارهای گواهی HTTPS' "admin@${desired[DOMAIN]}"
 prompt_value APP_PORT 'درگاه داخلی برنامه' '8080'
 prompt_value TZ 'منطقهٔ زمانی' 'Asia/Tehran'
@@ -105,8 +105,8 @@ prompt_value POSTGRES_DB 'نام پایگاه دادهٔ مالی' 'hesabyar'
 prompt_value POSTGRES_USER 'کاربر پایگاه دادهٔ مالی' 'hesabyar'
 prompt_value AUTH_POSTGRES_DB 'نام پایگاه دادهٔ ورود مرکزی' 'donysh_auth'
 prompt_value AUTH_POSTGRES_USER 'کاربر پایگاه دادهٔ ورود مرکزی' 'donysh_auth'
-prompt_value LIFE_POSTGRES_DB 'نام پایگاه دادهٔ دونیش زندگی' 'donysh_life'
-prompt_value LIFE_POSTGRES_USER 'کاربر پایگاه دادهٔ دونیش زندگی' 'donysh_life'
+prompt_value LIFE_POSTGRES_DB 'نام پایگاه دادهٔ دُنیش زندگی' 'donysh_life'
+prompt_value LIFE_POSTGRES_USER 'کاربر پایگاه دادهٔ دُنیش زندگی' 'donysh_life'
 
 [[ "${desired[DOMAIN]}" =~ ^([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$ ]] \
   || fail "دامنهٔ اصلی معتبر نیست."
@@ -115,7 +115,7 @@ prompt_value LIFE_POSTGRES_USER 'کاربر پایگاه دادهٔ دونیش �
 [[ "${desired[AUTH_DOMAIN]}" =~ ^([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$ ]] \
   || fail "دامنهٔ سرویس ورود معتبر نیست."
 [[ "${desired[LIFE_DOMAIN]}" =~ ^([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$ ]] \
-  || fail "دامنهٔ دونیش زندگی معتبر نیست."
+  || fail "دامنهٔ دُنیش زندگی معتبر نیست."
 [[ "${desired[ACME_EMAIL]}" =~ ^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$ ]] \
   || fail "ایمیل گواهی HTTPS معتبر نیست."
 [[ "${desired[APP_PORT]}" =~ ^[0-9]+$ ]] \

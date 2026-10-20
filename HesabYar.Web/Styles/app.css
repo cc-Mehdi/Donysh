@@ -219,6 +219,14 @@
         @apply grid size-10 shrink-0 place-items-center rounded-xl bg-violet-100 text-violet-700;
     }
 
+    .product-switcher-life-logo {
+        @apply size-12 shrink-0 rounded-xl object-contain;
+    }
+
+    .product-switcher-life-logo.compact {
+        @apply size-7 rounded-lg;
+    }
+
         .product-switcher-icon svg {
             width: 1.25rem;
             height: 1.25rem;

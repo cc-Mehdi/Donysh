@@ -62,7 +62,7 @@ public static class TitleReminderNotifier
         var builder = new NotificationCompat.Builder(context, ChannelId);
         builder.SetSmallIcon(Resource.Drawable.ic_donysh_notification);
         builder.SetColor(global::Android.Graphics.Color.Rgb(81, 67, 216));
-        builder.SetContentTitle("پیامک جدید در دونیش");
+        builder.SetContentTitle("پیامک جدید در دُنیش");
         builder.SetContentText($"{DonyshMobile.UI.UiText.Digits(count)} پیام منتظر عنوان است. عنوان را همین‌جا ثبت کنید.");
         builder.SetContentIntent(pending);
         builder.SetAutoCancel(false);

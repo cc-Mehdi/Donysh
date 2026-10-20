@@ -33,9 +33,9 @@
                 <VerticalStackLayout Spacing="10">
                     <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
                         <Label Text="{x:Static ui:AppIcons.Link}" Style="{StaticResource SectionIcon}" />
-                        <Label Grid.Column="1" Text="وصل‌کردن گوشی به دونیش" Style="{StaticResource SectionTitle}" />
+                        <Label Grid.Column="1" Text="وصل‌کردن گوشی به دُنیش" Style="{StaticResource SectionTitle}" />
                     </Grid>
-                    <Label Text="با همان رایانامه و گذرواژه‌ای که در سایت دونیش استفاده می‌کنید وارد شوید. گذرواژه روی گوشی نگهداری نمی‌شود." Style="{StaticResource MutedText}" />
+                    <Label Text="با همان رایانامه و گذرواژه‌ای که در سایت دُنیش استفاده می‌کنید وارد شوید. گذرواژه روی گوشی نگهداری نمی‌شود." Style="{StaticResource MutedText}" />
                     <Label Text="رایانامه" FontAttributes="Bold" />
                     <Border Style="{StaticResource FieldCard}">
                         <Entry x:Name="EmailEntry" Placeholder="نشانی رایانامه" MaxLength="254" Keyboard="Email"
@@ -44,7 +44,7 @@
                     </Border>
                     <Label Text="گذرواژه" FontAttributes="Bold" />
                     <Border Style="{StaticResource FieldCard}">
-                        <Entry x:Name="PasswordEntry" Placeholder="گذرواژهٔ حساب دونیش" MaxLength="256" IsPassword="True"
+                        <Entry x:Name="PasswordEntry" Placeholder="گذرواژهٔ حساب دُنیش" MaxLength="256" IsPassword="True"
                                IsTextPredictionEnabled="False" IsSpellCheckEnabled="False" ReturnType="Done"
                                Completed="OnLoginClicked" FlowDirection="LeftToRight" HorizontalTextAlignment="Start" />
                     </Border>

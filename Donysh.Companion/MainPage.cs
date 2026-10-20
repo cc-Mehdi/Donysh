@@ -19,17 +19,17 @@ public sealed class MainPage : ContentPage
 
     public MainPage()
     {
-        Title = "همراه دونیش"; FlowDirection = FlowDirection.RightToLeft; BackgroundColor = Color.FromArgb("F6F7FB");
+        Title = "همراه دُنیش"; FlowDirection = FlowDirection.RightToLeft; BackgroundColor = Color.FromArgb("F6F7FB");
         server.TextChanged += (_, _) => PersistFields(); mellat.TextChanged += (_, _) => PersistFields(); blu.TextChanged += (_, _) => PersistFields();
         toggle.Clicked += async (_, _) => await RunAsync(toggle, EnableAsync);
-        var pair = PrimaryButton("اتصال امن به دونیش"); pair.Clicked += async (_, _) => await RunAsync(pair, PairAsync);
+        var pair = PrimaryButton("اتصال امن به دُنیش"); pair.Clicked += async (_, _) => await RunAsync(pair, PairAsync);
         var refresh = SecondaryButton("تازه‌سازی وضعیت"); refresh.Clicked += async (_, _) => await RunAsync(refresh, async () => { CompanionPlatform.Schedule(); await RefreshAsync(); });
 
         Content = new ScrollView { Content = new VerticalStackLayout {
             Padding = new Thickness(20, 24, 20, 36), Spacing = 16, MaximumWidthRequest = 760, HorizontalOptions = LayoutOptions.Center,
             Children = {
                 Hero(),
-                Card(Header("اتصال به حساب", "۱", "کد یک‌بارمصرف را از بخش «همراه دونیش» سایت دریافت کنید."), Field("آدرس سایت", server), Field("کد اتصال", code), pair, connection),
+                Card(Header("اتصال به حساب", "۱", "کد یک‌بارمصرف را از بخش «همراه دُنیش» سایت دریافت کنید."), Field("آدرس سایت", server), Field("کد اتصال", code), pair, connection),
                 AutomationCard(),
                 Card(Header("وضعیت همگام‌سازی", "۳", "صف به‌صورت امن روی همین دستگاه نگهداری می‌شود."), status, refresh),
                 PreviewCard(),
@@ -44,7 +44,7 @@ public sealed class MainPage : ContentPage
         var grid = new Grid { ColumnSpacing = 14, ColumnDefinitions = { new ColumnDefinition(GridLength.Auto), new ColumnDefinition(GridLength.Star) } };
         grid.Add(new Image { Source = "donysh_logo.svg", HeightRequest = 66, WidthRequest = 66 }, 0, 0);
         grid.Add(new VerticalStackLayout { Spacing = 3, VerticalOptions = LayoutOptions.Center, Children = {
-            new Label { Text = "همراه دونیش", FontSize = 27, FontAttributes = FontAttributes.Bold, TextColor = Ink },
+            new Label { Text = "همراه دُنیش", FontSize = 27, FontAttributes = FontAttributes.Bold, TextColor = Ink },
             new Label { Text = "ثبت خودکار برداشت‌های بانکی", FontSize = 14, TextColor = Muted }
         }}, 1, 0);
         return Card(grid, new Label { IsVisible = !CompanionPlatform.SupportsSms, Text = "نسخه Windows برای تنظیم اتصال و آزمایش قالب پیامک است؛ دریافت خودکار SMS فقط در Android فعال است.", TextColor = Color.FromArgb("3730A3"), BackgroundColor = Soft, Padding = 10, FontSize = 12 });
@@ -104,7 +104,7 @@ public sealed class MainPage : ContentPage
         try
         {
             if (!Uri.TryCreate(server.Text?.Trim(), UriKind.Absolute, out var uri) || uri.Scheme != "https" || uri.AbsolutePath != "/" || uri.Query.Length != 0 || uri.UserInfo.Length != 0 || uri.Fragment.Length != 0) { await DisplayAlert("آدرس نامعتبر", "فقط آدرس HTTPS سایت بدون مسیر اضافی وارد کنید.", "باشه"); return; }
-            if (code.Text?.Trim().Length != 32) { await DisplayAlert("کد نامعتبر", "کد ۳۲ کاراکتری صفحه همراه دونیش را وارد کنید.", "باشه"); return; }
+            if (code.Text?.Trim().Length != 32) { await DisplayAlert("کد نامعتبر", "کد ۳۲ کاراکتری صفحه همراه دُنیش را وارد کنید.", "باشه"); return; }
             CompanionSettings.Enabled = false;
             if (CompanionSettings.Queue.Snapshot().Items.Count > 0) { await DisplayAlert("صف خالی نیست", "ابتدا پیامک‌های اتصال قبلی را تعیین تکلیف کنید.", "باشه"); await RefreshAsync(); return; }
             using var client = CompanionSettings.Http(); var origin = uri.GetLeftPart(UriPartial.Authority);

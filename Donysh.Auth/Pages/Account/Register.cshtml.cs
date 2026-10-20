@@ -82,8 +82,8 @@ public sealed class RegisterModel(
             var callback = Url.Page("/Account/ConfirmEmail", null,
                 new { userId = user.Id, code }, Request.Scheme)
                 ?? throw new InvalidOperationException("Confirmation URL could not be created.");
-            await emailSender.SendAsync(normalizedEmail, "تأیید حساب دونیش",
-                $"<p>برای تأیید حساب دونیش، روی پیوند زیر بزنید:</p><p><a href=\"{WebUtility.HtmlEncode(callback)}\">تأیید حساب</a></p>",
+            await emailSender.SendAsync(normalizedEmail, "تأیید حساب دُنیش",
+                $"<p>برای تأیید حساب دُنیش، روی پیوند زیر بزنید:</p><p><a href=\"{WebUtility.HtmlEncode(callback)}\">تأیید حساب</a></p>",
                 cancellationToken);
         }
         catch (Exception exception)

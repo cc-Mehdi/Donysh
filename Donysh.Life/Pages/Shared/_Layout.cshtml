@@ -12,7 +12,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#0d9488" />
-    <title>@ViewData["Title"] | دونیش زندگی</title>
+    <title>@ViewData["Title"] | دُنیش زندگی</title>
     <link rel="preload" href="~/fonts/YekanBakh-Regular.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="~/css/app.css" asp-append-version="true" />
 </head>
@@ -20,9 +20,8 @@
     <a class="skip-link" href="#main-content">رفتن به محتوای اصلی</a>
     <div class="app-shell">
         <aside class="sidebar">
-            <a class="brand" asp-page="/Index" aria-label="دونیش زندگی، صفحهٔ اصلی">
-                <img src="~/images/donysh-mark.png" alt="" width="42" height="42" />
-                <span><strong>دونیش</strong><small>زندگی</small></span>
+            <a class="brand life-brand" asp-page="/Index" aria-label="دُنیش زندگی، صفحهٔ اصلی">
+                <img class="life-brand-logo" src="~/images/donysh-life-logo.png" alt="Donysh Life" width="124" height="124" />
             </a>
             <nav class="side-nav" aria-label="ناوبری اصلی">
                 <a class="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Index" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Index" ? "page" : null)" asp-page="/Index"><span aria-hidden="true">⌂</span>امروز</a>
@@ -31,11 +30,11 @@
                 <a class="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Progress" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Progress" ? "page" : null)" asp-page="/Progress"><span aria-hidden="true">↗</span>پیشرفت</a>
             </nav>
             <div class="sidebar-footer">
-                <a class="product-switcher" href="@financeUrl" aria-label="رفتن به دونیش مالی">
+                <a class="product-switcher" href="@financeUrl" aria-label="رفتن به دُنیش مالی">
                     <span class="product-switcher-icon" aria-hidden="true">
                         <svg viewBox="0 0 24 24"><path d="M4 7.5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-12a2 2 0 0 1 2-2h11" /><path d="M16 12h4v3h-4a1.5 1.5 0 0 1 0-3Z" /></svg>
                     </span>
-                    <span class="product-switcher-copy"><small>بودجه و مخارج</small><strong>دونیش مالی</strong></span>
+                    <span class="product-switcher-copy"><small>بودجه و مخارج</small><strong>دُنیش مالی</strong></span>
                     <span class="product-switcher-arrow" aria-hidden="true">←</span>
                 </a>
                 <form method="post" asp-page="/Account/Logout" class="logout-form">
@@ -45,8 +44,8 @@
         </aside>
         <div class="page-column">
             <header class="mobile-header">
-                <a class="brand" asp-page="/Index"><img src="~/images/donysh-mark.png" alt="" width="36" height="36" /><strong>دونیش زندگی</strong></a>
-                <a class="product-switcher compact" href="@financeUrl" aria-label="رفتن به دونیش مالی">
+                <a class="brand life-brand compact-brand" asp-page="/Index"><img class="life-brand-logo" src="~/images/donysh-life-logo.png" alt="Donysh Life" width="72" height="72" /></a>
+                <a class="product-switcher compact" href="@financeUrl" aria-label="رفتن به دُنیش مالی">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-12a2 2 0 0 1 2-2h11" /><path d="M16 12h4v3h-4a1.5 1.5 0 0 1 0-3Z" /></svg>
                     <span>مالی</span>
                 </a>

@@ -2,184 +2,190 @@
 @using Microsoft.Extensions.Options
 @inject IOptions<LandingLinksOptions> ProductOptions
 @{
-    ViewData["Title"] = "دونیش | ابزارهای ساده برای زندگی روشن‌تر";
+    ViewData["Title"] = "دُنیش | وضوح برای پول و زمان";
     var products = ProductOptions.Value;
 }
 
 <header class="site-header">
     <nav class="nav-shell" aria-label="ناوبری اصلی">
-        <a class="wordmark-link" href="#top" aria-label="دونیش، صفحهٔ اصلی">
-            <img src="/landing-assets/images/donysh-wordmark.png" alt="دونیش" width="178" height="58" />
+        <a class="wordmark-link" href="#top" aria-label="دُنیش، صفحهٔ اصلی">
+            <img src="/landing-assets/images/donysh-wordmark.png" alt="دُنیش" width="178" height="58" />
         </a>
         <div class="nav-links">
             <a href="#products">محصول‌ها</a>
-            <a href="#mobile-app">دانلود برنامه</a>
-            <a href="#approach">نگاه دونیش</a>
+            <a href="#experience">چطور کار می‌کند؟</a>
+            <a href="#mobile-app">برنامهٔ همراه</a>
         </div>
-        <a class="nav-action" href="@(products.FinanceUrl.TrimEnd('/') + "/Account/Login")">ورود به بخش مالی</a>
+        <a class="nav-action" href="@(products.AuthUrl.TrimEnd('/') + "/Account/Login")">
+            <span>ورود به حساب</span>
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6" /></svg>
+        </a>
     </nav>
 </header>
 
 <main id="main-content">
     <section id="top" class="hero section-shell" aria-labelledby="hero-title">
         <div class="hero-copy">
-            <p class="eyebrow"><span aria-hidden="true"></span> یک خانه برای مدیریت بهتر زندگی</p>
-            <h1 id="hero-title">پول، زمان و هدف‌هایت را<br /> <strong>یک‌جا بهتر ببین.</strong></h1>
-            <p class="hero-lead">دونیش مجموعه‌ای از ابزارهای ساده و هماهنگ است تا تصمیم‌های روزمره‌ات روشن‌تر شوند؛ بدون صفحه‌های شلوغ و پیچیدگی اضافه.</p>
+            <p class="eyebrow"><span aria-hidden="true"></span> دو محصول، یک حساب امن</p>
+            <h1 id="hero-title">برای پولت <strong>وضوح.</strong><br />برای زمانت <em>جهت.</em></h1>
+            <p class="hero-lead">دُنیش کمک می‌کند پول، زمان و هدف‌هایت را ساده‌تر ببینی؛ تصمیم بگیری و بدون گم‌شدن میان ابزارهای شلوغ، آرام جلو بروی.</p>
             <div class="hero-actions">
                 <a class="button button-primary" href="@products.FinanceUrl">
-                    ورود به دونیش مالی
+                    شروع با دُنیش مالی
                     <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6" /></svg>
                 </a>
-                <a class="button button-secondary" href="#products">دیدن محصول‌ها</a>
+                <a class="button button-secondary" href="#products">دیدن دنیای دُنیش</a>
             </div>
             <div class="trust-row" aria-label="ویژگی‌های اصلی">
-                <span><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg>اطلاعات هر محصول جدا</span>
-                <span><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg>ورود یکپارچه و امن</span>
+                <span><i aria-hidden="true">✓</i>ورود یکپارچه و امن</span>
+                <span><i aria-hidden="true">✓</i>داده‌های هر محصول، مستقل</span>
+                <span><i aria-hidden="true">✓</i>طراحی ساده و فارسی</span>
             </div>
         </div>
 
-        <div class="hero-visual" aria-label="نمایی از اکوسیستم دونیش">
-            <div class="orbit orbit-one" aria-hidden="true"></div>
-            <div class="orbit orbit-two" aria-hidden="true"></div>
-            <div class="ecosystem-core">
-                <span>دونیش</span>
-                <strong>زندگی، روشن‌تر</strong>
+        <div class="hero-art" aria-label="دُنیش، پیوند مدیریت پول و زمان">
+            <div class="hero-glow" aria-hidden="true"></div>
+            <div class="hero-grid" aria-hidden="true"></div>
+            <div class="brand-sculpture">
+                <span class="sculpture-ring ring-one" aria-hidden="true"></span>
+                <span class="sculpture-ring ring-two" aria-hidden="true"></span>
+                <span class="brand-mark-wrap">
+                    <img src="/landing-assets/images/donysh-mark.png" alt="" width="176" height="176" />
+                </span>
             </div>
-            <article class="floating-card finance-chip">
-                <span class="product-icon product-icon-finance" aria-hidden="true">
+            <a class="floating-product finance-float" href="@products.FinanceUrl">
+                <span class="mini-icon finance-mini" aria-hidden="true">
                     <svg viewBox="0 0 24 24"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H18a2 2 0 0 1 2 2v2H4V7.5Z"/><path d="M4 9h16v10H6a2 2 0 0 1-2-2V9Z"/><path d="M16 13h5v3h-5a1.5 1.5 0 0 1 0-3Z"/></svg>
                 </span>
-                <span><small>فعال</small><strong>مدیریت مالی</strong></span>
-            </article>
-            <article class="floating-card life-chip">
-                <span class="product-icon product-icon-life" aria-hidden="true">
-                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>
-                </span>
-                <span><small>نسخهٔ آغازین</small><strong>مدیریت زندگی</strong></span>
-            </article>
-            <div class="pulse-dot pulse-one" aria-hidden="true"></div>
-            <div class="pulse-dot pulse-two" aria-hidden="true"></div>
+                <span><small>پول، بودجه و هدف‌ها</small><strong>دُنیش مالی</strong></span>
+                <b aria-hidden="true">↗</b>
+            </a>
+            <a class="floating-product life-float" href="@products.LifeUrl">
+                <img src="/landing-assets/images/donysh-life-logo.png" alt="Donysh Life" width="96" height="96" />
+                <span><small>زمان، برنامه و پیشرفت</small><strong>دُنیش زندگی</strong></span>
+                <b aria-hidden="true">↗</b>
+            </a>
+            <div class="signal-pill signal-one" aria-hidden="true"><i></i><span>همین امروز</span></div>
+            <div class="signal-pill signal-two" aria-hidden="true"><i></i><span>قدم بعدی روشن</span></div>
         </div>
     </section>
 
-    <section id="products" class="products-section section-shell" aria-labelledby="products-title">
-        <div class="section-heading">
-            <p class="eyebrow">محصول‌های دونیش</p>
-            <h2 id="products-title">هر بخش، ساده و مستقل؛<br />همه زیر یک حساب.</h2>
-            <p>از ابزاری که امروز نیاز داری شروع کن. محصولات دونیش داده‌ها و مسئولیت‌های جدا دارند، اما تجربهٔ ورودشان یکپارچه است.</p>
-        </div>
-
-        <div class="product-grid">
-            <article class="product-card product-card-finance">
-                <div class="product-card-top">
-                    <span class="product-icon product-icon-finance" aria-hidden="true">
-                        <svg viewBox="0 0 24 24"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H18a2 2 0 0 1 2 2v2H4V7.5Z"/><path d="M4 9h16v10H6a2 2 0 0 1-2-2V9Z"/><path d="M16 13h5v3h-5a1.5 1.5 0 0 1 0-3Z"/></svg>
-                    </span>
-                    <span class="status status-live"><i aria-hidden="true"></i>در دسترس</span>
-                </div>
-                <div>
-                    <p class="product-kicker">دونیش مالی</p>
-                    <h3>تصویر واضح‌تری از پولت داشته باش.</h3>
-                    <p>مخارج، بودجه‌ها، پس‌اندازها و اقساط را در فضای شخصی یا مشترک مدیریت کن و با گزارش‌های روشن تصمیم بگیر.</p>
-                </div>
-                <ul class="feature-list">
-                    <li>فضاهای مالی شخصی و مشترک</li>
-                    <li>بودجه و هدف‌های پس‌انداز</li>
-                    <li>گزارش و دستیار هوشمند</li>
-                </ul>
-                <a class="product-link" href="@products.FinanceUrl">بازکردن دونیش مالی <span aria-hidden="true">←</span></a>
-            </article>
-
-            <article class="product-card product-card-life">
-                <div class="product-card-top">
-                    <span class="product-icon product-icon-life" aria-hidden="true">
-                        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>
-                    </span>
-                    <span class="status status-live"><i aria-hidden="true"></i>نسخهٔ آغازین</span>
-                </div>
-                <div>
-                    <p class="product-kicker">دونیش زندگی</p>
-                    <h3>برای چیزهای مهم، زمان واقعی بساز.</h3>
-                    <p>هدف‌های هفتگی، برنامه و عملکرد واقعی را کنار هم ببین تا بدانی وقتت کجا می‌رود و قدم بعدی چیست.</p>
-                </div>
-                <ul class="feature-list">
-                    <li>هدف زمانی هفتگی</li>
-                    <li>برنامه‌ریزی ساده و منعطف</li>
-                    <li>سنجش پیشرفت واقعی</li>
-                </ul>
-                <a class="product-link" href="@products.LifeUrl">بازکردن دونیش زندگی <span aria-hidden="true">←</span></a>
-            </article>
+    <section class="signal-strip" aria-label="توانایی‌های دُنیش">
+        <div class="signal-track">
+            <span>بودجه‌ای که می‌فهمی</span><i>✦</i><span>برنامه‌ای که انجام می‌شود</span><i>✦</i><span>هدف‌هایی که جلو می‌روند</span><i>✦</i><span>گزارشی که تصمیم می‌سازد</span><i>✦</i>
+            <span aria-hidden="true">بودجه‌ای که می‌فهمی</span><i aria-hidden="true">✦</i><span aria-hidden="true">برنامه‌ای که انجام می‌شود</span><i aria-hidden="true">✦</i><span aria-hidden="true">هدف‌هایی که جلو می‌روند</span><i aria-hidden="true">✦</i><span aria-hidden="true">گزارشی که تصمیم می‌سازد</span><i aria-hidden="true">✦</i>
         </div>
     </section>
 
-    <section id="mobile-app" class="download-section section-shell" aria-labelledby="mobile-app-title">
-        <div class="download-panel">
-            <div class="download-visual" aria-hidden="true">
-                <span class="download-logo"><img src="/landing-assets/images/donysh-mark.png" alt="" width="80" height="80" /></span>
-                <svg class="download-phone" viewBox="0 0 160 280">
-                    <rect x="14" y="5" width="132" height="270" rx="28" />
-                    <path d="M62 22h36" />
-                    <circle cx="80" cy="244" r="8" />
-                    <path d="M48 104h64M48 132h44M48 160h56" />
-                </svg>
+    <section id="products" class="products-section section-shell reveal-section" aria-labelledby="products-title">
+        <div class="section-heading split-heading">
+            <div>
+                <p class="eyebrow">محصول‌های دُنیش</p>
+                <h2 id="products-title">هر بخش، متمرکز.<br />همه‌چیز، هماهنگ.</h2>
             </div>
+            <p>هر برنامه کار خودش را دقیق انجام می‌دهد، اما حساب و تجربهٔ کاربری بین آن‌ها پیوسته است. از چیزی که امروز لازم داری شروع کن.</p>
+        </div>
+
+        <div class="product-bento">
+            <article class="product-showcase finance-showcase">
+                <div class="product-copy">
+                    <div class="product-meta"><span class="live-dot">در دسترس</span><span>دُنیش مالی</span></div>
+                    <h3>تصویر کامل پولت،<br />بدون جدول‌های گیج‌کننده.</h3>
+                    <p>مخارج، بودجه‌ها، اقساط و هدف‌های پس‌انداز را در فضاهای شخصی یا مشترک کنار هم ببین.</p>
+                    <ul class="feature-pills">
+                        <li>فضاهای مشترک</li><li>بودجهٔ هوشمند</li><li>دستیار مالی</li>
+                    </ul>
+                    <a class="text-action" href="@products.FinanceUrl">ورود به دُنیش مالی <span aria-hidden="true">←</span></a>
+                </div>
+                <div class="finance-dashboard" aria-hidden="true">
+                    <div class="mock-header"><i></i><i></i><i></i><span>نمای ماه</span></div>
+                    <div class="mock-balance"><small>قابل خرج این ماه</small><strong>۱۲٬۴۸۰٬۰۰۰ <em>ریال</em></strong><span><i></i>۶۲٪ بودجه باقی مانده</span></div>
+                    <div class="mock-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+                    <div class="mock-row"><span><i></i>خریدهای روزانه</span><b>۲٬۸۴۰٬۰۰۰</b></div>
+                    <div class="mock-row"><span><i></i>حمل‌ونقل</span><b>۱٬۳۲۰٬۰۰۰</b></div>
+                </div>
+            </article>
+
+            <article class="product-showcase life-showcase">
+                <div class="life-brand-panel">
+                    <span class="life-orbit" aria-hidden="true"></span>
+                    <img src="/landing-assets/images/donysh-life-logo.png" alt="Donysh Life" width="220" height="220" />
+                </div>
+                <div class="product-copy">
+                    <div class="product-meta"><span class="life-dot">نسخهٔ آغازین</span><span>دُنیش زندگی</span></div>
+                    <h3>زمانت را برای چیزهای مهم پس بگیر.</h3>
+                    <p>هفته‌ات را بچین، کارهای واقعی را ثبت کن و پیشرفت هدف‌ها را با یک نگاه ببین.</p>
+                    <ul class="feature-pills life-pills">
+                        <li>برنامهٔ روز و هفته</li><li>سنجش پیشرفت</li><li>هدف زمانی</li>
+                    </ul>
+                    <a class="text-action life-action" href="@products.LifeUrl">ورود به دُنیش زندگی <span aria-hidden="true">←</span></a>
+                </div>
+            </article>
+        </div>
+    </section>
+
+    <section id="experience" class="experience-section section-shell reveal-section" aria-labelledby="experience-title">
+        <div class="experience-intro">
+            <p class="eyebrow">یک مسیر ساده</p>
+            <h2 id="experience-title">از دادهٔ پراکنده<br />تا تصمیم روشن.</h2>
+            <p>دُنیش قرار نیست کار دیگری روی دوشت بگذارد. اطلاعات را مرتب می‌کند تا سریع‌تر به کاری که مهم است برسی.</p>
+        </div>
+        <ol class="experience-steps">
+            <li><span>۰۱</span><div><i aria-hidden="true">◉</i><strong>واقعیت را ثبت کن</strong><p>خرج‌ها و زمان واقعی، ساده و بی‌دردسر کنار هم قرار می‌گیرند.</p></div></li>
+            <li><span>۰۲</span><div><i aria-hidden="true">◇</i><strong>الگو را ببین</strong><p>گزارش‌ها به‌جای عدد خام، وضعیت قابل فهم نشان می‌دهند.</p></div></li>
+            <li><span>۰۳</span><div><i aria-hidden="true">↗</i><strong>قدم بعدی را بردار</strong><p>برای بودجه، پس‌انداز و زمانت تصمیمی کوچک اما واقعی بگیر.</p></div></li>
+        </ol>
+    </section>
+
+    <section id="mobile-app" class="download-section section-shell reveal-section" aria-labelledby="mobile-app-title">
+        <div class="download-panel">
             <div class="download-copy">
-                <p class="eyebrow">دونیش مالی روی گوشی</p>
-                <h2 id="mobile-app-title">خرج‌های بانکی را همان موقع ثبت کن.</h2>
-                <p>برنامهٔ اندروید دونیش پیامک‌های بانکی انتخاب‌شده را روی گوشی بررسی می‌کند و خرج‌های مورد تأییدت را برای فضای مالی دلخواه می‌فرستد.</p>
-                <ul class="download-benefits">
-                    <li>انتخاب فرستنده‌ها و فضای مالی مقصد</li>
-                    <li>نگهداری امن پیام‌های ارسال‌نشده روی گوشی</li>
-                    <li>امکان بازبینی عنوان و جزئیات پیش از ارسال</li>
-                </ul>
+                <p class="eyebrow">همراه دُنیش مالی</p>
+                <h2 id="mobile-app-title">پیامک بانکی می‌آید؛<br />خرج، آمادهٔ بررسی می‌شود.</h2>
+                <p>برنامهٔ اندروید دُنیش فقط پیامک‌های بانکی انتخاب‌شده را روی گوشی بررسی می‌کند و پس از تأیید تو، خرج را به فضای مالی دلخواه می‌فرستد.</p>
                 <div class="download-actions">
-                    <a class="button button-primary" href="/downloads/donysh-mobile.apk" download>
+                    <a class="button button-light" href="/downloads/donysh-mobile.apk" download>
                         <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3v12m0 0 5-5m-5 5-5-5M5 21h14" /></svg>
                         دانلود برنامهٔ اندروید
                     </a>
-                    <span>دریافت مستقیم و امن از سرور دونیش</span>
+                    <span>ویژهٔ اندروید</span>
                 </div>
-                <p class="download-note">برای نصب مستقیم، ممکن است لازم باشد اجازهٔ نصب از مرورگر را فقط برای همین بار فعال کنید. فایل برنامه در فروشگاه‌های عمومی منتشر نشده است.</p>
+            </div>
+            <div class="phone-scene" aria-hidden="true">
+                <div class="phone-shell">
+                    <div class="phone-island"></div>
+                    <div class="phone-logo"><img src="/landing-assets/images/donysh-mark.png" alt="" width="64" height="64" /></div>
+                    <span>خرج تازه پیدا شد</span>
+                    <strong>۲٬۴۵۰٬۰۰۰ ریال</strong>
+                    <div class="phone-notice"><i>✓</i><span>آمادهٔ بررسی و ارسال</span></div>
+                </div>
+                <span class="phone-ring ring-a"></span><span class="phone-ring ring-b"></span>
             </div>
         </div>
     </section>
 
-    <section id="approach" class="approach-section section-shell" aria-labelledby="approach-title">
-        <div class="approach-panel">
-            <div class="section-heading compact">
-                <p class="eyebrow">نگاه دونیش</p>
-                <h2 id="approach-title">کمتر درگیر ابزار باش؛<br />بیشتر به تصمیم بعدی برس.</h2>
-            </div>
-            <ol class="approach-steps">
-                <li><span>۱</span><div><strong>ببین</strong><p>وضعیت واقعی را بدون شلوغی ببین.</p></div></li>
-                <li><span>۲</span><div><strong>تصمیم بگیر</strong><p>برای پول و زمانت یک قدم روشن انتخاب کن.</p></div></li>
-                <li><span>۳</span><div><strong>بهتر شو</strong><p>نتیجه را بسنج و برنامه را آرام اصلاح کن.</p></div></li>
-            </ol>
-        </div>
-    </section>
-
-    <section class="final-cta section-shell" aria-labelledby="cta-title">
+    <section class="final-cta section-shell reveal-section" aria-labelledby="cta-title">
+        <div class="cta-mark" aria-hidden="true"><img src="/landing-assets/images/donysh-mark.png" alt="" width="84" height="84" /></div>
         <div>
-            <p class="eyebrow">شروع از همین امروز</p>
-            <h2 id="cta-title">اولین تصویر روشن از وضعیت مالی‌ات را بساز.</h2>
+            <p class="eyebrow">شروع، ساده‌تر از چیزی است که فکر می‌کنی</p>
+            <h2 id="cta-title">امروز یک تصمیم روشن‌تر بگیر.</h2>
         </div>
-        <a class="button button-light" href="@(products.FinanceUrl.TrimEnd('/') + "/Account/Login")">ورود به حساب دونیش</a>
+        <a class="button button-light" href="@(products.AuthUrl.TrimEnd('/') + "/Account/Login")">ورود به حساب دُنیش</a>
     </section>
 </main>
 
 <footer class="site-footer">
     <div class="section-shell footer-inner">
         <div class="footer-brand">
-            <img src="/landing-assets/images/donysh-wordmark.png" alt="دونیش" width="140" height="46" />
-            <p>ابزارهای ساده برای زندگی روشن‌تر.</p>
+            <img src="/landing-assets/images/donysh-wordmark.png" alt="دُنیش" width="140" height="46" />
+            <p>وضوح برای پول، زمان و مسیر زندگی.</p>
         </div>
         <div class="footer-links">
-            <a href="@products.FinanceUrl">دونیش مالی</a>
-            <a href="/downloads/donysh-mobile.apk" download>دانلود برنامه</a>
-            <a href="@products.LifeUrl">دونیش زندگی</a>
+            <a href="@products.FinanceUrl">دُنیش مالی</a>
+            <a href="@products.LifeUrl">دُنیش زندگی</a>
+            <a href="/downloads/donysh-mobile.apk" download>برنامهٔ اندروید</a>
             <a href="@products.AuthUrl">حساب کاربری</a>
         </div>
-        <p class="copyright">© @DateTime.UtcNow.Year دونیش</p>
+        <p class="copyright">© @DateTime.UtcNow.Year دُنیش</p>
     </div>
 </footer>

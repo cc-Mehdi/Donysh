@@ -245,10 +245,10 @@ def main() -> int:
 
     finance_layout = (ROOT / "HesabYar.Web/Pages/Shared/_Layout.cshtml").read_text(encoding="utf-8")
     life_layout = (ROOT / "Donysh.Life/Pages/Shared/_Layout.cshtml").read_text(encoding="utf-8")
-    for token in ["Products:LifeUrl", "رفتن به دونیش زندگی", "product-switcher"]:
+    for token in ["Products:LifeUrl", "رفتن به دُنیش زندگی", "product-switcher"]:
         if token not in finance_layout:
             errors.append(f"Finance product switcher token missing: {token}")
-    for token in ["Products:FinanceUrl", "رفتن به دونیش مالی", "product-switcher"]:
+    for token in ["Products:FinanceUrl", "رفتن به دُنیش مالی", "product-switcher"]:
         if token not in life_layout:
             errors.append(f"Life product switcher token missing: {token}")
 

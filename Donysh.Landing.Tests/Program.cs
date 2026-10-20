@@ -31,9 +31,9 @@ using (var response = await client.GetAsync("/"))
         && html.Contains("dir=\"rtl\"", StringComparison.Ordinal));
     Check("Landing links to the dedicated Finance host",
         html.Contains("https://finance.test", StringComparison.Ordinal)
-        && html.Contains("ورود به دونیش مالی", StringComparison.Ordinal));
+        && html.Contains("ورود به دُنیش مالی", StringComparison.Ordinal));
     Check("Landing links to the initial Life product",
-        html.Contains("دونیش زندگی", StringComparison.Ordinal)
+        html.Contains("دُنیش زندگی", StringComparison.Ordinal)
         && html.Contains("نسخهٔ آغازین", StringComparison.Ordinal)
         && html.Contains("href=\"https://life.test\"", StringComparison.Ordinal));
     Check("Landing exposes the fixed Android download URL",
@@ -65,6 +65,12 @@ using (var response = await client.GetAsync("/landing-assets/css/app.css"))
 using (var response = await client.GetAsync("/landing-assets/images/donysh-wordmark.png"))
 {
     Check("Landing brand asset is served", response.StatusCode == HttpStatusCode.OK
+        && response.Content.Headers.ContentType?.MediaType == "image/png");
+}
+
+using (var response = await client.GetAsync("/landing-assets/images/donysh-life-logo.png"))
+{
+    Check("Landing serves the Donysh Life brand asset", response.StatusCode == HttpStatusCode.OK
         && response.Content.Headers.ContentType?.MediaType == "image/png");
 }
 

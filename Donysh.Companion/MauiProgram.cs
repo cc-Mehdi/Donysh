@@ -13,7 +13,7 @@ public sealed class App : Application
     {
         var window = new Window(new NavigationPage(new MainPage()));
 #if WINDOWS
-        window.Title = "همراه دونیش";
+        window.Title = "همراه دُنیش";
         window.Width = 740;
         window.Height = 900;
         window.MinimumWidth = 460;

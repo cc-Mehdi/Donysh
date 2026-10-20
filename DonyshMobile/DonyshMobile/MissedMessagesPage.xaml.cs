@@ -143,7 +143,7 @@ public partial class MissedMessagesPage : DonyshPage
             SmsReceivedNotifier.NotifySyncChanged();
             SyncPlatform.Schedule();
             await UiSafety.AlertAsync(this, "به فهرست افزوده شد",
-                $"{UiText.Digits(added)} پیامک در فهرست ارسال به دونیش قرار گرفت.");
+                $"{UiText.Digits(added)} پیامک در فهرست ارسال به دُنیش قرار گرفت.");
             await Navigation.PopAsync();
         });
     }

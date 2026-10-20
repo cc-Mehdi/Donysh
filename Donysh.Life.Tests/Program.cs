@@ -53,7 +53,7 @@ using (var response = await client.GetAsync("/Account/Login"))
     Check("Life login renders in Persian RTL", response.StatusCode == HttpStatusCode.OK
         && html.Contains("lang=\"fa\"", StringComparison.Ordinal)
         && html.Contains("dir=\"rtl\"", StringComparison.Ordinal)
-        && html.Contains("همان حسابی که در دونیش مالی داری", StringComparison.Ordinal)
+        && html.Contains("همان حسابی که در دُنیش مالی داری", StringComparison.Ordinal)
         && html.Contains("rel=\"preload\"", StringComparison.Ordinal)
         && html.Contains("interaction-feedback", StringComparison.Ordinal));
     Check("Life security headers allow only same-origin scripts and block framing",
@@ -93,6 +93,12 @@ using (var response = await client.GetAsync("/css/app.css"))
         && response.Content.Headers.ContentType?.MediaType == "text/css"
         && response.Headers.CacheControl?.Public == true
         && response.Headers.CacheControl?.MaxAge == TimeSpan.FromDays(7));
+}
+
+using (var response = await client.GetAsync("/images/donysh-life-logo.png"))
+{
+    Check("Life brand logo is served", response.StatusCode == HttpStatusCode.OK
+        && response.Content.Headers.ContentType?.MediaType == "image/png");
 }
 
 using (var response = await client.GetAsync("/js/week-planner.js"))
@@ -158,6 +164,7 @@ using (var authenticatedClient = authenticatedFactory.CreateClient(new WebApplic
     var html = await response.Content.ReadAsStringAsync();
     Check("Authenticated Life dashboard renders its initial shell",
         response.StatusCode == HttpStatusCode.OK
+        && html.Contains("/images/donysh-life-logo.png", StringComparison.Ordinal)
         && html.Contains("برای چیزهای مهم، جا باز کن", StringComparison.Ordinal)
         && html.Contains("برنامهٔ هفته", StringComparison.Ordinal)
         && html.Contains("فعالیت‌های فعال", StringComparison.Ordinal)
@@ -165,8 +172,8 @@ using (var authenticatedClient = authenticatedFactory.CreateClient(new WebApplic
         && html.Contains("aria-current=\"page\"", StringComparison.Ordinal));
     Check("Life shell links to the configured Finance product",
         html.Contains("href=\"https://finance.test/\"", StringComparison.Ordinal)
-        && html.Contains("دونیش مالی", StringComparison.Ordinal)
-        && html.Contains("رفتن به دونیش مالی", StringComparison.Ordinal));
+        && html.Contains("دُنیش مالی", StringComparison.Ordinal)
+        && html.Contains("رفتن به دُنیش مالی", StringComparison.Ordinal));
     Check("Life logout posts locally before central OIDC sign-out",
         html.Contains("action=\"/Account/Logout\"", StringComparison.Ordinal));
     Check("Life antiforgery cookie is HttpOnly, secure and same-site strict",

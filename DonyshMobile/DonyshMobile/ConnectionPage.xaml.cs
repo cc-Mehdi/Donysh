@@ -56,7 +56,7 @@ public partial class ConnectionPage : DonyshPage
         if (_setupMode)
         {
             Title = "مرحلهٔ ۱ · اتصال";
-            PageHeadingLabel.Text = "وارد حساب دونیش شوید";
+            PageHeadingLabel.Text = "وارد حساب دُنیش شوید";
             PageDescriptionLabel.Text = "همان اطلاعات ورود سایت را وارد کنید؛ سپس فضای مالی را انتخاب می‌کنید.";
             ConnectionStatusCard.IsVisible = false;
             TitleSettingsCard.IsVisible = false;
@@ -138,7 +138,7 @@ public partial class ConnectionPage : DonyshPage
         catch (Exception exception)
         {
             UiSafety.Log(exception);
-            await AlertAsync("تنظیمات باز نشد", "از تنظیمات گوشی، بخش برنامه‌ها و سپس دونیش را باز کنید.", "باشه");
+            await AlertAsync("تنظیمات باز نشد", "از تنظیمات گوشی، بخش برنامه‌ها و سپس دُنیش را باز کنید.", "باشه");
         }
     }
     private async void OnThemeChanged(object? sender, EventArgs e)
@@ -239,7 +239,7 @@ public partial class ConnectionPage : DonyshPage
             var password = PasswordEntry.Text ?? string.Empty;
             if (string.IsNullOrWhiteSpace(email) || string.IsNullOrEmpty(password))
             {
-                await AlertAsync("اطلاعات ورود کامل نیست", "رایانامه و گذرواژهٔ حساب دونیش را وارد کنید.", "باشه");
+                await AlertAsync("اطلاعات ورود کامل نیست", "رایانامه و گذرواژهٔ حساب دُنیش را وارد کنید.", "باشه");
                 return;
             }
             var host = new Uri(server).Host;
@@ -400,7 +400,7 @@ public partial class ConnectionPage : DonyshPage
                 && !await ConfirmAsync("ارسال دستی بدون عنوان", "پیام بی‌عنوان هم در صف وجود دارد. در این نوبت اجازه می‌دهید بدون عنوان ارسال شود؟", "ارسال دستی", "انصراف")) return;
             var result = await _api.SendNextBatchAsync(_store, _loadConnectionAsync, DateTimeOffset.UtcNow, manualSend: true);
             if (result == SyncRunResult.ConnectionRequired)
-                await AlertAsync("ورود دوباره لازم است", "نشست این گوشی پایان یافته است. دوباره با حساب دونیش وارد شوید.", "باشه");
+                await AlertAsync("ورود دوباره لازم است", "نشست این گوشی پایان یافته است. دوباره با حساب دُنیش وارد شوید.", "باشه");
             else if (result == SyncRunResult.NothingToSend)
                 await AlertAsync("صف فعلاً آماده نیست", "پیام منتظری وجود ندارد یا هنوز یک دقیقه از آخرین نوبت نگذشته است.", "باشه");
             else if (result == SyncRunResult.RetryScheduled)
@@ -415,7 +415,7 @@ public partial class ConnectionPage : DonyshPage
         if (_busy) return;
         await RunBusyAsync(async () =>
         {
-            if (!await ConfirmAsync("قطع اتصال این گوشی", "اطلاعات اتصال از گوشی پاک می‌شود؛ پیام‌های منتظر باقی می‌مانند. برای لغو کامل دسترسی گوشی، آن را در بخش «همراه دونیش» سایت هم غیرفعال کنید.", "قطع اتصال", "انصراف")) return;
+            if (!await ConfirmAsync("قطع اتصال این گوشی", "اطلاعات اتصال از گوشی پاک می‌شود؛ پیام‌های منتظر باقی می‌مانند. برای لغو کامل دسترسی گوشی، آن را در بخش «همراه دُنیش» سایت هم غیرفعال کنید.", "قطع اتصال", "انصراف")) return;
             await MobileApiClient.RunWithSyncLockAsync(async () =>
             {
                 var connection = await _loadConnectionAsync();
