@@ -2,190 +2,94 @@
 @using Microsoft.Extensions.Options
 @inject IOptions<LandingLinksOptions> ProductOptions
 @{
-    ViewData["Title"] = "دُنیش | وضوح برای پول و زمان";
+    ViewData["Title"] = "دُنیش | پول و زمان، روشن‌تر";
     var products = ProductOptions.Value;
+    var loginUrl = products.AuthUrl.TrimEnd('/') + "/Account/Login";
 }
 
 <header class="site-header">
     <nav class="nav-shell" aria-label="ناوبری اصلی">
-        <a class="wordmark-link" href="#top" aria-label="دُنیش، صفحهٔ اصلی">
-            <img src="/landing-assets/images/donysh-wordmark.png" alt="دُنیش" width="178" height="58" />
-        </a>
-        <div class="nav-links">
-            <a href="#products">محصول‌ها</a>
-            <a href="#experience">چطور کار می‌کند؟</a>
-            <a href="#mobile-app">برنامهٔ همراه</a>
-        </div>
-        <a class="nav-action" href="@(products.AuthUrl.TrimEnd('/') + "/Account/Login")">
-            <span>ورود به حساب</span>
-            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6" /></svg>
-        </a>
+        <a class="brand-link" href="#top" aria-label="دُنیش، صفحهٔ اصلی"><img src="/landing-assets/images/donysh-wordmark.png" alt="دُنیش" width="170" height="55" /></a>
+        <div class="nav-links"><a href="#products">محصول‌ها</a><a href="#method">روش دُنیش</a><a href="#mobile">برنامهٔ همراه</a></div>
+        <a class="nav-login" href="@loginUrl">ورود به حساب <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg></a>
     </nav>
 </header>
 
 <main id="main-content">
-    <section id="top" class="hero section-shell" aria-labelledby="hero-title">
+    <section id="top" class="hero page-width" aria-labelledby="hero-title">
         <div class="hero-copy">
-            <p class="eyebrow"><span aria-hidden="true"></span> دو محصول، یک حساب امن</p>
-            <h1 id="hero-title">برای پولت <strong>وضوح.</strong><br />برای زمانت <em>جهت.</em></h1>
-            <p class="hero-lead">دُنیش کمک می‌کند پول، زمان و هدف‌هایت را ساده‌تر ببینی؛ تصمیم بگیری و بدون گم‌شدن میان ابزارهای شلوغ، آرام جلو بروی.</p>
+            <p class="announcement"><span aria-hidden="true"></span> یک حساب برای مدیریت پول و زندگی</p>
+            <h1 id="hero-title">پولت را بفهم.<br /><strong>زمانت را زندگی کن.</strong></h1>
+            <p class="hero-description">دُنیش اطلاعات پراکنده را به یک تصویر روشن تبدیل می‌کند؛ تا بدانی پولت کجا می‌رود، هفته‌ات چگونه می‌گذرد و قدم بعدی چیست.</p>
             <div class="hero-actions">
-                <a class="button button-primary" href="@products.FinanceUrl">
-                    شروع با دُنیش مالی
-                    <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6" /></svg>
-                </a>
-                <a class="button button-secondary" href="#products">دیدن دنیای دُنیش</a>
+                <a class="button primary-button" href="@products.FinanceUrl">شروع با دُنیش مالی <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg></a>
+                <a class="button quiet-button" href="@products.LifeUrl">دیدن دُنیش زندگی</a>
             </div>
-            <div class="trust-row" aria-label="ویژگی‌های اصلی">
-                <span><i aria-hidden="true">✓</i>ورود یکپارچه و امن</span>
-                <span><i aria-hidden="true">✓</i>داده‌های هر محصول، مستقل</span>
-                <span><i aria-hidden="true">✓</i>طراحی ساده و فارسی</span>
-            </div>
+            <ul class="hero-points" aria-label="مزیت‌های دُنیش"><li><span aria-hidden="true">✓</span>ساده و فارسی</li><li><span aria-hidden="true">✓</span>ورود امن و یکپارچه</li><li><span aria-hidden="true">✓</span>قابل استفاده روی هر دستگاه</li></ul>
         </div>
 
-        <div class="hero-art" aria-label="دُنیش، پیوند مدیریت پول و زمان">
-            <div class="hero-glow" aria-hidden="true"></div>
-            <div class="hero-grid" aria-hidden="true"></div>
-            <div class="brand-sculpture">
-                <span class="sculpture-ring ring-one" aria-hidden="true"></span>
-                <span class="sculpture-ring ring-two" aria-hidden="true"></span>
-                <span class="brand-mark-wrap">
-                    <img src="/landing-assets/images/donysh-mark.png" alt="" width="176" height="176" />
-                </span>
+        <div class="hero-stage" aria-label="نمایی از تجربهٔ دُنیش">
+            <span class="stage-orb orb-one" aria-hidden="true"></span><span class="stage-orb orb-two" aria-hidden="true"></span>
+            <div class="overview-window">
+                <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>نمای امروز</span></div>
+                <div class="overview-head">
+                    <span class="overview-logo"><img src="/landing-assets/images/donysh-mark.png" alt="" width="72" height="72" /></span>
+                    <span><small>سلام، امروز همه‌چیز روشن است</small><strong>نمای شخصی من</strong></span><b>امروز</b>
+                </div>
+                <div class="overview-grid">
+                    <div class="overview-balance"><span>قابل خرج این ماه</span><strong>۱۲٬۴۸۰٬۰۰۰</strong><small>ریال</small><div class="balance-progress"><i></i></div><p><b>۶۲٪</b> از بودجه باقی مانده</p></div>
+                    <div class="overview-focus"><span>تمرکز امروز</span><strong>۳ ساعت و ۳۰ دقیقه</strong><div class="focus-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div><p>دو کار مهم در برنامه داری</p></div>
+                </div>
+                <div class="overview-list">
+                    <div><span class="list-icon violet">↗</span><span><small>پس‌انداز اضطراری</small><strong>در مسیر هدف</strong></span><b>۴۸٪</b></div>
+                    <div><span class="list-icon mint">✓</span><span><small>برنامهٔ امروز</small><strong>سه کار انجام شد</strong></span><b>۳ از ۵</b></div>
+                </div>
             </div>
-            <a class="floating-product finance-float" href="@products.FinanceUrl">
-                <span class="mini-icon finance-mini" aria-hidden="true">
-                    <svg viewBox="0 0 24 24"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H18a2 2 0 0 1 2 2v2H4V7.5Z"/><path d="M4 9h16v10H6a2 2 0 0 1-2-2V9Z"/><path d="M16 13h5v3h-5a1.5 1.5 0 0 1 0-3Z"/></svg>
-                </span>
-                <span><small>پول، بودجه و هدف‌ها</small><strong>دُنیش مالی</strong></span>
-                <b aria-hidden="true">↗</b>
-            </a>
-            <a class="floating-product life-float" href="@products.LifeUrl">
-                <img src="/landing-assets/images/donysh-life-logo.png" alt="دنیش زندگی" width="96" height="96" />
-                <span><small>زمان، برنامه و پیشرفت</small><strong>دُنیش زندگی</strong></span>
-                <b aria-hidden="true">↗</b>
-            </a>
-            <div class="signal-pill signal-one" aria-hidden="true"><i></i><span>همین امروز</span></div>
-            <div class="signal-pill signal-two" aria-hidden="true"><i></i><span>قدم بعدی روشن</span></div>
+            <div class="floating-note finance-note"><span class="note-icon">⌁</span><span><small>خرج تازه ثبت شد</small><strong>۲۴۵٬۰۰۰ ریال</strong></span><b>✓</b></div>
+            <div class="floating-note life-note"><img src="/landing-assets/images/donysh-life-logo.png" alt="دنیش زندگی" width="72" height="72" /><span><small>برنامهٔ بعدی</small><strong>مطالعه · ساعت ۱۸</strong></span><b>←</b></div>
         </div>
     </section>
 
-    <section class="signal-strip" aria-label="توانایی‌های دُنیش">
-        <div class="signal-track">
-            <span>بودجه‌ای که می‌فهمی</span><i>✦</i><span>برنامه‌ای که انجام می‌شود</span><i>✦</i><span>هدف‌هایی که جلو می‌روند</span><i>✦</i><span>گزارشی که تصمیم می‌سازد</span><i>✦</i>
-            <span aria-hidden="true">بودجه‌ای که می‌فهمی</span><i aria-hidden="true">✦</i><span aria-hidden="true">برنامه‌ای که انجام می‌شود</span><i aria-hidden="true">✦</i><span aria-hidden="true">هدف‌هایی که جلو می‌روند</span><i aria-hidden="true">✦</i><span aria-hidden="true">گزارشی که تصمیم می‌سازد</span><i aria-hidden="true">✦</i>
-        </div>
-    </section>
+    <section class="proof-strip" aria-label="ویژگی‌های کلیدی"><div class="page-width proof-grid"><div><strong>۱</strong><span>حساب یکپارچه</span></div><div><strong>۲</strong><span>محصول متمرکز</span></div><div><strong>۰</strong><span>تبلیغ و شلوغی اضافه</span></div><p>اطلاعات هر محصول مستقل می‌ماند؛ تجربهٔ استفاده، یکپارچه است.</p></div></section>
 
-    <section id="products" class="products-section section-shell reveal-section" aria-labelledby="products-title">
-        <div class="section-heading split-heading">
-            <div>
-                <p class="eyebrow">محصول‌های دُنیش</p>
-                <h2 id="products-title">هر بخش، متمرکز.<br />همه‌چیز، هماهنگ.</h2>
-            </div>
-            <p>هر برنامه کار خودش را دقیق انجام می‌دهد، اما حساب و تجربهٔ کاربری بین آن‌ها پیوسته است. از چیزی که امروز لازم داری شروع کن.</p>
-        </div>
-
-        <div class="product-bento">
-            <article class="product-showcase finance-showcase">
-                <div class="product-copy">
-                    <div class="product-meta"><span class="live-dot">در دسترس</span><span>دُنیش مالی</span></div>
-                    <h3>تصویر کامل پولت،<br />بدون جدول‌های گیج‌کننده.</h3>
-                    <p>مخارج، بودجه‌ها، اقساط و هدف‌های پس‌انداز را در فضاهای شخصی یا مشترک کنار هم ببین.</p>
-                    <ul class="feature-pills">
-                        <li>فضاهای مشترک</li><li>بودجهٔ هوشمند</li><li>دستیار مالی</li>
-                    </ul>
-                    <a class="text-action" href="@products.FinanceUrl">ورود به دُنیش مالی <span aria-hidden="true">←</span></a>
-                </div>
-                <div class="finance-dashboard" aria-hidden="true">
-                    <div class="mock-header"><i></i><i></i><i></i><span>نمای ماه</span></div>
-                    <div class="mock-balance"><small>قابل خرج این ماه</small><strong>۱۲٬۴۸۰٬۰۰۰ <em>ریال</em></strong><span><i></i>۶۲٪ بودجه باقی مانده</span></div>
-                    <div class="mock-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
-                    <div class="mock-row"><span><i></i>خریدهای روزانه</span><b>۲٬۸۴۰٬۰۰۰</b></div>
-                    <div class="mock-row"><span><i></i>حمل‌ونقل</span><b>۱٬۳۲۰٬۰۰۰</b></div>
-                </div>
+    <section id="products" class="products page-width" aria-labelledby="products-title">
+        <div class="section-heading"><p class="section-kicker">محصول‌های دُنیش</p><h2 id="products-title">هر چیزی در جای خودش؛<br />همه‌چیز در یک مسیر.</h2><p>برای مدیریت مالی و برنامه‌ریزی زندگی، دو محیط مستقل داری که با همان حساب دُنیش در دسترس‌اند.</p></div>
+        <div class="product-grid">
+            <article class="product-card finance-card">
+                <div class="product-topline"><span>۰۱</span><b>دُنیش مالی</b><i>فعال</i></div>
+                <div class="product-icon finance-product-icon" aria-hidden="true"><img src="/landing-assets/images/donysh-mark.png" alt="" width="96" height="96" /></div>
+                <h3>تصمیم مالی بهتر،<br />با تصویر واقعی‌تر.</h3><p>مخارج، بودجه‌ها، اقساط و پس‌اندازها را برای خودت یا فضای مشترک مدیریت کن.</p>
+                <ul><li>فضاهای مالی شخصی و مشترک</li><li>بودجه و هدف‌های پس‌انداز</li><li>گزارش و دستیار هوشمند</li></ul>
+                <a href="@products.FinanceUrl">ورود به دُنیش مالی <span aria-hidden="true">←</span></a>
+                <div class="finance-visual" aria-hidden="true"><div><small>بودجهٔ خرید</small><strong>۷۲٪</strong><i><b></b></i></div><div><small>پس‌انداز این ماه</small><strong>۳٬۰۰۰٬۰۰۰</strong><i><b></b></i></div></div>
             </article>
-
-            <article class="product-showcase life-showcase">
-                <div class="life-brand-panel">
-                    <span class="life-orbit" aria-hidden="true"></span>
-                    <img src="/landing-assets/images/donysh-life-logo.png" alt="دنیش زندگی" width="220" height="220" />
-                </div>
-                <div class="product-copy">
-                    <div class="product-meta"><span class="life-dot">نسخهٔ آغازین</span><span>دُنیش زندگی</span></div>
-                    <h3>زمانت را برای چیزهای مهم پس بگیر.</h3>
-                    <p>هفته‌ات را بچین، کارهای واقعی را ثبت کن و پیشرفت هدف‌ها را با یک نگاه ببین.</p>
-                    <ul class="feature-pills life-pills">
-                        <li>برنامهٔ روز و هفته</li><li>سنجش پیشرفت</li><li>هدف زمانی</li>
-                    </ul>
-                    <a class="text-action life-action" href="@products.LifeUrl">ورود به دُنیش زندگی <span aria-hidden="true">←</span></a>
-                </div>
+            <article class="product-card life-card">
+                <div class="product-topline"><span>۰۲</span><b>دُنیش زندگی</b><i>نسخهٔ آغازین</i></div>
+                <div class="life-logo-frame"><img src="/landing-assets/images/donysh-life-logo.png" alt="دنیش زندگی" width="210" height="210" /></div>
+                <h3>هفته‌ای که برای<br />زندگی تو ساخته شده.</h3><p>برنامه را بچین، زمان واقعی فعالیت‌ها را ثبت کن و پیشرفتت را بدون حدس‌زدن ببین.</p>
+                <ul><li>نمای روز و هفته</li><li>ثبت نتیجهٔ واقعی</li><li>گزارش پیشرفت زمانی</li></ul>
+                <a href="@products.LifeUrl">ورود به دُنیش زندگی <span aria-hidden="true">←</span></a>
+                <div class="life-visual" aria-hidden="true"><span>شنبه</span><span>یکشنبه</span><span>دوشنبه</span><span>سه‌شنبه</span><i></i><i></i><i></i><i></i></div>
             </article>
         </div>
     </section>
 
-    <section id="experience" class="experience-section section-shell reveal-section" aria-labelledby="experience-title">
-        <div class="experience-intro">
-            <p class="eyebrow">یک مسیر ساده</p>
-            <h2 id="experience-title">از دادهٔ پراکنده<br />تا تصمیم روشن.</h2>
-            <p>دُنیش قرار نیست کار دیگری روی دوشت بگذارد. اطلاعات را مرتب می‌کند تا سریع‌تر به کاری که مهم است برسی.</p>
-        </div>
-        <ol class="experience-steps">
-            <li><span>۰۱</span><div><i aria-hidden="true">◉</i><strong>واقعیت را ثبت کن</strong><p>خرج‌ها و زمان واقعی، ساده و بی‌دردسر کنار هم قرار می‌گیرند.</p></div></li>
-            <li><span>۰۲</span><div><i aria-hidden="true">◇</i><strong>الگو را ببین</strong><p>گزارش‌ها به‌جای عدد خام، وضعیت قابل فهم نشان می‌دهند.</p></div></li>
-            <li><span>۰۳</span><div><i aria-hidden="true">↗</i><strong>قدم بعدی را بردار</strong><p>برای بودجه، پس‌انداز و زمانت تصمیمی کوچک اما واقعی بگیر.</p></div></li>
-        </ol>
-    </section>
+    <section id="method" class="method-section"><div class="page-width method-layout">
+        <div class="method-copy"><p class="section-kicker">روش دُنیش</p><h2>کمتر حدس بزن؛<br />روشن‌تر تصمیم بگیر.</h2><p>قرار نیست هر روز وقت زیادی برای مدیریت ابزارها بگذاری. دُنیش واقعیت را جمع می‌کند و قدم بعدی را واضح‌تر نشان می‌دهد.</p><a class="inline-link" href="@loginUrl">ورود با حساب دُنیش <span aria-hidden="true">←</span></a></div>
+        <ol class="method-steps"><li><span>۱</span><div><strong>واقعیت را ثبت کن</strong><p>خرج‌ها، بودجه‌ها و زمانی که واقعاً صرف کرده‌ای.</p></div></li><li><span>۲</span><div><strong>تصویر را ببین</strong><p>گزارشی کوتاه و قابل فهم، بدون عددهای پراکنده.</p></div></li><li><span>۳</span><div><strong>قدم بعدی را بردار</strong><p>یک تصمیم کوچک برای پول، زمان یا هدف‌هایت.</p></div></li></ol>
+    </div></section>
 
-    <section id="mobile-app" class="download-section section-shell reveal-section" aria-labelledby="mobile-app-title">
-        <div class="download-panel">
-            <div class="download-copy">
-                <p class="eyebrow">همراه دُنیش مالی</p>
-                <h2 id="mobile-app-title">پیامک بانکی می‌آید؛<br />خرج، آمادهٔ بررسی می‌شود.</h2>
-                <p>برنامهٔ اندروید دُنیش فقط پیامک‌های بانکی انتخاب‌شده را روی گوشی بررسی می‌کند و پس از تأیید تو، خرج را به فضای مالی دلخواه می‌فرستد.</p>
-                <div class="download-actions">
-                    <a class="button button-light" href="/downloads/donysh-mobile.apk" download>
-                        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3v12m0 0 5-5m-5 5-5-5M5 21h14" /></svg>
-                        دانلود برنامهٔ اندروید
-                    </a>
-                    <span>ویژهٔ اندروید</span>
-                </div>
-            </div>
-            <div class="phone-scene" aria-hidden="true">
-                <div class="phone-shell">
-                    <div class="phone-island"></div>
-                    <div class="phone-logo"><img src="/landing-assets/images/donysh-mark.png" alt="" width="64" height="64" /></div>
-                    <span>خرج تازه پیدا شد</span>
-                    <strong>۲٬۴۵۰٬۰۰۰ ریال</strong>
-                    <div class="phone-notice"><i>✓</i><span>آمادهٔ بررسی و ارسال</span></div>
-                </div>
-                <span class="phone-ring ring-a"></span><span class="phone-ring ring-b"></span>
-            </div>
-        </div>
-    </section>
+    <section id="mobile" class="mobile-section page-width" aria-labelledby="mobile-title"><div class="mobile-card">
+        <div class="mobile-copy"><p class="section-kicker light-kicker">برنامهٔ همراه دُنیش مالی</p><h2 id="mobile-title">پیامک بانکی می‌آید؛<br />خرج آمادهٔ بررسی می‌شود.</h2><p>برنامهٔ اندروید فقط پیامک‌های انتخاب‌شده را روی گوشی تحلیل می‌کند. پس از تأیید تو، مبلغ و عنوان خرج به فضای مالی دلخواه فرستاده می‌شود.</p><div class="mobile-actions"><a class="button download-button" href="/downloads/donysh-mobile.apk" download><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 5-5m-5 5-5-5M5 21h14" /></svg>دانلود برنامهٔ اندروید</a><span>ویژهٔ اندروید</span></div></div>
+        <div class="phone-wrap" aria-hidden="true"><div class="phone"><span class="phone-camera"></span><div class="phone-brand"><img src="/landing-assets/images/donysh-mark.png" alt="" width="56" height="56" /><span><small>دُنیش همراه</small><strong>پیامک تازه</strong></span></div><div class="phone-expense"><small>برداشت شناسایی‌شده</small><strong>۱٬۴۰۰٬۰۰۰ ریال</strong><span>بلو بانک · امروز ۱۷:۵۵</span></div><div class="phone-title"><small>عنوان پیشنهادی</small><strong>خرید روزانه</strong></div><div class="phone-confirm">آمادهٔ تأیید</div></div></div>
+    </div></section>
 
-    <section class="final-cta section-shell reveal-section" aria-labelledby="cta-title">
-        <div class="cta-mark" aria-hidden="true"><img src="/landing-assets/images/donysh-mark.png" alt="" width="84" height="84" /></div>
-        <div>
-            <p class="eyebrow">شروع، ساده‌تر از چیزی است که فکر می‌کنی</p>
-            <h2 id="cta-title">امروز یک تصمیم روشن‌تر بگیر.</h2>
-        </div>
-        <a class="button button-light" href="@(products.AuthUrl.TrimEnd('/') + "/Account/Login")">ورود به حساب دُنیش</a>
-    </section>
+    <section class="closing page-width" aria-labelledby="closing-title"><div class="closing-mark"><img src="/landing-assets/images/donysh-mark.png" alt="" width="96" height="96" /></div><div><p>شروع از همین امروز</p><h2 id="closing-title">یک تصمیم روشن‌تر، کافی است.</h2></div><a class="button closing-button" href="@loginUrl">ورود به دُنیش</a></section>
 </main>
 
-<footer class="site-footer">
-    <div class="section-shell footer-inner">
-        <div class="footer-brand">
-            <img src="/landing-assets/images/donysh-wordmark.png" alt="دُنیش" width="140" height="46" />
-            <p>وضوح برای پول، زمان و مسیر زندگی.</p>
-        </div>
-        <div class="footer-links">
-            <a href="@products.FinanceUrl">دُنیش مالی</a>
-            <a href="@products.LifeUrl">دُنیش زندگی</a>
-            <a href="/downloads/donysh-mobile.apk" download>برنامهٔ اندروید</a>
-            <a href="@products.AuthUrl">حساب کاربری</a>
-        </div>
-        <p class="copyright">© @DateTime.UtcNow.Year دُنیش</p>
-    </div>
-</footer>
+<footer class="site-footer"><div class="page-width footer-grid">
+    <div class="footer-brand"><img src="/landing-assets/images/donysh-wordmark.png" alt="دُنیش" width="150" height="48" /><p>وضوح برای پول، زمان و مسیر زندگی.</p></div>
+    <div class="footer-column"><strong>محصول‌ها</strong><a href="@products.FinanceUrl">دُنیش مالی</a><a href="@products.LifeUrl">دُنیش زندگی</a><a href="/downloads/donysh-mobile.apk" download>برنامهٔ همراه</a></div>
+    <div class="footer-column"><strong>حساب</strong><a href="@loginUrl">ورود به حساب</a><a href="@products.AuthUrl">مرکز حساب کاربری</a></div>
+    <p class="copyright">© @DateTime.UtcNow.Year دُنیش؛ ساخته‌شده برای تصمیم‌های روشن‌تر.</p>
+</div></footer>
