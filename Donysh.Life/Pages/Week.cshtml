@@ -7,6 +7,7 @@
     ViewData["ContentClass"] = "calendar-content";
     var selectedDay = Model.View.Days.Single(day => day.IsSelected);
     var visibleDays = Model.DisplayMode == "day" ? new[] { selectedDay } : Model.View.Days;
+    var displayMode = Model.DisplayMode ?? "week";
 }
 
 <section class="calendar-toolbar" aria-label="ابزارهای برنامه‌ریزی">
@@ -74,7 +75,7 @@ else
                         var slotBlocks = day.Blocks.Where(block => block.StartMinute == minute);
                         <div class="calendar-slot @(slot % 2 == 0 ? "full-hour" : "half-hour")" data-minute="@minute">
                             <button type="button" class="time-slot" aria-label="افزودن برنامه در @day.Name ساعت @(minute / 60):@(minute % 60 == 0 ? "00" : "30")"></button>
-                            @foreach (var block in slotBlocks) { <partial name="Shared/_ScheduleBlock" model="new ScheduleBlockCardModel(block, Model.View.Activities, Model.View.WeekStart)" /> }
+                            @foreach (var block in slotBlocks) { <partial name="Shared/_ScheduleBlock" model="new ScheduleBlockCardModel(block, Model.View.Activities, Model.View.WeekStart, displayMode)" /> }
                         </div>
                     }
                 </article>

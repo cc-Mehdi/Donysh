@@ -109,7 +109,11 @@ public sealed record ActivityPlanSummary(Guid ActivityId, string Title, string C
 
 public sealed record WeekDayView(DateOnly Date, DayOfWeek DayOfWeek, string Name, string PersianDate, bool IsSelected, IReadOnlyList<ScheduleBlockItem> Blocks);
 
-public sealed record ScheduleBlockCardModel(ScheduleBlockItem Block, IReadOnlyList<ScheduleActivityOption> Activities, DateOnly WeekStart);
+public sealed record ScheduleBlockCardModel(
+    ScheduleBlockItem Block,
+    IReadOnlyList<ScheduleActivityOption> Activities,
+    DateOnly WeekStart,
+    string DisplayMode);
 
 public sealed record WeekScheduleView(
     DateOnly WeekStart,

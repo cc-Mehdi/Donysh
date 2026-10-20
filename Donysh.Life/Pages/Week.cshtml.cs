@@ -15,7 +15,7 @@ public sealed class WeekModel(WeeklyScheduleService schedules, OccurrenceTrackin
     [BindProperty] public ScheduleInteractionForm Interaction { get; set; } = new();
     [BindProperty] public DateOnly OriginalDate { get; set; }
     [BindProperty] public OccurrenceRecordForm Occurrence { get; set; } = new();
-    [BindProperty(SupportsGet = true, Name = "view")] public string DisplayMode { get; set; } = "week";
+    [BindProperty(SupportsGet = true, Name = "view")] public string? DisplayMode { get; set; }
 
     public WeekScheduleView View { get; private set; } = new(
         DateOnly.MinValue, [], [], [], 0);
@@ -31,6 +31,8 @@ public sealed class WeekModel(WeeklyScheduleService schedules, OccurrenceTrackin
 
     public async Task<IActionResult> OnPostSaveAsync(CancellationToken cancellationToken)
     {
+        KeepValidationFor(nameof(Input));
+        DisplayMode = NormalizeDisplayMode(DisplayMode);
         SelectedDay = Input.DayOfWeek;
         if (!ModelState.IsValid) { await LoadAsync(SelectedDay, WeekStart == default ? null : WeekStart, cancellationToken); return Page(); }
         var result = await schedules.SaveAsync(PatternId, Input, cancellationToken);
@@ -41,6 +43,7 @@ public sealed class WeekModel(WeeklyScheduleService schedules, OccurrenceTrackin
 
     public async Task<IActionResult> OnPostToggleAsync(CancellationToken cancellationToken)
     {
+        DisplayMode = NormalizeDisplayMode(DisplayMode);
         if (PatternId is null) return BadRequest();
         var result = await schedules.ToggleAsync(PatternId.Value, cancellationToken);
         TempData[result.Succeeded ? "ScheduleMessage" : "ScheduleError"] = result.Message;
@@ -49,6 +52,7 @@ public sealed class WeekModel(WeeklyScheduleService schedules, OccurrenceTrackin
 
     public async Task<IActionResult> OnPostDeleteAsync(CancellationToken cancellationToken)
     {
+        DisplayMode = NormalizeDisplayMode(DisplayMode);
         if (PatternId is null || !ConfirmDelete) return BadRequest();
         var result = await schedules.DeleteAsync(PatternId.Value, cancellationToken);
         TempData[result.Succeeded ? "ScheduleMessage" : "ScheduleError"] = result.Message;
@@ -57,6 +61,8 @@ public sealed class WeekModel(WeeklyScheduleService schedules, OccurrenceTrackin
 
     public async Task<IActionResult> OnPostInteractAsync(CancellationToken cancellationToken)
     {
+        KeepValidationFor(nameof(Interaction));
+        DisplayMode = NormalizeDisplayMode(DisplayMode);
         var result = ModelState.IsValid
             ? await schedules.ApplyInteractionAsync(Interaction, cancellationToken)
             : ActivityCommandResult.Failure("اطلاعات جابه‌جایی معتبر نیست.");
@@ -66,6 +72,7 @@ public sealed class WeekModel(WeeklyScheduleService schedules, OccurrenceTrackin
 
     public async Task<IActionResult> OnPostCancelOccurrenceAsync(CancellationToken cancellationToken)
     {
+        DisplayMode = NormalizeDisplayMode(DisplayMode);
         if (PatternId is null || OriginalDate == default) return BadRequest();
         var result = await schedules.CancelOccurrenceAsync(PatternId.Value, OriginalDate, cancellationToken);
         TempData[result.Succeeded ? "ScheduleMessage" : "ScheduleError"] = result.Message;
@@ -74,6 +81,8 @@ public sealed class WeekModel(WeeklyScheduleService schedules, OccurrenceTrackin
 
     public async Task<IActionResult> OnPostRecordOccurrenceAsync(CancellationToken cancellationToken)
     {
+        KeepValidationFor(nameof(Occurrence));
+        DisplayMode = NormalizeDisplayMode(DisplayMode);
         var result = ModelState.IsValid
             ? await tracking.RecordAsync(Occurrence, cancellationToken)
             : ActivityCommandResult.Failure("اطلاعات عملکرد معتبر نیست.");
@@ -83,6 +92,7 @@ public sealed class WeekModel(WeeklyScheduleService schedules, OccurrenceTrackin
 
     public async Task<IActionResult> OnPostClearOccurrenceAsync(CancellationToken cancellationToken)
     {
+        DisplayMode = NormalizeDisplayMode(DisplayMode);
         if (PatternId is null || OriginalDate == default) return BadRequest();
         var result = await tracking.ClearAsync(PatternId.Value, OriginalDate, cancellationToken);
         TempData[result.Succeeded ? "ScheduleMessage" : "ScheduleError"] = result.Message;
@@ -99,6 +109,17 @@ public sealed class WeekModel(WeeklyScheduleService schedules, OccurrenceTrackin
     {
         day,
         week = WeekStart == default ? null : WeekStart.ToString("yyyy-MM-dd"),
-        view = DisplayMode == "day" ? "day" : "week"
+        view = NormalizeDisplayMode(DisplayMode)
     });
+
+    private void KeepValidationFor(string prefix)
+    {
+        var acceptedPrefix = prefix + ".";
+        foreach (var key in ModelState.Keys.Where(key =>
+                     !key.Equals(prefix, StringComparison.OrdinalIgnoreCase)
+                     && !key.StartsWith(acceptedPrefix, StringComparison.OrdinalIgnoreCase)).ToList())
+            ModelState.Remove(key);
+    }
+
+    private static string NormalizeDisplayMode(string? mode) => mode == "day" ? "day" : "week";
 }

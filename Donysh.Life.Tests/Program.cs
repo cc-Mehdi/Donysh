@@ -207,6 +207,7 @@ using (var authenticatedClient = authenticatedFactory.CreateClient(new WebApplic
             && weekHtml.Contains("نوع نمایش", StringComparison.Ordinal)
             && weekHtml.Contains("افزودن برنامه", StringComparison.Ordinal) == false
             && weekHtml.Contains("اول یک فعالیت بساز", StringComparison.Ordinal)
+            && !weekHtml.Contains("DisplayMode field is required", StringComparison.Ordinal)
             && !weekHtml.Contains("style=", StringComparison.OrdinalIgnoreCase));
     }
 
@@ -256,15 +257,90 @@ using (var authenticatedClient = authenticatedFactory.CreateClient(new WebApplic
             && !calendarWeekHtml.Contains("style=", StringComparison.OrdinalIgnoreCase));
     }
 
+    string calendarAntiforgery;
     using (var calendarDayResponse = await authenticatedClient.GetAsync("/Week?day=Wednesday&view=day"))
     {
         var calendarDayHtml = await calendarDayResponse.Content.ReadAsStringAsync();
+        calendarAntiforgery = WebUtility.HtmlDecode(Regex.Match(
+            calendarDayHtml,
+            "name=\"__RequestVerificationToken\" type=\"hidden\" value=\"([^\"]+)\"",
+            RegexOptions.CultureInvariant).Groups[1].Value);
         Check("Life day view keeps the selected day and creation dialog accessible",
             calendarDayResponse.StatusCode == HttpStatusCode.OK
             && calendarDayHtml.Contains("calendar-board day-view", StringComparison.Ordinal)
             && calendarDayHtml.Contains("data-column-count=\"1\"", StringComparison.Ordinal)
             && calendarDayHtml.Contains("schedule-create-dialog", StringComparison.Ordinal)
+            && calendarDayHtml.Contains("schedule-edit-dialog", StringComparison.Ordinal)
+            && !calendarDayHtml.Contains("DisplayMode field is required", StringComparison.Ordinal)
             && calendarDayHtml.Contains("aria-current=\"page\"", StringComparison.Ordinal));
+    }
+
+    var calendarWeekStart = WeekCalendar.CurrentSaturday();
+    using (var createScheduleContent = new FormUrlEncodedContent(new Dictionary<string, string>
+    {
+        ["__RequestVerificationToken"] = calendarAntiforgery,
+        ["Input.ActivityId"] = calendarActivityId.ToString(),
+        ["Input.DayOfWeek"] = DayOfWeek.Saturday.ToString(),
+        ["Input.StartTime"] = "12:00",
+        ["Input.DurationMinutes"] = "60",
+        ["Input.Note"] = "آزمون ساخت",
+        ["WeekStart"] = calendarWeekStart.ToString("yyyy-MM-dd"),
+        ["view"] = "day"
+    }))
+    using (var createScheduleResponse = await authenticatedClient.PostAsync("/Week?handler=Save", createScheduleContent))
+    {
+        Check("Life create dialog submits without unrelated interaction validation",
+            createScheduleResponse.StatusCode == HttpStatusCode.Redirect
+            && createScheduleResponse.Headers.Location?.OriginalString.Contains("view=day", StringComparison.Ordinal) == true);
+    }
+
+    Guid createdPatternId;
+    await using (var readCreatedScope = authenticatedFactory.Services.CreateAsyncScope())
+    {
+        var db = readCreatedScope.ServiceProvider.GetRequiredService<LifeDbContext>();
+        createdPatternId = await db.SchedulePatterns
+            .Where(item => item.UserSubject == "life-test-user" && item.DayOfWeek == DayOfWeek.Saturday)
+            .Select(item => item.Id)
+            .SingleAsync();
+    }
+
+    using (var editScheduleContent = new FormUrlEncodedContent(new Dictionary<string, string>
+    {
+        ["__RequestVerificationToken"] = calendarAntiforgery,
+        ["PatternId"] = createdPatternId.ToString(),
+        ["Input.ActivityId"] = calendarActivityId.ToString(),
+        ["Input.DayOfWeek"] = DayOfWeek.Saturday.ToString(),
+        ["Input.StartTime"] = "13:00",
+        ["Input.DurationMinutes"] = "90",
+        ["Input.Note"] = "آزمون ویرایش",
+        ["WeekStart"] = calendarWeekStart.ToString("yyyy-MM-dd"),
+        ["view"] = "day"
+    }))
+    using (var editScheduleResponse = await authenticatedClient.PostAsync("/Week?handler=Save", editScheduleContent))
+    {
+        Check("Life edit dialog updates a schedule without unrelated model errors",
+            editScheduleResponse.StatusCode == HttpStatusCode.Redirect
+            && editScheduleResponse.Headers.Location?.OriginalString.Contains("view=day", StringComparison.Ordinal) == true);
+    }
+
+    await using (var readEditedScope = authenticatedFactory.Services.CreateAsyncScope())
+    {
+        var db = readEditedScope.ServiceProvider.GetRequiredService<LifeDbContext>();
+        var editedPattern = await db.SchedulePatterns.SingleAsync(item => item.Id == createdPatternId);
+        Check("Life edit dialog persists time, duration and note",
+            editedPattern.StartMinute == 13 * 60
+            && editedPattern.DurationMinutes == 90
+            && editedPattern.Note == "آزمون ویرایش");
+    }
+
+    using (var editedDayResponse = await authenticatedClient.GetAsync("/Week?day=Saturday&view=day"))
+    {
+        var editedDayHtml = await editedDayResponse.Content.ReadAsStringAsync();
+        Check("Life edited schedule renders the new time in its centered dialog flow",
+            editedDayResponse.StatusCode == HttpStatusCode.OK
+            && editedDayHtml.Contains("13:00 تا 14:30", StringComparison.Ordinal)
+            && !editedDayHtml.Contains("DurationMinutes must be between", StringComparison.Ordinal)
+            && !editedDayHtml.Contains("DisplayMode field is required", StringComparison.Ordinal));
     }
 
     await using (var cleanupScope = authenticatedFactory.Services.CreateAsyncScope())

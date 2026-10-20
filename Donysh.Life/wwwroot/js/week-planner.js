@@ -120,6 +120,13 @@
     document.querySelectorAll("[data-open-create]").forEach(button => button.addEventListener("click", openCreate));
     document.querySelectorAll("[data-close-create]").forEach(button => button.addEventListener("click", () => createDialog.close()));
     createDialog.addEventListener("click", event => { if (event.target === createDialog) createDialog.close(); });
+    document.querySelectorAll("[data-open-edit]").forEach(button => button.addEventListener("click", () => {
+        const dialog = document.getElementById(`schedule-edit-${button.dataset.openEdit}`);
+        if (dialog && !dialog.open) dialog.showModal();
+    }));
+    document.querySelectorAll("[data-close-edit]").forEach(button => button.addEventListener("click", () => button.closest("dialog")?.close()));
+    document.querySelectorAll(".schedule-edit-dialog").forEach(dialog =>
+        dialog.addEventListener("click", event => { if (event.target === dialog) dialog.close(); }));
     scopeDialog.addEventListener("cancel", () => {
         pendingChange = null;
         document.querySelectorAll(".calendar-event").forEach(applyEventHeight);
