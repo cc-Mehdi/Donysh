@@ -136,25 +136,48 @@ internal static class PostgresChecks
                 CategoryId = category.Id,
                 CreatedByUserId = user.Id,
                 Reason = obligation.Title,
-                Amount = obligation.Amount,
+                Amount = 100_000,
                 ExpenseDate = DateOnly.FromDateTime(DateTime.UtcNow)
             };
             var obligationPayment = new RecurringObligationPayment
             {
+                SubmissionKey = Guid.NewGuid(),
                 RecurringObligationId = obligation.Id,
                 ExpenseId = obligationExpense.Id,
                 PaidByUserId = user.Id,
                 PeriodYear = 1405,
                 PeriodMonth = 8,
-                Amount = obligation.Amount,
+                Amount = obligationExpense.Amount,
                 PaidDate = obligationExpense.ExpenseDate
             };
-            db.AddRange(obligation, obligationExpense, obligationPayment);
+            var secondObligationExpense = new Expense
+            {
+                WorkspaceId = workspace.Id,
+                CategoryId = category.Id,
+                CreatedByUserId = user.Id,
+                Reason = obligation.Title,
+                Amount = 200_000,
+                ExpenseDate = obligationExpense.ExpenseDate
+            };
+            var secondObligationPayment = new RecurringObligationPayment
+            {
+                SubmissionKey = Guid.NewGuid(),
+                RecurringObligationId = obligation.Id,
+                ExpenseId = secondObligationExpense.Id,
+                PaidByUserId = user.Id,
+                PeriodYear = 1405,
+                PeriodMonth = 8,
+                Amount = secondObligationExpense.Amount,
+                PaidDate = secondObligationExpense.ExpenseDate
+            };
+            db.AddRange(obligation, obligationExpense, obligationPayment, secondObligationExpense, secondObligationPayment);
             await db.SaveChangesAsync();
+            Check(await db.RecurringObligationPayments.CountAsync(x => x.RecurringObligationId == obligation.Id) == 2,
+                "multiple partial obligation payments are allowed in one month");
             Check(await expenseTransfer.TransferAsync(workspace.Id, obligationExpense.Id, other.Id,
                       otherCategory.Id, "قسط منتقل‌شده", user.Id) == ExpenseTransferResult.LinkedToObligation,
                 "expense transfer cannot detach a recorded obligation payment");
-            db.RemoveRange(obligationPayment, obligationExpense, obligation);
+            db.RemoveRange(obligationPayment, secondObligationPayment, obligationExpense, secondObligationExpense, obligation);
             await db.SaveChangesAsync();
 
             var historical = new Expense

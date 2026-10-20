@@ -185,7 +185,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
         {
             entity.Property(x => x.Amount).HasPrecision(18, 0);
             entity.Property(x => x.Note).HasMaxLength(200);
-            entity.HasIndex(x => new { x.RecurringObligationId, x.PeriodYear, x.PeriodMonth }).IsUnique();
+            entity.HasIndex(x => new { x.RecurringObligationId, x.PeriodYear, x.PeriodMonth });
+            entity.HasIndex(x => x.SubmissionKey).IsUnique();
             entity.HasIndex(x => x.ExpenseId).IsUnique();
             entity.HasOne(x => x.RecurringObligation)
                 .WithMany(x => x.Payments)

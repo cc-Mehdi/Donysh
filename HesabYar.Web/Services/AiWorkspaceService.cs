@@ -219,8 +219,11 @@ public sealed class AiWorkspaceService(ApplicationDbContext db, BudgetRolloverSe
                     .Where(period => RecurringObligationHelper.IsScheduledForPeriod(item, period, requireActive: false))
                     .Select(period =>
                     {
-                        var payment = item.Payments.SingleOrDefault(x =>
-                            x.PeriodYear == period.Year && x.PeriodMonth == period.Month);
+                        var paymentsForPeriod = item.Payments
+                            .Where(x => x.PeriodYear == period.Year && x.PeriodMonth == period.Month)
+                            .OrderBy(x => x.PaidDate)
+                            .ToList();
+                        var paidAmount = paymentsForPeriod.Sum(x => x.Amount);
                         return new
                         {
                             year = period.Year,
@@ -228,9 +231,12 @@ public sealed class AiWorkspaceService(ApplicationDbContext db, BudgetRolloverSe
                             title = PersianCalendarHelper.Title(period),
                             installmentNumber = RecurringObligationHelper.GetInstallmentNumber(item, period),
                             dueDate = RecurringObligationHelper.GetDueDate(item, period),
-                            isPaid = payment is not null,
-                            paidAmount = payment?.Amount,
-                            paidDate = payment?.PaidDate
+                            isPaid = paidAmount >= item.Amount,
+                            isPartiallyPaid = paidAmount > 0 && paidAmount < item.Amount,
+                            paidAmount,
+                            remainingAmount = Math.Max(0, item.Amount - paidAmount),
+                            paymentCount = paymentsForPeriod.Count,
+                            paidDate = paymentsForPeriod.LastOrDefault()?.PaidDate
                         };
                     })
                     .Where(x => x.dueDate >= request.StartDate && x.dueDate < endExclusive)
@@ -246,12 +252,18 @@ public sealed class AiWorkspaceService(ApplicationDbContext db, BudgetRolloverSe
                 startYear = x.item.StartYear,
                 startMonth = x.item.StartMonth,
                 durationMonths = x.item.DurationMonths,
-                paidInstallments = x.item.Payments.Count,
+                paidInstallments = x.item.Payments
+                    .GroupBy(payment => new { payment.PeriodYear, payment.PeriodMonth })
+                    .Count(group => group.Sum(payment => payment.Amount) >= x.item.Amount),
                 remainingInstallments = x.item.DurationMonths.HasValue
-                    ? Math.Max(x.item.DurationMonths.Value - x.item.Payments.Count, 0)
+                    ? Math.Max(x.item.DurationMonths.Value - x.item.Payments
+                        .GroupBy(payment => new { payment.PeriodYear, payment.PeriodMonth })
+                        .Count(group => group.Sum(payment => payment.Amount) >= x.item.Amount), 0)
                     : (int?)null,
                 totalRemainingAmount = x.item.DurationMonths.HasValue
-                    ? Math.Max(x.item.DurationMonths.Value - x.item.Payments.Count, 0) * x.item.Amount
+                    ? Math.Max(x.item.DurationMonths.Value - x.item.Payments
+                        .GroupBy(payment => new { payment.PeriodYear, payment.PeriodMonth })
+                        .Count(group => group.Sum(payment => payment.Amount) >= x.item.Amount), 0) * x.item.Amount
                     : (decimal?)null,
                 dueDay = x.item.DueDay,
                 reminderDaysBefore = x.item.ReminderDaysBefore,

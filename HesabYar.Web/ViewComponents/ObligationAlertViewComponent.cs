@@ -26,21 +26,23 @@ public sealed class ObligationAlertViewComponent(ApplicationDbContext db, IWorks
             .ToListAsync();
 
         var ids = obligations.Select(x => x.Id).ToList();
-        var paidIds = ids.Count == 0
-     ? new HashSet<Guid>()
-     : (await db.RecurringObligationPayments
-         .AsNoTracking()
-         .Where(x => ids.Contains(x.RecurringObligationId) &&
-                     x.PeriodYear == period.Year &&
-                     x.PeriodMonth == period.Month)
-         .Select(x => x.RecurringObligationId)
-         .ToListAsync()).ToHashSet();
+        var paidTotals = ids.Count == 0
+            ? new Dictionary<Guid, decimal>()
+            : (await db.RecurringObligationPayments
+                .AsNoTracking()
+                .Where(x => ids.Contains(x.RecurringObligationId) &&
+                            x.PeriodYear == period.Year &&
+                            x.PeriodMonth == period.Month)
+                .GroupBy(x => x.RecurringObligationId)
+                .Select(x => new { Id = x.Key, Amount = x.Sum(payment => payment.Amount) })
+                .ToListAsync()).ToDictionary(x => x.Id, x => x.Amount);
 
         var count = 0;
         var overdue = 0;
         foreach (var item in obligations)
         {
-            if (!RecurringObligationHelper.IsScheduledForPeriod(item, period) || paidIds.Contains(item.Id))
+            paidTotals.TryGetValue(item.Id, out var paidAmount);
+            if (!RecurringObligationHelper.IsScheduledForPeriod(item, period) || paidAmount >= item.Amount)
             {
                 continue;
             }

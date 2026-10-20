@@ -236,6 +236,7 @@ builder.Services.AddScoped<BudgetRolloverService>();
 builder.Services.AddScoped<BudgetBalanceService>();
 builder.Services.AddScoped<WorkspaceOwnershipService>();
 builder.Services.AddScoped<ExpenseTransferService>();
+builder.Services.AddScoped<ObligationPaymentService>();
 
 builder.Services
     .AddRazorPages(options =>

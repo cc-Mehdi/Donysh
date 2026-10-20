@@ -160,6 +160,7 @@ public sealed class RecurringObligation
 public sealed class RecurringObligationPayment
 {
     public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid SubmissionKey { get; set; } = Guid.NewGuid();
     public Guid RecurringObligationId { get; set; }
     public Guid ExpenseId { get; set; }
     public string PaidByUserId { get; set; } = string.Empty;

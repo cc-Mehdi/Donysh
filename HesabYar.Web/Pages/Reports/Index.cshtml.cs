@@ -37,8 +37,8 @@ public sealed class IndexModel(
     public IReadOnlyList<BudgetTransferReport> BudgetTransfers { get; private set; } = [];
     public IReadOnlyList<MonthlyObligationReport> MonthlyObligations { get; private set; } = [];
     public decimal MonthlyObligationExpected => MonthlyObligations.Sum(x => x.ExpectedAmount);
-    public decimal MonthlyObligationPaid => MonthlyObligations.Where(x => x.IsPaid).Sum(x => x.PaidAmount);
-    public decimal MonthlyObligationUnpaid => MonthlyObligations.Where(x => !x.IsPaid).Sum(x => x.ExpectedAmount);
+    public decimal MonthlyObligationPaid => MonthlyObligations.Sum(x => x.PaidAmount);
+    public decimal MonthlyObligationUnpaid => MonthlyObligations.Sum(x => x.RemainingAmount);
     public decimal MaxTrendAmount => Trend.Count == 0 ? 0 : Trend.Max(x => x.Amount);
 
     public sealed record CategoryReport(Guid CategoryId, string Name, string Icon, decimal Amount, int Count, decimal Percent);
@@ -50,7 +50,7 @@ public sealed class IndexModel(
     public sealed record BudgetTransferReport(DateOnly TransferDate, string SourceName, string SourceIcon, string DestinationName,
         string DestinationIcon, decimal Amount, string CreatedBy, string? Note);
     public sealed record MonthlyObligationReport(string Title, RecurringObligationType Type, string CategoryName, string CategoryIcon,
-        decimal ExpectedAmount, DateOnly DueDate, bool IsPaid, decimal PaidAmount, DateOnly? PaidDate, string Status);
+        decimal ExpectedAmount, DateOnly DueDate, bool IsPaid, decimal PaidAmount, decimal RemainingAmount, DateOnly? PaidDate, string Status);
 
     public async Task OnGetAsync(CancellationToken cancellationToken)
     {
@@ -167,7 +167,12 @@ public sealed class IndexModel(
         {
             foreach (var obligation in obligations.Where(x => RecurringObligationHelper.IsScheduledForPeriod(x, period)))
             {
-                var payment = obligationPayments.FirstOrDefault(x => x.RecurringObligationId == obligation.Id && x.PeriodYear == period.Year && x.PeriodMonth == period.Month);
+                var paymentsForPeriod = obligationPayments
+                    .Where(x => x.RecurringObligationId == obligation.Id && x.PeriodYear == period.Year && x.PeriodMonth == period.Month)
+                    .OrderBy(x => x.PaidDate)
+                    .ToList();
+                var paidAmount = paymentsForPeriod.Sum(x => x.Amount);
+                var lastPayment = paymentsForPeriod.LastOrDefault();
                 obligationOccurrences.Add(new
                 {
                     year = period.Year,
@@ -179,10 +184,13 @@ public sealed class IndexModel(
                     dueDate = Formatters.PersianDate(RecurringObligationHelper.GetDueDate(obligation, period)),
                     installmentNumber = RecurringObligationHelper.GetInstallmentNumber(obligation, period),
                     totalInstallments = obligation.DurationMonths,
-                    paid = payment is not null,
-                    paidAmount = payment?.Amount,
-                    paidDate = payment is null ? null : Formatters.PersianDate(payment.PaidDate),
-                    paidBy = payment is null ? null : (string.IsNullOrWhiteSpace(payment.PaidByUser.DisplayName) ? payment.PaidByUser.Email : payment.PaidByUser.DisplayName)
+                    paid = paidAmount >= obligation.Amount,
+                    partiallyPaid = paidAmount > 0 && paidAmount < obligation.Amount,
+                    paidAmount,
+                    remainingAmount = Math.Max(0, obligation.Amount - paidAmount),
+                    paymentCount = paymentsForPeriod.Count,
+                    paidDate = lastPayment is null ? null : Formatters.PersianDate(lastPayment.PaidDate),
+                    paidBy = lastPayment is null ? null : (string.IsNullOrWhiteSpace(lastPayment.PaidByUser.DisplayName) ? lastPayment.PaidByUser.Email : lastPayment.PaidByUser.DisplayName)
                 });
             }
         }
@@ -354,11 +362,17 @@ public sealed class IndexModel(
 
         MonthlyObligations = obligations.Where(x => RecurringObligationHelper.IsScheduledForPeriod(x, period)).Select(item =>
         {
-            var payment = payments.FirstOrDefault(x => x.RecurringObligationId == item.Id);
+            var itemPayments = payments.Where(x => x.RecurringObligationId == item.Id).OrderBy(x => x.PaidDate).ToList();
+            var paidAmount = itemPayments.Sum(x => x.Amount);
+            var lastPayment = itemPayments.LastOrDefault();
             var due = RecurringObligationHelper.GetDueDate(item, period);
-            var status = payment is not null ? "پرداخت‌شده" : due < today ? "عقب‌افتاده" : "در انتظار پرداخت";
+            var remainingAmount = Math.Max(0, item.Amount - paidAmount);
+            var status = paidAmount >= item.Amount ? "پرداخت‌شده"
+                : paidAmount > 0 && due < today ? "بخشی پرداخت شده · عقب‌افتاده"
+                : paidAmount > 0 ? "بخشی پرداخت شده"
+                : due < today ? "عقب‌افتاده" : "در انتظار پرداخت";
             return new MonthlyObligationReport(item.Title, item.Type, item.Category.Name, item.Category.Icon, item.Amount, due,
-                payment is not null, payment?.Amount ?? 0, payment?.PaidDate, status);
+                paidAmount >= item.Amount, paidAmount, remainingAmount, lastPayment?.PaidDate, status);
         }).OrderBy(x => x.IsPaid).ThenBy(x => x.DueDate).ToList();
     }
 

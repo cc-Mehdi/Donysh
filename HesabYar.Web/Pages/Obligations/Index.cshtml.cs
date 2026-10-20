@@ -12,6 +12,7 @@ namespace HesabYar.Web.Pages.Obligations;
 public sealed class IndexModel(
     ApplicationDbContext db,
     IWorkspaceContext workspaceContext,
+    ObligationPaymentService obligationPaymentService,
     BudgetBalanceService budgetBalanceService,
     ILogger<IndexModel> logger) : PageModel
 {
@@ -32,8 +33,8 @@ public sealed class IndexModel(
     public string PeriodTitle { get; private set; } = string.Empty;
     public string DefaultPaidDate { get; private set; } = string.Empty;
     public decimal MonthExpectedTotal => Items.Sum(x => x.ExpectedAmount);
-    public decimal MonthPaidTotal => Items.Where(x => x.IsPaid).Sum(x => x.PaidAmount);
-    public decimal MonthUnpaidTotal => Items.Where(x => !x.IsPaid).Sum(x => x.ExpectedAmount);
+    public decimal MonthPaidTotal => Items.Sum(x => x.PaidAmount);
+    public decimal MonthUnpaidTotal => Items.Sum(x => x.RemainingAmount);
     public int UnpaidCount => Items.Count(x => !x.IsPaid);
     public int AlertCount => Items.Count(x => x.IsOverdue || x.IsDueSoon);
 
@@ -73,14 +74,19 @@ public sealed class IndexModel(
         public string? Note { get; set; }
     }
 
+    public sealed record PaymentRow(Guid Id, decimal Amount, DateOnly PaidDate, string? Note, string PaidBy);
+
     public sealed record ObligationRow(
         RecurringObligation Obligation,
         DateOnly DueDate,
         decimal ExpectedAmount,
         bool IsPaid,
+        bool IsPartiallyPaid,
+        bool IsOverpaid,
         decimal PaidAmount,
-        DateOnly? PaidDate,
-        Guid? PaymentId,
+        decimal RemainingAmount,
+        decimal ProgressPercent,
+        IReadOnlyList<PaymentRow> Payments,
         bool IsOverdue,
         bool IsDueSoon,
         int DaysUntilDue,
@@ -173,6 +179,7 @@ public sealed class IndexModel(
         var form = await Request.ReadFormAsync(cancellationToken);
 
         if (!Guid.TryParse(form["Payment.ObligationId"].FirstOrDefault(), out var obligationId) ||
+            !Guid.TryParse(form["Payment.SubmissionKey"].FirstOrDefault(), out var submissionKey) ||
             !int.TryParse(InputNormalization.ToLatinDigits(form["Payment.Year"].FirstOrDefault()), out var year) ||
             !int.TryParse(InputNormalization.ToLatinDigits(form["Payment.Month"].FirstOrDefault()), out var month))
         {
@@ -184,29 +191,6 @@ public sealed class IndexModel(
         Month = month;
         NormalizePeriod();
         var period = new PersianYearMonth(Year!.Value, Month!.Value);
-
-        var obligation = await db.RecurringObligations
-            .Include(x => x.Category)
-            .SingleOrDefaultAsync(x => x.Id == obligationId && x.WorkspaceId == workspace.Id, cancellationToken);
-        if (obligation is null)
-        {
-            return NotFound();
-        }
-
-        if (!RecurringObligationHelper.IsScheduledForPeriod(obligation, period))
-        {
-            TempData["Error"] = "این تعهد برای ماه انتخاب‌شده فعال نیست.";
-            return RedirectToPage(new { year = Year, month = Month });
-        }
-
-        var exists = await db.RecurringObligationPayments.AnyAsync(
-            x => x.RecurringObligationId == obligation.Id && x.PeriodYear == period.Year && x.PeriodMonth == period.Month,
-            cancellationToken);
-        if (exists)
-        {
-            TempData["Error"] = "پرداخت این ماه قبلاً ثبت شده است.";
-            return RedirectToPage(new { year = Year, month = Month });
-        }
 
         if (!InputNormalization.TryParseMoney(form["Payment.Amount"].FirstOrDefault(), out var amount) || amount <= 0)
         {
@@ -227,39 +211,12 @@ public sealed class IndexModel(
             return RedirectToPage(new { year = Year, month = Month });
         }
 
-        var expense = new Expense
-        {
-            WorkspaceId = workspace.Id,
-            CategoryId = obligation.CategoryId,
-            CreatedByUserId = workspaceContext.UserId!,
-            Reason = obligation.Type == RecurringObligationType.Installment
-                ? $"قسط: {obligation.Title}"
-                : $"هزینه ثابت: {obligation.Title}",
-            Amount = amount,
-            ExpenseDate = paidDate
-        };
-        var payment = new RecurringObligationPayment
-        {
-            RecurringObligationId = obligation.Id,
-            ExpenseId = expense.Id,
-            PaidByUserId = workspaceContext.UserId!,
-            PeriodYear = period.Year,
-            PeriodMonth = period.Month,
-            Amount = amount,
-            PaidDate = paidDate,
-            Note = string.IsNullOrWhiteSpace(note) ? null : note
-        };
-
+        ObligationPaymentResult result;
         try
         {
-            db.Expenses.Add(expense);
-            db.RecurringObligationPayments.Add(payment);
-
-            // SaveChanges already wraps both inserts in one implicit transaction.
-            // An explicit transaction is incompatible with the Npgsql retry
-            // execution strategy configured in Program.cs unless the entire
-            // operation is executed through that strategy.
-            await db.SaveChangesAsync(cancellationToken);
+            result = await obligationPaymentService.RecordAsync(
+                workspace.Id, obligationId, period, amount, paidDate, note,
+                workspaceContext.UserId!, submissionKey, cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -271,23 +228,52 @@ public sealed class IndexModel(
             logger.LogError(
                 ex,
                 "Failed to record payment for obligation {ObligationId} in {Year}/{Month}",
-                obligation.Id,
+                obligationId,
                 period.Year,
                 period.Month);
             TempData["Error"] = "ثبت پرداخت کامل نشد یا نتیجه آن قابل تأیید نبود. صفحه را تازه کنید؛ اگر پرداخت‌شده نمایش داده نشد دوباره تلاش کنید.";
             return RedirectToPage(new { year = Year, month = Month });
         }
 
-        TempData["Success"] = $"پرداخت «{obligation.Title}» ثبت و به مخارج اضافه شد.";
+        if (result.Kind == ObligationPaymentResultKind.NotFound)
+        {
+            return NotFound();
+        }
+        if (result.Kind == ObligationPaymentResultKind.Duplicate)
+        {
+            TempData["Success"] = "این پرداخت پیش‌تر ثبت شده است و دوباره ثبت نشد.";
+            return RedirectToPage(new { year = Year, month = Month });
+        }
+        if (result.Kind == ObligationPaymentResultKind.NotScheduled)
+        {
+            TempData["Error"] = "این تعهد برای ماه انتخاب‌شده فعال نیست.";
+            return RedirectToPage(new { year = Year, month = Month });
+        }
+        if (result.Kind == ObligationPaymentResultKind.ExceedsRemaining)
+        {
+            TempData["Error"] = result.RemainingAmount > 0
+                ? $"مبلغ واردشده از مانده قسط بیشتر است. مانده فعلی {Formatters.Money(result.RemainingAmount)} است."
+                : "این قسط کامل پرداخت شده است.";
+            return RedirectToPage(new { year = Year, month = Month });
+        }
+        if (result.Kind != ObligationPaymentResultKind.Success)
+        {
+            TempData["Error"] = "اطلاعات پرداخت معتبر نیست.";
+            return RedirectToPage(new { year = Year, month = Month });
+        }
+
+        TempData["Success"] = result.RemainingAmount > 0
+            ? $"پرداخت «{result.ObligationTitle}» ثبت شد؛ {Formatters.Money(result.RemainingAmount)} باقی مانده است."
+            : $"پرداخت «{result.ObligationTitle}» ثبت و به مخارج اضافه شد.";
 
         try
         {
             var paidPeriod = PersianCalendarHelper.GetYearMonth(paidDate);
             var budgetStates = await budgetBalanceService.GetPeriodAsync(workspace.Id, paidPeriod, cancellationToken);
-            var exceeded = budgetStates.FirstOrDefault(x => x.Budget.CategoryId == obligation.CategoryId && x.Remaining < 0);
+            var exceeded = budgetStates.FirstOrDefault(x => x.Budget.CategoryId == result.CategoryId && x.Remaining < 0);
             if (exceeded is not null)
             {
-                TempData["Error"] = $"هشدار بودجه: با این پرداخت، بودجه «{obligation.Category.Name}» {Formatters.Money(Math.Abs(exceeded.Remaining))} کسری دارد. اگر انتقال بودجه انجام نشود، این کسری طبق تنظیم بودجه به ماه بعد منتقل می‌شود.";
+                TempData["Error"] = $"هشدار بودجه: با این پرداخت، بودجه «{result.CategoryName}» {Formatters.Money(Math.Abs(exceeded.Remaining))} کسری دارد. اگر انتقال بودجه انجام نشود، این کسری طبق تنظیم بودجه به ماه بعد منتقل می‌شود.";
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -301,7 +287,7 @@ public sealed class IndexModel(
             logger.LogWarning(
                 ex,
                 "Payment {PaymentId} was recorded, but its budget warning could not be calculated",
-                payment.Id);
+                result.PaymentId);
         }
 
         return RedirectToPage(new { year = Year, month = Month });
@@ -412,27 +398,38 @@ public sealed class IndexModel(
             ? new List<RecurringObligationPayment>()
             : await db.RecurringObligationPayments
                 .Where(x => definitionIds.Contains(x.RecurringObligationId) && x.PeriodYear == period.Year && x.PeriodMonth == period.Month)
+                .Include(x => x.PaidByUser)
                 .AsNoTracking()
                 .ToListAsync(cancellationToken);
 
         var rows = new List<ObligationRow>();
         foreach (var item in Definitions)
         {
-            var payment = payments.SingleOrDefault(x => x.RecurringObligationId == item.Id);
+            var itemPayments = payments.Where(x => x.RecurringObligationId == item.Id)
+                .OrderByDescending(x => x.PaidDate)
+                .ThenByDescending(x => x.CreatedAtUtc)
+                .ToList();
             var scheduled = RecurringObligationHelper.IsScheduledForPeriod(item, period);
-            if (!scheduled && payment is null)
+            if (!scheduled && itemPayments.Count == 0)
             {
                 continue;
             }
 
             var dueDate = RecurringObligationHelper.GetDueDate(item, period);
             var daysUntilDue = dueDate.DayNumber - today.DayNumber;
-            var isPaid = payment is not null;
+            var summary = RecurringObligationHelper.SummarizePayments(item.Amount, itemPayments.Select(x => x.Amount));
+            var isPaid = summary.IsPaid;
             var isOverdue = !isPaid && dueDate < today;
             var isDueSoon = !isPaid && daysUntilDue >= 0 && daysUntilDue <= item.ReminderDaysBefore;
 
-            var (statusText, statusClass) = isPaid
+            var (statusText, statusClass) = summary.IsOverpaid
+                ? ("بیشتر از برآورد", "bg-violet-100 text-violet-700")
+                : isPaid
                 ? ("پرداخت‌شده", "bg-emerald-100 text-emerald-700")
+                : summary.IsPartiallyPaid && isOverdue
+                    ? ("بخشی پرداخت شده · عقب‌افتاده", "bg-rose-100 text-rose-700")
+                : summary.IsPartiallyPaid
+                    ? ("بخشی پرداخت شده", "bg-amber-100 text-amber-700")
                 : isOverdue
                     ? ("عقب‌افتاده", "bg-rose-100 text-rose-700")
                     : isDueSoon
@@ -444,9 +441,14 @@ public sealed class IndexModel(
                 dueDate,
                 item.Amount,
                 isPaid,
-                payment?.Amount ?? 0,
-                payment?.PaidDate,
-                payment?.Id,
+                summary.IsPartiallyPaid,
+                summary.IsOverpaid,
+                summary.PaidAmount,
+                summary.RemainingAmount,
+                summary.ProgressPercent,
+                itemPayments.Select(x => new PaymentRow(
+                    x.Id, x.Amount, x.PaidDate, x.Note,
+                    string.IsNullOrWhiteSpace(x.PaidByUser.DisplayName) ? x.PaidByUser.Email ?? "کاربر" : x.PaidByUser.DisplayName)).ToList(),
                 isOverdue,
                 isDueSoon,
                 daysUntilDue,

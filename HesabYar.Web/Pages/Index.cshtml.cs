@@ -107,15 +107,17 @@ public sealed class IndexModel(
         var alerts = new List<ObligationAlert>();
         foreach (var item in scheduled)
         {
-            if (payments.Any(x => x.RecurringObligationId == item.Id)) continue;
-            MonthObligationUnpaid += item.Amount;
+            var paidAmount = payments.Where(x => x.RecurringObligationId == item.Id).Sum(x => x.Amount);
+            var remainingAmount = Math.Max(0, item.Amount - paidAmount);
+            if (remainingAmount <= 0) continue;
+            MonthObligationUnpaid += remainingAmount;
             var due = RecurringObligationHelper.GetDueDate(item, period);
             var days = due.DayNumber - Today.DayNumber;
             var overdue = due < Today;
             var dueSoon = days >= 0 && days <= item.ReminderDaysBefore;
             if (overdue || dueSoon)
             {
-                alerts.Add(new ObligationAlert(item.Id, item.Title, item.Category.Icon, item.Amount, due, overdue, days));
+                alerts.Add(new ObligationAlert(item.Id, item.Title, item.Category.Icon, remainingAmount, due, overdue, days));
             }
         }
 

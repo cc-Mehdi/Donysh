@@ -473,6 +473,16 @@
         syncDuration();
     });
 
+    document.querySelectorAll('[data-payment-form]').forEach((form) => {
+        form.addEventListener('submit', () => {
+            const submit = form.querySelector('[data-payment-submit]');
+            if (!submit) return;
+            submit.disabled = true;
+            submit.setAttribute('aria-busy', 'true');
+            submit.textContent = 'در حال ثبت…';
+        });
+    });
+
     document.querySelectorAll('[data-icon-picker]').forEach((picker) => {
         const choices = [...picker.querySelectorAll('[data-icon-choice]')];
         const custom = picker.querySelector('[data-icon-custom]');

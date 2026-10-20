@@ -3,6 +3,7 @@ using System.Text;
 using HesabYar.Web.Data;
 using HesabYar.Web.Configuration;
 using HesabYar.Web.Domain;
+using HesabYar.Web.Helpers;
 using HesabYar.Web.Pages.Expenses;
 using HesabYar.Web.Sms;
 using HesabYar.Web.Security;
@@ -15,6 +16,19 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+
+var partialSummary = RecurringObligationHelper.SummarizePayments(2_000_000, [500_000, 500_000]);
+if (!partialSummary.IsPartiallyPaid || partialSummary.IsPaid || partialSummary.RemainingAmount != 1_000_000 || partialSummary.ProgressPercent != 50)
+    throw new Exception("Partial obligation payments must preserve the remaining monthly amount.");
+Console.WriteLine("PASS Partial obligation payments preserve the remaining amount");
+var completeSummary = RecurringObligationHelper.SummarizePayments(2_000_000, [500_000, 1_500_000]);
+if (!completeSummary.IsPaid || completeSummary.IsPartiallyPaid || completeSummary.RemainingAmount != 0 || completeSummary.ProgressPercent != 100)
+    throw new Exception("Multiple obligation payments must settle the monthly amount together.");
+Console.WriteLine("PASS Multiple obligation payments settle the monthly amount together");
+var overpaidSummary = RecurringObligationHelper.SummarizePayments(2_000_000, [2_500_000]);
+if (!overpaidSummary.IsPaid || !overpaidSummary.IsOverpaid || overpaidSummary.RemainingAmount != 0 || overpaidSummary.ProgressPercent != 100)
+    throw new Exception("Variable monthly expenses must expose over-estimate payments safely.");
+Console.WriteLine("PASS Variable monthly expenses expose over-estimate payments");
 
 // The list and member summary must share every user-selected filter.
 var selectedCategory = Guid.NewGuid();

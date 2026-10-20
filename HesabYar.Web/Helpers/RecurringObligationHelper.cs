@@ -4,6 +4,23 @@ namespace HesabYar.Web.Helpers;
 
 public static class RecurringObligationHelper
 {
+    public static ObligationPaymentSummary SummarizePayments(decimal expectedAmount, IEnumerable<decimal> payments)
+    {
+        var paidAmount = payments.Sum();
+        var remainingAmount = Math.Max(0, expectedAmount - paidAmount);
+        var progressPercent = expectedAmount <= 0
+            ? 0
+            : Math.Min(100, decimal.Round(paidAmount / expectedAmount * 100, 1));
+
+        return new ObligationPaymentSummary(
+            paidAmount,
+            remainingAmount,
+            progressPercent,
+            paidAmount > 0 && paidAmount < expectedAmount,
+            paidAmount >= expectedAmount,
+            paidAmount > expectedAmount);
+    }
+
     public static int MonthsBetween(PersianYearMonth start, PersianYearMonth period)
         => (period.Year - start.Year) * 12 + (period.Month - start.Month);
 
@@ -59,3 +76,11 @@ public static class RecurringObligationHelper
         return Math.Max(0, obligation.DurationMonths.Value - offset - 1);
     }
 }
+
+public sealed record ObligationPaymentSummary(
+    decimal PaidAmount,
+    decimal RemainingAmount,
+    decimal ProgressPercent,
+    bool IsPartiallyPaid,
+    bool IsPaid,
+    bool IsOverpaid);

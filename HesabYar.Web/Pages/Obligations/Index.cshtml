@@ -141,9 +141,18 @@
                         <strong class="text-lg">@Formatters.Money(row.ExpectedAmount)</strong>
                     </div>
 
-                    @if (!row.IsPaid)
+                    <div class="mt-4 grid grid-cols-3 gap-2 rounded-2xl bg-slate-50 p-3 text-center">
+                        <div><span class="block text-[11px] text-slate-500">مورد انتظار</span><strong class="text-sm">@Formatters.Money(row.ExpectedAmount)</strong></div>
+                        <div><span class="block text-[11px] text-slate-500">پرداخت‌شده</span><strong class="text-sm text-emerald-700">@Formatters.Money(row.PaidAmount)</strong></div>
+                        <div><span class="block text-[11px] text-slate-500">باقی‌مانده</span><strong class="text-sm @(row.RemainingAmount > 0 ? "text-amber-700" : "text-emerald-700")">@Formatters.Money(row.RemainingAmount)</strong></div>
+                        <div class="col-span-3 mt-1 h-2 overflow-hidden rounded-full bg-slate-200" role="progressbar" aria-label="درصد پرداخت" aria-valuenow="@row.ProgressPercent" aria-valuemin="0" aria-valuemax="100">
+                            <div class="h-full rounded-full @(row.IsOverpaid ? "bg-violet-500" : "bg-emerald-500")" style="width: @row.ProgressPercent.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)%"></div>
+                        </div>
+                    </div>
+
+                    @if (!row.IsPaid || row.Obligation.Type == RecurringObligationType.FixedMonthlyExpense)
                     {
-                        <div class="mt-4 rounded-2xl @(row.IsOverdue ? "bg-rose-50" : row.IsDueSoon ? "bg-amber-50" : "bg-slate-50") p-4">
+                        <div class="mt-3 rounded-2xl @(row.IsOverdue ? "bg-rose-50" : row.IsDueSoon ? "bg-amber-50" : "bg-indigo-50/60") p-4">
                             @if (row.IsOverdue)
                             {
                                 <p class="mb-3 text-sm font-bold text-rose-700">این پرداخت از سررسید گذشته و هنوز ثبت نشده است.</p>
@@ -152,13 +161,14 @@
                             {
                                 <p class="mb-3 text-sm font-bold text-amber-700">@row.DaysUntilDue روز تا سررسید باقی مانده است.</p>
                             }
-                            <form method="post" asp-page-handler="Pay" class="grid gap-3 md:grid-cols-[1fr_1fr_1.2fr_auto] md:items-end">
+                            <form method="post" asp-page-handler="Pay" class="grid gap-3 md:grid-cols-[1fr_1fr_1.2fr_auto] md:items-end" data-payment-form>
                                 <input type="hidden" name="Payment.ObligationId" value="@row.Obligation.Id" />
+                                <input type="hidden" name="Payment.SubmissionKey" value="@Guid.NewGuid()" />
                                 <input type="hidden" name="Payment.Year" value="@Model.Year" />
                                 <input type="hidden" name="Payment.Month" value="@Model.Month" />
                                 <div>
-                                    <label class="label">مبلغ واقعی پرداخت</label>
-                                    <input name="Payment.Amount" value="@row.ExpectedAmount.ToString("0")" data-money inputmode="numeric" class="input ltr-input" required />
+                                    <label class="label">مبلغ این پرداخت</label>
+                                    <input name="Payment.Amount" value="@(row.RemainingAmount > 0 ? row.RemainingAmount.ToString("0") : "")" data-money inputmode="numeric" class="input ltr-input" placeholder="مبلغ را وارد کنید" required />
                                 </div>
                                 <div>
                                     <label class="label">تاریخ پرداخت</label>
@@ -168,21 +178,43 @@
                                     <label class="label">توضیح (اختیاری)</label>
                                     <input name="Payment.Note" maxlength="200" class="input" placeholder="مثلاً پرداخت از کارت ..." />
                                 </div>
-                                <button type="submit" class="btn-primary">ثبت پرداخت</button>
+                                <button type="submit" class="btn-primary" data-payment-submit>ثبت این پرداخت</button>
                             </form>
+                            @if (row.Obligation.Type == RecurringObligationType.Installment)
+                            {
+                                <p class="mt-2 text-[11px] text-indigo-700">می‌توانید مانده @Formatters.Money(row.RemainingAmount) را در چند پرداخت ثبت کنید؛ مجموع پرداخت‌ها از مانده بیشتر نمی‌شود.</p>
+                            }
+                            else
+                            {
+                                <p class="mt-2 text-[11px] text-indigo-700">مبلغ این هزینه یک برآورد ماهانه است؛ در صورت نیاز می‌توانید چند پرداخت یا مبلغ بیشتر ثبت کنید.</p>
+                            }
                             <p class="mt-2 text-[11px] text-slate-500">با ثبت پرداخت، یک خرج واقعی در دسته «@row.Obligation.Category.Name» هم ایجاد می‌شود تا بودجه و گزارش‌ها دقیق بمانند.</p>
                         </div>
                     }
-                    else
+
+                    @if (row.Payments.Count > 0)
                     {
-                        <div class="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-emerald-50 p-4">
-                            <div class="text-sm text-emerald-800">
-                                <strong>@Formatters.Money(row.PaidAmount)</strong> در تاریخ @Formatters.PersianDate(row.PaidDate!.Value) پرداخت شده است.
+                        <details class="mt-3 rounded-2xl border border-slate-200 bg-white p-4" open="@(row.IsPartiallyPaid ? "open" : null)">
+                            <summary class="cursor-pointer text-sm font-black text-slate-700">سابقه پرداخت‌های این ماه (@row.Payments.Count مورد)</summary>
+                            <div class="mt-3 divide-y divide-slate-100">
+                                @foreach (var payment in row.Payments)
+                                {
+                                    <div class="flex flex-wrap items-center justify-between gap-3 py-3">
+                                        <div>
+                                            <strong class="text-sm text-emerald-700">@Formatters.Money(payment.Amount)</strong>
+                                            <p class="mt-1 text-xs text-slate-500">@Formatters.PersianDate(payment.PaidDate) · ثبت‌کننده: @payment.PaidBy</p>
+                                            @if (!string.IsNullOrWhiteSpace(payment.Note))
+                                            {
+                                                <p class="mt-1 text-xs text-slate-600">@payment.Note</p>
+                                            }
+                                        </div>
+                                        <form method="post" asp-page-handler="UndoPayment" asp-route-paymentId="@payment.Id" asp-route-year="@Model.Year" asp-route-month="@Model.Month">
+                                            <button type="submit" class="text-xs font-bold text-rose-600" data-confirm="این پرداخت و خرج مرتبط با آن حذف شود؟">حذف این پرداخت</button>
+                                        </form>
+                                    </div>
+                                }
                             </div>
-                            <form method="post" asp-page-handler="UndoPayment" asp-route-paymentId="@row.PaymentId" asp-route-year="@Model.Year" asp-route-month="@Model.Month">
-                                <button type="submit" class="text-xs font-bold text-rose-600" data-confirm="ثبت پرداخت و خرج مرتبط حذف شود؟">لغو ثبت پرداخت</button>
-                            </form>
-                        </div>
+                        </details>
                     }
                 </article>
             }

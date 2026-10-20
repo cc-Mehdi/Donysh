@@ -151,6 +151,7 @@ public sealed class DatabaseInitializer(ApplicationDbContext db, ILogger<Databas
             """
             CREATE TABLE IF NOT EXISTS "RecurringObligationPayments" (
                 "Id" uuid NOT NULL,
+                "SubmissionKey" uuid NOT NULL,
                 "RecurringObligationId" uuid NOT NULL,
                 "ExpenseId" uuid NOT NULL,
                 "PaidByUserId" text NOT NULL,
@@ -170,6 +171,29 @@ public sealed class DatabaseInitializer(ApplicationDbContext db, ILogger<Databas
 
         await db.Database.ExecuteSqlRawAsync(
             """
+            ALTER TABLE "RecurringObligationPayments"
+            ADD COLUMN IF NOT EXISTS "SubmissionKey" uuid;
+
+            UPDATE "RecurringObligationPayments"
+            SET "SubmissionKey" = "Id"
+            WHERE "SubmissionKey" IS NULL;
+
+            ALTER TABLE "RecurringObligationPayments"
+            ALTER COLUMN "SubmissionKey" SET NOT NULL;
+
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1
+                    FROM pg_index i
+                    JOIN pg_class c ON c.oid = i.indexrelid
+                    WHERE c.relname = 'IX_RecurringObligationPayments_RecurringObligationId_PeriodYear_PeriodMonth'
+                      AND i.indisunique
+                ) THEN
+                    DROP INDEX "IX_RecurringObligationPayments_RecurringObligationId_PeriodYear_PeriodMonth";
+                END IF;
+            END $$;
+
             CREATE INDEX IF NOT EXISTS "IX_RecurringObligations_WorkspaceId_IsActive"
             ON "RecurringObligations" ("WorkspaceId", "IsActive");
 
@@ -179,8 +203,11 @@ public sealed class DatabaseInitializer(ApplicationDbContext db, ILogger<Databas
             CREATE INDEX IF NOT EXISTS "IX_RecurringObligations_CreatedByUserId"
             ON "RecurringObligations" ("CreatedByUserId");
 
-            CREATE UNIQUE INDEX IF NOT EXISTS "IX_RecurringObligationPayments_RecurringObligationId_PeriodYear_PeriodMonth"
+            CREATE INDEX IF NOT EXISTS "IX_RecurringObligationPayments_RecurringObligationId_PeriodYear_PeriodMonth"
             ON "RecurringObligationPayments" ("RecurringObligationId", "PeriodYear", "PeriodMonth");
+
+            CREATE UNIQUE INDEX IF NOT EXISTS "IX_RecurringObligationPayments_SubmissionKey"
+            ON "RecurringObligationPayments" ("SubmissionKey");
 
             CREATE UNIQUE INDEX IF NOT EXISTS "IX_RecurringObligationPayments_ExpenseId"
             ON "RecurringObligationPayments" ("ExpenseId");

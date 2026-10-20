@@ -94,15 +94,19 @@
         <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             @foreach (var item in Model.MonthlyObligations)
             {
-                <article class="rounded-2xl border @(item.IsPaid ? "border-emerald-200 bg-emerald-50" : item.Status == "عقب‌افتاده" ? "border-rose-200 bg-rose-50" : "border-slate-200 bg-slate-50") p-4">
+                <article class="rounded-2xl border @(item.IsPaid ? "border-emerald-200 bg-emerald-50" : item.Status.Contains("عقب‌افتاده") ? "border-rose-200 bg-rose-50" : item.PaidAmount > 0 ? "border-amber-200 bg-amber-50" : "border-slate-200 bg-slate-50") p-4">
                     <div class="flex items-start justify-between gap-3">
                         <div><strong>@item.CategoryIcon @item.Title</strong><p class="mt-1 text-xs text-slate-500">@item.CategoryName · سررسید @Formatters.PersianDate(item.DueDate)</p></div>
                         <span class="badge">@item.Status</span>
                     </div>
                     <div class="mt-3 flex items-center justify-between text-sm"><span>مبلغ برنامه‌ریزی‌شده</span><strong>@Formatters.Money(item.ExpectedAmount)</strong></div>
-                    @if (item.IsPaid)
+                    @if (item.PaidAmount > 0)
                     {
-                        <div class="mt-2 flex items-center justify-between text-xs text-emerald-800"><span>پرداخت واقعی @Formatters.PersianDate(item.PaidDate!.Value)</span><strong>@Formatters.Money(item.PaidAmount)</strong></div>
+                        <div class="mt-2 flex items-center justify-between text-xs text-emerald-800"><span>پرداخت‌شده تا @Formatters.PersianDate(item.PaidDate!.Value)</span><strong>@Formatters.Money(item.PaidAmount)</strong></div>
+                    }
+                    @if (item.RemainingAmount > 0)
+                    {
+                        <div class="mt-2 flex items-center justify-between text-xs text-amber-800"><span>باقی‌مانده</span><strong>@Formatters.Money(item.RemainingAmount)</strong></div>
                     }
                 </article>
             }
