@@ -44,6 +44,7 @@ services:
       CentralAuth__ClientId: finance-web
       CentralAuth__ClientSecret: ${FINANCE_OIDC_CLIENT_SECRET:?FINANCE_OIDC_CLIENT_SECRET is required}
       CentralAuth__RequireHttpsMetadata: "true"
+      Products__LifeUrl: https://${LIFE_DOMAIN:?LIFE_DOMAIN is required}
       TZ: ${TZ:-Asia/Tehran}
       ConnectionStrings__DefaultConnection: >-
         Host=db;Port=5432;Database=${POSTGRES_DB:-hesabyar};Username=${POSTGRES_USER:-hesabyar};Password=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required};Pooling=true;Maximum Pool Size=100;Timeout=15;Command Timeout=30;Include Error Detail=false
@@ -202,6 +203,7 @@ services:
       CentralAuth__ClientId: life-web
       CentralAuth__ClientSecret: ${LIFE_OIDC_CLIENT_SECRET:?LIFE_OIDC_CLIENT_SECRET is required}
       CentralAuth__RequireHttpsMetadata: "true"
+      Products__FinanceUrl: https://${FINANCE_DOMAIN:?FINANCE_DOMAIN is required}
       TZ: ${TZ:-Asia/Tehran}
       ConnectionStrings__LifeConnection: >-
         Host=life-db;Port=5432;Database=${LIFE_POSTGRES_DB:-donysh_life};Username=${LIFE_POSTGRES_USER:-donysh_life};Password=${LIFE_POSTGRES_PASSWORD:?LIFE_POSTGRES_PASSWORD is required};Pooling=true;Maximum Pool Size=30;Timeout=15;Command Timeout=30;Include Error Detail=false

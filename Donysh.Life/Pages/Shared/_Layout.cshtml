@@ -1,3 +1,11 @@
+@inject IConfiguration Configuration
+@{
+    var configuredFinanceUrl = Configuration["Products:FinanceUrl"];
+    var financeUrl = Uri.TryCreate(configuredFinanceUrl, UriKind.Absolute, out var parsedFinanceUrl)
+        && parsedFinanceUrl.Scheme == Uri.UriSchemeHttps
+            ? parsedFinanceUrl.AbsoluteUri
+            : "https://finance.donysh.ir/";
+}
 <!doctype html>
 <html lang="fa" dir="rtl">
 <head>
@@ -22,14 +30,26 @@
                 <a class="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Week" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Week" ? "page" : null)" asp-page="/Week"><span aria-hidden="true">▦</span>برنامهٔ هفته</a>
                 <a class="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Progress" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Progress" ? "page" : null)" asp-page="/Progress"><span aria-hidden="true">↗</span>پیشرفت</a>
             </nav>
-            <form method="post" asp-page="/Account/Logout" class="logout-form">
-                <button type="submit">خروج امن</button>
-            </form>
+            <div class="sidebar-footer">
+                <a class="product-switcher" href="@financeUrl" aria-label="رفتن به دونیش مالی">
+                    <span class="product-switcher-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><path d="M4 7.5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-12a2 2 0 0 1 2-2h11" /><path d="M16 12h4v3h-4a1.5 1.5 0 0 1 0-3Z" /></svg>
+                    </span>
+                    <span class="product-switcher-copy"><small>بودجه و مخارج</small><strong>دونیش مالی</strong></span>
+                    <span class="product-switcher-arrow" aria-hidden="true">←</span>
+                </a>
+                <form method="post" asp-page="/Account/Logout" class="logout-form">
+                    <button type="submit">خروج امن</button>
+                </form>
+            </div>
         </aside>
         <div class="page-column">
             <header class="mobile-header">
                 <a class="brand" asp-page="/Index"><img src="~/images/donysh-mark.png" alt="" width="36" height="36" /><strong>دونیش زندگی</strong></a>
-                <span class="status-dot">نسخهٔ آغازین</span>
+                <a class="product-switcher compact" href="@financeUrl" aria-label="رفتن به دونیش مالی">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-12a2 2 0 0 1 2-2h11" /><path d="M16 12h4v3h-4a1.5 1.5 0 0 1 0-3Z" /></svg>
+                    <span>مالی</span>
+                </a>
             </header>
             <main id="main-content" class="content-shell">
                 @RenderBody()

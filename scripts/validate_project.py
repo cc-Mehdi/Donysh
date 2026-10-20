@@ -180,6 +180,7 @@ def main() -> int:
         "Navigation__DefaultReturnUrl",
         "landing:",
         "Products__FinanceUrl",
+        "Products__LifeUrl",
         "life-db:",
         "life:",
         "LIFE_OIDC_CLIENT_SECRET",
@@ -239,6 +240,15 @@ def main() -> int:
     for token in ["data-money", "data-persian-date"]:
         if token not in pages_text:
             errors.append(f"UI token missing: {token}")
+
+    finance_layout = (ROOT / "HesabYar.Web/Pages/Shared/_Layout.cshtml").read_text(encoding="utf-8")
+    life_layout = (ROOT / "Donysh.Life/Pages/Shared/_Layout.cshtml").read_text(encoding="utf-8")
+    for token in ["Products:LifeUrl", "رفتن به دونیش زندگی", "product-switcher"]:
+        if token not in finance_layout:
+            errors.append(f"Finance product switcher token missing: {token}")
+    for token in ["Products:FinanceUrl", "رفتن به دونیش مالی", "product-switcher"]:
+        if token not in life_layout:
+            errors.append(f"Life product switcher token missing: {token}")
 
     caddy = (ROOT / "Caddyfile.platform").read_text(encoding="utf-8")
     if "{$DOMAIN} {" not in caddy or "reverse_proxy landing:8080" not in caddy:

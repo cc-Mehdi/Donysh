@@ -34,6 +34,7 @@ Environment.SetEnvironmentVariable("CentralAuth__Authority", "https://auth.test"
 Environment.SetEnvironmentVariable("CentralAuth__ClientId", "life-web");
 Environment.SetEnvironmentVariable("CentralAuth__ClientSecret", "test-only-life-client-secret-000000000000");
 Environment.SetEnvironmentVariable("CentralAuth__RequireHttpsMetadata", "false");
+Environment.SetEnvironmentVariable("Products__FinanceUrl", "https://finance.test");
 Environment.SetEnvironmentVariable("Database__ApplyMigrations", "false");
 Environment.SetEnvironmentVariable("ReverseProxy__Enabled", "false");
 
@@ -154,6 +155,10 @@ using (var authenticatedClient = authenticatedFactory.CreateClient(new WebApplic
         && html.Contains("فعالیت‌های فعال", StringComparison.Ordinal)
         && html.Contains("فعالیتی انجام دادی", StringComparison.Ordinal)
         && html.Contains("aria-current=\"page\"", StringComparison.Ordinal));
+    Check("Life shell links to the configured Finance product",
+        html.Contains("href=\"https://finance.test/\"", StringComparison.Ordinal)
+        && html.Contains("دونیش مالی", StringComparison.Ordinal)
+        && html.Contains("رفتن به دونیش مالی", StringComparison.Ordinal));
     Check("Life logout posts locally before central OIDC sign-out",
         html.Contains("action=\"/Account/Logout\"", StringComparison.Ordinal));
     Check("Life antiforgery cookie is HttpOnly, secure and same-site strict",
@@ -532,6 +537,7 @@ internal class LifeApplicationFactory : WebApplicationFactory<global::LifeProgra
                 ["CentralAuth:ClientId"] = "life-web",
                 ["CentralAuth:ClientSecret"] = "test-only-life-client-secret-000000000000",
                 ["CentralAuth:RequireHttpsMetadata"] = "false",
+                ["Products:FinanceUrl"] = "https://finance.test",
                 ["Database:ApplyMigrations"] = "false",
                 ["ReverseProxy:Enabled"] = "false"
             }));
