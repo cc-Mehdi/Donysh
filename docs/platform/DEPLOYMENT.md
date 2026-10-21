@@ -47,6 +47,14 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Mobile
 
 اسکریپت APK امضاشده را در یک پوشهٔ تازه می‌سازد، فایل همان ساخت را با `scp` منتقل می‌کند، روی سرور منتشر می‌کند و هش دانلود عمومی را بررسی می‌کند. در پایان باید عبارت `Published and verified: https://donysh.ir/downloads/donysh-mobile.apk` را ببینید. از APK قدیمی پوشهٔ `publish` به‌صورت دستی استفاده نکنید.
 
+اگر آپلود `scp` به ۱۰۰٪ رسید ولی اتصال SSH در مرحلهٔ انتشار قطع شد، کل انتشار را از ابتدا اجرا نکنید. هش SHA-256 چاپ‌شده توسط همان اجرا را به دستور زیر بدهید تا فایل آپلودشده بدون ساخت و انتقال دوباره منتشر شود:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-MobileApk.ps1 -ResumeUploadedSha256 YOUR_PRINTED_SHA256
+```
+
+مقدار `YOUR_PRINTED_SHA256` را با هش ۶۴ نویسه‌ای خروجی خودتان جایگزین کنید. این مسیر به رمز keystore نیاز ندارد، ولی برای SSH و احتمالاً `sudo` رمز سرور را می‌خواهد. اگر باز هم `Connection closed` دیدید، اتصال را جداگانه با `ssh -tt ubuntu@185.226.119.80` آزمایش کنید؛ مشکل پیش از اجرای اسکریپت انتشار روی سرور است. برای بررسی فایل آپلودشده، پس از ورود به سرور `ls -lh /home/ubuntu/donysh-mobile-upload-YOUR_PRINTED_SHA256.apk` را اجرا کنید.
+
 **مرحلهٔ ۴ ـ رمزهای موقت را از پنجره پاک کنید.**
 
 ```powershell
