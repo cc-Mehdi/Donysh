@@ -7,6 +7,7 @@ public sealed class DonyshTitleSheet : ContentPage
     private readonly TaskCompletionSource<string?> _completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly Border _panel;
     private readonly Entry _entry;
+    private readonly Label _validationLabel;
     private int _closing;
 
     private DonyshTitleSheet(string heading, string messageExcerpt, string? initialValue, IReadOnlyList<string> suggestions)
@@ -95,6 +96,16 @@ public sealed class DonyshTitleSheet : ContentPage
         };
         suggestionsLabel.SetAppThemeColor(Label.TextColorProperty, Color.FromArgb("#586B85"), Color.FromArgb("#ADBCD3"));
 
+        _validationLabel = new Label
+        {
+            Text = "یک عنوان کوتاه بنویسید یا یکی از پیشنهادها را انتخاب کنید.",
+            FontFamily = "YekanBakhMedium",
+            FontSize = 12,
+            IsVisible = false
+        };
+        _validationLabel.SetAppThemeColor(Label.TextColorProperty, Color.FromArgb("#A91D46"), Color.FromArgb("#FFC0CE"));
+        _entry.TextChanged += (_, _) => _validationLabel.IsVisible = false;
+
         var chips = new FlexLayout
         {
             Direction = FlexDirection.Row,
@@ -123,7 +134,8 @@ public sealed class DonyshTitleSheet : ContentPage
             {
                 _entry.Text = suggestion;
                 _entry.CursorPosition = _entry.Text.Length;
-                _entry.Focus();
+                _entry.Unfocus();
+                _validationLabel.IsVisible = false;
             };
             chips.Add(chip);
         }
@@ -140,7 +152,7 @@ public sealed class DonyshTitleSheet : ContentPage
         {
             Padding = new Thickness(18, 12, 18, 22),
             Spacing = 11,
-            Children = { header, excerpt, field, suggestionsLabel, chips, save }
+            Children = { header, excerpt, field, _validationLabel, suggestionsLabel, chips, save }
         };
 
         _panel = new Border
@@ -168,7 +180,6 @@ public sealed class DonyshTitleSheet : ContentPage
         var sheet = new DonyshTitleSheet(heading, messageExcerpt, initialValue, suggestions);
         await host.Navigation.PushModalAsync(sheet, false);
         await sheet.AnimateInAsync();
-        sheet.Dispatcher.DispatchDelayed(TimeSpan.FromMilliseconds(80), () => sheet._entry.Focus());
         return await sheet._completion.Task;
     }
 
@@ -192,8 +203,7 @@ public sealed class DonyshTitleSheet : ContentPage
         if (string.IsNullOrWhiteSpace(title))
         {
             _entry.Text = string.Empty;
-            _entry.Placeholder = "یک عنوان کوتاه بنویسید";
-            _entry.Focus();
+            _validationLabel.IsVisible = true;
             return;
         }
         await CloseAsync(title);

@@ -15,9 +15,11 @@ public partial class MessagesPage : DonyshPage
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
     private bool _subscribed, _entered, _editing, _retrying;
     private string _search = string.Empty;
+    private int _statusFilter;
     public string SenderAddress { get; }
     public ObservableCollection<MessageItem> Messages { get; } = [];
-    public string MessageCountText => $"{UiText.Digits(Messages.Count)} پیام";
+    public string MessageCountText => $"{UiText.Digits(_allMessages.Count)} پیام در هفت روز گذشته";
+    public string VisibleMessageCountText => $"{UiText.Digits(Messages.Count)} نتیجه";
     public bool HasRetryableMessages => Messages.Any(x => x.CanRetry);
 
     public MessagesPage(SmsMonitorStore store, Guid senderId, string senderAddress)
@@ -35,6 +37,7 @@ public partial class MessagesPage : DonyshPage
         SenderAddress = senderAddress;
         InitializeComponent();
         BindingContext = this;
+        UpdateFilterChipStyles();
     }
 
     private static void ScheduleDeliveryWork()
@@ -76,12 +79,34 @@ public partial class MessagesPage : DonyshPage
 
     private void OnMessageStored(object? sender, EventArgs e) => Dispatcher.Dispatch(async () => await RefreshAsync());
     private void OnSearchChanged(object? sender, TextChangedEventArgs e) { _search = e.NewTextValue?.Trim() ?? string.Empty; FilterMessages(); }
-    private void OnFilterChanged(object? sender, EventArgs e) => FilterMessages();
+    private void OnStatusFilterClicked(object? sender, EventArgs e)
+    {
+        if (sender is not Button { CommandParameter: string value } || !int.TryParse(value, out var filter)) return;
+        _statusFilter = filter;
+        UpdateFilterChipStyles();
+        FilterMessages();
+    }
+
+    private void UpdateFilterChipStyles()
+    {
+        if (StatusFilterChips is null) return;
+        foreach (var button in StatusFilterChips.Children.OfType<Button>())
+        {
+            var selected = button.CommandParameter is string value
+                           && int.TryParse(value, out var filter) && filter == _statusFilter;
+            button.SetAppThemeColor(Button.BackgroundColorProperty,
+                Color.FromArgb(selected ? "#5B4CF0" : "#EEEFFD"),
+                Color.FromArgb(selected ? "#7568F5" : "#292C56"));
+            button.SetAppThemeColor(Button.TextColorProperty,
+                selected ? Colors.White : Color.FromArgb("#453BB7"),
+                selected ? Colors.White : Color.FromArgb("#DDD9FF"));
+        }
+    }
+
     private void FilterMessages()
     {
-        var filter = StatusPicker?.SelectedIndex ?? 0;
         Messages.Clear();
-        foreach (var item in _allMessages.Where(x => (filter switch
+        foreach (var item in _allMessages.Where(x => (_statusFilter switch
                  {
                      1 => x.Status == SmsDeliveryStatus.Pending,
                      2 => x.Status == SmsDeliveryStatus.Sent,
@@ -93,7 +118,14 @@ public partial class MessagesPage : DonyshPage
                         || x.Title.Contains(_search, StringComparison.OrdinalIgnoreCase))))
             Messages.Add(item);
         OnPropertyChanged(nameof(MessageCountText));
+        OnPropertyChanged(nameof(VisibleMessageCountText));
         OnPropertyChanged(nameof(HasRetryableMessages));
+    }
+
+    private async void OnRefreshRequested(object? sender, EventArgs e)
+    {
+        try { await RefreshAsync(waitForCurrent: true); }
+        finally { MessagesRefreshView.IsRefreshing = false; }
     }
 
     private async Task RefreshAsync(bool waitForCurrent = false)
@@ -297,5 +329,43 @@ public sealed class MessageItem : INotifyPropertyChanged
     }
     public string DetailsAction => IsExpanded ? "بستن جزئیات" : "نمایش جزئیات";
     public string DetailsIcon => IsExpanded ? AppIcons.ExpandLess : AppIcons.ExpandMore;
+    public string StatusIcon => Status switch
+    {
+        SmsDeliveryStatus.Sent => AppIcons.CheckCircle,
+        SmsDeliveryStatus.Rejected => AppIcons.Notification,
+        SmsDeliveryStatus.Excluded => AppIcons.Delete,
+        _ when Untitled && SmsSyncSettings.RequireTitle => AppIcons.Title,
+        _ => AppIcons.Schedule
+    };
+    public Color StatusBackground
+    {
+        get
+        {
+            var dark = Application.Current?.RequestedTheme == AppTheme.Dark;
+            return Status switch
+            {
+                SmsDeliveryStatus.Sent => Color.FromArgb(dark ? "#123A34" : "#DDF6EC"),
+                SmsDeliveryStatus.Rejected => Color.FromArgb(dark ? "#43291B" : "#FFF0E2"),
+                SmsDeliveryStatus.Excluded => Color.FromArgb(dark ? "#263246" : "#E9EDF3"),
+                _ when Untitled && SmsSyncSettings.RequireTitle => Color.FromArgb(dark ? "#40341C" : "#FFF4D9"),
+                _ => Color.FromArgb(dark ? "#292C56" : "#EEEFFD")
+            };
+        }
+    }
+    public Color StatusForeground
+    {
+        get
+        {
+            var dark = Application.Current?.RequestedTheme == AppTheme.Dark;
+            return Status switch
+            {
+                SmsDeliveryStatus.Sent => Color.FromArgb(dark ? "#8FE0CD" : "#07695D"),
+                SmsDeliveryStatus.Rejected => Color.FromArgb(dark ? "#FFC18F" : "#A34816"),
+                SmsDeliveryStatus.Excluded => Color.FromArgb(dark ? "#C2CDDC" : "#526176"),
+                _ when Untitled && SmsSyncSettings.RequireTitle => Color.FromArgb(dark ? "#FFD98A" : "#8A5B00"),
+                _ => Color.FromArgb(dark ? "#DDD9FF" : "#453BB7")
+            };
+        }
+    }
     public event PropertyChangedEventHandler? PropertyChanged;
 }

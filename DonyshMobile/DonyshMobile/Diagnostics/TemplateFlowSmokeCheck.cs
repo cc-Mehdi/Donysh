@@ -148,11 +148,10 @@ internal static class TemplateFlowSmokeCheck
             && !page.Messages.Single(message => message.Id == delivered.Id).CanRetry,
             "Manual retry is offered for rejected SMS but never confirmed deliveries");
 
-        var filter = page.FindByName<DonyshPicker>("StatusPicker");
-        filter.SelectedIndex = 2;
+        page.FindByName<Button>("SentFilterButton").SendClicked();
         await WaitAsync(() => page.Messages.Count == 1 && page.Messages[0].Id == delivered.Id);
         Check(!page.HasRetryableMessages, "The sent-only filter hides bulk retry");
-        filter.SelectedIndex = 0;
+        page.FindByName<Button>("AllFilterButton").SendClicked();
         await WaitAsync(() => page.Messages.Count == 2 && page.HasRetryableMessages);
         page.FindByName<Button>("RetryVisibleMessagesButton").SendClicked();
         await WaitAsync(() => confirmations == 1);
@@ -187,6 +186,14 @@ internal static class TemplateFlowSmokeCheck
         FindMessageButton(page, retriedItem, "EditMessageTitleButton").SendClicked();
         await WaitAsync(() => navigation.ModalStack.LastOrDefault() is DonyshTitleSheet);
         Check(true, "Message title editing uses the themed suggestion sheet");
+        var titleSheet = (DonyshTitleSheet)navigation.ModalStack.Last();
+        var titleEntry = titleSheet.GetVisualTreeDescendants().OfType<Entry>().Single();
+        Check(!titleEntry.IsFocused, "Opening title suggestions does not force the keyboard open");
+        var titleSuggestion = titleSheet.GetVisualTreeDescendants().OfType<Button>()
+            .First(button => button.CommandParameter is string);
+        titleSuggestion.SendClicked();
+        await WaitAsync(() => !string.IsNullOrWhiteSpace(titleEntry.Text));
+        Check(!titleEntry.IsFocused, "Choosing a title suggestion keeps the keyboard closed");
         await navigation.PopModalAsync(animated: false);
         await navigation.PopAsync(animated: false);
 
@@ -220,7 +227,7 @@ internal static class TemplateFlowSmokeCheck
         });
         await navigation.PushAsync(bulkPage, animated: false);
         await WaitAsync(() => bulkPage.IsLoaded && bulkPage.Messages.Count == 3);
-        bulkPage.FindByName<DonyshPicker>("StatusPicker").SelectedIndex = 3;
+        bulkPage.FindByName<Button>("ReviewFilterButton").SendClicked();
         await WaitAsync(() => bulkPage.Messages.Count == 2);
         var search = bulkPage.FindByName<SearchBar>("MessageSearchBar");
         search.Text = "خرید روزانه";
@@ -245,7 +252,7 @@ internal static class TemplateFlowSmokeCheck
         await WaitAsync(() => bulkPage.Messages.Count == 0);
         Check((await bulkStore.GetMessagesAsync(bulkSenderId)).Single(message => message.Body == excludedBody)
             .DeliveryStatus == SmsDeliveryStatus.Excluded, "Message-card action persists the excluded state");
-        bulkPage.FindByName<DonyshPicker>("StatusPicker").SelectedIndex = 4;
+        bulkPage.FindByName<Button>("ExcludedFilterButton").SendClicked();
         await WaitAsync(() => bulkPage.Messages.Count == 1 && bulkPage.Messages[0].CanRetry);
         FindRetryButton(bulkPage, bulkPage.Messages[0]).SendClicked();
         await WaitAsync(() => bulkScheduled == 2 && bulkPage.Messages.Count == 0);

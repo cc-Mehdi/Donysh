@@ -802,16 +802,71 @@ public sealed class SmsMonitorStore
 
     private static bool Prune(SmsMonitorState state, DateTimeOffset nowUtc)
     {
+        var changed = RemoveDuplicateMessages(state);
         var cutoff = nowUtc.Subtract(Retention);
         var removable = state.Messages.Where(x => x.ReceivedAtUtc < cutoff
             && x.DeliveryStatus != SmsDeliveryStatus.Pending).ToList();
         foreach (var message in removable.Where(x => x.DeliveryStatus == SmsDeliveryStatus.Sent))
             RememberDelivered(state, message, message.ConfirmedAtUtc ?? nowUtc);
-        var changed = state.Messages.RemoveAll(x => removable.Contains(x)) > 0;
+        changed |= state.Messages.RemoveAll(x => removable.Contains(x)) > 0;
         changed |= PruneDeliveryHistory(state, nowUtc);
         var count = state.Messages.Count;
         TrimConfirmedMessages(state);
         return changed || state.Messages.Count != count;
+    }
+
+    private static bool RemoveDuplicateMessages(SmsMonitorState state)
+    {
+        if (state.Messages.Count < 2) return false;
+
+        var duplicateIds = new HashSet<Guid>();
+        foreach (var group in state.Messages.GroupBy(message =>
+                     (message.SenderId, BodyHash: CreateBodyHash(message.Body))))
+        {
+            CapturedSms? survivor = null;
+            foreach (var message in group.OrderBy(x => x.ReceivedAtUtc))
+            {
+                if (survivor is null
+                    || (message.ReceivedAtUtc - survivor.ReceivedAtUtc).Duration() > RecoveryDeduplicationWindow)
+                {
+                    survivor = message;
+                    continue;
+                }
+
+                var preferred = PreferDuplicate(survivor, message);
+                var duplicate = ReferenceEquals(preferred, survivor) ? message : survivor;
+                MergeDuplicateMetadata(preferred, duplicate);
+                duplicateIds.Add(duplicate.Id);
+                survivor = preferred;
+            }
+        }
+
+        return duplicateIds.Count > 0
+               && state.Messages.RemoveAll(message => duplicateIds.Contains(message.Id)) > 0;
+    }
+
+    private static CapturedSms PreferDuplicate(CapturedSms first, CapturedSms second)
+    {
+        static int Rank(CapturedSms message) => message.DeliveryStatus switch
+        {
+            SmsDeliveryStatus.Sent => 40,
+            SmsDeliveryStatus.Excluded => 30,
+            SmsDeliveryStatus.Rejected => 20,
+            _ => 10
+        } + (string.IsNullOrWhiteSpace(message.Title) ? 0 : 2)
+          + (message.ConfirmedAtUtc.HasValue ? 1 : 0);
+
+        return Rank(second) > Rank(first) ? second : first;
+    }
+
+    private static void MergeDuplicateMetadata(CapturedSms survivor, CapturedSms duplicate)
+    {
+        if (string.IsNullOrWhiteSpace(survivor.Title) && !string.IsNullOrWhiteSpace(duplicate.Title))
+            survivor.Title = duplicate.Title;
+        survivor.RecoveredFromInbox |= duplicate.RecoveredFromInbox;
+        survivor.DeliveryAttempts = Math.Max(survivor.DeliveryAttempts, duplicate.DeliveryAttempts);
+        survivor.ConfirmedAtUtc ??= duplicate.ConfirmedAtUtc;
+        survivor.LastDeliveryError ??= duplicate.LastDeliveryError;
     }
 
     private static void TrimConfirmedMessages(SmsMonitorState state)

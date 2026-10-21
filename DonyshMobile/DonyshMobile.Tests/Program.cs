@@ -46,6 +46,37 @@ try
     Assert(await store.CaptureAsync("+989121234567", "پیام آزمایشی", receivedAt), "Capture matching SMS");
     Assert(!await store.CaptureAsync("+989121234567", "پیام آزمایشی", receivedAt), "Deduplicate SMS");
 
+    var duplicateDirectory = Path.Combine(testDirectory, "legacy-duplicates");
+    Directory.CreateDirectory(duplicateDirectory);
+    var duplicateSender = new MonitoredSender { Address = "Bank-Duplicate", NormalizedAddress = "BANKDUPLICATE" };
+    var duplicateTime = DateTimeOffset.UtcNow.AddMinutes(-2);
+    var duplicateState = new SmsMonitorState
+    {
+        Senders = [duplicateSender],
+        Messages =
+        [
+            new CapturedSms
+            {
+                SenderId = duplicateSender.Id, SenderAddress = duplicateSender.Address,
+                Body = "برداشت ۵۰۰,۰۰۰ ریال", ReceivedAtUtc = duplicateTime,
+                DeduplicationKey = "legacy-first", DeliveryStatus = SmsDeliveryStatus.Pending
+            },
+            new CapturedSms
+            {
+                SenderId = duplicateSender.Id, SenderAddress = duplicateSender.Address,
+                Body = "برداشت   ۵۰۰,۰۰۰ ریال", ReceivedAtUtc = duplicateTime.AddSeconds(20),
+                DeduplicationKey = "legacy-second", DeliveryStatus = SmsDeliveryStatus.Sent,
+                Title = "خرید روزانه", ConfirmedAtUtc = DateTimeOffset.UtcNow
+            }
+        ]
+    };
+    await File.WriteAllTextAsync(Path.Combine(duplicateDirectory, "sms-monitor-state.json"),
+        JsonSerializer.Serialize(duplicateState, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+    var repairedDuplicates = await CreateStore(duplicateDirectory).GetMessagesAsync(duplicateSender.Id);
+    Assert(repairedDuplicates.Count == 1 && repairedDuplicates[0].DeliveryStatus == SmsDeliveryStatus.Sent
+           && repairedDuplicates[0].Title == "خرید روزانه",
+        "Repair legacy duplicate SMS records without losing confirmed status or title");
+
     var recoveryStore = CreateStore(Path.Combine(testDirectory, "recovery"));
     Assert(await recoveryStore.AddSenderAsync("Bank-Recovery") == AddSenderResult.Added, "Add recovery sender");
     var recoverySender = (await recoveryStore.GetSenderSummariesAsync()).Single();
