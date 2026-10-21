@@ -8,9 +8,10 @@
 
     let checking = false;
     let redirected = false;
+    let logoutInProgress = false;
 
     const checkSession = async () => {
-        if (checking || redirected || document.visibilityState === "hidden") return;
+        if (checking || redirected || logoutInProgress || document.visibilityState === "hidden") return;
         checking = true;
         try {
             const response = await fetch(statusUrl, {
@@ -19,7 +20,7 @@
                 cache: "no-store",
                 headers: { "X-Donysh-Session-Check": "1" }
             });
-            if (response.status === 401) {
+            if (!logoutInProgress && response.status === 401) {
                 redirected = true;
                 window.location.replace(signedOutUrl);
             }
@@ -30,19 +31,12 @@
         }
     };
 
-    const watchPendingLogout = () => {
-        let attempts = 0;
-        const poll = () => {
-            if (redirected || attempts >= 30) return;
-            attempts += 1;
-            void checkSession();
-            window.setTimeout(poll, 1000);
-        };
-        window.setTimeout(poll, 1000);
-    };
-
     document.querySelectorAll("form[data-logout-form]").forEach(form => {
-        form.addEventListener("submit", watchPendingLogout, { once: true });
+        form.addEventListener("submit", () => {
+            // Keep the initiating navigation alive until the central and peer
+            // product logout endpoints have both completed.
+            logoutInProgress = true;
+        }, { once: true });
     });
     document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "visible") void checkSession();

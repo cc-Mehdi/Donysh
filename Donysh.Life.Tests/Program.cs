@@ -92,7 +92,10 @@ using (var response = await client.GetAsync("/js/session-sync.js"))
         response.StatusCode == HttpStatusCode.OK
         && script.Contains("visibilitychange", StringComparison.Ordinal)
         && script.Contains("window.location.replace", StringComparison.Ordinal)
-        && script.Contains("data-logout-form", StringComparison.Ordinal));
+        && script.Contains("data-logout-form", StringComparison.Ordinal)
+        && script.Contains("logoutInProgress = true", StringComparison.Ordinal)
+        && script.Contains("!logoutInProgress && response.status === 401", StringComparison.Ordinal)
+        && !script.Contains("watchPendingLogout", StringComparison.Ordinal));
 }
 
 using (var response = await client.GetAsync("/"))

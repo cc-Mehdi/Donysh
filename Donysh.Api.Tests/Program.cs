@@ -135,9 +135,18 @@ var financeSessionSync = await File.ReadAllTextAsync(Path.Combine(
     AppContext.BaseDirectory, "..", "..", "..", "..", "HesabYar.Web", "wwwroot", "js", "session-sync.js"));
 if (!financeSessionSync.Contains("visibilitychange", StringComparison.Ordinal)
     || !financeSessionSync.Contains("window.location.replace", StringComparison.Ordinal)
-    || !financeSessionSync.Contains("data-logout-form", StringComparison.Ordinal))
+    || !financeSessionSync.Contains("data-logout-form", StringComparison.Ordinal)
+    || !financeSessionSync.Contains("logoutInProgress = true", StringComparison.Ordinal)
+    || !financeSessionSync.Contains("!logoutInProgress && response.status === 401", StringComparison.Ordinal)
+    || financeSessionSync.Contains("watchPendingLogout", StringComparison.Ordinal))
     throw new Exception("Finance must refresh stale tabs after coordinated logout.");
 Console.WriteLine("PASS Finance refreshes stale tabs after coordinated logout");
+var financeSignedOutPage = await File.ReadAllTextAsync(Path.Combine(
+    AppContext.BaseDirectory, "..", "..", "..", "..", "HesabYar.Web", "Pages", "Account", "SignedOut.cshtml"));
+if (!financeSignedOutPage.Contains("~/css/app.css", StringComparison.Ordinal)
+    || financeSignedOutPage.Contains("~/css/site.css", StringComparison.Ordinal))
+    throw new Exception("Finance signed-out page must load the generated application stylesheet.");
+Console.WriteLine("PASS Finance signed-out page loads its generated stylesheet");
 
 // Starts only a loopback test host. The unavailable database deliberately proves guards do not query it.
 var builder = WebApplication.CreateBuilder();
