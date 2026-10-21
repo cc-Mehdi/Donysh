@@ -88,7 +88,7 @@
                     </div>
                     <div class="grid gap-2">
                         <a asp-page="/Settings/Index" class="btn-secondary w-full">تنظیمات حساب</a>
-                        <form method="post" asp-page="/Account/Logout">
+                        <form method="post" asp-page="/Account/Logout" data-logout-form>
                             <button class="btn-secondary w-full" type="submit">خروج</button>
                         </form>
                     </div>
@@ -149,6 +149,13 @@ else
     </main>
 }
 <script src="~/js/site.js" asp-append-version="true"></script>
+@if (authenticated)
+{
+    <script src="~/js/session-sync.js"
+            data-session-status-url="/Account/SessionStatus"
+            data-signed-out-url="/Account/SignedOut"
+            asp-append-version="true"></script>
+}
 @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

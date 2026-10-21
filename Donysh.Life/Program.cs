@@ -207,6 +207,8 @@ app.Use(async (context, next) =>
 });
 app.UseAuthorization();
 app.MapRazorPages();
+app.MapGet("/Account/SessionStatus", SessionStatusEndpoint.Handle)
+    .AllowAnonymous();
 app.MapGet("/health/live", () => Results.Ok(new { status = "live", service = "donysh-life" })).AllowAnonymous();
 app.MapGet("/health/ready", async (LifeDbContext db, CancellationToken cancellationToken) =>
     await db.Database.CanConnectAsync(cancellationToken)

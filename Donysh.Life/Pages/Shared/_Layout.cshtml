@@ -61,7 +61,7 @@
                     <span class="product-switcher-copy"><small>بودجه و مخارج</small><strong>دُنیش مالی</strong></span>
                     <span class="product-switcher-arrow" aria-hidden="true">←</span>
                 </a>
-                <form method="post" asp-page="/Account/Logout" class="logout-form" data-native-submit>
+                <form method="post" asp-page="/Account/Logout" class="logout-form" data-native-submit data-logout-form>
                     <button type="submit">خروج امن</button>
                 </form>
             </div>
@@ -92,6 +92,10 @@
         </div>
     </div>
     <script src="~/js/interaction-feedback.js" asp-append-version="true" defer></script>
+    <script src="~/js/session-sync.js"
+            data-session-status-url="/Account/SessionStatus"
+            data-signed-out-url="/Account/SignedOut"
+            asp-append-version="true" defer></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

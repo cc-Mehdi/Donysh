@@ -340,6 +340,8 @@ app.UseAuthorization();
 
 app.MapRazorPages();
 app.MapMobileApi();
+app.MapGet("/Account/SessionStatus", SessionStatusEndpoint.Handle)
+    .AllowAnonymous();
 app.MapGet("/health", async (ApplicationDbContext db, CancellationToken ct) =>
 {
     var healthy = await db.Database.CanConnectAsync(ct);

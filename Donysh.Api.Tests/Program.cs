@@ -119,6 +119,25 @@ financePrefetch.Request.Method = HttpMethods.Post;
 if (AuthenticationPrefetchGuard.ShouldSkip(financePrefetch.Request))
     throw new Exception("Finance authentication must never ignore an interactive form post.");
 Console.WriteLine("PASS Finance authentication ignores only speculative browser navigation");
+var anonymousFinanceSession = new DefaultHttpContext();
+var anonymousFinanceStatus = SessionStatusEndpoint.Handle(anonymousFinanceSession);
+if (anonymousFinanceStatus is not IStatusCodeHttpResult { StatusCode: StatusCodes.Status401Unauthorized }
+    || anonymousFinanceSession.Response.Headers.CacheControl != "no-store, no-cache")
+    throw new Exception("Finance session status must report a signed-out browser without caching.");
+var authenticatedFinanceSession = new DefaultHttpContext
+{
+    User = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity("test"))
+};
+if (SessionStatusEndpoint.Handle(authenticatedFinanceSession)
+    is not IStatusCodeHttpResult { StatusCode: StatusCodes.Status204NoContent })
+    throw new Exception("Finance session status must preserve a valid signed-in browser.");
+var financeSessionSync = await File.ReadAllTextAsync(Path.Combine(
+    AppContext.BaseDirectory, "..", "..", "..", "..", "HesabYar.Web", "wwwroot", "js", "session-sync.js"));
+if (!financeSessionSync.Contains("visibilitychange", StringComparison.Ordinal)
+    || !financeSessionSync.Contains("window.location.replace", StringComparison.Ordinal)
+    || !financeSessionSync.Contains("data-logout-form", StringComparison.Ordinal))
+    throw new Exception("Finance must refresh stale tabs after coordinated logout.");
+Console.WriteLine("PASS Finance refreshes stale tabs after coordinated logout");
 
 // Starts only a loopback test host. The unavailable database deliberately proves guards do not query it.
 var builder = WebApplication.CreateBuilder();

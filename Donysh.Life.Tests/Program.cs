@@ -8,6 +8,7 @@ using Donysh.Life.Features.Activities;
 using Donysh.Life.Features.Scheduling;
 using Donysh.Life.Features.Tracking;
 using Donysh.Life.Features.Reporting;
+using Donysh.Life.Security;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
@@ -75,6 +76,23 @@ using (var response = await client.GetAsync("/Account/Login"))
         && resourcePolicy.Single() == "same-origin"
         && response.Headers.TryGetValues("X-Permitted-Cross-Domain-Policies", out var crossDomain)
         && crossDomain.Single() == "none");
+}
+
+using (var response = await client.GetAsync("/Account/SessionStatus"))
+{
+    Check("Anonymous Life session status is uncached and signed out",
+        response.StatusCode == HttpStatusCode.Unauthorized
+        && response.Headers.CacheControl?.NoStore == true);
+}
+
+using (var response = await client.GetAsync("/js/session-sync.js"))
+{
+    var script = await response.Content.ReadAsStringAsync();
+    Check("Life session synchronization refreshes stale tabs",
+        response.StatusCode == HttpStatusCode.OK
+        && script.Contains("visibilitychange", StringComparison.Ordinal)
+        && script.Contains("window.location.replace", StringComparison.Ordinal)
+        && script.Contains("data-logout-form", StringComparison.Ordinal));
 }
 
 using (var response = await client.GetAsync("/"))
@@ -178,6 +196,13 @@ using (var authenticatedClient = authenticatedFactory.CreateClient(new WebApplic
         && html.Contains("فعالیت‌های فعال", StringComparison.Ordinal)
         && html.Contains("فعالیتی انجام دادی", StringComparison.Ordinal)
         && html.Contains("aria-current=\"page\"", StringComparison.Ordinal));
+    Check("Authenticated Life shell monitors cross-product logout",
+        html.Contains("/js/session-sync.js", StringComparison.Ordinal)
+        && html.Contains("data-session-status-url=\"/Account/SessionStatus\"", StringComparison.Ordinal));
+    using var sessionStatus = await authenticatedClient.GetAsync("/Account/SessionStatus");
+    Check("Authenticated Life session status remains active",
+        sessionStatus.StatusCode == HttpStatusCode.NoContent
+        && sessionStatus.Headers.CacheControl?.NoStore == true);
     Check("Life shell links to the configured Finance product",
         html.Contains("href=\"https://finance.test/\"", StringComparison.Ordinal)
         && html.Contains("دُنیش مالی", StringComparison.Ordinal)
