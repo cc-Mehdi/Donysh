@@ -27,7 +27,7 @@
             header {
                 Content-Type "application/vnd.android.package-archive"
                 Content-Disposition "attachment; filename=donysh-mobile.apk"
-                Cache-Control "public, no-cache, must-revalidate"
+                Cache-Control "no-store, max-age=0"
             }
             file_server
         }
