@@ -174,19 +174,13 @@ if (centralAuth.Enabled)
                         return;
                     }
 
-                    if (context.Principal?.Identity is ClaimsIdentity identity
-                        && !identity.HasClaim(claim => claim.Type == ClaimTypes.NameIdentifier))
+                    if (context.Principal is null)
                     {
-                        identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, subject));
+                        context.Fail("The central identity is unavailable.");
+                        return;
                     }
 
-                    var securityStampClaimType = new IdentityOptions().ClaimsIdentity.SecurityStampClaimType;
-                    if (context.Principal?.Identity is ClaimsIdentity claimsIdentity
-                        && !string.IsNullOrWhiteSpace(localUser.SecurityStamp)
-                        && !claimsIdentity.HasClaim(claim => claim.Type == securityStampClaimType))
-                    {
-                        claimsIdentity.AddClaim(new Claim(securityStampClaimType, localUser.SecurityStamp));
-                    }
+                    FinanceSessionClaims.Apply(context.Principal, localUser);
                 },
                 OnRemoteFailure = context =>
                 {

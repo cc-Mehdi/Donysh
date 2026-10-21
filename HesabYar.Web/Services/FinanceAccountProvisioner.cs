@@ -23,7 +23,11 @@ public sealed class FinanceAccountProvisioner(
         if (subject.Length is 0 or > 450 || email.Length is 0 or > 256)
             throw new InvalidOperationException("The central account claims are incomplete.");
 
-        var existing = await FindAsync(subject, cancellationToken);
+        var normalizedEmail = users.NormalizeEmail(email);
+        if (string.IsNullOrWhiteSpace(normalizedEmail))
+            throw new InvalidOperationException("The central account email could not be normalized.");
+
+        var existing = await FindAsync(subject, normalizedEmail, cancellationToken);
         if (existing is not null) return existing;
 
         var normalizedName = string.IsNullOrWhiteSpace(displayName)
@@ -35,7 +39,7 @@ public sealed class FinanceAccountProvisioner(
         return await strategy.ExecuteAsync(async () =>
         {
             await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
-            var linked = await FindAsync(subject, cancellationToken);
+            var linked = await FindAsync(subject, normalizedEmail, cancellationToken);
             if (linked is not null)
             {
                 await transaction.CommitAsync(cancellationToken);
@@ -77,9 +81,16 @@ public sealed class FinanceAccountProvisioner(
         });
     }
 
-    private Task<FinanceAccountLink?> FindAsync(string subject, CancellationToken cancellationToken) =>
+    private Task<FinanceAccountLink?> FindAsync(
+        string subject,
+        string normalizedEmail,
+        CancellationToken cancellationToken) =>
         db.Users.AsNoTracking()
-            .Where(user => user.Id == subject)
+            // Imported Finance users normally retain the same identifier as the
+            // central account. The verified-email fallback also repairs older
+            // installations where the two stores were created independently.
+            .Where(user => user.Id == subject || user.NormalizedEmail == normalizedEmail)
+            .OrderByDescending(user => user.Id == subject)
             .Select(user => new FinanceAccountLink(user.Id, user.SecurityStamp))
-            .SingleOrDefaultAsync(cancellationToken);
+            .FirstOrDefaultAsync(cancellationToken);
 }

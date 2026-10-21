@@ -1,4 +1,5 @@
 using System.Net;
+using System.Security.Claims;
 using System.Text;
 using HesabYar.Web.Data;
 using HesabYar.Web.Configuration;
@@ -7,6 +8,7 @@ using HesabYar.Web.Helpers;
 using HesabYar.Web.Pages.Expenses;
 using HesabYar.Web.Sms;
 using HesabYar.Web.Security;
+using HesabYar.Web.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
@@ -68,6 +70,19 @@ Console.WriteLine("PASS Account balances are removed before expense storage");
 if (new CentralAuthOptions { Enabled = true }.FinanceSessionCookieName == new CentralAuthOptions { Enabled = false }.FinanceSessionCookieName)
     throw new Exception("Central authentication must rotate the Finance session cookie name.");
 Console.WriteLine("PASS Central authentication cannot reuse legacy Finance session cookies");
+var centralIdentity = new ClaimsIdentity(
+[
+    new Claim("sub", "central-subject"),
+    new Claim(ClaimTypes.NameIdentifier, "stale-central-id"),
+    new Claim(new Microsoft.AspNetCore.Identity.IdentityOptions().ClaimsIdentity.SecurityStampClaimType, "stale-stamp")
+], "oidc");
+var centralPrincipal = new ClaimsPrincipal(centralIdentity);
+FinanceSessionClaims.Apply(centralPrincipal, new FinanceAccountLink("local-finance-id", "fresh-stamp"));
+if (centralPrincipal.FindFirstValue(ClaimTypes.NameIdentifier) != "local-finance-id"
+    || centralIdentity.FindAll(ClaimTypes.NameIdentifier).Count() != 1
+    || centralPrincipal.FindFirstValue(new Microsoft.AspNetCore.Identity.IdentityOptions().ClaimsIdentity.SecurityStampClaimType) != "fresh-stamp")
+    throw new Exception("Central authentication must issue a Finance cookie for the linked local user.");
+Console.WriteLine("PASS Central authentication maps the Finance session to the linked local user");
 if (!string.Equals(CentralAuthOptions.SecureResponseMode, "query", StringComparison.Ordinal))
     throw new Exception("Central authentication must not require an inline form_post script.");
 Console.WriteLine("PASS Central authentication callback preserves strict CSP without inline scripts");

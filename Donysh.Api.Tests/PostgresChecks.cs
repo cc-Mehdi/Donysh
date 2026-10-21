@@ -245,6 +245,24 @@ internal static class PostgresChecks
                       && await provisioningDb.WorkspaceMembers.CountAsync(x => x.UserId == centralSubject) == 1
                       && await provisioningDb.ExpenseCategories.CountAsync(x => x.WorkspaceId == personalWorkspace.Id) == 7,
                     "first central login provisions one complete personal finance workspace");
+
+                var legacyUser = new ApplicationUser
+                {
+                    Id = "legacy-finance-id",
+                    UserName = "legacy@example.com",
+                    Email = "legacy@example.com",
+                    EmailConfirmed = true,
+                    DisplayName = "کاربر قدیمی"
+                };
+                var legacyCreated = await provisioningScope.ServiceProvider
+                    .GetRequiredService<UserManager<ApplicationUser>>()
+                    .CreateAsync(legacyUser);
+                Check(legacyCreated.Succeeded, "legacy Finance user fixture is created");
+                var legacyLink = await provisioner.EnsureAsync(
+                    "different-central-subject", "LEGACY@example.com", "نام مرکزی", CancellationToken.None);
+                Check(legacyLink.UserId == legacyUser.Id
+                      && await provisioningDb.Users.CountAsync(x => x.NormalizedEmail == "LEGACY@EXAMPLE.COM") == 1,
+                    "verified central email links an existing Finance account without a redirect loop");
             }
             await db.ExpenseCategories.Where(x => x.Id == category.Id).ExecuteUpdateAsync(s => s.SetProperty(x => x.IsArchived, true));
             using var archivedPair = await client.PostAsJsonAsync("/api/mobile/pair", new PairRequest(code));
