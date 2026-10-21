@@ -4,21 +4,40 @@ set -Eeuo pipefail
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$APP_DIR/scripts/release-verification-lib.sh"
 
-domain="finance.donysh.ir"
-relative_location="/Account/Login?ReturnUrl=%2F"
-absolute_location="https://${domain}/Account/Login?ReturnUrl=%2F"
+valid_trace=$'200\n3\nhttps://auth.donysh.ir/Account/Login?ReturnUrl=%2Fconnect%2Fauthorize'
+wrong_status=$'500\n3\nhttps://auth.donysh.ir/Account/Login'
+redirect_loop=$'200\n4\nhttps://auth.donysh.ir/Account/Login'
+wrong_origin=$'200\n3\nhttps://attacker.example/Account/Login'
 
-[[ "$(resolve_same_origin_location "$relative_location" "$domain")" == "$absolute_location" ]]
-[[ "$(resolve_same_origin_location "$absolute_location" "$domain")" == "$absolute_location" ]]
+validate_login_trace "$valid_trace" "https://auth.donysh.ir/Account/Login" 3
 
-if resolve_same_origin_location "https://attacker.example/Account/Login" "$domain" >/dev/null 2>&1; then
-  echo "Cross-origin redirect was accepted."
+if validate_login_trace "$wrong_status" "https://auth.donysh.ir/Account/Login" 3 >/dev/null 2>&1; then
+  echo "A failed final response was accepted."
   exit 1
 fi
 
-if resolve_same_origin_location "http://${domain}/Account/Login" "$domain" >/dev/null 2>&1; then
-  echo "Insecure redirect was accepted."
+if validate_login_trace "$redirect_loop" "https://auth.donysh.ir/Account/Login" 3 >/dev/null 2>&1; then
+  echo "An unexpected redirect count was accepted."
   exit 1
 fi
 
-echo "Release verification URL tests passed."
+if validate_login_trace "$wrong_origin" "https://auth.donysh.ir/Account/Login" 3 >/dev/null 2>&1; then
+  echo "A cross-origin final URL was accepted."
+  exit 1
+fi
+
+echo "Release verification login trace tests passed."
+
+if [[ "${RELEASE_CHECK_LIVE_LOGIN:-0}" == "1" ]]; then
+  live_trace="$(curl \
+    --fail \
+    --silent \
+    --show-error \
+    --location \
+    --max-redirs 4 \
+    --output /dev/null \
+    --write-out $'%{http_code}\n%{num_redirects}\n%{url_effective}\n' \
+    https://finance.donysh.ir/)"
+  validate_login_trace "$live_trace" "https://auth.donysh.ir/Account/Login" 3
+  echo "Live Finance login trace passed."
+fi

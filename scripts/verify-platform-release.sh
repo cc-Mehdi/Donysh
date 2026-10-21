@@ -79,11 +79,6 @@ assert_status() {
   fi
 }
 
-read_header_value() {
-  local header="$1"
-  sed -n "s/^${header}:[[:space:]]*//Ip" "$headers_file" | tail -n 1 | tr -d '\r'
-}
-
 assert_health "Landing health" "https://${domain}/health" "ok"
 assert_health "Finance health" "https://${finance_domain}/health" "ok"
 assert_health "Auth readiness" "https://${auth_domain}/health/ready" "ready"
@@ -114,24 +109,16 @@ assert_status "200"
 assert_header "cache-control" ".*no-cache.*must-revalidate"
 echo "PASS Landing unversioned stylesheet revalidation"
 
-: >"$headers_file"
-curl "${curl_args[@]}" -D "$headers_file" -o /dev/null "https://${finance_domain}/"
-assert_status "30[1278]"
-assert_header "location" "/Account/Login"
-finance_login_path="$(read_header_value location)"
-finance_login_url="$(resolve_same_origin_location "$finance_login_path" "$finance_domain")"
-
-: >"$headers_file"
-curl "${curl_args[@]}" -D "$headers_file" -o /dev/null \
-  "$finance_login_url"
-assert_status "30[1278]"
-assert_header "location" "https://${auth_domain}/connect/authorize"
-finance_authorize_url="$(read_header_value location)"
-
-: >"$headers_file"
-curl "${curl_args[@]}" -D "$headers_file" -o /dev/null "$finance_authorize_url"
-assert_status "30[1278]"
-assert_header "location" "/Account/Login"
+finance_login_trace="$(curl "${curl_args[@]}" \
+  --location \
+  --max-redirs 4 \
+  --output /dev/null \
+  --write-out $'%{http_code}\n%{num_redirects}\n%{url_effective}\n' \
+  "https://${finance_domain}/")"
+validate_login_trace \
+  "$finance_login_trace" \
+  "https://${auth_domain}/Account/Login" \
+  3
 echo "PASS Finance anonymous login reaches the central login exactly once"
 
 curl "${curl_args[@]}" -D "$headers_file" -o /dev/null "https://${life_domain}/"
