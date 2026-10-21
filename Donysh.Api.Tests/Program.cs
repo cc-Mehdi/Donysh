@@ -82,11 +82,14 @@ if (!HesabYar.Web.Pages.Account.LoginModel.HasAuthenticationError("1")
     || HesabYar.Web.Pages.Account.LoginModel.HasAuthenticationError(null))
     throw new Exception("Finance login must stop automatic OIDC retries after a callback failure.");
 Console.WriteLine("PASS Finance login stops automatic OIDC retries after a callback failure");
-var financeCsp = SecurityHeaders.BuildContentSecurityPolicy(new Uri("https://auth.donysh.test/connect/authorize"));
-if (!financeCsp.Contains("form-action 'self' https://auth.donysh.test", StringComparison.Ordinal)
-    || financeCsp.Contains("connect/authorize", StringComparison.Ordinal))
-    throw new Exception("Finance CSP must allow only the trusted central Auth origin for OIDC form redirects.");
-Console.WriteLine("PASS Finance CSP allows the trusted central Auth origin");
+var financeCsp = SecurityHeaders.BuildContentSecurityPolicy(
+    new Uri("https://auth.donysh.test/connect/authorize"),
+    new Uri("https://life.donysh.test/Account/FederatedLogout"));
+if (!financeCsp.Contains("form-action 'self' https://auth.donysh.test https://life.donysh.test;", StringComparison.Ordinal)
+    || financeCsp.Contains("connect/authorize", StringComparison.Ordinal)
+    || financeCsp.Contains("FederatedLogout", StringComparison.Ordinal))
+    throw new Exception("Finance CSP must allow trusted Auth and Life origins across the logout redirect chain.");
+Console.WriteLine("PASS Finance CSP allows trusted Auth and Life logout origins");
 const string financeLogoutSecret = "test-only-shared-logout-secret-0000000000000000";
 var financeLogoutConfiguration = new Microsoft.Extensions.Configuration.ConfigurationBuilder()
     .AddInMemoryCollection(new Dictionary<string, string?>

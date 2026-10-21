@@ -418,8 +418,9 @@ progress::-moz-progress-bar { border-radius:999px; background:var(--progress-val
   .mobile-account { display:flex; align-items:center; gap:.45rem; min-width:0; max-width:11rem; padding:.3rem .45rem; border:1px solid #d7e8e4; border-radius:.8rem; background:#f7fbfa; }
   .mobile-account .account-avatar { width:1.9rem; height:1.9rem; border-radius:.62rem; font-size:.72rem; }
   .mobile-account strong { overflow:hidden; color:#31514e; font-size:.68rem; text-overflow:ellipsis; white-space:nowrap; }
-  .mobile-nav { display:grid; position:fixed; bottom:0; left:0; right:0; z-index:20; grid-template-columns:repeat(4,1fr); padding:.45rem .5rem max(.45rem,env(safe-area-inset-bottom)); background:#fffffff5; border-top:1px solid var(--line); backdrop-filter:blur(16px); }
-  .mobile-nav a { display:flex; flex-direction:column; align-items:center; color:#687673; gap:.15rem; }
+  .mobile-nav { display:grid; position:fixed; bottom:0; left:0; right:0; z-index:20; grid-template-columns:repeat(5,minmax(0,1fr)); padding:.45rem .5rem max(.45rem,env(safe-area-inset-bottom)); background:#fffffff5; border-top:1px solid var(--line); backdrop-filter:blur(16px); }
+  .mobile-nav a,.mobile-nav button { display:flex; flex-direction:column; align-items:center; justify-content:center; width:100%; color:#687673; gap:.15rem; }
+  .mobile-nav button { border:0; background:none; cursor:pointer; }
   .mobile-nav a.active { color:#08776e; font-weight:800; }
   .mobile-nav span { font-size:1.25rem; }
   .mobile-nav small { font-size:.68rem; }

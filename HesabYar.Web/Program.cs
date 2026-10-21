@@ -33,6 +33,9 @@ var centralAuth = builder.Configuration
     .GetSection(CentralAuthOptions.SectionName)
     .Get<CentralAuthOptions>() ?? new CentralAuthOptions();
 Uri? centralAuthority = null;
+if (!Uri.TryCreate(builder.Configuration["Products:LifeUrl"], UriKind.Absolute, out var lifeProduct)
+    || lifeProduct.Scheme != Uri.UriSchemeHttps)
+    throw new InvalidOperationException("Products:LifeUrl must be an absolute HTTPS URI.");
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' was not found.");
 
@@ -308,7 +311,7 @@ if (!app.Environment.IsDevelopment())
     }
 }
 
-app.UseDonyshSecurityHeaders(centralAuthority);
+app.UseDonyshSecurityHeaders(centralAuthority, lifeProduct);
 app.Use(AuthenticationPrefetchGuard.InvokeAsync);
 
 app.UseStaticFiles();

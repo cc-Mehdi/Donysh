@@ -67,7 +67,7 @@ using (var response = await client.GetAsync("/Account/Login"))
     Check("Life security headers allow only same-origin scripts and block framing",
         response.Headers.TryGetValues("Content-Security-Policy", out var csp)
         && csp.Single().Contains("frame-ancestors 'none'", StringComparison.Ordinal)
-        && csp.Single().Contains("form-action 'self' https://auth.test", StringComparison.Ordinal)
+        && csp.Single().Contains("form-action 'self' https://auth.test https://finance.test;", StringComparison.Ordinal)
         && csp.Single().Contains("script-src 'self'", StringComparison.Ordinal)
         && !csp.Single().Contains("'unsafe-inline'", StringComparison.Ordinal)
         && !csp.Single().Contains("'unsafe-eval'", StringComparison.Ordinal)
@@ -219,6 +219,9 @@ using (var authenticatedClient = authenticatedFactory.CreateClient(new WebApplic
     Check("Life logout posts locally before central OIDC sign-out",
         html.Contains("action=\"/Account/Logout\"", StringComparison.Ordinal)
         && html.Contains("class=\"logout-form\" data-native-submit", StringComparison.Ordinal));
+    Check("Life mobile navigation exposes the same logout flow",
+        html.Contains("class=\"mobile-logout-form\" data-native-submit data-logout-form", StringComparison.Ordinal)
+        && html.Contains("aria-label=\"خروج از حساب\"", StringComparison.Ordinal));
     Check("Life antiforgery cookie is HttpOnly, secure and same-site strict",
         response.Headers.TryGetValues("Set-Cookie", out var setCookies)
         && setCookies.Any(cookie => cookie.Contains(".Donysh.Life.Antiforgery", StringComparison.Ordinal)

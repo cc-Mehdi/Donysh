@@ -29,6 +29,9 @@ var auth = builder.Configuration.GetSection(LifeAuthOptions.SectionName).Get<Lif
 if (!Uri.TryCreate(auth.Authority, UriKind.Absolute, out var authority)
     || (auth.RequireHttpsMetadata && authority.Scheme != Uri.UriSchemeHttps))
     throw new InvalidOperationException("CentralAuth:Authority must be an absolute HTTPS URI.");
+if (!Uri.TryCreate(builder.Configuration["Products:FinanceUrl"], UriKind.Absolute, out var financeProduct)
+    || financeProduct.Scheme != Uri.UriSchemeHttps)
+    throw new InvalidOperationException("Products:FinanceUrl must be an absolute HTTPS URI.");
 if (string.IsNullOrWhiteSpace(auth.ClientId)
     || string.IsNullOrWhiteSpace(auth.ClientSecret)
     || auth.ClientSecret.Length < 32)
@@ -175,7 +178,7 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Error");
     if (reverseProxyEnabled) app.UseHsts();
 }
-app.UseLifeSecurityHeaders(authority);
+app.UseLifeSecurityHeaders(authority, financeProduct);
 var sharedWebRoot = Path.GetFullPath(Path.Combine(app.Environment.ContentRootPath, "..", "HesabYar.Web", "wwwroot"));
 if (Directory.Exists(sharedWebRoot))
 {

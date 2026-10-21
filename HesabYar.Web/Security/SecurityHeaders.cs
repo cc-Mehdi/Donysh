@@ -8,17 +8,21 @@ public static class SecurityHeaders
         "; object-src 'none'; img-src 'self' data:; font-src 'self'; " +
         "style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'";
 
-    public static string BuildContentSecurityPolicy(Uri? centralAuthority = null)
+    public static string BuildContentSecurityPolicy(Uri? centralAuthority = null, Uri? peerProduct = null)
     {
         var trustedAuthority = centralAuthority is { Scheme: "https" or "http" }
             ? $" {centralAuthority.GetLeftPart(UriPartial.Authority)}"
             : string.Empty;
-        return PolicyBeforeFormAction + trustedAuthority + PolicyAfterFormAction;
+        var trustedPeer = peerProduct is { Scheme: "https" or "http" }
+            ? $" {peerProduct.GetLeftPart(UriPartial.Authority)}"
+            : string.Empty;
+        return PolicyBeforeFormAction + trustedAuthority + trustedPeer + PolicyAfterFormAction;
     }
 
     public static IApplicationBuilder UseDonyshSecurityHeaders(
         this IApplicationBuilder app,
-        Uri? centralAuthority = null) =>
+        Uri? centralAuthority = null,
+        Uri? peerProduct = null) =>
         app.Use(async (context, next) =>
         {
             var headers = context.Response.Headers;
@@ -28,7 +32,7 @@ public static class SecurityHeaders
             headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()";
             headers["Cross-Origin-Opener-Policy"] = "same-origin";
             headers["X-Permitted-Cross-Domain-Policies"] = "none";
-            var contentSecurityPolicy = BuildContentSecurityPolicy(centralAuthority);
+            var contentSecurityPolicy = BuildContentSecurityPolicy(centralAuthority, peerProduct);
             headers.ContentSecurityPolicy = context.Request.IsHttps
                 ? $"{contentSecurityPolicy}; upgrade-insecure-requests"
                 : contentSecurityPolicy;
