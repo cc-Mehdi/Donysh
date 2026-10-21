@@ -9,11 +9,15 @@ public sealed class LoginModel : PageModel
 {
     public bool AuthError { get; private set; }
 
-    public IActionResult OnGet(bool authError = false)
+    public IActionResult OnGet(string? authError = null)
     {
-        AuthError = authError;
+        AuthError = HasAuthenticationError(authError);
         return User.Identity?.IsAuthenticated == true ? LocalRedirect("/") : Page();
     }
+
+    public static bool HasAuthenticationError(string? value) =>
+        string.Equals(value, "1", StringComparison.Ordinal)
+        || string.Equals(value, bool.TrueString, StringComparison.OrdinalIgnoreCase);
 
     public IActionResult OnPost() => Challenge(new AuthenticationProperties
     {

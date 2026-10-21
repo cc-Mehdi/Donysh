@@ -77,6 +77,11 @@ Console.WriteLine("PASS Finance login avoids a redundant UserInfo network reques
 if (!string.Equals(CentralAuthOptions.SecureResponseMode, "query", StringComparison.Ordinal))
     throw new Exception("Central authentication must not require an inline form_post script.");
 Console.WriteLine("PASS Central authentication callback preserves strict CSP without inline scripts");
+if (!HesabYar.Web.Pages.Account.LoginModel.HasAuthenticationError("1")
+    || !HesabYar.Web.Pages.Account.LoginModel.HasAuthenticationError("true")
+    || HesabYar.Web.Pages.Account.LoginModel.HasAuthenticationError(null))
+    throw new Exception("Finance login must stop automatic OIDC retries after a callback failure.");
+Console.WriteLine("PASS Finance login stops automatic OIDC retries after a callback failure");
 var financeCsp = SecurityHeaders.BuildContentSecurityPolicy(new Uri("https://auth.donysh.test/connect/authorize"));
 if (!financeCsp.Contains("form-action 'self' https://auth.donysh.test", StringComparison.Ordinal)
     || financeCsp.Contains("connect/authorize", StringComparison.Ordinal))

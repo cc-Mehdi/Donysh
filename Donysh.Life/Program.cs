@@ -133,7 +133,7 @@ builder.Services.AddAuthentication(options =>
                         "Central authentication callback failed ({FailureType}).",
                         context.Failure?.GetType().Name ?? "unknown");
                 context.HandleResponse();
-                context.Response.Redirect("/Account/Login?authError=1");
+                context.Response.Redirect("/Account/Login?authError=true");
                 return Task.CompletedTask;
             }
         };

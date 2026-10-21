@@ -4,6 +4,7 @@ using Donysh.Auth.Domain;
 using Donysh.Auth.Pages;
 using Donysh.Auth.Security;
 using Donysh.Auth.Configuration;
+using Donysh.Auth.Controllers;
 using Donysh.Auth.Services;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -13,6 +14,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using OpenIddict.Abstractions;
+using static OpenIddict.Abstractions.OpenIddictConstants;
 
 var failed = 0;
 
@@ -80,6 +83,19 @@ Check("SMTP configuration requires a valid sender and credential pair",
         Host = "smtp.test", Port = 587, TimeoutSeconds = 20,
         FromAddress = "invalid", UserName = "user"
     }.IsConfigured);
+
+var tokenIdentity = new System.Security.Claims.ClaimsIdentity();
+tokenIdentity.SetClaim(Claims.Subject, "auth-user-id")
+    .SetClaim(Claims.Name, "Donysh User")
+    .SetClaim(Claims.Email, "user@example.test")
+    .SetClaim(Claims.EmailVerified, bool.TrueString.ToLowerInvariant());
+var tokenPrincipal = new System.Security.Claims.ClaimsPrincipal(tokenIdentity);
+tokenPrincipal.SetScopes(Scopes.OpenId, Scopes.Profile, Scopes.Email);
+tokenPrincipal.SetDestinations(AuthorizationController.ResolveDestinations);
+Check("OIDC ID token receives profile and verified-email claims after scopes are granted",
+    tokenIdentity.FindFirst(Claims.Name)?.GetDestinations().Contains(Destinations.IdentityToken) == true
+    && tokenIdentity.FindFirst(Claims.Email)?.GetDestinations().Contains(Destinations.IdentityToken) == true
+    && tokenIdentity.FindFirst(Claims.EmailVerified)?.GetDestinations().Contains(Destinations.IdentityToken) == true);
 
 Environment.SetEnvironmentVariable("Database__ApplyMigrations", "false");
 Environment.SetEnvironmentVariable("AllowedHosts", "*");

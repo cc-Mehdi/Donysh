@@ -40,6 +40,11 @@ Environment.SetEnvironmentVariable("CrossAppLogout__Secret", "test-only-shared-l
 Environment.SetEnvironmentVariable("Database__ApplyMigrations", "false");
 Environment.SetEnvironmentVariable("ReverseProxy__Enabled", "false");
 
+Check("Life login recognizes central callback failure markers",
+    Donysh.Life.Pages.Account.LoginModel.HasAuthenticationError("1")
+    && Donysh.Life.Pages.Account.LoginModel.HasAuthenticationError("true")
+    && !Donysh.Life.Pages.Account.LoginModel.HasAuthenticationError(null));
+
 await using var factory = new LifeApplicationFactory();
 using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
 {

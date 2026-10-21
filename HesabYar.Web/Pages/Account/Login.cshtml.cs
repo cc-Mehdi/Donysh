@@ -25,8 +25,7 @@ public sealed class LoginModel(
     [BindProperty(SupportsGet = true)]
     public string? ReturnUrl { get; set; }
 
-    [BindProperty(SupportsGet = true)]
-    public bool AuthError { get; set; }
+    public bool AuthError { get; private set; }
 
     public bool UsesCentralAuth => centralAuth.Enabled;
 
@@ -45,8 +44,10 @@ public sealed class LoginModel(
         public bool RememberMe { get; set; }
     }
 
-    public IActionResult OnGet()
+    public IActionResult OnGet(string? authError)
     {
+        AuthError = HasAuthenticationError(authError);
+
         if (User.Identity?.IsAuthenticated == true)
         {
             return RedirectToPage("/Index");
@@ -59,6 +60,10 @@ public sealed class LoginModel(
 
         return Page();
     }
+
+    public static bool HasAuthenticationError(string? value) =>
+        string.Equals(value, "1", StringComparison.Ordinal)
+        || string.Equals(value, bool.TrueString, StringComparison.OrdinalIgnoreCase);
 
     public async Task<IActionResult> OnPostAsync()
     {

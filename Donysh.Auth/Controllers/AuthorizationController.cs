@@ -59,10 +59,12 @@ public sealed class AuthorizationController(UserManager<AuthUser> users, SignInM
             .SetClaim(Claims.Email, user.Email)
             .SetClaim(Claims.EmailVerified, user.EmailConfirmed.ToString().ToLowerInvariant());
         foreach (var role in await users.GetRolesAsync(user)) identity.AddClaim(Claims.Role, role);
-        identity.SetDestinations(ResolveDestinations);
-
         var principal = new ClaimsPrincipal(identity);
         principal.SetScopes(request.GetScopes());
+        // Destinations depend on the granted scopes. Set the scopes first so
+        // profile and verified-email claims are included in the ID token that
+        // Finance validates during its OIDC callback.
+        principal.SetDestinations(ResolveDestinations);
         return SignIn(principal, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
     }
 
@@ -91,7 +93,7 @@ public sealed class AuthorizationController(UserManager<AuthUser> users, SignInM
         });
     }
 
-    private static IEnumerable<string> ResolveDestinations(Claim claim) => claim.Type switch
+    public static IEnumerable<string> ResolveDestinations(Claim claim) => claim.Type switch
     {
         Claims.Subject => [Destinations.AccessToken, Destinations.IdentityToken],
         Claims.Name when claim.Subject?.HasScope(Scopes.Profile) == true
