@@ -64,6 +64,7 @@ builder.Services
 builder.Services.AddOptions<CentralAuthOptions>()
     .Bind(builder.Configuration.GetSection(CentralAuthOptions.SectionName));
 builder.Services.AddScoped<FinanceAccountProvisioner>();
+builder.Services.AddScoped<FinanceSessionPrincipalFactory>();
 
 if (centralAuth.Enabled)
 {
@@ -109,7 +110,10 @@ if (centralAuth.Enabled)
             // Keep only the ID token in the encrypted application cookie so RP-initiated
             // logout can terminate the central session. Access/refresh tokens are discarded.
             options.SaveTokens = true;
-            options.GetClaimsFromUserInfoEndpoint = true;
+            // Auth already places the requested profile and verified email claims
+            // in the signed ID token. Avoid a redundant server-to-server UserInfo
+            // request on every login so the browser reaches Finance sooner.
+            options.GetClaimsFromUserInfoEndpoint = false;
             options.SignInScheme = IdentityConstants.ApplicationScheme;
             options.MapInboundClaims = false;
             options.Scope.Clear();
@@ -174,16 +178,34 @@ if (centralAuth.Enabled)
                         return;
                     }
 
-                    if (context.Principal is null)
+                    var centralPrincipal = context.Principal;
+                    if (centralPrincipal is null)
                     {
                         context.Fail("The central identity is unavailable.");
                         return;
                     }
 
-                    FinanceSessionClaims.Apply(context.Principal, localUser);
+                    try
+                    {
+                        var sessionFactory = scope.ServiceProvider.GetRequiredService<FinanceSessionPrincipalFactory>();
+                        context.Principal = await sessionFactory.CreateAsync(centralPrincipal, localUser);
+                    }
+                    catch (Exception exception)
+                    {
+                        var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>()
+                            .CreateLogger("FinanceSessionCreation");
+                        logger.LogError(exception, "Finance session creation failed for local user {UserId}.", localUser.UserId);
+                        context.Fail("The Finance session could not be created.");
+                    }
                 },
                 OnRemoteFailure = context =>
                 {
+                    context.HttpContext.RequestServices
+                        .GetRequiredService<ILoggerFactory>()
+                        .CreateLogger("FinanceCentralAuthentication")
+                        .LogWarning(context.Failure,
+                            "Central authentication callback failed ({FailureType}).",
+                            context.Failure?.GetType().Name ?? "unknown");
                     context.HandleResponse();
                     context.Response.Redirect("/Account/Login?authError=1");
                     return Task.CompletedTask;

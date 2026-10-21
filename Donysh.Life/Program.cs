@@ -91,7 +91,9 @@ builder.Services.AddAuthentication(options =>
         options.RequireHttpsMetadata = auth.RequireHttpsMetadata;
         options.SignInScheme = LifeAuthOptions.CookieScheme;
         options.SaveTokens = true;
-        options.GetClaimsFromUserInfoEndpoint = true;
+        // The signed ID token already contains the requested profile claims.
+        // Skipping UserInfo removes one network hop from every Life login.
+        options.GetClaimsFromUserInfoEndpoint = false;
         options.MapInboundClaims = false;
         options.Scope.Clear();
         options.Scope.Add("openid");
@@ -124,6 +126,12 @@ builder.Services.AddAuthentication(options =>
             },
             OnRemoteFailure = context =>
             {
+                context.HttpContext.RequestServices
+                    .GetRequiredService<ILoggerFactory>()
+                    .CreateLogger("LifeCentralAuthentication")
+                    .LogWarning(context.Failure,
+                        "Central authentication callback failed ({FailureType}).",
+                        context.Failure?.GetType().Name ?? "unknown");
                 context.HandleResponse();
                 context.Response.Redirect("/Account/Login?authError=1");
                 return Task.CompletedTask;

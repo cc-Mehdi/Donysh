@@ -222,6 +222,7 @@ internal static class PostgresChecks
                 .AddEntityFrameworkStores<ApplicationDbContext>()
                 .AddSignInManager();
             builder.Services.AddScoped<FinanceAccountProvisioner>();
+            builder.Services.AddScoped<FinanceSessionPrincipalFactory>();
             builder.Services.AddMobileApi();
             await using var app = builder.Build();
             app.UseRouting(); app.UseRateLimiter();
@@ -263,6 +264,18 @@ internal static class PostgresChecks
                 Check(legacyLink.UserId == legacyUser.Id
                       && await provisioningDb.Users.CountAsync(x => x.NormalizedEmail == "LEGACY@EXAMPLE.COM") == 1,
                     "verified central email links an existing Finance account without a redirect loop");
+
+                var centralPrincipal = new ClaimsPrincipal(new ClaimsIdentity(
+                    [new Claim("sub", "different-central-subject")], "oidc"));
+                var financePrincipal = await provisioningScope.ServiceProvider
+                    .GetRequiredService<FinanceSessionPrincipalFactory>()
+                    .CreateAsync(centralPrincipal, legacyLink);
+                var stampType = new IdentityOptions().ClaimsIdentity.SecurityStampClaimType;
+                Check(financePrincipal.Identity?.AuthenticationType == IdentityConstants.ApplicationScheme
+                      && financePrincipal.FindFirstValue(ClaimTypes.NameIdentifier) == legacyUser.Id
+                      && financePrincipal.FindFirstValue("sub") == "different-central-subject"
+                      && financePrincipal.FindFirstValue(stampType) == legacyUser.SecurityStamp,
+                    "central login creates a framework-valid Finance Identity session");
             }
             await db.ExpenseCategories.Where(x => x.Id == category.Id).ExecuteUpdateAsync(s => s.SetProperty(x => x.IsArchived, true));
             using var archivedPair = await client.PostAsJsonAsync("/api/mobile/pair", new PairRequest(code));

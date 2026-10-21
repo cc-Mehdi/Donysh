@@ -200,7 +200,16 @@ if (!app.Environment.IsDevelopment())
 app.UseAuthSecurityHeaders(oidcClients.SelectMany(client =>
     client.RedirectUris.Concat(client.PostLogoutRedirectUris)));
 app.Use(AuthenticationPrefetchGuard.InvokeAsync);
-app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = context =>
+    {
+        context.Context.Response.Headers.CacheControl =
+            context.Context.Request.Query.ContainsKey("v")
+                ? "public,max-age=31536000,immutable"
+                : "public,no-cache,must-revalidate";
+    }
+});
 app.UseRequestLocalization(new RequestLocalizationOptions()
     .SetDefaultCulture("fa-IR")
     .AddSupportedCultures("fa-IR", "en-US")

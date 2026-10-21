@@ -1,5 +1,7 @@
 @using Donysh.Landing.Infrastructure
+@using Microsoft.Extensions.Options
 @inject LandingAssetUrlBuilder AssetUrls
+@inject IOptions<Donysh.Landing.Configuration.LandingLinksOptions> ProductOptions
 @{
     var cssUrl = AssetUrls.Versioned(
         "/landing-assets/css/app.css",
@@ -9,6 +11,7 @@
         "/landing-assets/images/donysh-mark.png",
         "/images/donysh-mark.png",
         Context.Request.PathBase);
+    var products = ProductOptions.Value;
 }
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
@@ -20,6 +23,10 @@
     <meta name="description" content="دُنیش، خانهٔ ابزارهای ساده و یکپارچه برای مدیریت پول، زمان و مسیر زندگی است." />
     <title>@ViewData["Title"]</title>
     <link rel="icon" type="image/png" href="@markUrl" />
+    <link rel="dns-prefetch" href="@products.FinanceUrl" />
+    <link rel="preconnect" href="@products.FinanceUrl" />
+    <link rel="dns-prefetch" href="@products.AuthUrl" />
+    <link rel="preconnect" href="@products.AuthUrl" />
     <link rel="stylesheet" href="@cssUrl" />
 </head>
 <body class="landing-body">

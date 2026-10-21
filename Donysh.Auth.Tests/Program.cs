@@ -116,6 +116,9 @@ using (var response = await client.GetAsync("/Account/Login"))
         html.Contains("ارتباط امن", StringComparison.Ordinal)
         && html.Contains("دُنیش مالی", StringComparison.Ordinal)
         && html.Contains("دُنیش زندگی", StringComparison.Ordinal));
+    Check("Login page preloads its Persian fonts",
+        html.Contains("rel=\"preload\" href=\"/fonts/YekanBakh-Regular.woff2\"", StringComparison.Ordinal)
+        && html.Contains("rel=\"preload\" href=\"/fonts/YekanBakh-Bold.woff2\"", StringComparison.Ordinal));
     var hasCsp = response.Headers.TryGetValues("Content-Security-Policy", out var values);
     var cspHeader = hasCsp ? values!.Single() : string.Empty;
     Check("Security headers are present",
@@ -227,6 +230,16 @@ using (var response = await client.GetAsync("/images/logo-mark.svg"))
     Check("Auth brand mark is served in development and published builds",
         response.StatusCode == HttpStatusCode.OK
         && response.Content.Headers.ContentType?.MediaType == "image/svg+xml");
+}
+
+using (var response = await client.GetAsync("/css/app.css?v=test-version"))
+{
+    Check("Versioned Auth assets are cached immutably",
+        response.StatusCode == HttpStatusCode.OK
+        && response.Headers.CacheControl?.Public == true
+        && response.Headers.CacheControl?.MaxAge == TimeSpan.FromDays(365)
+        && response.Headers.CacheControl?.Extensions.Any(extension =>
+            extension.Name.Equals("immutable", StringComparison.OrdinalIgnoreCase)) == true);
 }
 
 using (var response = await client.GetAsync("/.well-known/openid-configuration"))

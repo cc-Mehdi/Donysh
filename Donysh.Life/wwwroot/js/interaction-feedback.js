@@ -20,6 +20,7 @@
     document.addEventListener("submit", event => {
         const form = event.target;
         if (!(form instanceof HTMLFormElement) || form.method.toLowerCase() === "dialog") return;
+        if (form.hasAttribute("data-native-submit")) return;
         if (form.dataset.submitting === "true") {
             event.preventDefault();
             return;

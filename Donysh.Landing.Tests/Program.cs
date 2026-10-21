@@ -35,6 +35,9 @@ using (var response = await client.GetAsync("/"))
     Check("Landing account links start a complete Finance sign-in flow",
         html.Contains("href=\"https://finance.test/Account/Login\"", StringComparison.Ordinal)
         && !html.Contains("href=\"https://auth.test/Account/Login\"", StringComparison.Ordinal));
+    Check("Landing warms both authentication hops before sign-in",
+        html.Contains("rel=\"preconnect\" href=\"https://finance.test\"", StringComparison.Ordinal)
+        && html.Contains("rel=\"preconnect\" href=\"https://auth.test\"", StringComparison.Ordinal));
     Check("Landing links to the initial Life product",
         html.Contains("دُنیش زندگی", StringComparison.Ordinal)
         && html.Contains("نسخهٔ آغازین", StringComparison.Ordinal)

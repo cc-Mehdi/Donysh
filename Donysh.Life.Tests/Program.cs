@@ -183,7 +183,8 @@ using (var authenticatedClient = authenticatedFactory.CreateClient(new WebApplic
     Check("Life shell shows the signed-in account email",
         html.Contains("life-user@example.test", StringComparison.Ordinal));
     Check("Life logout posts locally before central OIDC sign-out",
-        html.Contains("action=\"/Account/Logout\"", StringComparison.Ordinal));
+        html.Contains("action=\"/Account/Logout\"", StringComparison.Ordinal)
+        && html.Contains("class=\"logout-form\" data-native-submit", StringComparison.Ordinal));
     Check("Life antiforgery cookie is HttpOnly, secure and same-site strict",
         response.Headers.TryGetValues("Set-Cookie", out var setCookies)
         && setCookies.Any(cookie => cookie.Contains(".Donysh.Life.Antiforgery", StringComparison.Ordinal)
@@ -439,6 +440,10 @@ var expiredLogoutProof = Donysh.Life.Security.CrossAppLogoutToken.Create(
 Check("Cross-app logout rejects expired and tampered proofs",
     !Donysh.Life.Security.CrossAppLogoutToken.TryValidate(expiredLogoutProof, sharedLogoutSecret, "life")
     && !Donysh.Life.Security.CrossAppLogoutToken.TryValidate(lifePeerProof + "x", sharedLogoutSecret, "finance"));
+var lifeProgramSource = await File.ReadAllTextAsync(Path.Combine(
+    AppContext.BaseDirectory, "..", "..", "..", "..", "Donysh.Life", "Program.cs"));
+Check("Life login avoids a redundant UserInfo network request",
+    lifeProgramSource.Contains("GetClaimsFromUserInfoEndpoint = false", StringComparison.Ordinal));
 
 await using (var federatedFactory = new AuthenticatedLifeApplicationFactory())
 using (var federatedClient = federatedFactory.CreateClient(new WebApplicationFactoryClientOptions

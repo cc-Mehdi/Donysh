@@ -1,5 +1,4 @@
 using System.Net;
-using System.Security.Claims;
 using System.Text;
 using HesabYar.Web.Data;
 using HesabYar.Web.Configuration;
@@ -70,19 +69,11 @@ Console.WriteLine("PASS Account balances are removed before expense storage");
 if (new CentralAuthOptions { Enabled = true }.FinanceSessionCookieName == new CentralAuthOptions { Enabled = false }.FinanceSessionCookieName)
     throw new Exception("Central authentication must rotate the Finance session cookie name.");
 Console.WriteLine("PASS Central authentication cannot reuse legacy Finance session cookies");
-var centralIdentity = new ClaimsIdentity(
-[
-    new Claim("sub", "central-subject"),
-    new Claim(ClaimTypes.NameIdentifier, "stale-central-id"),
-    new Claim(new Microsoft.AspNetCore.Identity.IdentityOptions().ClaimsIdentity.SecurityStampClaimType, "stale-stamp")
-], "oidc");
-var centralPrincipal = new ClaimsPrincipal(centralIdentity);
-FinanceSessionClaims.Apply(centralPrincipal, new FinanceAccountLink("local-finance-id", "fresh-stamp"));
-if (centralPrincipal.FindFirstValue(ClaimTypes.NameIdentifier) != "local-finance-id"
-    || centralIdentity.FindAll(ClaimTypes.NameIdentifier).Count() != 1
-    || centralPrincipal.FindFirstValue(new Microsoft.AspNetCore.Identity.IdentityOptions().ClaimsIdentity.SecurityStampClaimType) != "fresh-stamp")
-    throw new Exception("Central authentication must issue a Finance cookie for the linked local user.");
-Console.WriteLine("PASS Central authentication maps the Finance session to the linked local user");
+var financeProgramSource = await File.ReadAllTextAsync(Path.Combine(
+    AppContext.BaseDirectory, "..", "..", "..", "..", "HesabYar.Web", "Program.cs"));
+if (!financeProgramSource.Contains("GetClaimsFromUserInfoEndpoint = false", StringComparison.Ordinal))
+    throw new Exception("Finance login must avoid the redundant UserInfo network request.");
+Console.WriteLine("PASS Finance login avoids a redundant UserInfo network request");
 if (!string.Equals(CentralAuthOptions.SecureResponseMode, "query", StringComparison.Ordinal))
     throw new Exception("Central authentication must not require an inline form_post script.");
 Console.WriteLine("PASS Central authentication callback preserves strict CSP without inline scripts");
