@@ -13,6 +13,7 @@ done
 
 cd "$APP_DIR"
 [[ -f "$ENV_FILE" ]] || { echo "Missing environment file: $APP_DIR/$ENV_FILE"; exit 1; }
+source "$APP_DIR/scripts/release-verification-lib.sh"
 
 if [[ ! "$REQUEST_TIMEOUT_SECONDS" =~ ^[1-9][0-9]*$ ]]; then
   echo "RELEASE_CHECK_TIMEOUT_SECONDS must be a positive integer."
@@ -118,10 +119,11 @@ curl "${curl_args[@]}" -D "$headers_file" -o /dev/null "https://${finance_domain
 assert_status "30[1278]"
 assert_header "location" "/Account/Login"
 finance_login_path="$(read_header_value location)"
+finance_login_url="$(resolve_same_origin_location "$finance_login_path" "$finance_domain")"
 
 : >"$headers_file"
 curl "${curl_args[@]}" -D "$headers_file" -o /dev/null \
-  "https://${finance_domain}${finance_login_path}"
+  "$finance_login_url"
 assert_status "30[1278]"
 assert_header "location" "https://${auth_domain}/connect/authorize"
 finance_authorize_url="$(read_header_value location)"

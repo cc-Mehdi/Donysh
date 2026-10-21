@@ -60,7 +60,9 @@ jobs:
         run: python scripts/validate_project.py
 
       - name: Validate deployment scripts
-        run: bash -n scripts/*.sh
+        run: |
+          bash -n scripts/*.sh
+          bash scripts/release-verification-lib.test.sh
 
       - name: Install frontend dependencies
         working-directory: HesabYar.Web
