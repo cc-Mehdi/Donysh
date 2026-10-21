@@ -14,11 +14,46 @@ https://donysh.ir/downloads/donysh-mobile.apk
 /home/ubuntu/donysh/artifacts/mobile/donysh-mobile.apk
 ```
 
-برای انتشار نسخهٔ جدید، ابتدا در `DonyshMobile/DonyshMobile/DonyshMobile.csproj` شمارهٔ `ApplicationVersion` را افزایش دهید و `ApplicationDisplayVersion` را تنظیم کنید. فایل `*-Signed.apk` موجود در پوشهٔ `publish` ممکن است خروجی قدیمی باشد؛ صرفاً بر اساس زمان و نام آن را انتخاب نکنید. از ویندوز، پس از تنظیم متغیرهای محیطی امضای انتشار و دسترسی SSH، فرمان زیر APK را در پوشهٔ تازه می‌سازد، هش همان فایل را ثبت می‌کند، آن را آپلود و دانلود عمومی را بررسی می‌کند:
+### انتشار در ۴ مرحله از PowerShell ویندوز
+
+همهٔ دستورهای این بخش را در **همان پنجرهٔ PowerShell** و از پوشهٔ `C:\Users\cc-mehdi\Desktop\Donysh` اجرا کنید. باید به سرور دسترسی SSH داشته باشید و فایل keystore دائمی انتشار را در اختیار داشته باشید.
+
+**مرحلهٔ ۱ ـ شمارهٔ نسخه را زیاد کنید.**
 
 ```powershell
-.\scripts\Publish-MobileApk.ps1
+notepad .\DonyshMobile\DonyshMobile\DonyshMobile.csproj
 ```
+
+در فایل بازشده، `ApplicationVersion` را از نسخهٔ منتشرشده بزرگ‌تر کنید و `ApplicationDisplayVersion` را به شمارهٔ نمایشی جدید تغییر دهید. فایل را ذخیره کنید.
+
+**مرحلهٔ ۲ ـ اطلاعات امضا را در همین پنجره وارد کنید.** مسیر keystore و نام alias را هنگام پرسش وارد کنید. رمزها هنگام تایپ نمایش داده نمی‌شوند.
+
+```powershell
+$env:DONYSH_ANDROID_KEYSTORE = Read-Host 'Full path to release keystore'
+$env:DONYSH_ANDROID_KEY_ALIAS = Read-Host 'Release key alias'
+$storePassword = Read-Host 'Store Password' -AsSecureString
+$keyPassword = Read-Host 'Key Password' -AsSecureString
+$env:DONYSH_ANDROID_STORE_PASSWORD = [System.Net.NetworkCredential]::new('', $storePassword).Password
+$env:DONYSH_ANDROID_KEY_PASSWORD = [System.Net.NetworkCredential]::new('', $keyPassword).Password
+```
+
+اگر این چهار متغیر را قبلاً در همین پنجره تنظیم کرده‌اید، مرحلهٔ ۲ را تکرار نکنید.
+
+**مرحلهٔ ۳ ـ انتشار را اجرا کنید.** این فرمان خطای «فایل اسکریپت امضای دیجیتال ندارد» را فقط برای همین اجرای PowerShell دور می‌زند و سیاست اجرای کل سیستم را تغییر نمی‌دهد:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-MobileApk.ps1
+```
+
+اسکریپت APK امضاشده را در یک پوشهٔ تازه می‌سازد، فایل همان ساخت را با `scp` منتقل می‌کند، روی سرور منتشر می‌کند و هش دانلود عمومی را بررسی می‌کند. در پایان باید عبارت `Published and verified: https://donysh.ir/downloads/donysh-mobile.apk` را ببینید. از APK قدیمی پوشهٔ `publish` به‌صورت دستی استفاده نکنید.
+
+**مرحلهٔ ۴ ـ رمزهای موقت را از پنجره پاک کنید.**
+
+```powershell
+Remove-Item Env:\DONYSH_ANDROID_STORE_PASSWORD, Env:\DONYSH_ANDROID_KEY_PASSWORD
+```
+
+اگر در مرحلهٔ ۳ پیام `Missing signing setting` دیدید، مقدار نام‌برده‌شده در مرحلهٔ ۲ تنظیم نشده است. اگر پیام `The public download is stale` دیدید، فایل روی سرور منتشر شده ولی CDN هنوز نسخهٔ قبلی را می‌دهد؛ cache نشانی APK را پاک کنید و هش عمومی را دوباره بررسی کنید. در این حالت همان APK را دوباره منتشر نکنید. اگر سیاست اجرای PowerShell با Group Policy سازمانی اجباری شده باشد، `-ExecutionPolicy Bypass` هم آن را لغو نمی‌کند و باید با مدیر دستگاه هماهنگ کنید.
 
 اگر انتشار را دستی انجام می‌دهید، هش SHA-256 فایل تازه‌ساخته‌شده و شمارهٔ نسخه را همراه فایل به سرور بدهید:
 
