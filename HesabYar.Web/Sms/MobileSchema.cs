@@ -21,6 +21,11 @@ public static class MobileSchema
             e.HasKey(x => new { x.UserId, x.Key });
             e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
         });
+        builder.Entity<MobileConfiguration>(e => {
+            e.HasKey(x => x.UserId);
+            e.Property(x => x.Json).HasMaxLength(8388608);
+            e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
     }
 
     public static Task UpgradeAsync(ApplicationDbContext db, CancellationToken ct) => db.Database.ExecuteSqlRawAsync("""
@@ -56,5 +61,12 @@ public static class MobileSchema
             "Key" character varying(64) NOT NULL, "CreatedAtUtc" timestamp with time zone NOT NULL,
             PRIMARY KEY("UserId", "Key")
         );
+        CREATE TABLE IF NOT EXISTS "MobileConfigurations" (
+            "UserId" text PRIMARY KEY REFERENCES "AspNetUsers"("Id") ON DELETE CASCADE,
+            "Json" character varying(8388608) NOT NULL,
+            "Revision" bigint NOT NULL,
+            "UpdatedAtUtc" timestamp with time zone NOT NULL
+        );
+        ALTER TABLE "MobileConfigurations" ALTER COLUMN "Json" TYPE character varying(8388608);
         """, ct);
 }

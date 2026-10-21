@@ -200,6 +200,24 @@ await Check("SMS requires HTTPS", "/api/mobile/sms", "{}", HttpStatusCode.BadReq
 await Check("SMS requires device token, cookie is not enough", "/api/mobile/sms", "{}", HttpStatusCode.Unauthorized);
 await Check("Short device token rejected without database work", "/api/mobile/sms", "{}", HttpStatusCode.Unauthorized, token: "Bearer invalid");
 await Check("Non-hex device token rejected without database work", "/api/mobile/sms", "{}", HttpStatusCode.Unauthorized, token: "Bearer " + new string('Z', 64));
+using (var configurationWriteWithoutToken = new HttpRequestMessage(HttpMethod.Put, "/api/mobile/configuration")
+       { Content = new StringContent("{\"revision\":0,\"snapshot\":{\"senders\":[],\"templates\":[]}}", Encoding.UTF8, "application/json") })
+{
+    configurationWriteWithoutToken.Headers.Add("Test-Https", "1");
+    using var response = await client.SendAsync(configurationWriteWithoutToken);
+    var guarded = response.StatusCode == HttpStatusCode.Unauthorized;
+    if (!guarded) failed++;
+    Console.WriteLine($"{(guarded ? "PASS" : "FAIL")} Configuration backup requires a device token");
+}
+using (var configurationWithoutToken = new HttpRequestMessage(HttpMethod.Get, "/api/mobile/configuration"))
+{
+    configurationWithoutToken.Headers.Add("Test-Https", "1");
+    using var response = await client.SendAsync(configurationWithoutToken);
+    var guarded = response.StatusCode == HttpStatusCode.Unauthorized
+        && response.Headers.CacheControl?.NoStore == true;
+    if (!guarded) failed++;
+    Console.WriteLine($"{(guarded ? "PASS" : "FAIL")} Configuration download requires a device token and is not cached");
+}
 await Check("Pairing missing code", "/api/mobile/pair", "{}", HttpStatusCode.BadRequest);
 await Check("Pairing null payload", "/api/mobile/pair", "null", HttpStatusCode.BadRequest);
 await Check("Non-hex pairing code rejected without database work", "/api/mobile/pair", "{\"code\":\"" + new string('Z', 32) + "\"}", HttpStatusCode.BadRequest);

@@ -85,6 +85,8 @@ public partial class TemplatesPage : DonyshPage
         {
             if (await _store.DeleteTemplateAsync(_senderId, id))
             {
+                SmsConfigurationSync.MarkChanged();
+                SmsConfigurationSync.Queue(_store);
                 Templates.Remove(item);
                 TemplateCountLabel.Text = Templates.Count == 0 ? "هنوز قالبی اضافه نشده است." : $"{UiText.Digits(Templates.Count)} قالب برای این فرستنده";
             }

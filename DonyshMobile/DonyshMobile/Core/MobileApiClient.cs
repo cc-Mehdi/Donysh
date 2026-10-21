@@ -99,6 +99,39 @@ public sealed class MobileApiClient
         if (response.StatusCode != HttpStatusCode.Unauthorized) response.EnsureSuccessStatusCode();
     }
 
+    public async Task<SmsConfigurationBackup> GetConfigurationAsync(MobileConnection connection,
+        CancellationToken cancellationToken = default)
+    {
+        using var client = _clientFactory();
+        using var request = Authorized(HttpMethod.Get, connection, "/api/mobile/configuration");
+        using var response = await client.SendAsync(request, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.Unauthorized)
+            throw new UnauthorizedAccessException("نشست این گوشی معتبر نیست.");
+        response.EnsureSuccessStatusCode();
+        var result = await response.Content.ReadFromJsonAsync<SmsConfigurationBackup>(JsonOptions, cancellationToken);
+        return result is { Revision: >= 0, Snapshot.Senders: not null, Snapshot.Templates: not null }
+            ? result : throw new InvalidDataException("پاسخ تنظیمات سامانه معتبر نیست.");
+    }
+
+    public async Task<long> PutConfigurationAsync(MobileConnection connection, SmsConfigurationBackup backup,
+        CancellationToken cancellationToken = default)
+    {
+        using var client = _clientFactory();
+        using var request = Authorized(HttpMethod.Put, connection, "/api/mobile/configuration");
+        request.Content = JsonContent.Create(backup, options: JsonOptions);
+        using var response = await client.SendAsync(request, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.Conflict)
+            throw new InvalidOperationException("نسخهٔ پشتیبان در دستگاه دیگری تغییر کرده است.");
+        if (response.StatusCode == HttpStatusCode.Unauthorized)
+            throw new UnauthorizedAccessException("نشست این گوشی معتبر نیست.");
+        response.EnsureSuccessStatusCode();
+        using var document = await response.Content.ReadFromJsonAsync<JsonDocument>(JsonOptions, cancellationToken);
+        if (document is null || !document.RootElement.TryGetProperty("revision", out var revision)
+            || !revision.TryGetInt64(out var value) || value <= backup.Revision)
+            throw new InvalidDataException("تأییدیهٔ پشتیبان معتبر نیست.");
+        return value;
+    }
+
     private static bool ValidSession(MobileSessionResult? result) => result is
     {
         Token.Length: 64,
@@ -251,6 +284,6 @@ public sealed class MobileApiClient
     private static HttpClient CreateClient() => new(new HttpClientHandler { AllowAutoRedirect = false })
     {
         Timeout = TimeSpan.FromSeconds(20),
-        MaxResponseContentBufferSize = 32768
+        MaxResponseContentBufferSize = 9 * 1024 * 1024
     };
 }

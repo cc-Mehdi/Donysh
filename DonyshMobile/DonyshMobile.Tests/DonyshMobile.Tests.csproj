@@ -10,6 +10,7 @@
     <EmbeddedResource Include="..\DonyshMobile\Platforms\Android\AndroidManifest.xml" LogicalName="DonyshMobile.Tests.AndroidManifest.xml" />
     <Compile Include="..\DonyshMobile\Core\SenderAddress.cs" Link="Core\SenderAddress.cs" />
     <Compile Include="..\DonyshMobile\Core\SmsMonitorModels.cs" Link="Core\SmsMonitorModels.cs" />
+    <Compile Include="..\DonyshMobile\Core\SmsConfigurationSnapshot.cs" Link="Core\SmsConfigurationSnapshot.cs" />
     <Compile Include="..\DonyshMobile\Core\SmsMonitorStore.cs" Link="Core\SmsMonitorStore.cs" />
     <Compile Include="..\DonyshMobile\Core\SmsStateProtection.cs" Link="Core\SmsStateProtection.cs" />
     <Compile Include="..\DonyshMobile\Core\SmsTemplateModels.cs" Link="Core\SmsTemplateModels.cs" />

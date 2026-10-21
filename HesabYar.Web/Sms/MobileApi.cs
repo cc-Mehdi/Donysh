@@ -13,6 +13,7 @@ namespace HesabYar.Web.Sms;
 
 public static class MobileApi
 {
+    private const int MaxConfigurationBytes = 8 * 1024 * 1024;
     public static string Hash(string value) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
     public static string NewSecret() => Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
     private static bool IsHexSecret(string? value, int length) =>
@@ -35,6 +36,10 @@ public static class MobileApi
                 $"mobile-login:{ClientKey(ctx)}", _ => new() {
                 PermitLimit = 5, Window = TimeSpan.FromMinutes(1), QueueLimit = 0,
                 AutoReplenishment = true }));
+            o.AddPolicy("mobile-configuration", ctx => RateLimitPartition.GetFixedWindowLimiter(
+                $"mobile-configuration:{ClientKey(ctx)}", _ => new() {
+                PermitLimit = 6, Window = TimeSpan.FromMinutes(1), QueueLimit = 0,
+                AutoReplenishment = true }));
             o.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
                 ctx.Request.Path.StartsWithSegments("/api/mobile")
                     ? RateLimitPartition.GetConcurrencyLimiter(
@@ -54,6 +59,8 @@ public static class MobileApi
         group.MapGet("/workspaces", WorkspacesAsync);
         group.MapPut("/destination", ChangeDestinationAsync);
         group.MapPost("/logout", LogoutAsync);
+        group.MapGet("/configuration", GetConfigurationAsync);
+        group.MapPut("/configuration", PutConfigurationAsync).RequireRateLimiting("mobile-configuration");
         app.MapPost("/api/mobile/login", LoginAsync).RequireRateLimiting("mobile-login");
     }
 
@@ -130,7 +137,7 @@ public static class MobileApi
             var selected = workspaces.Single(x => x.Id == device.WorkspaceId);
             var categoryName = await db.ExpenseCategories.Where(x => x.Id == device.CategoryId).Select(x => x.Name).SingleAsync(ct);
             return Results.Ok(new MobileSessionResult(token, user.DisplayName, selected.Id, selected.Name,
-                categoryName, workspaces));
+                categoryName, workspaces, user.Id));
         });
     }
 
@@ -196,6 +203,94 @@ public static class MobileApi
         });
     }
 
+    private static async Task<IResult> GetConfigurationAsync(HttpContext ctx, ApplicationDbContext db, CancellationToken ct)
+    {
+        ctx.Response.Headers.CacheControl = "no-store";
+        var authenticated = await AuthenticateDeviceAsync(ctx, db, ct);
+        if (authenticated is null) return Results.Unauthorized();
+        var saved = await db.MobileConfigurations.AsNoTracking().SingleOrDefaultAsync(
+            x => x.UserId == authenticated.Value.Device.UserId, ct);
+        return Results.Json(new
+        {
+            revision = saved?.Revision ?? 0,
+            snapshot = saved is null ? JsonSerializer.Deserialize<JsonElement>("{\"senders\":[],\"templates\":[]}")
+                : JsonSerializer.Deserialize<JsonElement>(saved.Json)
+        });
+    }
+
+    private static async Task<IResult> PutConfigurationAsync(HttpContext ctx, ApplicationDbContext db, CancellationToken ct)
+    {
+        ctx.Response.Headers.CacheControl = "no-store";
+        var authenticated = await AuthenticateDeviceAsync(ctx, db, ct);
+        if (authenticated is null) return Results.Unauthorized();
+        var input = await ReadAsync<MobileConfigurationWrite>(ctx, ct, MaxConfigurationBytes);
+        if (input is null || input.Revision < 0 || !ValidConfiguration(input.Snapshot))
+            return Results.BadRequest(new { error = "Invalid configuration" });
+        var json = input.Snapshot.GetRawText();
+        if (Encoding.UTF8.GetByteCount(json) > MaxConfigurationBytes) return Results.BadRequest();
+        return await db.Database.CreateExecutionStrategy().ExecuteAsync<IResult>(async () =>
+        {
+            db.ChangeTracker.Clear();
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"SELECT pg_advisory_xact_lock(hashtextextended({authenticated.Value.Device.UserId}, 0))", ct);
+            var active = await db.MobileDevices.AsNoTracking().AnyAsync(x => x.Id == authenticated.Value.Device.Id
+                && x.TokenHash == authenticated.Value.TokenHash && !x.Revoked, ct);
+            if (!active) return Results.Unauthorized();
+            var saved = await db.MobileConfigurations.SingleOrDefaultAsync(
+                x => x.UserId == authenticated.Value.Device.UserId, ct);
+            if ((saved?.Revision ?? 0) != input.Revision) return Results.Conflict(new { revision = saved?.Revision ?? 0 });
+            if (saved is null)
+            {
+                saved = new MobileConfiguration { UserId = authenticated.Value.Device.UserId };
+                db.MobileConfigurations.Add(saved);
+            }
+            saved.Json = json;
+            saved.Revision = input.Revision + 1;
+            saved.UpdatedAtUtc = DateTime.UtcNow;
+            await db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+            return Results.Ok(new { revision = saved.Revision });
+        });
+    }
+
+    private sealed record MobileConfigurationWrite(long Revision, JsonElement Snapshot);
+
+    private static bool ValidConfiguration(JsonElement snapshot)
+    {
+        if (snapshot.ValueKind != JsonValueKind.Object
+            || !snapshot.TryGetProperty("senders", out var senders) || senders.ValueKind != JsonValueKind.Array
+            || !snapshot.TryGetProperty("templates", out var templates) || templates.ValueKind != JsonValueKind.Array
+            || senders.GetArrayLength() > 50 || templates.GetArrayLength() > 1000) return false;
+        var ids = new HashSet<Guid>();
+        var addresses = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var sender in senders.EnumerateArray())
+        {
+            if (sender.ValueKind != JsonValueKind.Object
+                || !sender.TryGetProperty("id", out var id) || id.ValueKind != JsonValueKind.String
+                || !id.TryGetGuid(out var senderId) || senderId == Guid.Empty || !ids.Add(senderId)
+                || !sender.TryGetProperty("address", out var address) || address.ValueKind != JsonValueKind.String
+                || address.GetString() is not { Length: > 0 and <= 64 } value || !addresses.Add(value.Trim())) return false;
+        }
+        var templateIds = new HashSet<Guid>();
+        var counts = new Dictionary<Guid, int>();
+        foreach (var template in templates.EnumerateArray())
+        {
+            if (template.ValueKind != JsonValueKind.Object
+                || !template.TryGetProperty("id", out var id) || id.ValueKind != JsonValueKind.String
+                || !id.TryGetGuid(out var templateId) || templateId == Guid.Empty || !templateIds.Add(templateId)
+                || !template.TryGetProperty("senderId", out var owner) || owner.ValueKind != JsonValueKind.String
+                || !owner.TryGetGuid(out var senderId) || !ids.Contains(senderId)
+                || !template.TryGetProperty("name", out var name) || name.ValueKind != JsonValueKind.String
+                || name.GetString() is not { Length: > 0 and <= 80 }
+                || !template.TryGetProperty("pattern", out var pattern) || pattern.ValueKind != JsonValueKind.String
+                || pattern.GetString() is not { Length: > 0 and <= 2000 }) return false;
+            counts[senderId] = counts.GetValueOrDefault(senderId) + 1;
+            if (counts[senderId] > 20) return false;
+        }
+        return true;
+    }
+
     private static async Task<(MobileDevice Device, string TokenHash)?> AuthenticateDeviceAsync(
         HttpContext ctx, ApplicationDbContext db, CancellationToken ct)
     {
@@ -229,16 +324,16 @@ public static class MobileApi
     }
 
     // Manual bounded JSON read avoids model-binding large bodies before device validation.
-    private static async Task<T?> ReadAsync<T>(HttpContext ctx, CancellationToken ct)
+    private static async Task<T?> ReadAsync<T>(HttpContext ctx, CancellationToken ct, int maxBytes = 32768)
     {
-        if (ctx.Request.ContentLength > 32768)
+        if (ctx.Request.ContentLength > maxBytes)
         {
             // Do not reuse a connection with an unread oversized body.
             if (ctx.Request.Protocol == "HTTP/1.1") ctx.Response.Headers.Connection = "close";
             return default;
         }
         var feature = ctx.Features.Get<IHttpMaxRequestBodySizeFeature>();
-        if (feature is { IsReadOnly: false }) feature.MaxRequestBodySize = 32768;
+        if (feature is { IsReadOnly: false }) feature.MaxRequestBodySize = maxBytes;
         if (!ctx.Request.HasJsonContentType()) return default;
         using var buffer = new MemoryStream();
         var chunk = new byte[4096];
@@ -247,7 +342,7 @@ public static class MobileApi
             int count;
             while ((count = await ctx.Request.Body.ReadAsync(chunk, ct)) != 0)
             {
-                if (buffer.Length + count > 32768)
+                if (buffer.Length + count > maxBytes)
                 {
                     if (ctx.Request.Protocol == "HTTP/1.1") ctx.Response.Headers.Connection = "close";
                     return default;
@@ -283,7 +378,7 @@ public static class MobileApi
                 && db.WorkspaceMembers.Any(m => m.UserId == x.UserId && m.WorkspaceId == x.WorkspaceId)
                 && db.ExpenseCategories.Any(c => c.Id == x.CategoryId && c.WorkspaceId == x.WorkspaceId && !c.IsArchived))
             .ExecuteUpdateAsync(s => s.SetProperty(x => x.TokenHash, Hash(token)).SetProperty(x => x.PairCodeHash, (string?)null), ct);
-        return changed == 1 ? Results.Ok(new PairResult(token, device.Workspace.Name, device.Category.Name)) : Results.Unauthorized();
+        return changed == 1 ? Results.Ok(new PairResult(token, device.Workspace.Name, device.Category.Name, device.UserId)) : Results.Unauthorized();
     }
 
     private static Task<bool> HasAccessAsync(ApplicationDbContext db, MobileDevice device, CancellationToken ct) =>

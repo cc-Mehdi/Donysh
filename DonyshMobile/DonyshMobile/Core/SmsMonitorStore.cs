@@ -37,6 +37,50 @@ public sealed class SmsMonitorStore
         _storageKeyProvider = storageKeyProvider;
     }
 
+    public async Task<SmsConfigurationSnapshot> ExportConfigurationAsync(CancellationToken cancellationToken = default)
+    {
+        await Gate.WaitAsync(cancellationToken);
+        try
+        {
+            var state = await LoadUnsafeAsync(cancellationToken);
+            // Detach mutable state from the store before an asynchronous upload.
+            return new SmsConfigurationSnapshot
+            {
+                Senders = JsonSerializer.Deserialize<List<MonitoredSender>>(JsonSerializer.Serialize(state.Senders, JsonOptions), JsonOptions)!,
+                Templates = JsonSerializer.Deserialize<List<SmsTemplate>>(JsonSerializer.Serialize(state.Templates, JsonOptions), JsonOptions)!
+            };
+        }
+        finally { Gate.Release(); }
+    }
+
+    public async Task<bool> RestoreConfigurationIfEmptyAsync(SmsConfigurationSnapshot snapshot,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+        if (snapshot.Senders is null || snapshot.Templates is null || snapshot.Senders.Count > MaxSenders
+            || snapshot.Senders.Any(x => x is null || x.Id == Guid.Empty || string.IsNullOrWhiteSpace(x.Address)
+                || x.Address.Length > MaxAddressLength || x.Address.Any(char.IsControl))
+            || snapshot.Senders.Select(x => x.Id).Distinct().Count() != snapshot.Senders.Count
+            || snapshot.Senders.Select(x => SenderAddress.Normalize(x.Address)).Distinct().Count() != snapshot.Senders.Count
+            || snapshot.Templates.Count > MaxSenders * MaxTemplatesPerSender
+            || snapshot.Templates.Any(x => x is null || x.Id == Guid.Empty || !snapshot.Senders.Any(s => s.Id == x.SenderId)
+                || SmsTemplateParser.Validate(x) is not null)
+            || snapshot.Templates.Select(x => x.Id).Distinct().Count() != snapshot.Templates.Count
+            || snapshot.Templates.GroupBy(x => x.SenderId).Any(x => x.Count() > MaxTemplatesPerSender))
+            throw new InvalidDataException("نسخهٔ پشتیبان تنظیمات معتبر نیست.");
+        await Gate.WaitAsync(cancellationToken);
+        try
+        {
+            var state = await LoadUnsafeAsync(cancellationToken);
+            if (state.Senders.Count != 0 || state.Templates.Count != 0) return false;
+            state.Senders = snapshot.Senders;
+            state.Templates = snapshot.Templates;
+            await SaveUnsafeAsync(state, cancellationToken);
+            return true;
+        }
+        finally { Gate.Release(); }
+    }
+
     public async Task<IReadOnlyList<SenderSummary>> GetSenderSummariesAsync(
         CancellationToken cancellationToken = default)
     {

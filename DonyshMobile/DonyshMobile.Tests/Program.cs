@@ -181,6 +181,18 @@ try
     Assert(await store.DeleteTemplateAsync(summary.Id, blu.Id), "Delete template");
     Assert((await store.GetTemplatesAsync(summary.Id)).Count == 1, "Only selected template deleted");
 
+    var backup = await store.ExportConfigurationAsync();
+    Assert(backup.Senders.Count == 1 && backup.Templates.Count == 1
+        && !JsonSerializer.Serialize(backup).Contains("پیام آزمایشی", StringComparison.Ordinal),
+        "Setup backup excludes captured SMS and delivery records");
+    var reinstalled = CreateStore(Path.Combine(testDirectory, "reinstalled"));
+    Assert(await reinstalled.RestoreConfigurationIfEmptyAsync(backup), "Fresh installation restores senders and templates");
+    Assert((await reinstalled.GetSenderSummariesAsync()).Single().Address == summary.Address
+        && (await reinstalled.GetTemplatesAsync(summary.Id)).Single().Name == mellat.Name
+        && (await reinstalled.GetMessagesAsync(summary.Id)).Count == 0,
+        "Restored setup works without restoring private message history");
+    Assert(!await reinstalled.RestoreConfigurationIfEmptyAsync(backup), "Backup never overwrites existing local setup");
+
     var toman = new SmsTemplate { SenderId = summary.Id, Name = "تومان", Pattern = "برداشت: {amount} تومان", Unit = MoneyUnit.Toman };
     Assert(SmsTemplateParser.TryParse(toman, "برداشت: ۲۵۰,۰۰۰ تومان") is { AmountRial: 2_500_000, Kind: TransactionKind.Withdrawal }, "Toman to rial conversion");
 
@@ -253,6 +265,26 @@ try
     var workspaceResult = await workspaceApi.GetWorkspacesAsync(
         new MobileConnection("https://donysh.ir", new string('A', 64), "شخصی / سایر", loginWorkspaceId));
     Assert(workspaceResult.Workspaces.Single().Id == loginWorkspaceId, "Load accessible workspaces");
+
+    var configurationApi = new MobileApiClient(() => new HttpClient(new StubHandler(request =>
+    {
+        Assert(request.Headers.Authorization?.Parameter == new string('A', 64), "Authorize configuration backup with the device token");
+        Assert(request.RequestUri?.AbsolutePath == "/api/mobile/configuration", "Use the configuration endpoint");
+        if (request.Method == HttpMethod.Get)
+            return new HttpResponseMessage(HttpStatusCode.OK)
+                { Content = JsonContent.Create(new SmsConfigurationBackup(1, backup)) };
+        var sent = request.Content!.ReadFromJsonAsync<SmsConfigurationBackup>().GetAwaiter().GetResult();
+        Assert(request.Method == HttpMethod.Put && sent is { Revision: 1 }
+            && sent.Snapshot.Senders.Count == 1 && sent.Snapshot.Templates.Count == 1,
+            "Upload only the setup snapshot with its expected revision");
+        return new HttpResponseMessage(HttpStatusCode.OK)
+            { Content = JsonContent.Create(new { revision = 2 }) };
+    })));
+    var backupConnection = new MobileConnection("https://donysh.ir", new string('A', 64), "test");
+    var downloaded = await configurationApi.GetConfigurationAsync(backupConnection);
+    Assert(downloaded.Revision == 1 && downloaded.Snapshot.Templates.Count == 1, "Download account setup backup");
+    Assert(await configurationApi.PutConfigurationAsync(backupConnection, downloaded) == 2,
+        "Server acknowledges a versioned setup backup");
 
     var apiDirectory = Path.Combine(testDirectory, "api-client");
     var apiStore = CreateStore(apiDirectory);

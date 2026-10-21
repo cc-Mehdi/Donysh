@@ -67,6 +67,8 @@ public partial class MainPage : DonyshPage
 
     private async Task ActivateAsync()
     {
+        try { await SmsConfigurationSync.TrySyncAsync(_store); }
+        catch (Exception exception) { UiSafety.Log(exception); }
         if (!_subscribed)
         {
             SmsReceivedNotifier.MessageStored += OnMessageStored;
@@ -200,6 +202,8 @@ public partial class MainPage : DonyshPage
         var result = await _store.AddSenderAsync(address);
         if (result == AddSenderResult.Added)
         {
+            SmsConfigurationSync.MarkChanged();
+            SmsConfigurationSync.Queue(_store);
             SenderEntry.Text = string.Empty;
             ManualPanel.IsVisible = false;
             UiMotion.Feedback();
@@ -260,7 +264,15 @@ public partial class MainPage : DonyshPage
         else if (action == 2 && await DisplayAlert("حذف از گوشی",
                      $"«{item.Address}» و همهٔ پیام‌هایش روی گوشی، حتی پیام‌های ارسال‌نشده، حذف شوند؟ خرج‌های ثبت‌شده در سامانه باقی می‌مانند.", "حذف", "انصراف"))
         {
-            try { await _store.RemoveSenderAsync(id); await RefreshAsync(); }
+            try
+            {
+                if (await _store.RemoveSenderAsync(id))
+                {
+                    SmsConfigurationSync.MarkChanged();
+                    SmsConfigurationSync.Queue(_store);
+                }
+                await RefreshAsync();
+            }
             catch (Exception) { await DisplayAlert("حذف نشد", "امکان ذخیرهٔ تغییر وجود ندارد. دوباره تلاش کنید.", "باشه"); }
         }
     }

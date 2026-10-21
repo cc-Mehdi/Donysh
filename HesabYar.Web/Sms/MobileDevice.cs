@@ -30,3 +30,12 @@ public sealed class SmsReceipt
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     public ApplicationUser User { get; set; } = null!;
 }
+
+public sealed class MobileConfiguration
+{
+    public string UserId { get; set; } = "";
+    public string Json { get; set; } = "";
+    public long Revision { get; set; }
+    public DateTime UpdatedAtUtc { get; set; } = DateTime.UtcNow;
+    public ApplicationUser User { get; set; } = null!;
+}

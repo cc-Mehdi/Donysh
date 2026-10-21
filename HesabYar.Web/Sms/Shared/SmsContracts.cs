@@ -19,7 +19,7 @@ public sealed record SmsBatch(List<SmsEnvelope> Messages);
 public sealed record SmsResult(string Key, string Status);
 public sealed record SmsBatchResult(List<SmsResult> Results);
 public sealed record PairRequest(string Code);
-public sealed record PairResult(string Token, string WorkspaceName, string CategoryName);
+public sealed record PairResult(string Token, string WorkspaceName, string CategoryName, string? UserId = null);
 public sealed record MobileLoginRequest(string Email, string Password, string InstallationId, string DeviceName);
 public sealed record MobileWorkspace(Guid Id, string Name, string Type);
 public sealed record MobileSessionResult(
@@ -28,7 +28,7 @@ public sealed record MobileSessionResult(
     Guid WorkspaceId,
     string WorkspaceName,
     string CategoryName,
-    List<MobileWorkspace> Workspaces);
+    List<MobileWorkspace> Workspaces, string? UserId = null);
 public sealed record MobileWorkspaceList(Guid WorkspaceId, string WorkspaceName, string CategoryName, List<MobileWorkspace> Workspaces);
 public sealed record MobileDestinationRequest(Guid WorkspaceId);
 public sealed record MobileDestinationResult(Guid WorkspaceId, string WorkspaceName, string CategoryName);

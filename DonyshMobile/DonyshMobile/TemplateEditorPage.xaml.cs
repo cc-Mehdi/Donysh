@@ -317,6 +317,8 @@ public partial class TemplateEditorPage : DonyshPage
             // Finish any in-flight receipt first so a late rejection cannot undo the retry reset.
             await MobileApiClient.RunWithSyncLockAsync(async () => error = await _store.SaveTemplateAsync(template));
             if (error is not null) { await DisplayAlert("ذخیره نشد", ReadablePattern(error), "باشه"); return; }
+            SmsConfigurationSync.MarkChanged();
+            SmsConfigurationSync.Queue(_store);
             SmsReceivedNotifier.NotifySyncChanged();
             _scheduleSync();
             UiMotion.Feedback();

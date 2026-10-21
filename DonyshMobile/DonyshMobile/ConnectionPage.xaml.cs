@@ -280,11 +280,16 @@ public partial class ConnectionPage : DonyshPage
                     }
                 }
                 await MobileConnectionStore.SaveAsync(new MobileConnection(server, result.Token,
-                    $"{workspaceName} / {categoryName}", workspaceId, result.DisplayName));
+                    $"{workspaceName} / {categoryName}", workspaceId, result.DisplayName, result.UserId));
+                var restored = false;
+                try { restored = await SmsConfigurationSync.TrySyncAsync(_store); }
+                catch (Exception exception) { UiSafety.Log(exception); }
                 _showPairing = false;
                 UiMotion.Feedback();
                 SyncPlatform.Schedule();
-                await AlertAsync("ورود انجام شد", $"فضای پیش‌فرض: {workspaceName}", "باشه");
+                await AlertAsync("ورود انجام شد", restored
+                    ? $"فرستنده‌ها و قالب‌ها بازیابی شدند. فضای پیش‌فرض: {workspaceName}"
+                    : $"فضای پیش‌فرض: {workspaceName}", "باشه");
                 loggedIn = true;
             });
         });
@@ -358,12 +363,18 @@ public partial class ConnectionPage : DonyshPage
                     await AlertAsync("کد پذیرفته نشد", "کد اتصال نامعتبر یا منقضی شده است. در سایت یک کد تازه بسازید.", "باشه");
                     return;
                 }
-                await MobileConnectionStore.SaveAsync(new MobileConnection(server, result.Token, $"{result.WorkspaceName} / {result.CategoryName}"));
+                await MobileConnectionStore.SaveAsync(new MobileConnection(server, result.Token,
+                    $"{result.WorkspaceName} / {result.CategoryName}", UserId: result.UserId));
+                var restored = false;
+                try { restored = await SmsConfigurationSync.TrySyncAsync(_store); }
+                catch (Exception exception) { UiSafety.Log(exception); }
                 PairCodeEntry.Text = string.Empty;
                 _showPairing = false;
                 UiMotion.Feedback();
                 SyncPlatform.Schedule();
-                await AlertAsync("گوشی متصل شد", $"مقصد پیام‌ها: {result.WorkspaceName} / {result.CategoryName}", "باشه");
+                await AlertAsync("گوشی متصل شد", restored
+                    ? $"فرستنده‌ها و قالب‌ها بازیابی شدند. مقصد پیام‌ها: {result.WorkspaceName} / {result.CategoryName}"
+                    : $"مقصد پیام‌ها: {result.WorkspaceName} / {result.CategoryName}", "باشه");
                 paired = true;
             }
             catch (ArgumentException)

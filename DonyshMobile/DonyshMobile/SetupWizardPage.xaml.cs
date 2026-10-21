@@ -200,6 +200,8 @@ public partial class SetupWizardPage : DonyshPage
         var result = await _store.AddSenderAsync(address);
         if (result == AddSenderResult.Added)
         {
+            SmsConfigurationSync.MarkChanged();
+            SmsConfigurationSync.Queue(_store);
             ManualSenderEntry.Text = string.Empty;
             ManualSenderPanel.IsVisible = false;
             StatusLabel.IsVisible = false;

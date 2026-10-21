@@ -21,6 +21,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<AiImportReceipt> AiImportReceipts => Set<AiImportReceipt>();
     public DbSet<HesabYar.Web.Sms.MobileDevice> MobileDevices => Set<HesabYar.Web.Sms.MobileDevice>();
     public DbSet<HesabYar.Web.Sms.SmsReceipt> SmsReceipts => Set<HesabYar.Web.Sms.SmsReceipt>();
+    public DbSet<HesabYar.Web.Sms.MobileConfiguration> MobileConfigurations => Set<HesabYar.Web.Sms.MobileConfiguration>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
