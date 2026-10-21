@@ -1,0 +1,32 @@
+@page
+@model Donysh.Auth.Pages.Account.ResendConfirmationModel
+@{
+    ViewData["Title"] = "ارسال دوبارهٔ تأیید";
+}
+<section class="form-card registration-card">
+    <partial name="_Brand" />
+    <header class="panel-header">
+        <p class="eyebrow">فعال‌سازی حساب</p>
+        <h1>ارسال دوبارهٔ پیوند تأیید</h1>
+        <p>ایمیلی را وارد کنید که هنگام ساخت حساب استفاده کرده‌اید.</p>
+    </header>
+    @if (!Model.Available)
+    {
+        <div class="phase-notice" role="status"><span>◉</span><p>ارسال پیام تأیید موقتاً در دسترس نیست.</p></div>
+    }
+    else
+    {
+        <form method="post" class="auth-form">
+            <input type="hidden" asp-for="ReturnUrl" />
+            <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
+            <div class="field">
+                <label asp-for="Email"></label>
+                <input asp-for="Email" autocomplete="email" inputmode="email" dir="ltr" autofocus />
+                <span asp-validation-for="Email"></span>
+            </div>
+            <button class="primary-button" type="submit"><span>ارسال پیوند تازه</span><span aria-hidden="true">←</span></button>
+        </form>
+        <p class="privacy-note"><span aria-hidden="true">⌁</span> برای حفظ حریم خصوصی، وجود یا نبود حساب نمایش داده نمی‌شود.</p>
+    }
+    <a asp-page="/Account/Login" asp-route-returnUrl="@Model.ReturnUrl" class="text-link">بازگشت به ورود</a>
+</section>

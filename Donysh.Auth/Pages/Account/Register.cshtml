@@ -3,21 +3,22 @@
 @{
     ViewData["Title"] = "ساخت حساب";
 }
-<section class="form-card">
+<section class="form-card registration-card">
     <partial name="_Brand" />
     <header class="panel-header">
         <p class="eyebrow">حساب مرکزی دُنیش</p>
         <h1>ساخت حساب جدید</h1>
-        <p>این مسیر تا پایان انتقال امن کاربران بخش مالی، به‌صورت عمومی بسته است.</p>
+        <p>یک حساب بسازید و با همان حساب وارد همهٔ محصولات دُنیش شوید.</p>
     </header>
     @if (!Model.Available)
     {
-        <div class="phase-notice" role="status"><span>◉</span><p>ثبت‌نام عمومی هنوز فعال نشده است. حساب فعلی Finance شما تغییری نکرده است.</p></div>
-        <a asp-page="/Account/Login" class="secondary-button">بازگشت به ورود</a>
+        <div class="phase-notice" role="status"><span>◉</span><p>ثبت‌نام موقتاً در دسترس نیست. اگر از قبل حساب دارید، وارد شوید.</p></div>
+        <a asp-page="/Account/Login" asp-route-returnUrl="@Model.ReturnUrl" class="secondary-button">بازگشت به ورود</a>
     }
     else
     {
         <form method="post" class="auth-form">
+            <input type="hidden" asp-for="ReturnUrl" />
             <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
             <div class="field"><label asp-for="Input.DisplayName"></label><input asp-for="Input.DisplayName" autocomplete="name" /><span asp-validation-for="Input.DisplayName"></span></div>
             <div class="field"><label asp-for="Input.Email"></label><input asp-for="Input.Email" autocomplete="email" dir="ltr" /><span asp-validation-for="Input.Email"></span></div>
@@ -43,7 +44,14 @@
                 </div>
                 <span asp-validation-for="Input.ConfirmPassword"></span>
             </div>
-            <button class="primary-button" type="submit">ساخت حساب</button>
+            <ul class="password-rules" aria-label="شرایط رمز عبور">
+                <li><span aria-hidden="true">✓</span> دست‌کم ۸ نویسه</li>
+                <li><span aria-hidden="true">✓</span> شامل حرف لاتین کوچک</li>
+                <li><span aria-hidden="true">✓</span> شامل عدد</li>
+            </ul>
+            <button class="primary-button" type="submit"><span>ساخت حساب</span><span aria-hidden="true">←</span></button>
+            <p class="consent-note">با ساخت حساب، مسئولیت نگهداری امن رمز عبور و صحت ایمیل را می‌پذیرید.</p>
         </form>
+        <p class="panel-foot">حساب دارید؟ <a asp-page="/Account/Login" asp-route-returnUrl="@Model.ReturnUrl">وارد شوید</a></p>
     }
 </section>

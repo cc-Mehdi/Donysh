@@ -3,4 +3,15 @@
 @{
     ViewData["Title"] = "تأیید ایمیل";
 }
-<section class="simple-card"><partial name="_Brand" /><div class="success-icon">@(Model.Succeeded ? "✓" : "!")</div><h1>@(Model.Succeeded ? "ایمیل تأیید شد" : "پیوند معتبر نیست")</h1><p>@Model.Message</p><a asp-page="/Account/Login" class="primary-button">رفتن به صفحه ورود</a></section>
+<section class="simple-card status-card">
+    <partial name="_Brand" />
+    <div class="status-illustration @(Model.Succeeded ? "success-illustration" : "warning-illustration")" aria-hidden="true"><span>@(Model.Succeeded ? "✓" : "!")</span></div>
+    <p class="eyebrow">تأیید ایمیل</p>
+    <h1>@(Model.Succeeded ? "حساب شما آماده است" : "پیوند معتبر نیست")</h1>
+    <p>@Model.Message</p>
+    <a asp-page="/Account/Login" asp-route-returnUrl="@Model.ReturnUrl" class="primary-button"><span>ورود به دُنیش</span><span aria-hidden="true">←</span></a>
+    @if (!Model.Succeeded)
+    {
+        <a asp-page="/Account/ResendConfirmation" asp-route-returnUrl="@Model.ReturnUrl" class="secondary-button">دریافت پیوند تازه</a>
+    }
+</section>

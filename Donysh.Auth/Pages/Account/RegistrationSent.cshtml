@@ -1,5 +1,14 @@
 @page
+@model Donysh.Auth.Pages.Account.RegistrationSentModel
 @{
     ViewData["Title"] = "تأیید ایمیل";
 }
-<section class="simple-card"><partial name="_Brand" /><div class="success-icon">✓</div><h1>پیام تأیید ارسال شد</h1><p>برای فعال‌شدن حساب، پیوند موجود در ایمیل را باز کنید.</p><a asp-page="/Account/Login" class="secondary-button">بازگشت به ورود</a></section>
+<section class="simple-card status-card">
+    <partial name="_Brand" />
+    <div class="status-illustration email-illustration" aria-hidden="true"><span>✉</span></div>
+    <p class="eyebrow">یک قدم تا شروع</p>
+    <h1>ایمیل خود را بررسی کنید</h1>
+    <p>پیوند فعال‌سازی ارسال شد. برای تکمیل ساخت حساب، آن پیوند را باز کنید. پوشهٔ پیام‌های ناخواسته را هم بررسی کنید.</p>
+    <a asp-page="/Account/Login" asp-route-returnUrl="@Model.ReturnUrl" class="primary-button"><span>بازگشت به ورود</span><span aria-hidden="true">←</span></a>
+    <a asp-page="/Account/ResendConfirmation" asp-route-returnUrl="@Model.ReturnUrl" class="secondary-button">پیام را دریافت نکردم</a>
+</section>

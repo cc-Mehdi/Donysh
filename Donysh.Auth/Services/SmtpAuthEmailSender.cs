@@ -27,6 +27,7 @@ public sealed class SmtpAuthEmailSender(IOptions<EmailOptions> options) : IAuthE
         using var client = new SmtpClient(_options.Host, _options.Port)
         {
             EnableSsl = _options.UseSsl,
+            Timeout = checked(_options.TimeoutSeconds * 1000),
             DeliveryMethod = SmtpDeliveryMethod.Network,
             UseDefaultCredentials = false,
             Credentials = string.IsNullOrWhiteSpace(_options.UserName)

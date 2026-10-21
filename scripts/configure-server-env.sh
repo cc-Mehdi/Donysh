@@ -33,6 +33,9 @@ managed_keys=(
   AUTH_SIGNING_CERT_PASSWORD AUTH_ENCRYPTION_CERT_PASSWORD
   FINANCE_OIDC_CLIENT_SECRET CROSS_APP_LOGOUT_SECRET LEGACY_IDENTITY_IMPORT_COMPLETED CENTRAL_AUTH_ENABLED
   LIFE_DOMAIN LIFE_POSTGRES_DB LIFE_POSTGRES_USER LIFE_POSTGRES_PASSWORD LIFE_OIDC_CLIENT_SECRET
+  AUTH_PUBLIC_REGISTRATION AUTH_PASSWORD_RECOVERY
+  AUTH_SMTP_HOST AUTH_SMTP_PORT AUTH_SMTP_USE_SSL AUTH_SMTP_TIMEOUT_SECONDS
+  AUTH_SMTP_USERNAME AUTH_SMTP_PASSWORD AUTH_SMTP_FROM_ADDRESS AUTH_SMTP_FROM_NAME
 )
 
 for key in "${managed_keys[@]}"; do
@@ -64,6 +67,20 @@ prompt_value() {
 
   if [[ -t 0 ]]; then
     read -r -p "$label [$value]: " input
+    [[ -n "$input" ]] && value="$input"
+  fi
+  desired["$key"]="$value"
+}
+
+prompt_secret_value() {
+  local key="$1"
+  local label="$2"
+  local value="${!key:-$(existing_or_default "$key" '')}"
+  local input=''
+
+  if [[ -t 0 ]]; then
+    read -r -s -p "$label [برای حفظ مقدار فعلی خالی بگذارید]: " input
+    printf '\n'
     [[ -n "$input" ]] && value="$input"
   fi
   desired["$key"]="$value"
@@ -107,6 +124,14 @@ prompt_value AUTH_POSTGRES_DB 'نام پایگاه دادهٔ ورود مرکز�
 prompt_value AUTH_POSTGRES_USER 'کاربر پایگاه دادهٔ ورود مرکزی' 'donysh_auth'
 prompt_value LIFE_POSTGRES_DB 'نام پایگاه دادهٔ دُنیش زندگی' 'donysh_life'
 prompt_value LIFE_POSTGRES_USER 'کاربر پایگاه دادهٔ دُنیش زندگی' 'donysh_life'
+prompt_value AUTH_SMTP_HOST 'نشانی میزبان ارسال ایمیل حساب' ''
+prompt_value AUTH_SMTP_PORT 'درگاه ارسال ایمیل حساب' '587'
+prompt_value AUTH_SMTP_USE_SSL 'استفاده از ارتباط امن برای ایمیل (true/false)' 'true'
+prompt_value AUTH_SMTP_TIMEOUT_SECONDS 'مهلت ارسال ایمیل به ثانیه' '20'
+prompt_value AUTH_SMTP_USERNAME 'نام کاربری ارسال ایمیل حساب' ''
+prompt_secret_value AUTH_SMTP_PASSWORD 'رمز ارسال ایمیل حساب'
+prompt_value AUTH_SMTP_FROM_ADDRESS 'نشانی فرستندهٔ پیام‌های حساب' ''
+prompt_value AUTH_SMTP_FROM_NAME 'نام فرستندهٔ پیام‌های حساب' 'Donysh'
 
 [[ "${desired[DOMAIN]}" =~ ^([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$ ]] \
   || fail "دامنهٔ اصلی معتبر نیست."
@@ -121,6 +146,23 @@ prompt_value LIFE_POSTGRES_USER 'کاربر پایگاه دادهٔ دُنیش �
 [[ "${desired[APP_PORT]}" =~ ^[0-9]+$ ]] \
   && (( desired[APP_PORT] >= 1 && desired[APP_PORT] <= 65535 )) \
   || fail "درگاه برنامه باید عددی بین ۱ و ۶۵۵۳۵ باشد."
+[[ "${desired[AUTH_SMTP_PORT]}" =~ ^[0-9]+$ ]] \
+  && (( desired[AUTH_SMTP_PORT] >= 1 && desired[AUTH_SMTP_PORT] <= 65535 )) \
+  || fail "درگاه ارسال ایمیل باید عددی بین ۱ و ۶۵۵۳۵ باشد."
+[[ "${desired[AUTH_SMTP_TIMEOUT_SECONDS]}" =~ ^[0-9]+$ ]] \
+  && (( desired[AUTH_SMTP_TIMEOUT_SECONDS] >= 5 && desired[AUTH_SMTP_TIMEOUT_SECONDS] <= 120 )) \
+  || fail "مهلت ارسال ایمیل باید بین ۵ تا ۱۲۰ ثانیه باشد."
+[[ "${desired[AUTH_SMTP_USE_SSL]}" == "true" || "${desired[AUTH_SMTP_USE_SSL]}" == "false" ]] \
+  || fail "مقدار ارتباط امن ایمیل فقط می‌تواند true یا false باشد."
+[[ -z "${desired[AUTH_SMTP_USERNAME]}" && -z "${desired[AUTH_SMTP_PASSWORD]}" \
+   || -n "${desired[AUTH_SMTP_USERNAME]}" && -n "${desired[AUTH_SMTP_PASSWORD]}" ]] \
+  || fail "نام کاربری و رمز ارسال ایمیل باید هر دو تنظیم یا هر دو خالی باشند."
+if [[ -n "${desired[AUTH_SMTP_HOST]}" || -n "${desired[AUTH_SMTP_FROM_ADDRESS]}" ]]; then
+  [[ -n "${desired[AUTH_SMTP_HOST]}" && -n "${desired[AUTH_SMTP_FROM_ADDRESS]}" ]] \
+    || fail "میزبان و نشانی فرستندهٔ ایمیل باید هر دو تنظیم شوند."
+  [[ "${desired[AUTH_SMTP_FROM_ADDRESS]}" =~ ^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$ ]] \
+    || fail "نشانی فرستندهٔ ایمیل معتبر نیست."
+fi
 [[ "${desired[TZ]}" =~ ^[A-Za-z_+-]+(/[A-Za-z0-9_+-]+)+$ ]] \
   || fail "منطقهٔ زمانی معتبر نیست."
 
@@ -146,7 +188,9 @@ keep_or_generate_secret LIFE_OIDC_CLIENT_SECRET
 
 desired[LEGACY_IDENTITY_IMPORT_COMPLETED]="$(existing_or_default LEGACY_IDENTITY_IMPORT_COMPLETED false)"
 desired[CENTRAL_AUTH_ENABLED]="$(existing_or_default CENTRAL_AUTH_ENABLED false)"
-for key in LEGACY_IDENTITY_IMPORT_COMPLETED CENTRAL_AUTH_ENABLED; do
+desired[AUTH_PUBLIC_REGISTRATION]="$(existing_or_default AUTH_PUBLIC_REGISTRATION true)"
+desired[AUTH_PASSWORD_RECOVERY]="$(existing_or_default AUTH_PASSWORD_RECOVERY true)"
+for key in LEGACY_IDENTITY_IMPORT_COMPLETED CENTRAL_AUTH_ENABLED AUTH_PUBLIC_REGISTRATION AUTH_PASSWORD_RECOVERY; do
   [[ "${desired[$key]}" == "true" || "${desired[$key]}" == "false" ]] \
     || fail "مقدار $key فقط می‌تواند true یا false باشد."
 done
@@ -207,3 +251,8 @@ fi
 printf '\nفایل %s با موفقیت و سطح دسترسی 600 به‌روزرسانی شد.\n' "$env_file"
 printf 'هیچ رمز یا مقدار حساسی روی خروجی نمایش داده نشد.\n'
 printf 'رمزهای موجود حفظ شدند؛ برای تعویض رمز دیتابیس باید خود PostgreSQL نیز هم‌زمان به‌روزرسانی شود.\n'
+if [[ -n "${desired[AUTH_SMTP_HOST]}" && -n "${desired[AUTH_SMTP_FROM_ADDRESS]}" ]]; then
+  printf 'ارسال ایمیل حساب پیکربندی شده است؛ پس از استقرار، ثبت‌نام و بازیابی رمز قابل استفاده خواهند بود.\n'
+else
+  printf 'توجه: تا زمان ثبت تنظیمات SMTP، ثبت‌نام و بازیابی رمز در رابط کاربری فعال نمی‌شوند.\n'
+fi

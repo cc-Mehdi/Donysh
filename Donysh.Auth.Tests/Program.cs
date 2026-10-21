@@ -4,12 +4,15 @@ using Donysh.Auth.Domain;
 using Donysh.Auth.Pages;
 using Donysh.Auth.Security;
 using Donysh.Auth.Configuration;
+using Donysh.Auth.Services;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 var failed = 0;
 
@@ -61,6 +64,22 @@ Check("Auth ignores speculative authorization requests",
 authPrefetch.Request.Path = "/health/live";
 Check("Auth prefetch guard leaves ordinary endpoints unchanged",
     !AuthenticationPrefetchGuard.ShouldSkip(authPrefetch.Request));
+var confirmationEmail = AuthEmailTemplates.ConfirmAccount("<کاربر>", "https://auth.test/confirm?a=1&b=2");
+Check("Confirmation email escapes user-controlled content",
+    confirmationEmail.Contains("&lt;کاربر&gt;", StringComparison.Ordinal)
+    && confirmationEmail.Contains("a=1&amp;b=2", StringComparison.Ordinal)
+    && !confirmationEmail.Contains("<کاربر>", StringComparison.Ordinal));
+Check("SMTP configuration requires a valid sender and credential pair",
+    new EmailOptions
+    {
+        Host = "smtp.test", Port = 587, TimeoutSeconds = 20,
+        FromAddress = "no-reply@example.test", UserName = "user", Password = "secret"
+    }.IsConfigured
+    && !new EmailOptions
+    {
+        Host = "smtp.test", Port = 587, TimeoutSeconds = 20,
+        FromAddress = "invalid", UserName = "user"
+    }.IsConfigured);
 
 Environment.SetEnvironmentVariable("Database__ApplyMigrations", "false");
 Environment.SetEnvironmentVariable("AllowedHosts", "*");
@@ -123,7 +142,66 @@ using (var response = await client.GetAsync("/Account/Register"))
 {
     var html = await response.Content.ReadAsStringAsync();
     Check("Public registration remains disabled", response.StatusCode == HttpStatusCode.OK
-        && html.Contains("ثبت‌نام عمومی هنوز فعال نشده است", StringComparison.Ordinal));
+        && html.Contains("ثبت‌نام موقتاً در دسترس نیست", StringComparison.Ordinal));
+}
+
+await using (var registrationFactory = new RegistrationAuthApplicationFactory())
+using (var registrationClient = registrationFactory.CreateClient(new WebApplicationFactoryClientOptions
+{
+    AllowAutoRedirect = false,
+    BaseAddress = new Uri("https://auth.test")
+}))
+{
+    using (var response = await registrationClient.GetAsync(
+        "/Account/Register?ReturnUrl=%2Fconnect%2Fauthorize%3Fclient_id%3Dfinance-web"))
+    {
+        var html = await response.Content.ReadAsStringAsync();
+        Check("Enabled registration renders a complete confirmation flow",
+            response.StatusCode == HttpStatusCode.OK
+            && html.Contains("ساخت حساب جدید", StringComparison.Ordinal)
+            && html.Contains("name=\"Input.DisplayName\"", StringComparison.Ordinal)
+            && html.Contains("name=\"Input.ConfirmPassword\"", StringComparison.Ordinal)
+            && html.Contains("name=\"ReturnUrl\"", StringComparison.Ordinal)
+            && html.Contains("/connect/authorize?client_id=finance-web", StringComparison.Ordinal)
+            && html.Contains("شرایط رمز عبور", StringComparison.Ordinal));
+    }
+
+    using (var response = await registrationClient.GetAsync("/Account/Login?ReturnUrl=%2Fcontinue"))
+    {
+        var html = await response.Content.ReadAsStringAsync();
+        Check("Login offers registration only when email delivery is ready",
+            response.StatusCode == HttpStatusCode.OK
+            && html.Contains("ساخت حساب مرکزی", StringComparison.Ordinal)
+            && html.Contains("returnUrl=%2Fcontinue", StringComparison.OrdinalIgnoreCase));
+    }
+
+    using (var response = await registrationClient.GetAsync("/Account/ResendConfirmation"))
+    {
+        var html = await response.Content.ReadAsStringAsync();
+        Check("Registration can securely request a fresh confirmation link",
+            response.StatusCode == HttpStatusCode.OK
+            && html.Contains("ارسال دوبارهٔ پیوند تأیید", StringComparison.Ordinal)
+            && html.Contains("وجود یا نبود حساب نمایش داده نمی‌شود", StringComparison.Ordinal));
+    }
+}
+
+await using (var throttledRegistrationFactory = new RegistrationAuthApplicationFactory())
+using (var throttledRegistrationClient = throttledRegistrationFactory.CreateClient(new WebApplicationFactoryClientOptions
+{
+    AllowAutoRedirect = false,
+    BaseAddress = new Uri("https://auth.test")
+}))
+{
+    HttpResponseMessage? lastResponse = null;
+    for (var requestNumber = 0; requestNumber < 6; requestNumber++)
+    {
+        lastResponse?.Dispose();
+        lastResponse = await throttledRegistrationClient.GetAsync("/Account/Register");
+    }
+    using (lastResponse)
+        Check("Registration has a stricter anti-abuse rate limit",
+            lastResponse?.StatusCode == HttpStatusCode.TooManyRequests
+            && lastResponse.Headers.RetryAfter is not null);
 }
 
 using (var response = await client.GetAsync("/Account/Logout"))
@@ -167,7 +245,7 @@ else Console.WriteLine("SKIP PostgreSQL migration checks (DONYSH_AUTH_TEST_POSTG
 if (failed > 0) throw new Exception($"{failed} Auth checks failed.");
 Console.WriteLine("All Donysh Auth checks passed.");
 
-internal sealed class AuthApplicationFactory : WebApplicationFactory<global::AuthProgram>
+internal class AuthApplicationFactory : WebApplicationFactory<global::AuthProgram>
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -183,4 +261,30 @@ internal sealed class AuthApplicationFactory : WebApplicationFactory<global::Aut
                 ["ReverseProxy:Enabled"] = "false"
             }));
     }
+}
+
+internal sealed class RegistrationAuthApplicationFactory : AuthApplicationFactory
+{
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        base.ConfigureWebHost(builder);
+        builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(
+            new Dictionary<string, string?>
+            {
+                ["Features:PublicRegistration"] = "true",
+                ["Features:LegacyIdentityImportCompleted"] = "true"
+            }));
+        builder.ConfigureServices(services =>
+        {
+            services.RemoveAll<IAuthEmailSender>();
+            services.AddSingleton<IAuthEmailSender, ConfiguredTestEmailSender>();
+        });
+    }
+}
+
+internal sealed class ConfiguredTestEmailSender : IAuthEmailSender
+{
+    public bool IsConfigured => true;
+    public Task SendAsync(string recipient, string subject, string htmlBody, CancellationToken cancellationToken)
+        => Task.CompletedTask;
 }

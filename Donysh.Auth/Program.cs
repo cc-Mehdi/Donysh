@@ -78,6 +78,8 @@ builder.Services.ConfigureApplicationCookie(options =>
 });
 builder.Services.Configure<SecurityStampValidatorOptions>(options =>
     options.ValidationInterval = TimeSpan.FromMinutes(5));
+builder.Services.Configure<DataProtectionTokenProviderOptions>(options =>
+    options.TokenLifespan = TimeSpan.FromHours(24));
 
 builder.Services.AddOpenIddict()
     .AddCore(options => options.UseEntityFrameworkCore().UseDbContext<AuthDbContext>())
@@ -154,7 +156,10 @@ builder.Services.AddRateLimiter(options =>
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
     options.OnRejected = (context, _) =>
     {
-        context.HttpContext.Response.Headers.RetryAfter = "60";
+        context.HttpContext.Response.Headers.RetryAfter = context.Lease.TryGetMetadata(
+            MetadataName.RetryAfter, out var retryAfter)
+                ? Math.Max(1, (int)Math.Ceiling(retryAfter.TotalSeconds)).ToString(CultureInfo.InvariantCulture)
+                : "60";
         return ValueTask.CompletedTask;
     };
     options.AddPolicy("account", context => RateLimitPartition.GetFixedWindowLimiter(
@@ -163,6 +168,15 @@ builder.Services.AddRateLimiter(options =>
         {
             PermitLimit = 10,
             Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0,
+            AutoReplenishment = true
+        }));
+    options.AddPolicy("registration", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 5,
+            Window = TimeSpan.FromMinutes(15),
             QueueLimit = 0,
             AutoReplenishment = true
         }));

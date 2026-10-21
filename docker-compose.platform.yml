@@ -93,9 +93,17 @@ services:
       ReverseProxy__Enabled: "true"
       Database__ApplyMigrations: "true"
       DataProtection__KeysPath: /keys
-      Features__PublicRegistration: "false"
-      Features__PasswordRecovery: "false"
+      Features__PublicRegistration: ${AUTH_PUBLIC_REGISTRATION:-true}
+      Features__PasswordRecovery: ${AUTH_PASSWORD_RECOVERY:-true}
       Features__LegacyIdentityImportCompleted: ${LEGACY_IDENTITY_IMPORT_COMPLETED:-false}
+      Email__Host: ${AUTH_SMTP_HOST:-}
+      Email__Port: ${AUTH_SMTP_PORT:-587}
+      Email__UseSsl: ${AUTH_SMTP_USE_SSL:-true}
+      Email__TimeoutSeconds: ${AUTH_SMTP_TIMEOUT_SECONDS:-20}
+      Email__UserName: ${AUTH_SMTP_USERNAME:-}
+      Email__Password: ${AUTH_SMTP_PASSWORD:-}
+      Email__FromAddress: ${AUTH_SMTP_FROM_ADDRESS:-}
+      Email__FromName: ${AUTH_SMTP_FROM_NAME:-Donysh}
       Navigation__DefaultReturnUrl: https://${DOMAIN:?DOMAIN is required}
       OidcClients__0__ClientId: finance-web
       OidcClients__0__DisplayName: Donysh Finance

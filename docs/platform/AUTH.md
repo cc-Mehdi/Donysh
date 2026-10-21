@@ -14,12 +14,41 @@
 - Liveness: `/health/live`
 - Readiness: `/health/ready`
 
-## وضعیت قابلیت‌ها در مرحلهٔ ۱
+## ثبت‌نام و بازیابی حساب
 
-- صفحهٔ ورود فعال است، اما کاربر Production ندارد و صریحاً اعلام می‌کند حساب‌های Finance هنوز منتقل نشده‌اند.
-- ثبت‌نام فقط وقتی `Features__PublicRegistration=true` و `Features__LegacyIdentityImportCompleted=true` و ایمیل پیکربندی شده باشد کار می‌کند.
-- بازیابی رمز نیز به `Features__PasswordRecovery=true`، پایان Import و ایمیل عملیاتی نیاز دارد.
+- ثبت‌نام فقط وقتی `AUTH_PUBLIC_REGISTRATION=true`، انتقال حساب‌های قدیمی کامل و SMTP پیکربندی شده باشد فعال است.
+- کاربر تازه تا زمان تأیید مالکیت ایمیل اجازهٔ ورود ندارد و پیوند تأیید ۲۴ ساعت اعتبار دارد.
+- صفحهٔ ارسال دوبارهٔ تأیید، وجود یا نبود حساب را افشا نمی‌کند.
+- ساخت حساب و ارسال دوبارهٔ تأیید، محدودیت مستقل پنج درخواست در پانزده دقیقه برای هر نشانی شبکه دارند.
+- بازیابی رمز نیز به `AUTH_PASSWORD_RECOVERY=true`، پایان انتقال و ایمیل عملیاتی نیاز دارد.
 - پاسخ بازیابی رمز وجود حساب را افشا نمی‌کند.
+- نخستین ورود کاربر تازه به دُنیش مالی، حساب محلی متناظر، فضای شخصی و دسته‌بندی‌های اولیه را در یک تراکنش و فقط یک بار می‌سازد.
+
+متغیرهای لازم برای ایمیل در `.env`:
+
+```text
+AUTH_SMTP_HOST=smtp.example.com
+AUTH_SMTP_PORT=587
+AUTH_SMTP_USE_SSL=true
+AUTH_SMTP_TIMEOUT_SECONDS=20
+AUTH_SMTP_USERNAME=<smtp-user>
+AUTH_SMTP_PASSWORD=<smtp-password>
+AUTH_SMTP_FROM_ADDRESS=no-reply@example.com
+AUTH_SMTP_FROM_NAME=Donysh
+```
+
+اسکریپت `scripts/configure-server-env.sh` این مقادیر را بدون نمایش رمز در خروجی نگهداری می‌کند.
+
+پس از دریافت اطلاعات ارسال ایمیل از سرویس‌دهنده، روی سرور اجرا کنید:
+
+```bash
+cd /home/ubuntu/donysh
+sudo bash scripts/configure-server-env.sh
+sudo docker compose --env-file .env -f docker-compose.platform.yml up -d --build auth web
+curl -fsS https://auth.donysh.ir/health/ready
+```
+
+فعال‌بودن ظاهری ثبت‌نام به‌تنهایی کافی نیست؛ تا زمانی که تنظیمات ایمیل معتبر نباشد، پیوند ساخت حساب نمایش داده نمی‌شود تا حساب تأییدنشده و غیرقابل‌بازیابی ساخته نشود.
 
 ## کنترل‌های امنیتی
 
@@ -66,4 +95,4 @@ https://finance.donysh.ir/signin-oidc
 4. آزمون ورود با Hash واقعی نمونه‌ها بدون دانستن رمز خام.
 5. اتصال Finance به subject ثابت و نگه‌داشتن رابطهٔ داده‌های مالی با همان ID.
 
-تا اجرای این برنامه، ثبت‌نام عمومی بسته می‌ماند و هیچ داده‌ای از Finance کپی نشده است.
+در نصب‌های قدیمی، تا اجرای انتقال حساب‌ها مقدار `LEGACY_IDENTITY_IMPORT_COMPLETED=false` باقی می‌ماند و ثبت‌نام فعال نمی‌شود.

@@ -3,6 +3,8 @@ using Donysh.Auth.Domain;
 using Donysh.IdentityMigration;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Npgsql;
 
 internal static class PostgresChecks
@@ -79,6 +81,51 @@ internal static class PostgresChecks
             Console.WriteLine("PASS PostgreSQL accepts an imported compatible Identity hash");
 
             var targetConnection = connection.ConnectionString;
+            var registrationServices = new ServiceCollection();
+            registrationServices.AddLogging(builder => builder.SetMinimumLevel(LogLevel.Warning));
+            registrationServices.AddDataProtection();
+            registrationServices.AddDbContext<AuthDbContext>(builder => builder
+                .UseNpgsql(targetConnection)
+                .UseOpenIddict());
+            registrationServices.AddIdentityCore<AuthUser>(identity =>
+                {
+                    identity.User.RequireUniqueEmail = true;
+                    identity.SignIn.RequireConfirmedEmail = true;
+                    identity.Password.RequiredLength = 8;
+                    identity.Password.RequireDigit = true;
+                    identity.Password.RequireLowercase = true;
+                    identity.Password.RequireUppercase = false;
+                    identity.Password.RequireNonAlphanumeric = false;
+                })
+                .AddRoles<IdentityRole>()
+                .AddEntityFrameworkStores<AuthDbContext>()
+                .AddDefaultTokenProviders();
+
+            await using (var registrationProvider = registrationServices.BuildServiceProvider())
+            await using (var registrationScope = registrationProvider.CreateAsyncScope())
+            {
+                var userManager = registrationScope.ServiceProvider.GetRequiredService<UserManager<AuthUser>>();
+                var registered = new AuthUser
+                {
+                    UserName = "new-user@example.com",
+                    Email = "new-user@example.com",
+                    DisplayName = "کاربر تازه",
+                    EmailConfirmed = false
+                };
+                var created = await userManager.CreateAsync(registered, "securepass1");
+                var confirmationToken = created.Succeeded
+                    ? await userManager.GenerateEmailConfirmationTokenAsync(registered)
+                    : string.Empty;
+                var confirmed = created.Succeeded
+                    ? await userManager.ConfirmEmailAsync(registered, confirmationToken)
+                    : IdentityResult.Failed();
+                var persisted = await userManager.FindByEmailAsync("new-user@example.com");
+                if (!created.Succeeded || !confirmed.Succeeded || persisted?.EmailConfirmed != true
+                    || !await userManager.CheckPasswordAsync(persisted, "securepass1"))
+                    throw new Exception("FAIL PostgreSQL registration and email confirmation workflow");
+            }
+            Console.WriteLine("PASS PostgreSQL registration requires and persists email confirmation");
+
             connection.Database = legacyDatabaseName;
             await CreateLegacyUserAsync(connection.ConnectionString, cancellationToken: default);
 

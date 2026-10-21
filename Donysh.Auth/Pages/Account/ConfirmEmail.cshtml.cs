@@ -1,5 +1,6 @@
 using System.Text;
 using Donysh.Auth.Domain;
+using Donysh.Auth.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -12,9 +13,11 @@ public sealed class ConfirmEmailModel(UserManager<AuthUser> users) : PageModel
 {
     public bool Succeeded { get; private set; }
     public string Message { get; private set; } = "پیوند تأیید ناقص است.";
+    public string ReturnUrl { get; private set; } = "/";
 
-    public async Task OnGetAsync(string? userId, string? code)
+    public async Task OnGetAsync(string? userId, string? code, string? returnUrl)
     {
+        ReturnUrl = SafeReturnUrl.Normalize(returnUrl);
         if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(code)) return;
         var user = await users.FindByIdAsync(userId);
         if (user is null) return;

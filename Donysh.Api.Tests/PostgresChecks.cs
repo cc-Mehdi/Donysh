@@ -221,6 +221,7 @@ internal static class PostgresChecks
                 .AddRoles<IdentityRole>()
                 .AddEntityFrameworkStores<ApplicationDbContext>()
                 .AddSignInManager();
+            builder.Services.AddScoped<FinanceAccountProvisioner>();
             builder.Services.AddMobileApi();
             await using var app = builder.Build();
             app.UseRouting(); app.UseRateLimiter();
@@ -228,6 +229,23 @@ internal static class PostgresChecks
             app.MapMobileApi(); await app.StartAsync();
             using var client = new HttpClient { BaseAddress = new(app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.Single()) };
             void Check(bool value, string name) { if (!value) throw new Exception("FAIL PostgreSQL: " + name); Console.WriteLine("PASS PostgreSQL: " + name); }
+            await using (var provisioningScope = app.Services.CreateAsyncScope())
+            {
+                var provisioner = provisioningScope.ServiceProvider.GetRequiredService<FinanceAccountProvisioner>();
+                const string centralSubject = "new-central-user";
+                var firstLink = await provisioner.EnsureAsync(
+                    centralSubject, "new-central-user@example.com", "کاربر مرکزی", CancellationToken.None);
+                var secondLink = await provisioner.EnsureAsync(
+                    centralSubject, "new-central-user@example.com", "کاربر مرکزی", CancellationToken.None);
+                var provisioningDb = provisioningScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                var personalWorkspace = await provisioningDb.Workspaces
+                    .SingleAsync(x => x.OwnerUserId == centralSubject && x.Type == WorkspaceType.Personal);
+                Check(firstLink.UserId == centralSubject
+                      && secondLink.UserId == centralSubject
+                      && await provisioningDb.WorkspaceMembers.CountAsync(x => x.UserId == centralSubject) == 1
+                      && await provisioningDb.ExpenseCategories.CountAsync(x => x.WorkspaceId == personalWorkspace.Id) == 7,
+                    "first central login provisions one complete personal finance workspace");
+            }
             await db.ExpenseCategories.Where(x => x.Id == category.Id).ExecuteUpdateAsync(s => s.SetProperty(x => x.IsArchived, true));
             using var archivedPair = await client.PostAsJsonAsync("/api/mobile/pair", new PairRequest(code));
             Check(archivedPair.StatusCode == HttpStatusCode.Unauthorized

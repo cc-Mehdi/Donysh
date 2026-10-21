@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using Donysh.Auth.Configuration;
 using Donysh.Auth.Domain;
 using Donysh.Auth.Security;
+using Donysh.Auth.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -15,12 +16,13 @@ namespace Donysh.Auth.Pages.Account;
 [EnableRateLimiting("account")]
 public sealed class LoginModel(
     SignInManager<AuthUser> signInManager,
-    IOptions<AuthFeatureOptions> features) : PageModel
+    IOptions<AuthFeatureOptions> features,
+    IAuthEmailSender emailSender) : PageModel
 {
     [BindProperty] public InputModel Input { get; set; } = new();
     [BindProperty(SupportsGet = true)] public string? ReturnUrl { get; set; }
 
-    public bool RegistrationAvailable => features.Value.CanRegister;
+    public bool RegistrationAvailable => features.Value.CanRegister && emailSender.IsConfigured;
     public bool PasswordRecoveryAvailable => features.Value.CanRecoverPassword;
     public bool MigrationCompleted => features.Value.LegacyIdentityImportCompleted;
 

@@ -83,7 +83,7 @@
 
         @if (Model.RegistrationAvailable)
         {
-            <p class="panel-foot">حساب ندارید؟ <a asp-page="/Account/Register">ساخت حساب مرکزی</a></p>
+            <p class="panel-foot">حساب ندارید؟ <a asp-page="/Account/Register" asp-route-returnUrl="@Model.ReturnUrl">ساخت حساب مرکزی</a></p>
         }
         else
         {

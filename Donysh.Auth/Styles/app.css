@@ -109,6 +109,12 @@
     .simple-card form, .simple-card .primary-button, .simple-card .secondary-button { @apply mt-5; }
     .success-icon { @apply mx-auto mt-5 grid size-14 place-items-center rounded-2xl bg-emerald-100 text-2xl font-black text-emerald-700; }
     .form-card > .text-link { @apply mt-6 inline-block; }
+    .registration-card { @apply max-w-2xl; }
+    .registration-card .panel-header { @apply mb-2 text-start; }
+    .password-rules { @apply grid gap-2 rounded-2xl border border-slate-200 bg-white p-4 text-xs text-slate-600 sm:grid-cols-3; }
+    .password-rules li { @apply flex items-center gap-2; }
+    .password-rules span { @apply grid size-5 shrink-0 place-items-center rounded-full bg-emerald-50 text-[.65rem] font-black text-emerald-700; }
+    .consent-note { @apply m-0! text-center text-[.7rem]! leading-6! text-slate-400!; }
     .status-card { @apply relative max-w-xl overflow-hidden; }
     .status-card::before { content: ""; @apply pointer-events-none absolute -end-14 -top-16 size-44 rounded-full bg-indigo-100/70 blur-2xl; }
     .status-card > * { @apply relative z-10; }
@@ -121,6 +127,10 @@
     .success-illustration span { @apply bg-emerald-500 shadow-emerald-500/25; }
     .logout-illustration { @apply bg-amber-50 ring-amber-50/60; }
     .logout-illustration span { @apply bg-amber-500 shadow-amber-500/25; }
+    .warning-illustration { @apply bg-rose-50 ring-rose-50/60; }
+    .warning-illustration span { @apply bg-rose-500 shadow-rose-500/25; }
+    .email-illustration { @apply bg-indigo-50 ring-indigo-50/60; }
+    .email-illustration span { @apply bg-indigo-600 shadow-indigo-600/25; }
     .simple-actions { @apply mt-6 grid gap-3; }
     .simple-actions .primary-button, .simple-actions .secondary-button { @apply mt-0; }
     .privacy-note { @apply flex items-center justify-center gap-2 border-t border-slate-200 pt-5 text-xs text-slate-400!; }

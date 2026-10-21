@@ -63,6 +63,7 @@ builder.Services
 
 builder.Services.AddOptions<CentralAuthOptions>()
     .Bind(builder.Configuration.GetSection(CentralAuthOptions.SectionName));
+builder.Services.AddScoped<FinanceAccountProvisioner>();
 
 if (centralAuth.Enabled)
 {
@@ -144,14 +145,32 @@ if (centralAuth.Enabled)
                     }
 
                     await using var scope = context.HttpContext.RequestServices.CreateAsyncScope();
-                    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                    var localUser = await db.Users.AsNoTracking()
-                        .Where(user => user.Id == subject)
-                        .Select(user => new { user.Id, user.SecurityStamp })
-                        .SingleOrDefaultAsync(context.HttpContext.RequestAborted);
-                    if (localUser is null)
+                    var emailVerified = context.Principal?.FindFirstValue("email_verified");
+                    var email = context.Principal?.FindFirstValue(ClaimTypes.Email)
+                        ?? context.Principal?.FindFirstValue("email");
+                    if (!string.Equals(emailVerified, "true", StringComparison.OrdinalIgnoreCase)
+                        || string.IsNullOrWhiteSpace(email))
                     {
-                        context.Fail("The central account is not linked to a finance account.");
+                        context.Fail("The central account email is not verified.");
+                        return;
+                    }
+
+                    FinanceAccountLink localUser;
+                    try
+                    {
+                        var provisioner = scope.ServiceProvider.GetRequiredService<FinanceAccountProvisioner>();
+                        localUser = await provisioner.EnsureAsync(
+                            subject,
+                            email,
+                            context.Principal?.FindFirstValue("name"),
+                            context.HttpContext.RequestAborted);
+                    }
+                    catch (Exception exception)
+                    {
+                        var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>()
+                            .CreateLogger("CentralAccountProvisioning");
+                        logger.LogError(exception, "Central account provisioning failed for subject {Subject}.", subject);
+                        context.Fail("The central account could not be linked to Finance.");
                         return;
                     }
 
