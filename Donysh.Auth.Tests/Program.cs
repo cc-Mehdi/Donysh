@@ -48,6 +48,34 @@ Check("Authenticated Auth home returns to the configured ecosystem destination",
 Check("Auth home rejects an unsafe configured destination",
     new IndexModel(Options.Create(new AuthNavigationOptions { DefaultReturnUrl = "javascript:alert(1)" })).OnGet()
         is Microsoft.AspNetCore.Mvc.RazorPages.PageResult);
+Check("Direct Auth login can show the product chooser",
+    new IndexModel(Options.Create(new AuthNavigationOptions())).OnGet()
+        is Microsoft.AspNetCore.Mvc.RazorPages.PageResult);
+const string logoutSecret = "test-only-shared-logout-secret-0000000000000000";
+var authFinalProof = CrossAppLogoutToken.Create(logoutSecret, "auth-finalize");
+Check("Central logout accepts only a short-lived proof for Auth",
+    CrossAppLogoutToken.TryValidate(authFinalProof, logoutSecret, "auth-finalize")
+    && !CrossAppLogoutToken.TryValidate(authFinalProof, logoutSecret, "life-finalize")
+    && !CrossAppLogoutToken.TryValidate(authFinalProof + "x", logoutSecret, "auth-finalize"));
+var centralLogoutConfiguration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+{
+    ["Products:FinanceUrl"] = "https://finance.test",
+    ["CrossAppLogout:Secret"] = logoutSecret
+}).Build();
+var centralLogout = new Donysh.Auth.Pages.Account.LogoutModel(null!, centralLogoutConfiguration)
+{
+    PageContext = new Microsoft.AspNetCore.Mvc.RazorPages.PageContext
+    {
+        HttpContext = new DefaultHttpContext()
+    }
+};
+var centralPeerRedirect = centralLogout.OnPost() as Microsoft.AspNetCore.Mvc.RedirectResult;
+Check("Auth logout visits Finance before clearing the central session",
+    centralPeerRedirect?.Url?.StartsWith("https://finance.test/Account/FederatedLogout?proof=", StringComparison.Ordinal) == true
+    && CrossAppLogoutToken.TryValidate(
+        Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(new Uri(centralPeerRedirect.Url).Query)["proof"],
+        logoutSecret, "finance-auth")
+    && centralLogout.OnGetFinalizeAsync("invalid").Result is Microsoft.AspNetCore.Mvc.NotFoundResult);
 var authCsp = AuthSecurityHeaders.BuildContentSecurityPolicy([
     "https://finance.donysh.test/signin-oidc",
     "https://finance.donysh.test/signout-callback-oidc",
@@ -162,6 +190,20 @@ using (var response = await client.GetAsync("/Account/Register"))
     var html = await response.Content.ReadAsStringAsync();
     Check("Public registration remains disabled", response.StatusCode == HttpStatusCode.OK
         && html.Contains("ثبت‌نام موقتاً در دسترس نیست", StringComparison.Ordinal));
+}
+
+await using (var unavailableRecoveryFactory = new RecoveryUnavailableAuthApplicationFactory())
+using (var recoveryClient = unavailableRecoveryFactory.CreateClient(new WebApplicationFactoryClientOptions
+{
+    AllowAutoRedirect = false,
+    BaseAddress = new Uri("https://auth.test")
+}))
+using (var response = await recoveryClient.GetAsync("/Account/Login"))
+{
+    var html = await response.Content.ReadAsStringAsync();
+    Check("Login hides password recovery when email delivery is unavailable",
+        response.StatusCode == HttpStatusCode.OK
+        && !html.Contains("رمز عبور را فراموش کرده‌اید؟", StringComparison.Ordinal));
 }
 
 await using (var registrationFactory = new RegistrationAuthApplicationFactory())
@@ -308,6 +350,20 @@ internal sealed class RegistrationAuthApplicationFactory : AuthApplicationFactor
             services.RemoveAll<IAuthEmailSender>();
             services.AddSingleton<IAuthEmailSender, ConfiguredTestEmailSender>();
         });
+    }
+}
+
+internal sealed class RecoveryUnavailableAuthApplicationFactory : AuthApplicationFactory
+{
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        base.ConfigureWebHost(builder);
+        builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(
+            new Dictionary<string, string?>
+            {
+                ["Features:PasswordRecovery"] = "true",
+                ["Features:LegacyIdentityImportCompleted"] = "true"
+            }));
     }
 }
 

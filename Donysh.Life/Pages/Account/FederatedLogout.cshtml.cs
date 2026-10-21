@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.WebUtilities;
 
 namespace Donysh.Life.Pages.Account;
 
@@ -13,10 +14,20 @@ public sealed class FederatedLogoutModel(IConfiguration configuration) : PageMod
     public async Task<IActionResult> OnGetAsync(string? proof)
     {
         var secret = configuration["CrossAppLogout:Secret"];
-        if (!CrossAppLogoutToken.TryValidate(proof, secret ?? string.Empty, "life")) return NotFound();
+        var fromAuth = CrossAppLogoutToken.TryValidate(proof, secret ?? string.Empty, "life-auth");
+        if (!fromAuth && !CrossAppLogoutToken.TryValidate(proof, secret ?? string.Empty, "life")) return NotFound();
 
         await HttpContext.SignOutAsync(LifeAuthOptions.CookieScheme);
         Response.Headers.CacheControl = "no-store, no-cache";
-        return RedirectToPage("/Account/SignedOut");
+        var destination = configuration[fromAuth ? "Products:AuthUrl" : "Products:FinanceUrl"];
+        if (!Uri.TryCreate(destination, UriKind.Absolute, out var origin)
+            || origin.Scheme != Uri.UriSchemeHttps) throw new InvalidOperationException("The logout return URL must be an absolute HTTPS URI.");
+        var endpoint = new Uri(origin, "/Account/Logout").AbsoluteUri;
+        var token = CrossAppLogoutToken.Create(secret!, fromAuth ? "auth-finalize" : "finance-finalize");
+        return Redirect(QueryHelpers.AddQueryString(endpoint, new Dictionary<string, string?>
+        {
+            ["handler"] = "Finalize",
+            ["token"] = token
+        }));
     }
 }

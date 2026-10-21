@@ -31,6 +31,9 @@ var connectionString = builder.Configuration.GetConnectionString("AuthConnection
 var oidcClients = builder.Configuration
     .GetSection(AuthClientOptions.SectionName)
     .Get<List<AuthClientOptions>>() ?? [];
+if (!builder.Environment.IsDevelopment() && !builder.Environment.IsEnvironment("Testing")
+    && (builder.Configuration["CrossAppLogout:Secret"]?.Length ?? 0) < 32)
+    throw new InvalidOperationException("CrossAppLogout:Secret must contain at least 32 characters.");
 
 builder.Services.AddOptions<AuthFeatureOptions>()
     .Bind(builder.Configuration.GetSection(AuthFeatureOptions.SectionName));

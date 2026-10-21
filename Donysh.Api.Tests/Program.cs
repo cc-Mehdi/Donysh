@@ -96,19 +96,25 @@ var financeLogoutConfiguration = new Microsoft.Extensions.Configuration.Configur
     }).Build();
 var financeContinueToken = CrossAppLogoutToken.Create(financeLogoutSecret, "finance-continue");
 var financeLogout = new HesabYar.Web.Pages.Account.LogoutModel(
-    Options.Create(new CentralAuthOptions { Enabled = true }), financeLogoutConfiguration)
-    .OnGetComplete(financeContinueToken) as Microsoft.AspNetCore.Mvc.SignOutResult;
-if (financeLogout is null
-    || !financeLogout.AuthenticationSchemes.Contains(Microsoft.AspNetCore.Identity.IdentityConstants.ApplicationScheme)
-    || !financeLogout.AuthenticationSchemes.Contains(CentralAuthOptions.Scheme)
-    || financeLogout.Properties?.RedirectUri?.StartsWith("https://life.test/Account/FederatedLogout?proof=", StringComparison.Ordinal) != true)
-    throw new Exception("Finance logout must clear both the product and central sessions.");
-Console.WriteLine("PASS Finance logout clears both the product and central sessions");
-var financePeerProof = new Uri(financeLogout.Properties!.RedirectUri!).Query["?proof=".Length..];
+    Options.Create(new CentralAuthOptions { Enabled = true }), financeLogoutConfiguration);
+var financePeerRedirect = financeLogout.OnGetComplete(financeContinueToken) as Microsoft.AspNetCore.Mvc.RedirectResult;
+if (financePeerRedirect?.Url?.StartsWith("https://life.test/Account/FederatedLogout?proof=", StringComparison.Ordinal) != true)
+    throw new Exception("Finance logout must visit Life before ending the central session.");
+Console.WriteLine("PASS Finance logout visits Life before ending the central session");
+var financePeerProof = new Uri(financePeerRedirect.Url).Query["?proof=".Length..];
 if (!CrossAppLogoutToken.TryValidate(financePeerProof, financeLogoutSecret, "life")
     || CrossAppLogoutToken.TryValidate(financePeerProof, financeLogoutSecret, "finance"))
     throw new Exception("Finance logout must create a signed proof scoped to Life.");
 Console.WriteLine("PASS Finance logout proof is short-lived and scoped to Life");
+var financeFinalizeToken = CrossAppLogoutToken.Create(financeLogoutSecret, "finance-finalize");
+var financeFinalSignOut = financeLogout.OnGetFinalize(financeFinalizeToken) as Microsoft.AspNetCore.Mvc.SignOutResult;
+if (financeFinalSignOut is null
+    || !financeFinalSignOut.AuthenticationSchemes.Contains(Microsoft.AspNetCore.Identity.IdentityConstants.ApplicationScheme)
+    || !financeFinalSignOut.AuthenticationSchemes.Contains(CentralAuthOptions.Scheme)
+    || financeFinalSignOut.Properties?.RedirectUri != "/Account/SignedOut"
+    || financeLogout.OnGetFinalize(financePeerProof) is not Microsoft.AspNetCore.Mvc.NotFoundResult)
+    throw new Exception("Finance finalization must require a scoped proof and end both local and central sessions.");
+Console.WriteLine("PASS Finance finalization clears its session and the central session");
 var financePrefetch = new DefaultHttpContext();
 financePrefetch.Request.Method = HttpMethods.Get;
 financePrefetch.Request.Path = "/Account/Login";

@@ -104,7 +104,9 @@ services:
       Email__Password: ${AUTH_SMTP_PASSWORD:-}
       Email__FromAddress: ${AUTH_SMTP_FROM_ADDRESS:-}
       Email__FromName: ${AUTH_SMTP_FROM_NAME:-Donysh}
-      Navigation__DefaultReturnUrl: https://${DOMAIN:?DOMAIN is required}
+      Navigation__DefaultReturnUrl: ""
+      Products__FinanceUrl: https://${FINANCE_DOMAIN:?FINANCE_DOMAIN is required}
+      CrossAppLogout__Secret: ${CROSS_APP_LOGOUT_SECRET:?CROSS_APP_LOGOUT_SECRET is required}
       OidcClients__0__ClientId: finance-web
       OidcClients__0__DisplayName: Donysh Finance
       OidcClients__0__ClientSecret: ${FINANCE_OIDC_CLIENT_SECRET:?FINANCE_OIDC_CLIENT_SECRET is required}
@@ -213,6 +215,7 @@ services:
       CentralAuth__ClientSecret: ${LIFE_OIDC_CLIENT_SECRET:?LIFE_OIDC_CLIENT_SECRET is required}
       CentralAuth__RequireHttpsMetadata: "true"
       Products__FinanceUrl: https://${FINANCE_DOMAIN:?FINANCE_DOMAIN is required}
+      Products__AuthUrl: https://${AUTH_DOMAIN:?AUTH_DOMAIN is required}
       CrossAppLogout__Secret: ${CROSS_APP_LOGOUT_SECRET:?CROSS_APP_LOGOUT_SECRET is required}
       TZ: ${TZ:-Asia/Tehran}
       ConnectionStrings__LifeConnection: >-

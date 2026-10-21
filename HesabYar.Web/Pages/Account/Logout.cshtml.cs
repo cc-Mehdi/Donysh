@@ -47,8 +47,15 @@ public sealed class LogoutModel(
 
         var proof = CrossAppLogoutToken.Create(secret, "life");
         var peerLogoutUrl = QueryHelpers.AddQueryString(endpoint, "proof", proof);
+        return Redirect(peerLogoutUrl);
+    }
+
+    public IActionResult OnGetFinalize(string? token)
+    {
+        if (!CrossAppLogoutToken.TryValidate(token, GetLogoutSecret(), "finance-finalize")) return NotFound();
+
         return SignOut(
-            new AuthenticationProperties { RedirectUri = peerLogoutUrl },
+            new AuthenticationProperties { RedirectUri = "/Account/SignedOut" },
             IdentityConstants.ApplicationScheme,
             CentralAuthOptions.Scheme);
     }

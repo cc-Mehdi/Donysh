@@ -35,10 +35,15 @@ public sealed class LogoutModel(IConfiguration configuration) : PageModel
 
         var proof = CrossAppLogoutToken.Create(secret, "finance");
         var peerLogoutUrl = QueryHelpers.AddQueryString(endpoint, "proof", proof);
-        return SignOut(new AuthenticationProperties
-        {
-            RedirectUri = peerLogoutUrl
-        }, LifeAuthOptions.CookieScheme, LifeAuthOptions.OidcScheme);
+        return Redirect(peerLogoutUrl);
+    }
+
+    public IActionResult OnGetFinalize(string? token)
+    {
+        if (!CrossAppLogoutToken.TryValidate(token, GetLogoutSecret(), "life-finalize")) return NotFound();
+
+        return SignOut(new AuthenticationProperties { RedirectUri = "/Account/SignedOut" },
+            LifeAuthOptions.CookieScheme, LifeAuthOptions.OidcScheme);
     }
 
     private string GetLogoutSecret()
