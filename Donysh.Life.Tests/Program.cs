@@ -5,6 +5,7 @@ using System.Text.Encodings.Web;
 using Donysh.Life.Configuration;
 using Donysh.Life.Data;
 using Donysh.Life.Features.Activities;
+using Donysh.Life.Features.AiPlanning;
 using Donysh.Life.Features.Scheduling;
 using Donysh.Life.Features.Tracking;
 using Donysh.Life.Features.Reporting;
@@ -492,6 +493,89 @@ var lifeProgramSource = await File.ReadAllTextAsync(Path.Combine(
     AppContext.BaseDirectory, "..", "..", "..", "..", "Donysh.Life", "Program.cs"));
 Check("Life login avoids a redundant UserInfo network request",
     lifeProgramSource.Contains("GetClaimsFromUserInfoEndpoint = false", StringComparison.Ordinal));
+
+var aiJson = """{"version":1,"activities":[{"title":"مطالعهٔ AI","category":"یادگیری","color":"#2563EB","icon":"book","weeklyHours":2,"slots":[{"day":"Saturday","start":"09:00","durationMinutes":60}]},{"title":"ورزش AI","category":"سلامت","color":"#EA580C","icon":"activity","weeklyHours":1,"slots":[{"day":"Sunday","start":"10:00","durationMinutes":60}]}]}""";
+Check("Life AI parser accepts a valid weekly plan", LifeAiPlanService.Parse(aiJson).Plan?.Activities?.Count == 2);
+Check("Life AI parser lets users repair overlapping suggestions in preview",
+    LifeAiPlanService.Parse(aiJson.Replace("Sunday", "Saturday").Replace("10:00", "09:30")).Plan is not null);
+Check("Life AI parser rejects unsupported colors and malformed days",
+    LifeAiPlanService.Parse(aiJson.Replace("#2563EB", "#FFFFFF")).Error is not null
+    && LifeAiPlanService.Parse(aiJson.Replace("Saturday", "Funday")).Error is not null);
+
+await using (var aiFactory = new AuthenticatedLifeApplicationFactory())
+using (var aiClient = aiFactory.CreateClient(new WebApplicationFactoryClientOptions
+{
+    AllowAutoRedirect = false,
+    BaseAddress = new Uri("https://life.test")
+}))
+{
+    using var aiPage = await aiClient.GetAsync("/Ai");
+    var aiHtml = await aiPage.Content.ReadAsStringAsync();
+    var aiCsrf = WebUtility.HtmlDecode(Regex.Match(aiHtml, "name=\"__RequestVerificationToken\" type=\"hidden\" value=\"([^\"]+)\"").Groups[1].Value);
+    Check("Life AI page exposes prompt, upload, paste and mobile navigation",
+        aiPage.StatusCode == HttpStatusCode.OK && aiHtml.Contains("فایل JSON", StringComparison.Ordinal)
+        && aiHtml.Contains("متن JSON", StringComparison.Ordinal) && aiHtml.Contains("Saturday", StringComparison.Ordinal)
+        && aiHtml.Contains("asp-page=\"/Ai\"", StringComparison.Ordinal) == false
+        && aiHtml.Contains("href=\"/Ai\"", StringComparison.Ordinal));
+    using var previewContent = new FormUrlEncodedContent(new Dictionary<string, string>
+    {
+        ["__RequestVerificationToken"] = aiCsrf, ["JsonText"] = aiJson
+    });
+    using var previewResponse = await aiClient.PostAsync("/Ai?handler=Preview", previewContent);
+    var previewHtml = await previewResponse.Content.ReadAsStringAsync();
+    var decodedPreviewHtml = WebUtility.HtmlDecode(previewHtml);
+    var token = WebUtility.HtmlDecode(Regex.Match(previewHtml, "name=\"PreviewToken\" value=\"([^\"]+)\"").Groups[1].Value);
+    var applyCsrf = WebUtility.HtmlDecode(Regex.Match(previewHtml, "name=\"__RequestVerificationToken\" type=\"hidden\" value=\"([^\"]+)\"").Groups[1].Value);
+    Check("Life AI preview shows editable activities and schedule slots",
+        previewResponse.StatusCode == HttpStatusCode.OK && !string.IsNullOrWhiteSpace(token)
+        && decodedPreviewHtml.Contains("مطالعهٔ AI", StringComparison.Ordinal)
+        && previewHtml.Contains("Selections[0].Slots[0].Day", StringComparison.Ordinal)
+        && decodedPreviewHtml.Contains("ساخت برنامهٔ انتخاب‌شده", StringComparison.Ordinal));
+    var applyValues = new Dictionary<string, string>
+    {
+        ["__RequestVerificationToken"] = applyCsrf, ["PreviewToken"] = token,
+        ["Selections[0].Included"] = "true", ["Selections[0].Slots[0].Included"] = "true",
+        ["Selections[0].Slots[0].Day"] = "Monday", ["Selections[0].Slots[0].Start"] = "14:30",
+        ["Selections[0].Slots[0].DurationMinutes"] = "90",
+        ["Selections[1].Included"] = "false", ["Selections[1].Slots[0].Included"] = "true",
+        ["Selections[1].Slots[0].Day"] = "Sunday", ["Selections[1].Slots[0].Start"] = "10:00",
+        ["Selections[1].Slots[0].DurationMinutes"] = "60"
+    };
+    var conflictingValues = new Dictionary<string, string>(applyValues)
+    {
+        ["Selections[1].Included"] = "true",
+        ["Selections[1].Slots[0].Day"] = "Monday",
+        ["Selections[1].Slots[0].Start"] = "15:00"
+    };
+    using var conflictingContent = new FormUrlEncodedContent(conflictingValues);
+    using var conflictingResponse = await aiClient.PostAsync("/Ai?handler=Apply", conflictingContent);
+    var conflictingHtml = WebUtility.HtmlDecode(await conflictingResponse.Content.ReadAsStringAsync());
+    await using var conflictScope = aiFactory.Services.CreateAsyncScope();
+    var conflictDb = conflictScope.ServiceProvider.GetRequiredService<LifeDbContext>();
+    Check("Life AI rejects overlapping edits without partially creating activities",
+        conflictingResponse.StatusCode == HttpStatusCode.OK
+        && conflictingHtml.Contains("تداخل", StringComparison.Ordinal)
+        && !await conflictDb.Activities.AnyAsync(x => x.Title.EndsWith("AI")));
+    using var applyContent = new FormUrlEncodedContent(applyValues);
+    using var applyResponse = await aiClient.PostAsync("/Ai?handler=Apply", applyContent);
+    await using var aiScope = aiFactory.Services.CreateAsyncScope();
+    var aiDb = aiScope.ServiceProvider.GetRequiredService<LifeDbContext>();
+    var importedActivities = await aiDb.Activities.Where(x => x.Title.EndsWith("AI")).ToListAsync();
+    var importedSlots = await aiDb.SchedulePatterns.Where(x => importedActivities.Select(a => a.Id).Contains(x.ActivityId)).ToListAsync();
+    Check("Life AI applies only selected activities with edited weekday and time",
+        applyResponse.StatusCode == HttpStatusCode.Redirect && applyResponse.Headers.Location?.OriginalString == "/Week"
+        && importedActivities.Count == 1 && importedActivities[0].Title == "مطالعهٔ AI"
+        && importedSlots.Count == 1 && importedSlots[0].DayOfWeek == DayOfWeek.Monday
+        && importedSlots[0].StartMinute == 870 && importedSlots[0].DurationMinutes == 90);
+    using var repeatedContent = new FormUrlEncodedContent(applyValues);
+    using var repeatedResponse = await aiClient.PostAsync("/Ai?handler=Apply", repeatedContent);
+    var repeatedHtml = WebUtility.HtmlDecode(await repeatedResponse.Content.ReadAsStringAsync());
+    Check("Life AI repeated confirmation does not duplicate activities or schedule",
+        repeatedResponse.StatusCode == HttpStatusCode.OK
+        && repeatedHtml.Contains("از قبل وجود دارد", StringComparison.Ordinal)
+        && await aiDb.Activities.CountAsync(x => x.Title == "مطالعهٔ AI") == 1
+        && await aiDb.SchedulePatterns.CountAsync(x => x.ActivityId == importedActivities[0].Id) == 1);
+}
 
 await using (var federatedFactory = new AuthenticatedLifeApplicationFactory())
 using (var federatedClient = federatedFactory.CreateClient(new WebApplicationFactoryClientOptions

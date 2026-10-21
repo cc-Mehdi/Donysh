@@ -39,6 +39,7 @@
                 <a class="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Index" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Index" ? "page" : null)" asp-page="/Index"><span aria-hidden="true">⌂</span>امروز</a>
                 <a class="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Activities" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Activities" ? "page" : null)" asp-page="/Activities"><span aria-hidden="true">◎</span>فعالیت‌ها</a>
                 <a class="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Week" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Week" ? "page" : null)" asp-page="/Week"><span aria-hidden="true">▦</span>برنامهٔ هفته</a>
+                <a class="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Ai" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Ai" ? "page" : null)" asp-page="/Ai"><span aria-hidden="true">✦</span>دستیار هوشمند</a>
                 <a class="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Progress" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Progress" ? "page" : null)" asp-page="/Progress"><span aria-hidden="true">↗</span>پیشرفت</a>
             </nav>
             <div class="sidebar-footer">
@@ -87,6 +88,7 @@
                 <a class="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Index" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Index" ? "page" : null)" asp-page="/Index"><span aria-hidden="true">⌂</span><small>امروز</small></a>
                 <a class="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Activities" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Activities" ? "page" : null)" asp-page="/Activities"><span aria-hidden="true">◎</span><small>فعالیت‌ها</small></a>
                 <a class="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Week" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Week" ? "page" : null)" asp-page="/Week"><span aria-hidden="true">▦</span><small>هفته</small></a>
+                <a class="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Ai" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Ai" ? "page" : null)" asp-page="/Ai"><span aria-hidden="true">✦</span><small>دستیار</small></a>
                 <a class="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Progress" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Progress" ? "page" : null)" asp-page="/Progress"><span aria-hidden="true">↗</span><small>پیشرفت</small></a>
                 <form method="post" asp-page="/Account/Logout" class="mobile-logout-form" data-native-submit data-logout-form>
                     <button type="submit" aria-label="خروج از حساب"><span aria-hidden="true">⇥</span><small>خروج</small></button>
