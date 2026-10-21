@@ -78,6 +78,11 @@ assert_status() {
   fi
 }
 
+read_header_value() {
+  local header="$1"
+  sed -n "s/^${header}:[[:space:]]*//Ip" "$headers_file" | tail -n 1 | tr -d '\r'
+}
+
 assert_health "Landing health" "https://${domain}/health" "ok"
 assert_health "Finance health" "https://${finance_domain}/health" "ok"
 assert_health "Auth readiness" "https://${auth_domain}/health/ready" "ready"
@@ -108,6 +113,25 @@ assert_status "200"
 assert_header "cache-control" ".*no-cache.*must-revalidate"
 echo "PASS Landing unversioned stylesheet revalidation"
 
+: >"$headers_file"
+curl "${curl_args[@]}" -D "$headers_file" -o /dev/null "https://${finance_domain}/"
+assert_status "30[1278]"
+assert_header "location" "/Account/Login"
+finance_login_path="$(read_header_value location)"
+
+: >"$headers_file"
+curl "${curl_args[@]}" -D "$headers_file" -o /dev/null \
+  "https://${finance_domain}${finance_login_path}"
+assert_status "30[1278]"
+assert_header "location" "https://${auth_domain}/connect/authorize"
+finance_authorize_url="$(read_header_value location)"
+
+: >"$headers_file"
+curl "${curl_args[@]}" -D "$headers_file" -o /dev/null "$finance_authorize_url"
+assert_status "30[1278]"
+assert_header "location" "/Account/Login"
+echo "PASS Finance anonymous login reaches the central login exactly once"
+
 curl "${curl_args[@]}" -D "$headers_file" -o /dev/null "https://${life_domain}/"
 assert_status "30[1278]"
 assert_header "location" "https://${auth_domain}/connect/authorize"
@@ -129,6 +153,16 @@ assert_status "200"
 assert_header "cache-control" ".*public.*max-age=604800"
 assert_header "content-encoding" "gzip"
 echo "PASS Life static asset cache and compression"
+
+for product_domain in "$finance_domain" "$life_domain"; do
+  session_sync="$(curl "${curl_args[@]}" "https://${product_domain}/js/session-sync.js")"
+  if ! grep -Fq 'logoutRecoveryDelay = 5000' <<<"$session_sync" \
+      || ! grep -Fq 'event.persisted' <<<"$session_sync"; then
+    echo "${product_domain} does not serve the recoverable logout session sync."
+    exit 1
+  fi
+done
+echo "PASS Finance and Life serve recoverable logout session synchronization"
 
 if [[ "${RELEASE_CHECK_SKIP_DOCKER:-0}" != "1" ]]; then
   command -v docker >/dev/null 2>&1 || { echo "Required command not found: docker"; exit 1; }

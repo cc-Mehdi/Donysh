@@ -9,6 +9,8 @@
     let checking = false;
     let redirected = false;
     let logoutInProgress = false;
+    let logoutRecoveryTimer = null;
+    const logoutRecoveryDelay = 5000;
 
     const checkSession = async () => {
         if (checking || redirected || logoutInProgress || document.visibilityState === "hidden") return;
@@ -36,12 +38,22 @@
             // Keep the initiating navigation alive until the central and peer
             // product logout endpoints have both completed.
             logoutInProgress = true;
+            if (logoutRecoveryTimer !== null) window.clearTimeout(logoutRecoveryTimer);
+            logoutRecoveryTimer = window.setTimeout(() => {
+                logoutRecoveryTimer = null;
+                logoutInProgress = false;
+                void checkSession();
+            }, logoutRecoveryDelay);
         }, { once: true });
     });
     document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "visible") void checkSession();
     });
     window.addEventListener("focus", checkSession);
-    window.addEventListener("pageshow", checkSession);
+    window.addEventListener("pageshow", event => {
+        // Recover when the original page returns from the back/forward cache.
+        if (event.persisted) logoutInProgress = false;
+        void checkSession();
+    });
     window.setInterval(checkSession, 15000);
 })();

@@ -9,6 +9,8 @@
     let checking = false;
     let redirected = false;
     let logoutInProgress = false;
+    let logoutRecoveryTimer = null;
+    const logoutRecoveryDelay = 5000;
 
     const checkSession = async () => {
         if (checking || redirected || logoutInProgress || document.visibilityState === "hidden") return;
@@ -38,12 +40,23 @@
             // soon as Finance clears its cookie; redirecting at that moment
             // would abort the peer-product logout request.
             logoutInProgress = true;
+            if (logoutRecoveryTimer !== null) window.clearTimeout(logoutRecoveryTimer);
+            logoutRecoveryTimer = window.setTimeout(() => {
+                logoutRecoveryTimer = null;
+                logoutInProgress = false;
+                void checkSession();
+            }, logoutRecoveryDelay);
         }, { once: true });
     });
     document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "visible") void checkSession();
     });
     window.addEventListener("focus", checkSession);
-    window.addEventListener("pageshow", checkSession);
+    window.addEventListener("pageshow", event => {
+        // A failed navigation or a back/forward-cache restore must not leave
+        // session checks disabled forever after the logout form was submitted.
+        if (event.persisted) logoutInProgress = false;
+        void checkSession();
+    });
     window.setInterval(checkSession, 15000);
 })();

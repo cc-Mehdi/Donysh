@@ -110,6 +110,9 @@ jobs:
         working-directory: Donysh.Life
         run: npm run build:css
 
+      - name: Test cross-product session synchronization
+        run: node --test scripts/session-sync.test.mjs
+
       - name: Verify committed frontend assets are current
         run: |
           git diff --exit-code -- \
