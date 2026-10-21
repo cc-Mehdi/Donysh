@@ -18,6 +18,7 @@
 - Keep correlation and nonce cookies secure, HTTP-only, and compatible with the selected response mode.
 - Do not weaken CSP, PKCE, issuer, nonce, state, email-verification, or redirect validation to work around an authentication failure.
 - Cross-product logout proofs are short-lived, audience-scoped, and signed with `CrossAppLogout:Secret`.
+- Preserve the logout chain, all three CSP `form-action` origins, and both desktop and mobile Life sign-out controls described in `docs/platform/AUTH-LOGOUT.md`.
 
 ## Development workflow
 
