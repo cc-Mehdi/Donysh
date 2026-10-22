@@ -176,6 +176,12 @@ using (var response = await client.GetAsync("/Account/Login"))
         && html.Contains("name=\"Input.Password\"", StringComparison.Ordinal)
         && html.Contains("name=\"Input.RememberMe\"", StringComparison.Ordinal)
         && !html.Contains("id=\"loginForm\"", StringComparison.Ordinal));
+    Check("Login copy is natural Persian without the old greeting",
+        html.Contains("به دُنیش وارد شوید", StringComparison.Ordinal)
+        && html.Contains("ایمیل و رمز عبور خود را وارد کنید.", StringComparison.Ordinal)
+        && html.Contains("در این دستگاه وارد بمانم", StringComparison.Ordinal)
+        && html.Contains("یک حساب برای دو بخش", StringComparison.Ordinal)
+        && !html.Contains("برگشتی", StringComparison.Ordinal));
     Check("Login page preloads its Persian fonts",
         html.Contains("rel=\"preload\" href=\"/fonts/YekanBakh-Regular.woff2\"", StringComparison.Ordinal)
         && html.Contains("rel=\"preload\" href=\"/fonts/YekanBakh-Bold.woff2\"", StringComparison.Ordinal));

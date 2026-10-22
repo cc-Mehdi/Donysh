@@ -158,7 +158,7 @@
     .story-top { position:relative; z-index:2; display:flex; align-items:center; justify-content:space-between; gap:1rem; font-size:.72rem; color:#c6cae8; }
     .story-status { display:inline-flex; align-items:center; gap:.6rem; white-space:nowrap; }
     .story-status i { width:.5rem; height:.5rem; border-radius:50%; background:#31dfbd; box-shadow:0 0 0 .3rem #31dfbd20; }
-    .story-index { color:#aeb6d7; font-family:Arial,sans-serif; font-size:.68rem; letter-spacing:.1em; white-space:nowrap; }
+    .story-index { color:#aeb6d7; font-size:.68rem; white-space:nowrap; }
     .auth-login-page .story-copy { margin-top:4.75rem; }
     .auth-login-page .auth-story .eyebrow { display:inline-flex; align-items:center; padding:.5rem .9rem; border:1px solid #cfc7ff30; border-radius:99px; background:#aea1ff18; color:#d4ceff; font-size:.72rem; }
     .auth-login-page .story-copy h2 { margin:1.15rem 0 .75rem; font-size:clamp(2rem,3.2vw,3rem); line-height:1.5; font-weight:900; letter-spacing:-.035em; }
