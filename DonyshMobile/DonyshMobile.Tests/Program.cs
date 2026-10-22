@@ -216,14 +216,15 @@ try
         "Resalat preset parses a new withdrawal SMS");
     Assert(SmsTemplatePresets.All.Count >= 3, "Provide multiple bank presets");
 
-    Assert(await store.CaptureAsync("+989121234567", "پیام قدیمی", DateTimeOffset.UtcNow.AddDays(-8)), "Accept receiver timestamp");
+    var oldWithdrawal = "حساب5555555555\nبرداشت40,000,000\nمانده111,111,111\n05/06/15-12:14";
+    Assert(await store.CaptureAsync("+989121234567", oldWithdrawal, DateTimeOffset.UtcNow.AddDays(-8)), "Accept receiver timestamp");
     var retained = await store.GetMessagesAsync(summary.Id);
-    Assert(retained.Count == 1 && retained[0].Body == "پیام آزمایشی", "Prune messages older than seven days");
+    Assert(retained.Count == 0, "Hide legacy messages that do not match the configured template");
     var offlineBatch = await store.TakePendingBatchAsync(DateTimeOffset.UtcNow.AddMinutes(2));
-    Assert(offlineBatch.Count == 1 && offlineBatch[0].Body == "پیام قدیمی", "Keep unsent SMS while offline");
+    Assert(offlineBatch.Count == 1 && offlineBatch[0].Body == oldWithdrawal, "Keep matching unsent SMS while offline");
     await store.RecordSyncFailureAsync(offlineBatch, DateTimeOffset.UtcNow.AddMinutes(2), "offline");
     var syncSummary = await store.GetSyncSummaryAsync();
-    Assert(syncSummary.Pending == 1 && syncSummary.Sent == 1 && syncSummary.NextAttemptAtUtc > DateTimeOffset.UtcNow,
+    Assert(syncSummary.Pending == 1 && syncSummary.Sent == 0 && syncSummary.NextAttemptAtUtc > DateTimeOffset.UtcNow,
         "Back off without losing queued SMS");
     Assert(MobileApiClient.NormalizeServer("https://donysh.ir/path") == "https://donysh.ir", "Normalize API origin");
     Assert(MobileApiClient.NormalizeServer("http://donysh.ir") is null, "Require HTTPS API");

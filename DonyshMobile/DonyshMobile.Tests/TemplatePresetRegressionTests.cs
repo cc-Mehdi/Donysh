@@ -4,6 +4,7 @@ internal static class TemplatePresetRegressionTests
 {
     public static async Task RunAsync(string directory)
     {
+        await MatchingMessagesOnlyAsync(Path.Combine(directory, "matching-only"));
         var senderId = Guid.NewGuid();
         foreach (var preset in SmsTemplatePresets.All)
         {
@@ -78,6 +79,36 @@ internal static class TemplatePresetRegressionTests
         correct.Pattern = "بدون بخش مبلغ";
         Check(await store.SaveTemplateAsync(correct) is not null, "Reject invalid template changes before queue mutation");
         Console.WriteLine("Template autofill and safe rejected-message retry checks passed.");
+    }
+
+    private static async Task MatchingMessagesOnlyAsync(string directory)
+    {
+        var key = Enumerable.Range(1, 32).Select(x => (byte)x).ToArray();
+        var store = new SmsMonitorStore(directory, _ => Task.FromResult(key.ToArray()));
+        Check(await store.AddSenderAsync("Bank-Test") == AddSenderResult.Added, "Add monitored bank");
+        var senderId = (await store.GetSenderSummariesAsync()).Single().Id;
+        var now = DateTimeOffset.UtcNow;
+        const string withdrawal = "حساب123456\nبرداشت750,000\nمانده9,000,000\n05/07/24-18:31";
+        const string deposit = "حساب123456\nواریز750,000\nمانده9,000,000\n05/07/24-18:31";
+        const string otp = "رمز دوم شما 123456 است";
+        Check(await store.CaptureAsync("Bank-Test", deposit, now.AddSeconds(-3)), "Capture a legacy message before setup");
+        var legacyId = (await store.GetMessagesAsync(senderId)).Single().Id;
+        var preset = SmsTemplatePresets.All.Single(x => x.Id == "mellat-withdrawal");
+        var template = SmsTemplatePresets.Build(preset, Guid.NewGuid(), senderId, null, withdrawal).Template!;
+        Check(await store.SaveTemplateAsync(template) is null, "Save withdrawal template");
+        Check(!await store.CaptureAsync("Bank-Test", deposit, now.AddSeconds(-2)), "Ignore deposit without a matching template");
+        Check(!await store.CaptureAsync("Bank-Test", otp, now.AddSeconds(-1)), "Ignore second password");
+        Check(await store.CaptureAsync("Bank-Test", withdrawal, now), "Capture matching withdrawal");
+        Check((await store.GetMessagesAsync(senderId)).Single().Body == withdrawal, "Show only matching messages");
+        Check((await store.GetUntitledMessagesAsync()).Single().Body == withdrawal, "Request a title only for matching messages");
+        Check(!await store.SetTitleAsync(legacyId, "واریز"), "Do not title a legacy nonmatching message");
+        Check((await store.GetSenderSummariesAsync()).Single().MessageCount == 1, "Count only matching messages");
+        var batch = await store.TakePendingBatchAsync(now.AddMinutes(1));
+        Check(batch.Count == 1 && batch.Single().Body == withdrawal, "Send only matching messages");
+        Check((await store.FindUnstoredCandidatesAsync([
+            new SmsCaptureCandidate("Bank-Test", deposit, now.AddMinutes(2), true),
+            new SmsCaptureCandidate("Bank-Test", otp, now.AddMinutes(3), true)
+        ])).Count == 0, "Do not offer deposits or passwords for inbox recovery");
     }
 
     private static void Check(bool condition, string description)

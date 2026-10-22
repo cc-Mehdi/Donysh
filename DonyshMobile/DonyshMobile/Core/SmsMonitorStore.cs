@@ -98,7 +98,8 @@ public sealed class SmsMonitorStore
                 .Select(sender =>
                 {
                     var messages = state.Messages.Where(x => x.SenderId == sender.Id
-                        && x.ReceivedAtUtc >= DateTimeOffset.UtcNow.Subtract(Retention)).ToList();
+                        && x.ReceivedAtUtc >= DateTimeOffset.UtcNow.Subtract(Retention)
+                        && MatchesConfiguredTemplate(state, x.SenderId, x.Body)).ToList();
                     return new SenderSummary(
                         sender.Id,
                         sender.Address,
@@ -194,7 +195,8 @@ public sealed class SmsMonitorStore
             }
 
             return state.Messages
-                .Where(x => x.SenderId == senderId && x.ReceivedAtUtc >= DateTimeOffset.UtcNow.Subtract(Retention))
+                .Where(x => x.SenderId == senderId && x.ReceivedAtUtc >= DateTimeOffset.UtcNow.Subtract(Retention)
+                    && MatchesConfiguredTemplate(state, x.SenderId, x.Body))
                 .OrderByDescending(x => x.ReceivedAtUtc)
                 .ToList();
         }
@@ -211,7 +213,8 @@ public sealed class SmsMonitorStore
         {
             var state = await LoadUnsafeAsync(cancellationToken);
             return state.Messages
-                .Where(x => x.DeliveryStatus == SmsDeliveryStatus.Pending && string.IsNullOrWhiteSpace(x.Title))
+                .Where(x => x.DeliveryStatus == SmsDeliveryStatus.Pending && string.IsNullOrWhiteSpace(x.Title)
+                    && MatchesConfiguredTemplate(state, x.SenderId, x.Body))
                 .OrderBy(x => x.ReceivedAtUtc)
                 .ToList();
         }
@@ -226,7 +229,8 @@ public sealed class SmsMonitorStore
         try
         {
             var state = await LoadUnsafeAsync(cancellationToken);
-            var message = state.Messages.SingleOrDefault(x => x.Id == messageId && x.DeliveryStatus == SmsDeliveryStatus.Pending);
+            var message = state.Messages.SingleOrDefault(x => x.Id == messageId && x.DeliveryStatus == SmsDeliveryStatus.Pending
+                && MatchesConfiguredTemplate(state, x.SenderId, x.Body));
             if (message is null) return false;
             var changed = !string.Equals(message.Title?.Trim(), title, StringComparison.OrdinalIgnoreCase);
             message.Title = title;
@@ -306,7 +310,8 @@ public sealed class SmsMonitorStore
             if (!state.Senders.Any(x => x.Id == senderId)) return 0;
             var changed = 0;
             foreach (var message in state.Messages.Where(x => x.SenderId == senderId && ids.Contains(x.Id)
-                         && x.DeliveryStatus is SmsDeliveryStatus.Pending or SmsDeliveryStatus.Rejected or SmsDeliveryStatus.Excluded))
+                         && x.DeliveryStatus is SmsDeliveryStatus.Pending or SmsDeliveryStatus.Rejected or SmsDeliveryStatus.Excluded
+                         && MatchesConfiguredTemplate(state, x.SenderId, x.Body)))
             {
                 if (message.DeliveryStatus == SmsDeliveryStatus.Pending && message.LastDeliveryError is null
                     && message.ConfirmedAtUtc is null) continue;
@@ -360,9 +365,12 @@ public sealed class SmsMonitorStore
         {
             var state = await LoadUnsafeAsync(cancellationToken);
             return new SmsSyncSummary(
-                state.Messages.Count(x => x.DeliveryStatus == SmsDeliveryStatus.Pending),
-                state.Messages.Count(x => x.DeliveryStatus == SmsDeliveryStatus.Sent),
-                state.Messages.Count(x => x.DeliveryStatus == SmsDeliveryStatus.Rejected),
+                state.Messages.Count(x => x.DeliveryStatus == SmsDeliveryStatus.Pending
+                    && MatchesConfiguredTemplate(state, x.SenderId, x.Body)),
+                state.Messages.Count(x => x.DeliveryStatus == SmsDeliveryStatus.Sent
+                    && MatchesConfiguredTemplate(state, x.SenderId, x.Body)),
+                state.Messages.Count(x => x.DeliveryStatus == SmsDeliveryStatus.Rejected
+                    && MatchesConfiguredTemplate(state, x.SenderId, x.Body)),
                 state.NextSyncAtUtc,
                 state.SyncStatus);
         }
@@ -400,7 +408,8 @@ public sealed class SmsMonitorStore
             var senders = state.Senders.ToDictionary(x => x.Id);
             return state.Messages
                 .Where(x => x.DeliveryStatus == SmsDeliveryStatus.Pending && senders.ContainsKey(x.SenderId)
-                    && (!requireTitle || !string.IsNullOrWhiteSpace(x.Title)))
+                    && (!requireTitle || !string.IsNullOrWhiteSpace(x.Title))
+                    && MatchesConfiguredTemplate(state, x.SenderId, x.Body))
                 .OrderBy(x => x.ReceivedAtUtc)
                 .Take(batchSize)
                 .Select(x =>
@@ -596,7 +605,8 @@ public sealed class SmsMonitorStore
                 var body = capture.Body?.Trim() ?? string.Empty;
                 var normalized = SenderAddress.Normalize(address);
                 if (normalized.Length == 0 || address.Length is 0 or > MaxAddressLength || address.Any(char.IsControl)
-                    || body.Length is 0 or > MaxBodyLength || !senders.TryGetValue(normalized, out var sender)) continue;
+                    || body.Length is 0 or > MaxBodyLength || !senders.TryGetValue(normalized, out var sender)
+                    || !MatchesConfiguredTemplate(state, sender.Id, body)) continue;
 
                 var receivedAtUtc = capture.ReceivedAtUtc.ToUniversalTime();
                 var key = CreateKey(address, body, receivedAtUtc);
@@ -670,7 +680,8 @@ public sealed class SmsMonitorStore
                 var address = capture.SenderAddress?.Trim() ?? string.Empty;
                 var body = capture.Body?.Trim() ?? string.Empty;
                 var normalized = SenderAddress.Normalize(address);
-                if (!senders.TryGetValue(normalized, out var sender) || body.Length is 0 or > MaxBodyLength) continue;
+                if (!senders.TryGetValue(normalized, out var sender) || body.Length is 0 or > MaxBodyLength
+                    || !MatchesConfiguredTemplate(state, sender.Id, body)) continue;
 
                 var receivedAtUtc = capture.ReceivedAtUtc.ToUniversalTime();
                 var key = CreateKey(address, body, receivedAtUtc);
@@ -777,6 +788,12 @@ public sealed class SmsMonitorStore
     }
 
     private static string CreateDeliveryKey() => Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+
+    private static bool MatchesConfiguredTemplate(SmsMonitorState state, Guid senderId, string body)
+    {
+        var templates = state.Templates.Where(x => x.SenderId == senderId).ToArray();
+        return templates.Length == 0 || templates.Any(x => SmsTemplateParser.TryParse(x, body) is not null);
+    }
 
     private static void TrackTitleUsage(SmsMonitorState state, Guid senderId, string title)
     {
