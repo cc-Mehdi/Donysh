@@ -156,6 +156,8 @@ using (var response = await client.GetAsync("/Account/Login"))
     Check("Login uses the mother Donysh wordmark instead of the Finance logo",
         html.Contains("/images/donysh-wordmark.png", StringComparison.Ordinal)
         && !html.Contains("donysh-finance-logo.png", StringComparison.Ordinal));
+    Check("Login versions the mother wordmark for browser caches",
+        html.Contains("/images/donysh-wordmark.png?v=", StringComparison.Ordinal));
     Check("Password field has an accessible visibility control",
         html.Contains("data-password-toggle", StringComparison.Ordinal)
         && html.Contains("aria-label=\"نمایش رمز عبور\"", StringComparison.Ordinal)

@@ -52,6 +52,9 @@ using (var response = await client.GetAsync("/"))
     Check("Landing separates the approved Finance logo from the mother wordmark",
         html.Contains("/landing-assets/images/donysh-mark.png", StringComparison.Ordinal)
         && html.Contains("/landing-assets/images/donysh-wordmark.png", StringComparison.Ordinal));
+    Check("Landing versions both brand images for browser caches",
+        html.Contains("/landing-assets/images/donysh-mark.png?v=", StringComparison.Ordinal)
+        && html.Contains("/landing-assets/images/donysh-wordmark.png?v=", StringComparison.Ordinal));
     Check("Landing cache-busts its stylesheet",
         html.Contains("href=\"/landing-assets/css/app.css?v=", StringComparison.Ordinal));
     Check("Landing security headers block scripts and framing",
