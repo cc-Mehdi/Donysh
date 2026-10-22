@@ -2,96 +2,92 @@
 @model Donysh.Auth.Pages.Account.LoginModel
 @{
     ViewData["Title"] = "ورود";
+    ViewData["BodyClass"] = "auth-login-page";
 }
 <div class="auth-frame">
-    <section class="auth-story" aria-labelledby="story-title">
-        <partial name="_Brand" />
+    <aside class="auth-story" aria-labelledby="story-title">
+        <div class="story-top"><span class="story-status"><i aria-hidden="true"></i> اکوسیستم یکپارچهٔ دُنیش</span><span class="story-index" dir="ltr">ONE ACCOUNT / 01</span></div>
         <div class="story-copy">
-            <span class="eyebrow">یک حساب، همهٔ ابزارهای دُنیش</span>
-            <h1 id="story-title">ورود ساده و امن به اکوسیستم دُنیش</h1>
-            <p>این سرویس، پایهٔ ورود یکپارچهٔ محصولات دُنیش است. اطلاعات هر محصول همچنان در فضای مستقل خودش باقی می‌ماند.</p>
+            <span class="eyebrow">همه‌چیز از یک نقطه شروع می‌شود</span>
+            <h2 id="story-title">زندگی را <strong>روشن‌تر</strong><br />مدیریت کن.</h2>
+            <p>یک حساب برای ابزارهای دُنیش؛ از مدیریت مالی تا برنامه‌ریزی روزهای بهتر. هر محصول فضای مستقل خودش را دارد.</p>
         </div>
-        <ul class="trust-list" aria-label="ویژگی‌های امنیتی">
-            <li><span>✓</span> نشست مستقل و محافظت‌شده</li>
-            <li><span>✓</span> ارتباط رمزگذاری‌شده در محیط عملیاتی</li>
-            <li><span>✓</span> دسترسی فقط با تأیید خود شما</li>
-        </ul>
-    </section>
+        <div class="story-art" aria-hidden="true">
+            <span class="art-orbit art-orbit-one"></span><span class="art-orbit art-orbit-two"></span>
+            <span class="art-center"><img src="~/images/donysh-icon.png" asp-append-version="true" alt="" width="140" height="140" /></span>
+            <span class="art-card art-card-finance"><b>↗</b><span><strong>دُنیش مالی</strong><small>پول، واضح‌تر</small></span></span>
+            <span class="art-card art-card-life"><b>✓</b><span><strong>دُنیش زندگی</strong><small>زمان، منظم‌تر</small></span></span>
+        </div>
+        <p class="story-footer">هر بخش از زندگی، در جای خودش.</p>
+    </aside>
 
     <section class="auth-panel" aria-labelledby="login-title">
-        <div class="mobile-brand"><partial name="_Brand" /></div>
-        @if (!Model.MigrationCompleted)
-        {
-            <div class="phase-notice" role="status">
-                <span aria-hidden="true">◉</span>
-                <p><strong>نسخهٔ زیرساختی</strong> حساب‌های فعلی بخش مالی هنوز به این صفحه منتقل نشده‌اند.</p>
-            </div>
-        }
-        <header class="panel-header">
-            <div class="panel-heading-row">
-                <span class="panel-heading-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3 5 6v5c0 4.6 2.9 8.1 7 10 4.1-1.9 7-5.4 7-10V6l-7-3Z"/><path d="m9.5 12 1.6 1.6 3.7-4"/></svg>
-                </span>
-                <span><p class="eyebrow">حساب مرکزی دُنیش</p><span class="secure-label">ارتباط امن</span></span>
-            </div>
-            <h2 id="login-title">خوش آمدید</h2>
-            <p>برای ادامه، اطلاعات حساب دُنیش خود را وارد کنید.</p>
-        </header>
-
-        <form method="post" asp-page="/Account/Login" class="auth-form">
-            <input type="hidden" asp-for="ReturnUrl" />
-            <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
-            <div class="field">
-                <label asp-for="Input.Email"></label>
-                <input asp-for="Input.Email" autocomplete="email" inputmode="email" dir="ltr" autofocus />
-                <span asp-validation-for="Input.Email"></span>
-            </div>
-            <div class="field">
-                <div class="field-heading">
-                    <label asp-for="Input.Password"></label>
-                    @if (Model.PasswordRecoveryAvailable)
-                    {
-                        <a asp-page="/Account/ForgotPassword">رمز عبور را فراموش کرده‌اید؟</a>
-                    }
-                </div>
-                <div class="password-field" dir="ltr">
-                    <input asp-for="Input.Password" class="password-input" autocomplete="current-password" dir="ltr" />
-                    <button type="button" class="password-toggle" data-password-toggle
-                            aria-controls="Input_Password" aria-label="نمایش رمز عبور" aria-pressed="false">
-                        <svg data-eye-open aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                            <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
-                            <circle cx="12" cy="12" r="2.75" />
-                        </svg>
-                        <svg data-eye-closed aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" hidden>
-                            <path d="m3 3 18 18M10.6 6.1A9.9 9.9 0 0 1 12 6c6 0 9.5 6 9.5 6a15.7 15.7 0 0 1-2.2 2.8M6.2 6.2C3.8 7.8 2.5 12 2.5 12s3.5 6 9.5 6a9.8 9.8 0 0 0 3.1-.5M9.9 9.9a3 3 0 0 0 4.2 4.2" />
-                        </svg>
-                    </button>
-                </div>
-                <span asp-validation-for="Input.Password"></span>
-            </div>
-            <label class="check-row">
-                <input asp-for="Input.RememberMe" />
-                <span>ورود من را روی این دستگاه حفظ کن</span>
-            </label>
-            <button class="primary-button" type="submit"><span>ورود امن</span><span aria-hidden="true">←</span></button>
-        </form>
-
-        <div class="product-path" aria-label="محصول‌های متصل به حساب دُنیش">
-            <span><i class="product-dot finance-dot" aria-hidden="true"></i>دُنیش مالی</span>
-            <span><i class="product-dot life-dot" aria-hidden="true"></i>دُنیش زندگی</span>
+        <div class="login-topbar">
+            <partial name="_Brand" />
+            <span class="login-trust"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 3 5 6v5c0 4.6 2.9 8.1 7 10 4.1-1.9 7-5.4 7-10V6l-7-3Z"/><path d="m9.5 12 1.6 1.6 3.7-4"/></svg> حساب مرکزی دُنیش</span>
         </div>
+        <div class="login-content">
+            @if (!Model.MigrationCompleted)
+            {
+                <div class="phase-notice" role="status">
+                    <span aria-hidden="true">◉</span>
+                    <p><strong>نسخهٔ زیرساختی</strong> حساب‌های فعلی بخش مالی هنوز به این صفحه منتقل نشده‌اند.</p>
+                </div>
+            }
+            <header class="panel-header">
+                <span class="login-step"><i aria-hidden="true"></i> ورود به فضای شخصی</span>
+                <h1 id="login-title">خوش برگشتی <span aria-hidden="true">✦</span></h1>
+                <p>برای ادامه، وارد حساب دُنیش خودت شو.</p>
+            </header>
 
-        @if (Model.RegistrationAvailable)
-        {
-            <p class="panel-foot">حساب ندارید؟ <a asp-page="/Account/Register" asp-route-returnUrl="@Model.ReturnUrl">ساخت حساب مرکزی</a></p>
-        }
-        else
-        {
-            <p class="panel-foot muted">
-                @(Model.MigrationCompleted
+            <form method="post" asp-page="/Account/Login" class="auth-form">
+                <input type="hidden" asp-for="ReturnUrl" />
+                <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
+                <div class="field">
+                    <label asp-for="Input.Email">آدرس ایمیل</label>
+                    <div class="login-input-wrap" dir="ltr">
+                        <input asp-for="Input.Email" autocomplete="username" inputmode="email" dir="ltr" autofocus placeholder="you@example.com" />
+                        <svg class="login-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m4 7 8 6 8-6"/></svg>
+                    </div>
+                    <span asp-validation-for="Input.Email"></span>
+                </div>
+                <div class="field">
+                    <div class="field-heading">
+                        <label asp-for="Input.Password"></label>
+                        @if (Model.PasswordRecoveryAvailable)
+                        {
+                            <a asp-page="/Account/ForgotPassword">رمز عبور را فراموش کرده‌اید؟</a>
+                        }
+                    </div>
+                    <div class="password-field login-input-wrap" dir="ltr">
+                        <input asp-for="Input.Password" class="password-input" autocomplete="current-password" dir="ltr" placeholder="••••••••" />
+                        <svg class="login-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 5v2"/></svg>
+                        <button type="button" class="password-toggle" data-password-toggle
+                                aria-controls="Input_Password" aria-label="نمایش رمز عبور" aria-pressed="false">
+                            <svg data-eye-open aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.75" /></svg>
+                            <svg data-eye-closed aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" hidden><path d="m3 3 18 18M10.6 6.1A9.9 9.9 0 0 1 12 6c6 0 9.5 6 9.5 6a15.7 15.7 0 0 1-2.2 2.8M6.2 6.2C3.8 7.8 2.5 12 2.5 12s3.5 6 9.5 6a9.8 9.8 0 0 0 3.1-.5M9.9 9.9a3 3 0 0 0 4.2 4.2" /></svg>
+                        </button>
+                    </div>
+                    <span asp-validation-for="Input.Password"></span>
+                </div>
+                <label class="check-row">
+                    <input asp-for="Input.RememberMe" />
+                    <span>مرا روی این دستگاه به خاطر بسپار</span>
+                </label>
+                <button class="primary-button" type="submit"><span>ورود به حساب دُنیش</span><span aria-hidden="true">←</span></button>
+            </form>
+            <p class="login-security"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 3 5 6v5c0 4.6 2.9 8.1 7 10 4.1-1.9 7-5.4 7-10V6l-7-3Z"/><path d="m9.5 12 1.6 1.6 3.7-4"/></svg> ورود امن به حساب مرکزی دُنیش</p>
+            @if (Model.RegistrationAvailable)
+            {
+                <p class="panel-foot">حساب ندارید؟ <a asp-page="/Account/Register" asp-route-returnUrl="@Model.ReturnUrl">ساخت حساب مرکزی</a></p>
+            }
+            else
+            {
+                <p class="panel-foot muted">@(Model.MigrationCompleted
                     ? "ساخت حساب جدید در حال حاضر غیرفعال است."
-                    : "ساخت حساب جدید پس از آماده‌شدن انتقال کاربران فعال می‌شود.")
-            </p>
-        }
+                    : "ساخت حساب جدید پس از آماده‌شدن انتقال کاربران فعال می‌شود.")</p>
+            }
+        </div>
+        <footer class="login-footer"><span>© @DateTime.UtcNow.Year دُنیش</span><a href="https://donysh.ir/">بازگشت به وب‌سایت اصلی ←</a></footer>
     </section>
 </div>

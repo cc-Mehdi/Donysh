@@ -166,9 +166,16 @@ using (var response = await client.GetAsync("/Account/Login"))
         && html.Contains("aria-label=\"نمایش رمز عبور\"", StringComparison.Ordinal)
         && html.Contains("/js/password-toggle.js", StringComparison.Ordinal));
     Check("Login page explains its secure product handoff",
-        html.Contains("ارتباط امن", StringComparison.Ordinal)
+        html.Contains("ورود امن به حساب مرکزی", StringComparison.Ordinal)
         && html.Contains("دُنیش مالی", StringComparison.Ordinal)
         && html.Contains("دُنیش زندگی", StringComparison.Ordinal));
+    Check("Login uses the parent brand and keeps the real sign-in form",
+        html.Contains("class=\"auth-body auth-login-page\"", StringComparison.Ordinal)
+        && html.Contains("/images/donysh-icon.png?v=", StringComparison.Ordinal)
+        && html.Contains("name=\"Input.Email\"", StringComparison.Ordinal)
+        && html.Contains("name=\"Input.Password\"", StringComparison.Ordinal)
+        && html.Contains("name=\"Input.RememberMe\"", StringComparison.Ordinal)
+        && !html.Contains("id=\"loginForm\"", StringComparison.Ordinal));
     Check("Login page preloads its Persian fonts",
         html.Contains("rel=\"preload\" href=\"/fonts/YekanBakh-Regular.woff2\"", StringComparison.Ordinal)
         && html.Contains("rel=\"preload\" href=\"/fonts/YekanBakh-Bold.woff2\"", StringComparison.Ordinal));
