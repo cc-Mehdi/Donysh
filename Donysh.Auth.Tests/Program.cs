@@ -290,7 +290,7 @@ using (var response = await client.GetAsync("/images/donysh-finance-logo.png"))
     Check("Approved Finance logo is served in Auth development and published builds",
         response.StatusCode == HttpStatusCode.OK
         && response.Content.Headers.ContentType?.MediaType == "image/png"
-        && hash == "16BDECFB1B54D93C288E7803382A963E96A150311EA6A49D667D67C12925ED9A");
+        && hash == "4599AAE7CC8BD382E2BC3F4591FA58F6EF3FA6B6FE075EE894C3FA9B5C556E85");
 }
 
 using (var response = await client.GetAsync("/css/app.css?v=test-version"))

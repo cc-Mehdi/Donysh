@@ -49,9 +49,9 @@ using (var response = await client.GetAsync("/"))
     Check("Landing exposes the fixed Android download URL",
         html.Contains("دانلود برنامهٔ اندروید", StringComparison.Ordinal)
         && html.Contains("href=\"/downloads/donysh-mobile.apk\"", StringComparison.Ordinal));
-    Check("Landing uses the approved Finance wallet logo",
+    Check("Landing separates the approved Finance logo from the mother wordmark",
         html.Contains("/landing-assets/images/donysh-mark.png", StringComparison.Ordinal)
-        && !html.Contains("donysh-wordmark.png", StringComparison.Ordinal));
+        && html.Contains("/landing-assets/images/donysh-wordmark.png", StringComparison.Ordinal));
     Check("Landing cache-busts its stylesheet",
         html.Contains("href=\"/landing-assets/css/app.css?v=", StringComparison.Ordinal));
     Check("Landing security headers block scripts and framing",
@@ -95,7 +95,15 @@ using (var response = await client.GetAsync("/landing-assets/images/donysh-mark.
     var hash = Convert.ToHexString(SHA256.HashData(await response.Content.ReadAsByteArrayAsync()));
     Check("Landing approved Finance brand asset is served", response.StatusCode == HttpStatusCode.OK
         && response.Content.Headers.ContentType?.MediaType == "image/png"
-        && hash == "16BDECFB1B54D93C288E7803382A963E96A150311EA6A49D667D67C12925ED9A");
+        && hash == "4599AAE7CC8BD382E2BC3F4591FA58F6EF3FA6B6FE075EE894C3FA9B5C556E85");
+}
+
+using (var response = await client.GetAsync("/landing-assets/images/donysh-wordmark.png"))
+{
+    var hash = Convert.ToHexString(SHA256.HashData(await response.Content.ReadAsByteArrayAsync()));
+    Check("Landing mother brand wordmark is served independently", response.StatusCode == HttpStatusCode.OK
+        && response.Content.Headers.ContentType?.MediaType == "image/png"
+        && hash == "38AEC9AA1984B2B03DFF58FEB25125C41D370D427D57EB6B25413404B8747B6F");
 }
 
 using (var response = await client.GetAsync("/landing-assets/images/donysh-life-logo.png"))

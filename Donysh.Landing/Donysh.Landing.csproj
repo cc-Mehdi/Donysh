@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Content Include="../HesabYar.Web/wwwroot/images/donysh-wordmark.png" Link="wwwroot/images/donysh-wordmark.png" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="../HesabYar.Web/wwwroot/images/donysh-mark.png" Link="wwwroot/images/donysh-mark.png" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="../HesabYar.Web/wwwroot/images/donysh-life-logo.png" Link="wwwroot/images/donysh-life-logo.png" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="../HesabYar.Web/wwwroot/fonts/YekanBakh-Regular.woff2" Link="wwwroot/fonts/YekanBakh-Regular.woff2" CopyToOutputDirectory="PreserveNewest" />

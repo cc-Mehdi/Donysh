@@ -7,9 +7,9 @@
         "/landing-assets/css/app.css",
         "/css/app.css",
         Context.Request.PathBase);
-    var markUrl = AssetUrls.Versioned(
-        "/landing-assets/images/donysh-mark.png",
-        "/images/donysh-mark.png",
+    var wordmarkUrl = AssetUrls.Versioned(
+        "/landing-assets/images/donysh-wordmark.png",
+        "/images/donysh-wordmark.png",
         Context.Request.PathBase);
     var products = ProductOptions.Value;
 }
@@ -22,7 +22,7 @@
     <meta name="theme-color" content="#070b18" media="(prefers-color-scheme: dark)" />
     <meta name="description" content="دُنیش، خانهٔ ابزارهای ساده و یکپارچه برای مدیریت پول، زمان و مسیر زندگی است." />
     <title>@ViewData["Title"]</title>
-    <link rel="icon" type="image/png" href="@markUrl" />
+    <link rel="icon" type="image/png" href="@wordmarkUrl" />
     <link rel="dns-prefetch" href="@products.FinanceUrl" />
     <link rel="preconnect" href="@products.FinanceUrl" />
     <link rel="dns-prefetch" href="@products.AuthUrl" />
