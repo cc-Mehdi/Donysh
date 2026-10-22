@@ -45,7 +45,7 @@ $env:DONYSH_ANDROID_KEY_PASSWORD = [System.Net.NetworkCredential]::new('', $keyP
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-MobileApk.ps1
 ```
 
-اسکریپت APK امضاشده را در یک پوشهٔ تازه می‌سازد، فایل همان ساخت را با `scp` منتقل می‌کند، روی سرور منتشر می‌کند و هش دانلود عمومی را بررسی می‌کند. در پایان باید عبارت `Published and verified: https://donysh.ir/downloads/donysh-mobile.apk` را ببینید. از APK قدیمی پوشهٔ `publish` به‌صورت دستی استفاده نکنید.
+اسکریپت ابتدا خروجی Release قبلی را پاک می‌کند تا تغییرات تصویر و آیکن در APK بمانند؛ سپس APK امضاشده را در یک پوشهٔ تازه می‌سازد، فایل همان ساخت را با `scp` منتقل می‌کند، روی سرور منتشر می‌کند و هش دانلود عمومی را بررسی می‌کند. در پایان باید عبارت `Published and verified: https://donysh.ir/downloads/donysh-mobile.apk` را ببینید. از APK قدیمی پوشهٔ `publish` به‌صورت دستی استفاده نکنید.
 
 اگر آپلود `scp` به ۱۰۰٪ رسید ولی اتصال SSH در مرحلهٔ انتشار قطع شد، کل انتشار را از ابتدا اجرا نکنید. هش SHA-256 چاپ‌شده توسط همان اجرا را به دستور زیر بدهید تا فایل آپلودشده بدون ساخت و انتقال دوباره منتشر شود:
 

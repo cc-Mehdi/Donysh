@@ -32,6 +32,8 @@ foreach ($name in @('DONYSH_ANDROID_KEYSTORE', 'DONYSH_ANDROID_KEY_ALIAS',
 # A fresh, unique output directory prevents an older *-Signed.apk from being selected.
 $buildDir = Join-Path ([IO.Path]::GetTempPath()) ("donysh-mobile-release-" + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $buildDir | Out-Null
+dotnet clean $projectFile -c Release -f net9.0-android -v quiet
+if ($LASTEXITCODE -ne 0) { throw 'Android Release clean failed.' }
 dotnet publish $projectFile -c Release -f net9.0-android -p:PublishProfile=WebsiteApk --output $buildDir
 if ($LASTEXITCODE -ne 0) { throw 'Signed Android publish failed.' }
 $signed = @(Get-ChildItem -LiteralPath $buildDir -Filter '*-Signed.apk' -File -Recurse)

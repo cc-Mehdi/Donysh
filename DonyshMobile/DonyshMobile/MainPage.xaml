@@ -7,7 +7,7 @@
              Title="دُنیش" Shell.NavBarIsVisible="False">
     <Grid x:Name="PageContent" Padding="18,12" RowDefinitions="Auto,*" RowSpacing="14">
         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
-            <Image Source="donysh_logo.svg" WidthRequest="42" HeightRequest="42" SemanticProperties.Description="نشان دُنیش" />
+            <Image Source="donysh_logo.png" WidthRequest="42" HeightRequest="42" SemanticProperties.Description="نشان دُنیش" />
             <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="1">
                 <Label Text="دُنیش همراه" FontSize="21" FontFamily="YekanBakhBold" />
                 <Label Text="همراهِ خرج‌های روزانه" Style="{StaticResource Caption}" />

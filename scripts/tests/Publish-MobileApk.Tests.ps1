@@ -6,6 +6,7 @@ $global:sshCalls = 0
 $global:sshArguments = @()
 
 function dotnet {
+    if ($args[0] -eq 'clean') { $global:LASTEXITCODE = 0; return }
     $outputIndex = [Array]::IndexOf($args, '--output')
     if ($outputIndex -lt 0) { throw 'The publish output directory was not supplied.' }
     $global:buildDir = $args[$outputIndex + 1]

@@ -6,7 +6,7 @@
     xmlns:local="clr-namespace:DonyshMobile"
     FlowDirection="RightToLeft"
     Shell.NavBarHasShadow="False"
-    Title="Donysh Mobile">
+    Title="دُنیش همراه">
 
     <ShellContent
         Title="پیامک‌ها"
