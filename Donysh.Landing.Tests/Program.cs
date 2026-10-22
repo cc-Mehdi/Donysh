@@ -49,12 +49,18 @@ using (var response = await client.GetAsync("/"))
     Check("Landing exposes the fixed Android download URL",
         html.Contains("دانلود برنامهٔ اندروید", StringComparison.Ordinal)
         && html.Contains("href=\"/downloads/donysh-mobile.apk\"", StringComparison.Ordinal));
-    Check("Landing separates the approved Finance logo from the mother wordmark",
+    Check("Landing separates the Finance logo from the parent brand",
         html.Contains("/landing-assets/images/donysh-mark.png", StringComparison.Ordinal)
-        && html.Contains("/landing-assets/images/donysh-wordmark.png", StringComparison.Ordinal));
-    Check("Landing versions both brand images for browser caches",
+        && html.Contains("/landing-assets/brand/donysh-horizontal.png", StringComparison.Ordinal)
+        && html.Contains("/landing-assets/brand/donysh-icon.png", StringComparison.Ordinal)
+        && html.Contains("/landing-assets/images/donysh-life-logo.png", StringComparison.Ordinal));
+    Check("Landing versions its parent and product images for browser caches",
         html.Contains("/landing-assets/images/donysh-mark.png?v=", StringComparison.Ordinal)
-        && html.Contains("/landing-assets/images/donysh-wordmark.png?v=", StringComparison.Ordinal));
+        && html.Contains("/landing-assets/brand/donysh-horizontal.png?v=", StringComparison.Ordinal)
+        && html.Contains("/landing-assets/brand/donysh-icon.png?v=", StringComparison.Ordinal));
+    Check("Landing shares the parent social image and favicon",
+        html.Contains("rel=\"icon\" type=\"image/png\" href=\"/landing-assets/brand/donysh-icon.png?v=", StringComparison.Ordinal)
+        && html.Contains("property=\"og:image\" content=\"https://donysh.test/landing-assets/brand/donysh-social.png?v=", StringComparison.Ordinal));
     Check("Landing cache-busts its stylesheet",
         html.Contains("href=\"/landing-assets/css/app.css?v=", StringComparison.Ordinal));
     Check("Landing security headers block scripts and framing",
@@ -101,12 +107,28 @@ using (var response = await client.GetAsync("/landing-assets/images/donysh-mark.
         && hash == "4599AAE7CC8BD382E2BC3F4591FA58F6EF3FA6B6FE075EE894C3FA9B5C556E85");
 }
 
-using (var response = await client.GetAsync("/landing-assets/images/donysh-wordmark.png"))
+using (var response = await client.GetAsync("/landing-assets/brand/donysh-horizontal.png"))
 {
     var hash = Convert.ToHexString(SHA256.HashData(await response.Content.ReadAsByteArrayAsync()));
-    Check("Landing mother brand wordmark is served independently", response.StatusCode == HttpStatusCode.OK
+    Check("Landing parent wordmark is served independently", response.StatusCode == HttpStatusCode.OK
         && response.Content.Headers.ContentType?.MediaType == "image/png"
-        && hash == "38AEC9AA1984B2B03DFF58FEB25125C41D370D427D57EB6B25413404B8747B6F");
+        && hash == "15739A26AAF905442B389675562EB986125118A144890769789DFBE8E0D660E4");
+}
+
+using (var response = await client.GetAsync("/landing-assets/brand/donysh-icon.png"))
+{
+    var hash = Convert.ToHexString(SHA256.HashData(await response.Content.ReadAsByteArrayAsync()));
+    Check("Landing parent icon is served", response.StatusCode == HttpStatusCode.OK
+        && response.Content.Headers.ContentType?.MediaType == "image/png"
+        && hash == "4E5C4DA87419E3F608366E07B232FEBEF498F61977A6EDBD90B94C17175276A1");
+}
+
+using (var response = await client.GetAsync("/landing-assets/brand/donysh-social.png"))
+{
+    var hash = Convert.ToHexString(SHA256.HashData(await response.Content.ReadAsByteArrayAsync()));
+    Check("Landing parent social image is served", response.StatusCode == HttpStatusCode.OK
+        && response.Content.Headers.ContentType?.MediaType == "image/png"
+        && hash == "04248BFC18F014C0AA26697570457D594AE7C18E552F25DD415A88C65563CF98");
 }
 
 using (var response = await client.GetAsync("/landing-assets/images/donysh-life-logo.png"))

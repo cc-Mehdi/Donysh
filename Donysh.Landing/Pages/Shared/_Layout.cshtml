@@ -7,9 +7,13 @@
         "/landing-assets/css/app.css",
         "/css/app.css",
         Context.Request.PathBase);
-    var wordmarkUrl = AssetUrls.Versioned(
-        "/landing-assets/images/donysh-wordmark.png",
-        "/images/donysh-wordmark.png",
+    var iconUrl = AssetUrls.Versioned(
+        "/landing-assets/brand/donysh-icon.png",
+        "/brand/donysh-icon.png",
+        Context.Request.PathBase);
+    var socialUrl = AssetUrls.Versioned(
+        "/landing-assets/brand/donysh-social.png",
+        "/brand/donysh-social.png",
         Context.Request.PathBase);
     var products = ProductOptions.Value;
 }
@@ -22,7 +26,12 @@
     <meta name="theme-color" content="#070b18" media="(prefers-color-scheme: dark)" />
     <meta name="description" content="دُنیش، خانهٔ ابزارهای ساده و یکپارچه برای مدیریت پول، زمان و مسیر زندگی است." />
     <title>@ViewData["Title"]</title>
-    <link rel="icon" type="image/png" href="@wordmarkUrl" />
+    <link rel="icon" type="image/png" href="@iconUrl" />
+    <link rel="apple-touch-icon" href="@iconUrl" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="@(Context.Request.Scheme)://@(Context.Request.Host)@socialUrl" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="@(Context.Request.Scheme)://@(Context.Request.Host)@socialUrl" />
     <link rel="dns-prefetch" href="@products.FinanceUrl" />
     <link rel="preconnect" href="@products.FinanceUrl" />
     <link rel="dns-prefetch" href="@products.AuthUrl" />

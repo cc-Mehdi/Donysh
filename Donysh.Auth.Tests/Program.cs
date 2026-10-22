@@ -158,6 +158,9 @@ using (var response = await client.GetAsync("/Account/Login"))
         && !html.Contains("donysh-finance-logo.png", StringComparison.Ordinal));
     Check("Login versions the mother wordmark for browser caches",
         html.Contains("/images/donysh-wordmark.png?v=", StringComparison.Ordinal));
+    Check("Login uses the parent icon for browser and home screen shortcuts",
+        html.Contains("rel=\"icon\" type=\"image/png\" href=\"/images/donysh-icon.png?v=", StringComparison.Ordinal)
+        && html.Contains("rel=\"apple-touch-icon\" href=\"/images/donysh-icon.png?v=", StringComparison.Ordinal));
     Check("Password field has an accessible visibility control",
         html.Contains("data-password-toggle", StringComparison.Ordinal)
         && html.Contains("aria-label=\"نمایش رمز عبور\"", StringComparison.Ordinal)
@@ -295,7 +298,16 @@ using (var response = await client.GetAsync("/images/donysh-wordmark.png"))
     Check("Mother wordmark is served in Auth development and published builds",
         response.StatusCode == HttpStatusCode.OK
         && response.Content.Headers.ContentType?.MediaType == "image/png"
-        && hash == "38AEC9AA1984B2B03DFF58FEB25125C41D370D427D57EB6B25413404B8747B6F");
+        && hash == "15739A26AAF905442B389675562EB986125118A144890769789DFBE8E0D660E4");
+}
+
+using (var response = await client.GetAsync("/images/donysh-icon.png"))
+{
+    var hash = Convert.ToHexString(SHA256.HashData(await response.Content.ReadAsByteArrayAsync()));
+    Check("Parent icon is served in Auth development and published builds",
+        response.StatusCode == HttpStatusCode.OK
+        && response.Content.Headers.ContentType?.MediaType == "image/png"
+        && hash == "4E5C4DA87419E3F608366E07B232FEBEF498F61977A6EDBD90B94C17175276A1");
 }
 
 using (var response = await client.GetAsync("/css/app.css?v=test-version"))

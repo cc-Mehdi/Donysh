@@ -1,9 +1,14 @@
 @page
+@inject Donysh.Landing.Infrastructure.LandingAssetUrlBuilder AssetUrls
 @{
     ViewData["Title"] = "خطا | دُنیش";
+    var wordmarkUrl = AssetUrls.Versioned(
+        "/landing-assets/brand/donysh-horizontal.png",
+        "/brand/donysh-horizontal.png",
+        HttpContext.Request.PathBase);
 }
 <main class="error-page" id="main-content">
-    <img class="error-wordmark" src="/landing-assets/images/donysh-wordmark.png" alt="دُنیش" width="160" height="52" />
+    <img class="error-wordmark" src="@wordmarkUrl" alt="دُنیش" width="160" height="90" />
     <h1>این صفحه فعلاً در دسترس نیست.</h1>
     <p>چند لحظه دیگر دوباره تلاش کن یا به صفحهٔ اصلی برگرد.</p>
     <a class="button button-primary" href="/">بازگشت به صفحهٔ اصلی</a>
