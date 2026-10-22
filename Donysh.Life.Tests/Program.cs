@@ -268,6 +268,7 @@ using (var authenticatedClient = authenticatedFactory.CreateClient(new WebApplic
     }
 
     var calendarActivityId = Guid.NewGuid();
+    var otherCalendarActivityId = Guid.NewGuid();
     await using (var seedScope = authenticatedFactory.Services.CreateAsyncScope())
     {
         var db = seedScope.ServiceProvider.GetRequiredService<LifeDbContext>();
@@ -279,6 +280,18 @@ using (var authenticatedClient = authenticatedFactory.CreateClient(new WebApplic
             Title = "برنامهٔ نمونهٔ بلند",
             NormalizedTitle = "برنامه نمونه بلند",
             ColorHex = "#0D9488",
+            IconKey = "book",
+            IsActive = true,
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now
+        });
+        db.Activities.Add(new Donysh.Life.Domain.LifeActivity
+        {
+            Id = otherCalendarActivityId,
+            UserSubject = "life-test-user",
+            Title = "مطالعهٔ آبی",
+            NormalizedTitle = "مطالعه آبی",
+            ColorHex = "#2563EB",
             IconKey = "book",
             IsActive = true,
             CreatedAtUtc = now,
@@ -297,6 +310,18 @@ using (var authenticatedClient = authenticatedFactory.CreateClient(new WebApplic
             CreatedAtUtc = now,
             UpdatedAtUtc = now
         });
+        db.SchedulePatterns.Add(new Donysh.Life.Domain.RecurringSchedulePattern
+        {
+            Id = Guid.NewGuid(),
+            UserSubject = "life-test-user",
+            ActivityId = otherCalendarActivityId,
+            DayOfWeek = DayOfWeek.Wednesday,
+            StartMinute = 630,
+            DurationMinutes = 60,
+            IsActive = true,
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now
+        });
         await db.SaveChangesAsync();
     }
 
@@ -310,6 +335,8 @@ using (var authenticatedClient = authenticatedFactory.CreateClient(new WebApplic
             && calendarWeekHtml.Contains("08:30 تا 10:00", StringComparison.Ordinal)
             && calendarWeekHtml.Contains("schedule-resize-handle", StringComparison.Ordinal)
             && calendarWeekHtml.Contains("data-duration=\"90\"", StringComparison.Ordinal)
+            && calendarWeekHtml.Contains("calendar-event activity-teal", StringComparison.Ordinal)
+            && calendarWeekHtml.Contains("calendar-event activity-blue", StringComparison.Ordinal)
             && !calendarWeekHtml.Contains("style=", StringComparison.OrdinalIgnoreCase));
     }
 
