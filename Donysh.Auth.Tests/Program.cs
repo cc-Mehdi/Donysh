@@ -1,4 +1,5 @@
 using System.Net;
+using System.Security.Cryptography;
 using System.Text.Json;
 using Donysh.Auth.Domain;
 using Donysh.Auth.Pages;
@@ -283,11 +284,13 @@ using (var response = await client.GetAsync("/Account/SignedOut"))
         && html.Contains("https://donysh.ir/", StringComparison.Ordinal));
 }
 
-using (var response = await client.GetAsync("/images/logo-mark.svg"))
+using (var response = await client.GetAsync("/images/donysh-finance-logo.png"))
 {
-    Check("Auth brand mark is served in development and published builds",
+    var hash = Convert.ToHexString(SHA256.HashData(await response.Content.ReadAsByteArrayAsync()));
+    Check("Approved Finance logo is served in Auth development and published builds",
         response.StatusCode == HttpStatusCode.OK
-        && response.Content.Headers.ContentType?.MediaType == "image/svg+xml");
+        && response.Content.Headers.ContentType?.MediaType == "image/png"
+        && hash == "16BDECFB1B54D93C288E7803382A963E96A150311EA6A49D667D67C12925ED9A");
 }
 
 using (var response = await client.GetAsync("/css/app.css?v=test-version"))

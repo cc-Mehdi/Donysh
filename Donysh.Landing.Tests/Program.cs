@@ -1,4 +1,5 @@
 using System.Net;
+using System.Security.Cryptography;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -48,6 +49,9 @@ using (var response = await client.GetAsync("/"))
     Check("Landing exposes the fixed Android download URL",
         html.Contains("دانلود برنامهٔ اندروید", StringComparison.Ordinal)
         && html.Contains("href=\"/downloads/donysh-mobile.apk\"", StringComparison.Ordinal));
+    Check("Landing uses the approved Finance wallet logo",
+        html.Contains("/landing-assets/images/donysh-mark.png", StringComparison.Ordinal)
+        && !html.Contains("donysh-wordmark.png", StringComparison.Ordinal));
     Check("Landing cache-busts its stylesheet",
         html.Contains("href=\"/landing-assets/css/app.css?v=", StringComparison.Ordinal));
     Check("Landing security headers block scripts and framing",
@@ -86,10 +90,12 @@ using (var response = await client.GetAsync("/landing-assets/css/app.css?v=test-
             extension.Name.Equals("immutable", StringComparison.OrdinalIgnoreCase)) == true);
 }
 
-using (var response = await client.GetAsync("/landing-assets/images/donysh-wordmark.png"))
+using (var response = await client.GetAsync("/landing-assets/images/donysh-mark.png"))
 {
-    Check("Landing brand asset is served", response.StatusCode == HttpStatusCode.OK
-        && response.Content.Headers.ContentType?.MediaType == "image/png");
+    var hash = Convert.ToHexString(SHA256.HashData(await response.Content.ReadAsByteArrayAsync()));
+    Check("Landing approved Finance brand asset is served", response.StatusCode == HttpStatusCode.OK
+        && response.Content.Headers.ContentType?.MediaType == "image/png"
+        && hash == "16BDECFB1B54D93C288E7803382A963E96A150311EA6A49D667D67C12925ED9A");
 }
 
 using (var response = await client.GetAsync("/landing-assets/images/donysh-life-logo.png"))

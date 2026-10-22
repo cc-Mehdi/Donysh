@@ -2,10 +2,10 @@
     var compact = ViewData["BrandCompact"] as bool? ?? false;
     var light = ViewData["BrandLight"] as bool? ?? false;
 }
-<span class="donysh-brand @(light ? "donysh-brand-light" : "")">
-    <img src="~/images/donysh-mark.png" alt="Donysh" class="donysh-brand-mark" />
+<span class="donysh-brand @(light ? "donysh-brand-light" : "")" aria-label="دُنیش مالی">
+    <img src="~/images/donysh-mark.png" alt="" class="donysh-brand-mark" />
     @if (!compact)
     {
-        <img src="~/images/donysh-wordmark.png" alt="Donysh" class="donysh-brand-wordmark" />
+        <span class="donysh-brand-name">دُنیش مالی</span>
     }
 </span>

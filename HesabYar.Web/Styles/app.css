@@ -571,11 +571,12 @@
     object-fit: contain;
 }
 
-.donysh-brand-wordmark {
-    width: auto;
-    height: 2rem;
-    max-width: 8rem;
-    object-fit: contain;
+.donysh-brand-name {
+    color: #172554;
+    font-size: 1.05rem;
+    font-weight: 900;
+    line-height: 1;
+    white-space: nowrap;
 }
 
 .donysh-error-mark {
