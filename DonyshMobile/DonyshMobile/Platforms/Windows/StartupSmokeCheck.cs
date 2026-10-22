@@ -152,7 +152,7 @@ internal static class StartupSmokeCheck
         var store = CreateStore();
         const string address = "+989123456789";
         Check(await store.AddSenderAsync(address) == AddSenderResult.Added, "Isolated sender registered");
-        var sender = (await store.GetSenderSummariesAsync()).Single();
+        var sender = (await store.GetSenderSummariesAsync()).Single(item => item.Address == address);
         var preset = SmsTemplatePresets.All[0];
         var built = SmsKeyValueTemplateBuilder.Build(Guid.NewGuid(), sender.Id, "قالب آزمایشی", preset.SampleMessage, preset.Fields);
         Check(built.Template is not null && await store.SaveTemplateAsync(built.Template) is null,
@@ -162,11 +162,16 @@ internal static class StartupSmokeCheck
         // Appearance checks change only this test process; no saved preference is modified.
         var application = MauiApplication.Current!;
         var previousTheme = application.UserAppTheme;
+        var ambientBackground = (home.Content as Grid)?.Children.OfType<DonyshBackgroundView>().SingleOrDefault();
+        Check(ambientBackground is { InputTransparent: true }, "Decorative background stays behind page content and does not intercept input");
+        var violetGlow = ambientBackground?.FindByName<BoxView>("VioletGlow");
+        var tealGlow = ambientBackground?.FindByName<BoxView>("TealGlow");
         try
         {
-            foreach (var (theme, middleColor) in new[]
+            foreach (var (theme, middleColor, violetOpacity, tealOpacity) in new[]
             {
-                (AppTheme.Light, "#F5F7FB"), (AppTheme.Dark, "#09111F")
+                (AppTheme.Light, "#F5F7FB", 0.07, 0.07),
+                (AppTheme.Dark, "#09111F", 0.11, 0.10)
             })
             {
                 application.UserAppTheme = theme;
@@ -175,6 +180,12 @@ internal static class StartupSmokeCheck
                     && gradient.GradientStops[1].Color.Equals(Color.FromArgb(middleColor)),
                     $"The {theme} brand background was not applied. Actual: {home.Background}");
                 Check(true, $"{theme} brand gradient preserves the page theme");
+                await WaitUntilAsync(() => violetGlow?.Background is RadialGradientBrush
+                    && tealGlow?.Background is RadialGradientBrush
+                    && Math.Abs(violetGlow.Opacity - violetOpacity) < 0.001
+                    && Math.Abs(tealGlow.Opacity - tealOpacity) < 0.001,
+                    $"The {theme} ambient brand colors were not applied.");
+                Check(true, $"{theme} subtle brand background remains visible below page content");
             }
         }
         finally { application.UserAppTheme = previousTheme; }

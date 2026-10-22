@@ -62,6 +62,7 @@ public class DonyshPage : ContentPage
         Content = null;
         _loadingView = new DonyshLoadingView();
         _loadingRoot = new Grid();
+        _loadingRoot.Children.Add(new DonyshBackgroundView());
         _loadingRoot.Children.Add(pageContent);
         _loadingRoot.Children.Add(_loadingView);
         Content = _loadingRoot;

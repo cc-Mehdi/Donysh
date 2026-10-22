@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="DonyshMobile.UI.DonyshBackgroundView"
+             InputTransparent="True"
+             AutomationProperties.IsInAccessibleTree="False">
+    <Grid InputTransparent="True">
+        <BoxView x:Name="VioletGlow" InputTransparent="True" Opacity="{AppThemeBinding Light=0.07, Dark=0.11}">
+            <BoxView.Background>
+                <RadialGradientBrush Center="0.88,0.08" Radius="0.72">
+                    <GradientStop Offset="0" Color="#6654E8" />
+                    <GradientStop Offset="1" Color="Transparent" />
+                </RadialGradientBrush>
+            </BoxView.Background>
+        </BoxView>
+        <BoxView x:Name="TealGlow" InputTransparent="True" Opacity="{AppThemeBinding Light=0.07, Dark=0.10}">
+            <BoxView.Background>
+                <RadialGradientBrush Center="0.10,0.90" Radius="0.78">
+                    <GradientStop Offset="0" Color="#0A9B91" />
+                    <GradientStop Offset="1" Color="Transparent" />
+                </RadialGradientBrush>
+            </BoxView.Background>
+        </BoxView>
+    </Grid>
+</ContentView>

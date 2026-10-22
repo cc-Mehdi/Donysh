@@ -332,7 +332,7 @@ using (var authenticatedClient = authenticatedFactory.CreateClient(new WebApplic
             calendarWeekResponse.StatusCode == HttpStatusCode.OK
             && calendarWeekHtml.Contains("calendar-board week-view", StringComparison.Ordinal)
             && calendarWeekHtml.Contains("data-column-count=\"7\"", StringComparison.Ordinal)
-            && calendarWeekHtml.Contains("08:30 تا 10:00", StringComparison.Ordinal)
+            && calendarWeekHtml.Contains("<span class=\"block-time\"><bdi dir=\"ltr\">08:30</bdi> تا <bdi dir=\"ltr\">10:00</bdi></span>", StringComparison.Ordinal)
             && calendarWeekHtml.Contains("schedule-resize-handle", StringComparison.Ordinal)
             && calendarWeekHtml.Contains("data-duration=\"90\"", StringComparison.Ordinal)
             && calendarWeekHtml.Contains("calendar-event activity-teal", StringComparison.Ordinal)
@@ -421,7 +421,7 @@ using (var authenticatedClient = authenticatedFactory.CreateClient(new WebApplic
         var editedDayHtml = await editedDayResponse.Content.ReadAsStringAsync();
         Check("Life edited schedule renders the new time in its centered dialog flow",
             editedDayResponse.StatusCode == HttpStatusCode.OK
-            && editedDayHtml.Contains("13:00 تا 14:30", StringComparison.Ordinal)
+            && editedDayHtml.Contains("<span class=\"block-time\"><bdi dir=\"ltr\">13:00</bdi> تا <bdi dir=\"ltr\">14:30</bdi></span>", StringComparison.Ordinal)
             && !editedDayHtml.Contains("DurationMinutes must be between", StringComparison.Ordinal)
             && !editedDayHtml.Contains("DisplayMode field is required", StringComparison.Ordinal));
     }
