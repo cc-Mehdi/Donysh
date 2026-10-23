@@ -106,3 +106,51 @@ test('budget dialog opens for validation errors and can be closed and reopened',
   assert.equal(result.reopened, true);
   assert.ok(contrast(result.title.color, result.option.background) >= 4.5);
 });
+
+test('savings goal modal and its Persian date picker stay usable in dark mode', { skip: !browser }, () => {
+  const script = pathToFileURL(fileURLToPath(new URL('../wwwroot/js/site.js', import.meta.url))).href;
+  const markup = `<!doctype html><html lang="fa" dir="rtl" data-finance-theme="dark">
+    <head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="${css}"></head>
+    <body><div class="finance-shell"><main><div class="finance-savings">
+      <button data-open-goal="savings-goal-dialog">هدف جدید</button>
+      <div class="savings-goal-card card is-inactive"><span class="bg-indigo-100 text-indigo-700" id="status">فعال</span></div>
+      <details class="bg-indigo-50" open><summary class="text-indigo-800" id="contribute">ثبت واریزی</summary></details>
+      <dialog id="savings-goal-dialog" class="savings-goal-dialog" data-goal-error="true">
+        <button data-close-goal>بستن</button><div style="height:500px"></div><label class="label">تاریخ هدف</label>
+        <input data-persian-date value="1405/08/02" aria-label="تاریخ هدف">
+      </dialog></div></main></div><script src="${script}"></script><output id="result"></output><script>
+      addEventListener('load', () => {
+        const dialog = document.querySelector('dialog');
+        const opened = dialog.open;
+        dialog.querySelector('.persian-datepicker-trigger').scrollIntoView();
+        dialog.querySelector('.persian-datepicker-trigger').click();
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          const picker = dialog.querySelector('.persian-datepicker-popover');
+          const pickerVisible = !picker.classList.contains('hidden');
+          const rect = picker.getBoundingClientRect();
+          const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+          const pickerClickable = !!hit?.closest('.persian-datepicker-popover');
+          const style = id => { const value = getComputedStyle(document.getElementById(id)); return { color: value.color, background: value.backgroundColor }; };
+          const status = style('status');
+          const contribute = style('contribute');
+          document.querySelector('[data-close-goal]').click();
+          const closed = !dialog.open;
+          document.querySelector('[data-open-goal]').click();
+          dialog.querySelector('.persian-datepicker-trigger').click();
+          document.querySelector('#result').textContent = JSON.stringify({ opened, closed, reopened: dialog.open,
+            pickerVisible, pickerInsideDialog: picker.parentElement === dialog,
+            pickerClickable, pickerReopened: !picker.classList.contains('hidden'), hit: hit?.outerHTML.slice(0, 180), viewport: [innerWidth, innerHeight], rect: rect.toJSON(), status, contribute });
+        }));
+      });
+    </script></body></html>`;
+  const result = render(markup);
+  assert.equal(result.opened, true);
+  assert.equal(result.closed, true);
+  assert.equal(result.reopened, true);
+  assert.equal(result.pickerVisible, true);
+  assert.equal(result.pickerInsideDialog, true);
+  assert.equal(result.pickerClickable, true, JSON.stringify({ hit: result.hit, viewport: result.viewport, rect: result.rect }));
+  assert.equal(result.pickerReopened, true);
+  assert.ok(contrast(result.status.color, result.status.background) >= 4.5);
+  assert.ok(contrast(result.contribute.color, result.contribute.background) >= 4.5);
+});

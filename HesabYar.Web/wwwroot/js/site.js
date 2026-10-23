@@ -232,7 +232,8 @@
         <button type="button" class="persian-datepicker-action" data-pdp-today>امروز</button>
         <button type="button" class="persian-datepicker-action persian-datepicker-clear" data-pdp-clear>پاک کردن</button>
       </div>`;
-        document.body.appendChild(popover);
+        // A picker opened from a native modal must stay inside its top layer.
+        (input.closest('dialog') ?? document.body).appendChild(popover);
 
         const monthSelect = popover.querySelector('[data-pdp-month]');
         const yearSelect = popover.querySelector('[data-pdp-year]');
@@ -318,14 +319,18 @@
             const viewportPadding = 8;
             const width = Math.min(320, window.innerWidth - viewportPadding * 2);
             popover.style.width = `${width}px`;
+            popover.style.maxHeight = `${window.innerHeight - viewportPadding * 2}px`;
+            popover.style.overflowY = 'auto';
             popover.style.left = `${Math.min(Math.max(viewportPadding, rect.left), window.innerWidth - width - viewportPadding)}px`;
 
             const height = popover.offsetHeight;
             const belowTop = rect.bottom + 8;
             const aboveTop = rect.top - height - 8;
-            const top = belowTop + height <= window.innerHeight - viewportPadding || aboveTop < viewportPadding
+            const top = belowTop + height <= window.innerHeight - viewportPadding
                 ? belowTop
-                : aboveTop;
+                : aboveTop >= viewportPadding
+                    ? aboveTop
+                    : Math.max(viewportPadding, window.innerHeight - height - viewportPadding);
             popover.style.top = `${Math.max(viewportPadding, top)}px`;
         };
 
@@ -503,6 +508,11 @@
         syncDuration();
     });
 
+    const dismissDialog = (dialog) => {
+        closeActiveDatePicker();
+        dialog.close();
+    };
+
     document.querySelectorAll('[data-open-obligation]').forEach((button) => {
         button.addEventListener('click', () => {
             const dialog = document.getElementById(button.dataset.openObligation);
@@ -511,10 +521,11 @@
     });
     document.querySelectorAll('.obligation-dialog').forEach((dialog) => {
         dialog.querySelectorAll('[data-close-obligation]').forEach((button) =>
-            button.addEventListener('click', () => dialog.close()));
+            button.addEventListener('click', () => dismissDialog(dialog)));
         dialog.addEventListener('click', (event) => {
-            if (event.target === dialog) dialog.close();
+            if (event.target === dialog) dismissDialog(dialog);
         });
+        dialog.addEventListener('close', closeActiveDatePicker);
         if (dialog.dataset.obligationError === 'true') dialog.showModal();
     });
 
@@ -526,11 +537,28 @@
     });
     document.querySelectorAll('.budget-dialog').forEach((dialog) => {
         dialog.querySelectorAll('[data-close-budget]').forEach((button) =>
-            button.addEventListener('click', () => dialog.close()));
+            button.addEventListener('click', () => dismissDialog(dialog)));
         dialog.addEventListener('click', (event) => {
-            if (event.target === dialog) dialog.close();
+            if (event.target === dialog) dismissDialog(dialog);
         });
+        dialog.addEventListener('close', closeActiveDatePicker);
         if (dialog.dataset.budgetError === 'true') dialog.showModal();
+    });
+
+    document.querySelectorAll('[data-open-goal]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const dialog = document.getElementById(button.dataset.openGoal);
+            if (dialog instanceof HTMLDialogElement && !dialog.open) dialog.showModal();
+        });
+    });
+    document.querySelectorAll('.savings-goal-dialog').forEach((dialog) => {
+        dialog.querySelectorAll('[data-close-goal]').forEach((button) =>
+            button.addEventListener('click', () => dismissDialog(dialog)));
+        dialog.addEventListener('click', (event) => {
+            if (event.target === dialog) dismissDialog(dialog);
+        });
+        dialog.addEventListener('close', closeActiveDatePicker);
+        if (dialog.dataset.goalError === 'true') dialog.showModal();
     });
 
     document.querySelectorAll('[data-payment-form]').forEach((form) => {

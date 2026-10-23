@@ -5,9 +5,13 @@
     var targetDateValue = FormValueHelper.RawOrPersianDate(ViewData, "NewGoal.TargetDate", Model.NewGoal.TargetDate);
     var contributionDateValue = PersianCalendarHelper.ToInput(DateOnly.FromDateTime(DateTime.Now));
 }
-<div class="mb-6">
-    <h2 class="text-2xl font-black">هدف‌های پس‌انداز</h2>
-    <p class="mt-1 text-sm text-slate-500">هدف کلی و میزان پس‌انداز ماهانه را تعیین کنید؛ اعضای فضای مشترک می‌توانند با هم مشارکت کنند.</p>
+<div class="finance-savings">
+<div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+    <div>
+        <h2 class="text-2xl font-black">هدف‌های پس‌انداز</h2>
+        <p class="mt-1 text-sm text-slate-500">هدف کلی و میزان پس‌انداز ماهانه را تعیین کنید؛ اعضای فضای مشترک می‌توانند با هم مشارکت کنند.</p>
+    </div>
+    <button type="button" class="btn-primary" data-open-goal="savings-goal-dialog" aria-haspopup="dialog"><svg class="lucide-icon" aria-hidden="true"><use href="/icons/lucide.svg#plus"></use></svg> هدف جدید</button>
 </div>
 
 <section class="card mb-6">
@@ -59,15 +63,16 @@
     }
 </section>
 
-<div class="grid gap-6 xl:grid-cols-[23rem_1fr]">
-    <section class="card h-fit">
-        <h3 class="card-title">هدف جدید</h3>
+<div>
+    <dialog id="savings-goal-dialog" class="savings-goal-dialog" aria-labelledby="savings-goal-title" data-goal-error="@(!ViewData.ModelState.IsValid ? "true" : null)">
+        <div class="savings-goal-dialog-heading"><h3 id="savings-goal-title" class="card-title">هدف جدید</h3><button type="button" class="savings-goal-dialog-close" data-close-goal aria-label="بستن پنجره">×</button></div>
+        <p class="muted mt-2">مبلغ نهایی و برنامهٔ ماهانه را برای هدف مشخص کنید.</p>
         <form method="post" asp-page-handler="Create" class="mt-5 space-y-4">
             <div asp-validation-summary="ModelOnly"></div>
 
             <div>
                 <label asp-for="NewGoal.Name" class="label">نام هدف</label>
-                <input asp-for="NewGoal.Name" class="input" placeholder="مثلاً صندوق اضطراری" />
+                <input asp-for="NewGoal.Name" class="input" placeholder="مثلاً صندوق اضطراری" autofocus />
                 <span asp-validation-for="NewGoal.Name" class="field-error"></span>
             </div>
 
@@ -107,9 +112,9 @@
                 <span asp-validation-for="NewGoal.TargetDate" class="field-error"></span>
             </div>
 
-            <button type="submit" class="btn-primary w-full">ساخت هدف</button>
+            <div class="flex gap-2"><button type="button" class="btn-secondary" data-close-goal>انصراف</button><button type="submit" class="btn-primary flex-1">ساخت هدف</button></div>
         </form>
-    </section>
+    </dialog>
 
     <section>
         @if (Model.Goals.Count == 0)
@@ -129,7 +134,7 @@
                     var monthlyWidth = Math.Min(card.MonthlyPercent, 100);
                     var isInactive = card.Goal.IsCompleted || card.Goal.IsCancelled;
 
-                    <article class="card @(isInactive ? "opacity-60" : "")">
+                    <article class="card savings-goal-card @(isInactive ? "is-inactive" : "")">
                         <div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
                             <div class="min-w-0">
                                 <div class="flex flex-wrap items-center gap-2">
@@ -299,4 +304,5 @@
             </div>
         }
     </section>
+</div>
 </div>

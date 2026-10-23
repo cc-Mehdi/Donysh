@@ -1213,3 +1213,42 @@ html[data-finance-theme="dark"] .report-bar-track { background:#273d63; }
 @media (max-width:580px) { .finance-reports { gap:13px; }.report-hero { border-radius:16px; padding:20px; }.report-filter { width:100%; }.report-filter > div { flex:1; }.report-filter :is(input,select) { width:100%; }.report-filter button { width:100%; }.report-tabs { width:100%; display:grid; grid-template-columns:repeat(2,1fr); text-align:center; }.report-tabs a { padding:8px; }.report-metrics { gap:9px; }.report-metric { min-height:125px; padding:13px; }.report-metric strong { font-size:19px; }.report-metric-icon { width:34px; height:34px; left:12px; top:12px; }.report-metric-icon .lucide-icon { width:18px; height:18px; }.report-metric > span:not(.report-metric-icon) { padding-inline-start:30px; font-size:11px; }.report-panel { padding:15px; }.report-category-content { flex-direction:column; }.report-category-list { width:100%; max-width:none; }.report-obligation-summary-body { flex-wrap:wrap; justify-content:center; }.report-obligation-totals { flex-basis:100%; }.report-obligation-all > div { grid-template-columns:1fr 1fr; }.report-member-bar { grid-template-columns:29px 70px minmax(60px,1fr) 40px; gap:5px; }.report-section-title { align-items:start; flex-direction:column; } }
 @container (max-width:1050px) { .report-primary-grid { grid-template-columns:1fr; }.report-category-content { justify-content:flex-start; }.report-members-grid { grid-template-columns:1fr; } }
 @container (max-width:780px) { .report-hero { align-items:start; flex-direction:column; }.report-toolbar { align-items:start; flex-direction:column; }.report-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); }.report-obligation-grid { grid-template-columns:1fr; }.report-obligation-grid > :last-child { grid-column:auto; } }
+
+/* Savings: keep the goal list prominent and make the editor a focused dialog. */
+.finance-savings .savings-goal-card { border-color:#dfe5f0; }
+.finance-savings .savings-goal-card.is-inactive { border-style:dashed; background:#f8fafc; }
+.savings-goal-dialog { width:min(36rem,calc(100vw - 1.5rem)); max-height:min(90dvh,50rem); margin:auto; overflow-y:auto; border:1px solid #dbe3f0; border-radius:1.3rem; padding:1.4rem; background:#fff; color:#172640; box-shadow:0 28px 90px #0c173b42; }
+.savings-goal-dialog::backdrop { background:#101b34aa; backdrop-filter:blur(4px); }
+.savings-goal-dialog-heading { display:flex; align-items:center; justify-content:space-between; gap:1rem; border-bottom:1px solid #e8edf4; padding-bottom:.8rem; }
+.savings-goal-dialog-close { display:grid; place-items:center; flex:none; width:2.5rem; height:2.5rem; border:1px solid #dce4ef; border-radius:.7rem; background:#f7f9fc; color:#52637e; cursor:pointer; font-size:1.4rem; }
+.savings-goal-dialog-close:hover { background:#eef0ff; color:#4338ca; }
+html[data-finance-theme="dark"] .finance-savings .savings-goal-card { border-color:#3b5071; }
+html[data-finance-theme="dark"] .finance-savings .savings-goal-card.is-inactive { border-color:#596881; background:#1a2a43; }
+html[data-finance-theme="dark"] .finance-savings .bg-indigo-100 { background:#302f62; }
+html[data-finance-theme="dark"] .finance-savings :is(.text-indigo-800,.text-indigo-700) { color:#d6d0ff; }
+html[data-finance-theme="dark"] .finance-savings .bg-amber-100 { background:#493825; }
+html[data-finance-theme="dark"] .finance-savings .bg-rose-100 { background:#502c3a; }
+html[data-finance-theme="dark"] .finance-savings .bg-emerald-100 { background:#17463a; }
+html[data-finance-theme="dark"] .finance-savings .progress { background:#2b3e5c; }
+html[data-finance-theme="dark"] .finance-savings details.bg-indigo-50 { border-color:#5e5b94; background:#252a51; }
+html[data-finance-theme="dark"] .finance-savings details.bg-slate-50 { border-color:#405575; background:#1c2e49; }
+html[data-finance-theme="dark"] .finance-savings .savings-goal-dialog { border-color:#405575; background:#172740; color:#edf3ff; }
+html[data-finance-theme="dark"] .finance-savings .savings-goal-dialog-heading { border-color:#405575; }
+html[data-finance-theme="dark"] .finance-savings .savings-goal-dialog :is(.card-title,.label) { color:#edf3ff; }
+html[data-finance-theme="dark"] .finance-savings .savings-goal-dialog .muted { color:#b7c7df; }
+html[data-finance-theme="dark"] .finance-savings .savings-goal-dialog .input { border-color:#506483; background:#102137; color:#edf3ff; color-scheme:dark; }
+html[data-finance-theme="dark"] .finance-savings .savings-goal-dialog-close { border-color:#405575; background:#243952; color:#edf3ff; }
+html[data-finance-theme="dark"] .finance-savings .savings-goal-dialog-close:hover { background:#324d69; }
+html[data-finance-theme="dark"] .finance-savings :is(.field-error,.validation-summary-errors) { color:#ffafbf; }
+html[data-finance-theme="dark"] .finance-savings .validation-summary-errors { border-color:#86505d; background:#422b39; }
+html[data-finance-theme="dark"] .finance-savings .persian-datepicker-popover { border-color:#49607f; background:#172740; color:#edf3ff; }
+html[data-finance-theme="dark"] .finance-savings .persian-datepicker-select { border-color:#506483; background:#102137; color:#edf3ff; color-scheme:dark; }
+html[data-finance-theme="dark"] .finance-savings .persian-datepicker-nav,html[data-finance-theme="dark"] .finance-savings .persian-datepicker-day { color:#e3ebfb; }
+html[data-finance-theme="dark"] .finance-savings :is(.persian-datepicker-nav:hover,.persian-datepicker-day:hover) { background:#2b4262; color:#fff; }
+html[data-finance-theme="dark"] .finance-savings .persian-datepicker-weekdays span { color:#aebfda; }
+html[data-finance-theme="dark"] .finance-savings .persian-datepicker-day:nth-child(7n) { color:#ffb4c4; }
+html[data-finance-theme="dark"] .finance-savings :is(.persian-datepicker-day-selected,.persian-datepicker-day-selected:hover,.persian-datepicker-day-selected:nth-child(7n)) { background:#5644e8; color:#fff; }
+html[data-finance-theme="dark"] .finance-savings .persian-datepicker-footer { border-color:#405575; }
+html[data-finance-theme="dark"] .finance-savings .persian-datepicker-action { color:#cfc7ff; }
+html[data-finance-theme="dark"] .finance-savings .persian-datepicker-clear { color:#ffb4c4; }
+.finance-sidebar .product-switcher-life-logo { width:44px; height:44px; }
