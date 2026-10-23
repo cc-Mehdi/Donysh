@@ -10,39 +10,46 @@ namespace DonyshMobile;
 public partial class MainPage : DonyshPage
 {
     private static int _pendingTitlesRequested;
+    private static int _sendersRequested;
     public static void RequestPendingTitles() => Interlocked.Exchange(ref _pendingTitlesRequested, 1);
     public static bool ConsumePendingTitlesRequest() => Interlocked.Exchange(ref _pendingTitlesRequested, 0) == 1;
+    public static void RequestSenders() => Interlocked.Exchange(ref _sendersRequested, 1);
 #if DEBUG && WINDOWS
     private readonly SmsMonitorStore _store = WinUI.StartupSmokeCheck.CreateStore();
 #else
     private readonly SmsMonitorStore _store = new(FileSystem.AppDataDirectory);
 #endif
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
-    private readonly MobileApiClient _api = new();
     private readonly List<SenderItem> _allSenders = [];
-    private bool _subscribed, _hasPermission, _entered, _busy, _isRefreshing, _openingPage, _requestingPermission;
+    private bool _subscribed, _hasPermission, _entered, _busy, _openingPage, _requestingPermission;
     private bool _setupWizardChecked;
     private string _search = string.Empty;
     private int _nextStep = -1;
     private SetupStep _setupStep = SetupStep.Connection;
 
     public ObservableCollection<SenderItem> Senders { get; } = [];
-    public bool IsRefreshing { get => _isRefreshing; set { _isRefreshing = value; OnPropertyChanged(); } }
     public string PermissionStatusText { get; private set; } = "در حال بررسی…";
     public string PermissionButtonText { get; private set; } = "فعال‌سازی";
     public string SenderCount => UiText.Digits(_allSenders.Count);
     public string PendingCount { get; private set; } = "۰";
     public string SentCount { get; private set; } = "۰";
     public string ConnectionText { get; private set; } = "در حال بررسی اتصال";
-    public string WorkspaceText { get; private set; } = string.Empty;
     public bool HasConnection { get; private set; }
+    public bool HasNoConnection => !HasConnection;
     public string NextStepText { get; private set; } = "فرستنده‌های بانکی خود را انتخاب کنید.";
     public string NextStepAction { get; private set; } = "شروع کنیم";
-    public string UntitledText { get; private set; } = string.Empty;
     public bool HasUntitled { get; private set; }
+    public string PrimaryTaskTitle { get; private set; } = string.Empty;
+    public bool IsReady => !HasNextStep && !HasReview;
+    public bool HasReview { get; private set; }
+    public string ReviewText { get; private set; } = string.Empty;
     public bool HasNextStep => _nextStep >= 0;
     public bool NeedsPermissionAttention => DeviceInfo.Platform == DevicePlatform.Android && !_hasPermission;
     public bool ShowSenderSearch => _allSenders.Count >= 5;
+    public bool HasFeaturedSender { get; private set; }
+    public bool HasNoSenders => !HasFeaturedSender;
+    public string FeaturedSenderAddress { get; private set; } = string.Empty;
+    public string FeaturedSenderDetails { get; private set; } = string.Empty;
 
     public MainPage()
     {
@@ -67,7 +74,13 @@ public partial class MainPage : DonyshPage
 
     private async Task ActivateAsync()
     {
-        try { await SmsConfigurationSync.TrySyncAsync(_store); }
+        try
+        {
+#if DEBUG && WINDOWS
+            if (!WinUI.StartupSmokeCheck.IsEnabled)
+#endif
+                await SmsConfigurationSync.TrySyncAsync(_store);
+        }
         catch (Exception exception) { UiSafety.Log(exception); }
         if (!_subscribed)
         {
@@ -78,6 +91,7 @@ public partial class MainPage : DonyshPage
         await RefreshPermissionAsync();
         await RecoverRecentMessagesAsync();
         await RefreshAsync();
+        if (Interlocked.Exchange(ref _sendersRequested, 0) == 1) ShowSendersTab();
         SyncPlatform.Schedule();
         if (!_entered) { _entered = true; await UiMotion.EnterAsync(PageContent); }
         if (ConsumePendingTitlesRequest())
@@ -165,6 +179,7 @@ public partial class MainPage : DonyshPage
 
     private void OnToggleManualClicked(object? sender, EventArgs e)
     {
+        ShowSendersTab();
         ManualPanel.IsVisible = !ManualPanel.IsVisible;
         if (ManualPanel.IsVisible) SenderEntry.Focus();
     }
@@ -172,6 +187,7 @@ public partial class MainPage : DonyshPage
     private async void OnAddSenderMenuClicked(object? sender, EventArgs e)
     {
         if (_busy) return;
+        ShowSendersTab();
         var choice = await DonyshSelectionSheet.ShowAsync(this, "افزودن فرستنده",
         new DonyshSelectionOption[]
         {
@@ -293,8 +309,33 @@ public partial class MainPage : DonyshPage
 #endif
     });
     private async void OnPendingTitlesClicked(object? sender, EventArgs e) => await OpenPageAsync(() => new PendingTitlesPage(_store));
+    private async void OnAllMessagesClicked(object? sender, EventArgs e) =>
+        await OpenPageAsync(() => new AllMessagesPage(_store));
+    private async void OnReviewMessagesClicked(object? sender, EventArgs e) =>
+        await OpenPageAsync(() => new AllMessagesPage(_store, reviewOnly: true));
     private async void OnMissedMessagesClicked(object? sender, EventArgs e) =>
         await OpenPageAsync(() => new MissedMessagesPage(_store));
+
+    private void OnHomeTabClicked(object? sender, EventArgs e) => ShowHomeTab();
+    private void OnSendersTabClicked(object? sender, EventArgs e) => ShowSendersTab();
+
+    private void ShowHomeTab()
+    {
+        HomeRefreshView.IsVisible = true;
+        SenderRefreshView.IsVisible = false;
+        SenderSectionTitle.Text = "فرستنده‌های زیر نظر";
+        HomeTabButton.Style = (Style)Application.Current!.Resources["BottomTabActive"];
+        SendersTabButton.Style = (Style)Application.Current.Resources["BottomTab"];
+    }
+
+    private void ShowSendersTab()
+    {
+        HomeRefreshView.IsVisible = false;
+        SenderRefreshView.IsVisible = true;
+        SenderSectionTitle.Text = "فرستنده‌ها";
+        HomeTabButton.Style = (Style)Application.Current!.Resources["BottomTab"];
+        SendersTabButton.Style = (Style)Application.Current.Resources["BottomTabActive"];
+    }
 
     private async Task OpenPageAsync(Func<Page> createPage)
     {
@@ -336,52 +377,9 @@ public partial class MainPage : DonyshPage
             UiSafety.Log(exception);
             await UiSafety.AlertAsync(this, "به‌روزرسانی کامل نشد", "دوباره تلاش کنید؛ پیام‌های ذخیره‌شده تغییری نکرده‌اند.");
         }
-        finally { IsRefreshing = false; }
+        finally { if (sender is RefreshView view) view.IsRefreshing = false; }
     }
     private void OnMessageStored(object? sender, EventArgs e) => Dispatcher.Dispatch(async () => await RefreshAsync());
-
-    private async void OnWorkspaceShortcutClicked(object? sender, EventArgs e)
-    {
-        if (_busy) return;
-        _busy = true;
-        try
-        {
-            var connection = await MobileConnectionStore.LoadAsync();
-            if (connection is null) return;
-            var list = await _api.GetWorkspacesAsync(connection);
-            var labels = list.Workspaces.Select(x => x.Type == "shared" ? $"{x.Name} · مشترک" : $"{x.Name} · شخصی").ToList();
-            var selected = await DonyshSelectionSheet.ShowAsync(this, "فضای مالی پیش‌فرض", labels,
-                list.Workspaces.FindIndex(x => x.Id == list.WorkspaceId));
-            if (!selected.HasValue || list.Workspaces[selected.Value].Id == list.WorkspaceId) return;
-            var chosen = list.Workspaces[selected.Value];
-            var queue = await _store.GetSyncSummaryAsync();
-            if (queue.Pending > 0 && !await DisplayAlert("تغییر مقصد پیام‌های منتظر",
-                    $"{UiText.Digits(queue.Pending)} پیام منتظر نیز به «{chosen.Name}» فرستاده می‌شود. ادامه می‌دهید؟",
-                    "تغییر فضا", "انصراف")) return;
-            await MobileApiClient.RunWithSyncLockAsync(async () =>
-            {
-                var result = await _api.ChangeDestinationAsync(connection, chosen.Id);
-                await MobileConnectionStore.SaveAsync(connection with
-                {
-                    Destination = $"{result.WorkspaceName} / {result.CategoryName}",
-                    WorkspaceId = result.WorkspaceId
-                });
-            });
-            SyncPlatform.Schedule();
-            UiMotion.Feedback();
-            await RefreshAsync();
-        }
-        catch (UnauthorizedAccessException)
-        {
-            await UiSafety.AlertAsync(this, "ورود دوباره لازم است", "نشست این گوشی پایان یافته است. از تنظیمات دوباره وارد حساب دُنیش شوید.");
-        }
-        catch (Exception exception)
-        {
-            UiSafety.Log(exception);
-            await UiSafety.AlertAsync(this, "فضای مالی تغییر نکرد", "اینترنت را بررسی کنید و دوباره تلاش کنید.");
-        }
-        finally { _busy = false; }
-    }
 
     private async Task RecoverRecentMessagesAsync(bool force = false)
     {
@@ -402,7 +400,7 @@ public partial class MainPage : DonyshPage
 
     private async Task RefreshAsync()
     {
-        if (!await _refreshGate.WaitAsync(0)) { IsRefreshing = false; return; }
+        if (!await _refreshGate.WaitAsync(0)) return;
         try
         {
             var summaries = await _store.GetSenderSummariesAsync();
@@ -426,25 +424,37 @@ public partial class MainPage : DonyshPage
             _allSenders.AddRange(summaries.Select(x => new SenderItem(x.Id, x.Address,
                 x.MessageCount == 0 ? "منتظر اولین پیامک" : $"{UiText.Digits(x.MessageCount)} پیام · {UiText.Date(x.LastMessageAtUtc!.Value)}")));
             FilterSenders();
+            var featuredSender = _allSenders.FirstOrDefault();
+            HasFeaturedSender = featuredSender is not null;
+            FeaturedSenderAddress = featuredSender?.Address ?? string.Empty;
+            FeaturedSenderDetails = featuredSender?.Details ?? string.Empty;
             PendingCount = UiText.Digits(sync.Pending);
             SentCount = UiText.Digits(sync.Sent);
             HasUntitled = SmsSyncSettings.RequireTitle && untitled.Count > 0;
-            UntitledText = $"{UiText.Digits(untitled.Count)} پیام، منتظر عنوان شما";
+            HasReview = sync.Rejected > 0;
+            ReviewText = $"{UiText.Digits(sync.Rejected)} پیام نیازمند بررسی";
             ConnectionText = connection is null ? "هنوز به سامانه متصل نشده‌اید" : $"متصل به {connection.Destination}";
             HasConnection = connection is not null;
-            WorkspaceText = connection?.Destination.Split(" / ", 2, StringSplitOptions.TrimEntries)[0] ?? string.Empty;
             (_nextStep, NextStepText, NextStepAction) = _setupStep != SetupStep.Complete
                 ? (0, "راه‌اندازی هنوز کامل نشده است؛ قدم بعدی را ادامه دهید.", "ادامهٔ راه‌اندازی")
                 : HasUntitled
                     ? (1, "چند پیام تازه دارید؛ با نوشتن عنوان، آن‌ها را آمادهٔ ارسال کنید.", "ثبت عنوان پیام‌ها")
                     : (-1, "دریافت و ارسال آماده است. پیام‌های تازه طبق تنظیمات شما بررسی می‌شوند.", string.Empty);
+            PrimaryTaskTitle = _nextStep == 0
+                ? "راه‌اندازی را کامل کنید"
+                : $"{UiText.Digits(untitled.Count)} پیام منتظر عنوان";
+            if (_nextStep == 1)
+            {
+                NextStepText = "برای هر پیام عنوانی بنویسید تا برای ارسال خودکار آماده شود.";
+                NextStepAction = "عنوان‌گذاری پیام‌ها";
+            }
             OnPropertyChanged(string.Empty);
         }
         catch (Exception)
         {
             await UiSafety.AlertAsync(this, "اطلاعات باز نشد", "اطلاعات ذخیره‌شده قابل خواندن نیست. داده‌ها پاک نشده‌اند؛ برنامه را دوباره باز کنید.");
         }
-        finally { _refreshGate.Release(); IsRefreshing = false; }
+        finally { _refreshGate.Release(); }
     }
 
     private async Task RefreshPermissionAsync()

@@ -99,6 +99,10 @@ public sealed record SenderSummary(
     int MessageCount,
     DateTimeOffset? LastMessageAtUtc);
 
+public sealed record VisibleInboxSnapshot(
+    IReadOnlyList<CapturedSms> Messages,
+    IReadOnlyList<SmsTemplate> Templates);
+
 public enum AddSenderResult
 {
     Added,

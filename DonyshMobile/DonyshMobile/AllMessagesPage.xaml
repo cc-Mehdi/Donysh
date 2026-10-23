@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ui:DonyshPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+               xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+               xmlns:local="clr-namespace:DonyshMobile"
+               xmlns:ui="clr-namespace:DonyshMobile.UI"
+               x:Class="DonyshMobile.AllMessagesPage"
+               x:DataType="local:AllMessagesPage"
+               Title="پیام‌ها">
+    <Grid x:Name="MessagesContent" Padding="18,10,18,6" RowDefinitions="Auto,Auto,*,Auto" RowSpacing="12">
+        <VerticalStackLayout Spacing="3">
+            <Label Text="پیام‌ها" Style="{StaticResource PageTitle}" FontSize="24" />
+            <Label Text="وضعیت پیام‌های فرستنده‌های زیر نظر را یک‌جا ببینید." Style="{StaticResource MutedText}" />
+        </VerticalStackLayout>
+        <ScrollView Grid.Row="1" Orientation="Horizontal" HorizontalScrollBarVisibility="Never">
+            <HorizontalStackLayout Spacing="6">
+                <Button x:Name="AllFilter" Text="همه" CommandParameter="all" Clicked="OnFilterClicked"
+                        Style="{StaticResource SuggestionChip}" />
+                <Button x:Name="ReviewFilter" Text="نیازمند بررسی" CommandParameter="review" Clicked="OnFilterClicked"
+                        Style="{StaticResource SuggestionChip}" />
+                <Button x:Name="PendingFilter" Text="در صف" CommandParameter="pending" Clicked="OnFilterClicked"
+                        Style="{StaticResource SuggestionChip}" />
+                <Button x:Name="SentFilter" Text="ارسال‌شده" CommandParameter="sent" Clicked="OnFilterClicked"
+                        Style="{StaticResource SuggestionChip}" />
+            </HorizontalStackLayout>
+        </ScrollView>
+        <RefreshView Grid.Row="2" x:Name="MessagesRefreshView" Refreshing="OnRefreshRequested">
+            <CollectionView x:Name="MessagesList" ItemsSource="{Binding Messages}" SelectionMode="Single"
+                            SelectionChanged="OnMessageSelected">
+                <CollectionView.EmptyView>
+                    <Border Style="{StaticResource Card}" Padding="25" Margin="0,8">
+                        <VerticalStackLayout Spacing="7">
+                            <Label Text="پیامی در این بخش نیست" FontFamily="YekanBakhBold" FontSize="16" HorizontalTextAlignment="Center" />
+                            <Label Text="فیلتر دیگری را انتخاب کنید یا صفحه را به پایین بکشید."
+                                   Style="{StaticResource MutedText}" HorizontalTextAlignment="Center" />
+                        </VerticalStackLayout>
+                    </Border>
+                </CollectionView.EmptyView>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="local:AllMessageItem">
+                        <Border Style="{StaticResource Card}" Padding="15" Margin="0,0,0,10">
+                            <VerticalStackLayout Spacing="8">
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                    <Label Text="{Binding AmountText}" FontFamily="YekanBakhBold" FontSize="18" />
+                                    <Border Grid.Column="1" Padding="8,4" StrokeThickness="0"
+                                            BackgroundColor="{Binding BadgeBackground}" StrokeShape="RoundRectangle 12">
+                                        <Label Text="{Binding StatusText}" FontSize="11" TextColor="{Binding BadgeForeground}" />
+                                    </Border>
+                                </Grid>
+                                <Label Text="{Binding SenderAndDate}" Style="{StaticResource Caption}" />
+                                <Label Text="{Binding Title}" FontFamily="YekanBakhBold" MaxLines="1" LineBreakMode="TailTruncation" />
+                                <Label Text="{Binding BodyPreview}" Style="{StaticResource MutedText}" MaxLines="1" LineBreakMode="TailTruncation" />
+                                <Label Text="دیدن پیام و اقدام‌ها ←" FontSize="12" TextColor="{AppThemeBinding Light=#5145D8, Dark=#C9C5FF}" />
+                            </VerticalStackLayout>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </RefreshView>
+        <Grid Grid.Row="3" ColumnDefinitions="*,*,*" ColumnSpacing="4" Padding="0,4"
+              BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#162237}">
+            <ui:DonyshButton Glyph="{x:Static ui:AppIcons.Workspace}" Text="خانه" Clicked="OnHomeClicked"
+                             Style="{StaticResource BottomTab}" AutomationId="HomeTab" />
+            <ui:DonyshButton Grid.Column="1" Glyph="{x:Static ui:AppIcons.Message}" Text="پیام‌ها"
+                             Style="{StaticResource BottomTabActive}" AutomationId="MessagesTab" />
+            <ui:DonyshButton Grid.Column="2" Glyph="{x:Static ui:AppIcons.Sms}" Text="فرستنده‌ها"
+                             Clicked="OnSendersClicked" Style="{StaticResource BottomTab}" AutomationId="SendersTab" />
+        </Grid>
+    </Grid>
+</ui:DonyshPage>

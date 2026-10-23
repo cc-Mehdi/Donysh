@@ -206,6 +206,27 @@ public sealed class SmsMonitorStore
         }
     }
 
+    public async Task<VisibleInboxSnapshot> GetVisibleInboxAsync(CancellationToken cancellationToken = default)
+    {
+        await Gate.WaitAsync(cancellationToken);
+        try
+        {
+            var state = await LoadUnsafeAsync(cancellationToken);
+            if (Prune(state, DateTimeOffset.UtcNow))
+                await SaveUnsafeAsync(state, cancellationToken);
+
+            var cutoff = DateTimeOffset.UtcNow.Subtract(Retention);
+            var messages = state.Messages
+                .Where(x => x.ReceivedAtUtc >= cutoff && MatchesConfiguredTemplate(state, x.SenderId, x.Body))
+                .OrderByDescending(x => x.ReceivedAtUtc)
+                .ToArray();
+            var senderIds = messages.Select(x => x.SenderId).ToHashSet();
+            var templates = state.Templates.Where(x => senderIds.Contains(x.SenderId)).ToArray();
+            return new VisibleInboxSnapshot(messages, templates);
+        }
+        finally { Gate.Release(); }
+    }
+
     public async Task<IReadOnlyList<CapturedSms>> GetUntitledMessagesAsync(CancellationToken cancellationToken = default)
     {
         await Gate.WaitAsync(cancellationToken);

@@ -48,6 +48,17 @@ public partial class PendingTitlesPage : DonyshPage
 
     private void OnMessageStored(object? sender, EventArgs e) => Dispatcher.Dispatch(async () => await RefreshAsync());
 
+    private async void OnHomeClicked(object? sender, EventArgs e) => await Navigation.PopToRootAsync();
+    private async void OnAllMessagesClicked(object? sender, EventArgs e) =>
+        await Navigation.PushAsync(new AllMessagesPage(_store));
+    private async void OnReviewClicked(object? sender, EventArgs e) =>
+        await Navigation.PushAsync(new AllMessagesPage(_store, reviewOnly: true));
+    private async void OnSendersClicked(object? sender, EventArgs e)
+    {
+        MainPage.RequestSenders();
+        await Navigation.PopToRootAsync();
+    }
+
     private async void OnSetTitleClicked(object? sender, EventArgs e)
     {
         if (_saving || sender is not BindableObject { BindingContext: PendingTitleItem item }) return;
@@ -100,14 +111,24 @@ public partial class PendingTitlesPage : DonyshPage
         {
             var messages = await _store.GetUntitledMessagesAsync();
             var ids = messages.Select(x => x.Id).ToHashSet();
+            var matchersBySender = new Dictionary<Guid, Func<string, ParsedSms?>[]>();
             foreach (var key in _drafts.Keys.Where(x => !ids.Contains(x)).ToArray()) _drafts.Remove(key);
             foreach (var message in messages)
             {
                 var suggestions = await _store.GetTitleSuggestionsAsync(message.SenderId, message.Body);
                 if (!_drafts.TryGetValue(message.Id, out var item))
                 {
+                    if (!matchersBySender.TryGetValue(message.SenderId, out var matchers))
+                    {
+                        var templates = await _store.GetTemplatesAsync(message.SenderId);
+                        matchers = templates.Select(SmsTemplateParser.CreateMatcher).Where(x => x is not null)
+                            .Select(x => x!).ToArray();
+                        matchersBySender[message.SenderId] = matchers;
+                    }
+                    var parsed = matchers.Select(parse => parse(message.Body)).FirstOrDefault(x => x is not null);
+                    var amount = parsed is null ? "پیام بانکی" : UiText.Digits($"{parsed.AmountRial:N0} ریال");
                     item = new PendingTitleItem(message.Id, message.SenderId, message.SenderAddress, message.Body,
-                        UiText.Date(message.ReceivedAtUtc));
+                        UiText.Date(message.ReceivedAtUtc), amount);
                     _drafts.Add(message.Id, item);
                 }
                 item.SetSuggestions(suggestions);
@@ -127,14 +148,16 @@ public partial class PendingTitlesPage : DonyshPage
 public sealed class PendingTitleItem : INotifyPropertyChanged
 {
     private string _draftTitle = string.Empty;
-    public PendingTitleItem(Guid id, Guid senderId, string sender, string body, string receivedAt) =>
-        (Id, SenderId, Sender, Body, ReceivedAt) = (id, senderId, sender, body, receivedAt);
+    public PendingTitleItem(Guid id, Guid senderId, string sender, string body, string receivedAt, string amountText) =>
+        (Id, SenderId, Sender, Body, ReceivedAt, AmountText) = (id, senderId, sender, body, receivedAt, amountText);
 
     public Guid Id { get; }
     public Guid SenderId { get; }
     public string Sender { get; }
     public string Body { get; }
     public string ReceivedAt { get; }
+    public string SenderAndDate => $"{Sender} · {ReceivedAt}";
+    public string AmountText { get; }
     public ObservableCollection<string> Suggestions { get; } = [];
     public bool HasSuggestions => Suggestions.Count > 0;
     public string DraftTitle

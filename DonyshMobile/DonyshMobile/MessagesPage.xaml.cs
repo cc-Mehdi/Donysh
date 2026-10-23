@@ -11,6 +11,7 @@ public partial class MessagesPage : DonyshPage
     private readonly Guid _senderId;
     private readonly Action _scheduleSync;
     private readonly Func<string, string, string, string, Task<bool>> _confirmAsync;
+    private readonly Guid? _focusMessageId;
     private readonly List<MessageItem> _allMessages = [];
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
     private bool _subscribed, _entered, _editing, _retrying;
@@ -22,18 +23,23 @@ public partial class MessagesPage : DonyshPage
     public string VisibleMessageCountText => $"{UiText.Digits(Messages.Count)} نتیجه";
     public bool HasRetryableMessages => Messages.Any(x => x.CanRetry);
 
-    public MessagesPage(SmsMonitorStore store, Guid senderId, string senderAddress)
-        : this(store, senderId, senderAddress, ScheduleDeliveryWork)
+    public MessagesPage(SmsMonitorStore store, Guid senderId, string senderAddress, int initialFilter = 0,
+        Guid? focusMessageId = null)
+        : this(store, senderId, senderAddress, ScheduleDeliveryWork,
+            initialFilter: initialFilter, focusMessageId: focusMessageId)
     {
     }
 
     internal MessagesPage(SmsMonitorStore store, Guid senderId, string senderAddress, Action scheduleSync,
-        Func<string, string, string, string, Task<bool>>? confirm = null)
+        Func<string, string, string, string, Task<bool>>? confirm = null, int initialFilter = 0,
+        Guid? focusMessageId = null)
     {
         _store = store;
         _senderId = senderId;
         _scheduleSync = scheduleSync;
         _confirmAsync = confirm ?? DisplayAlert;
+        _statusFilter = initialFilter;
+        _focusMessageId = focusMessageId;
         SenderAddress = senderAddress;
         InitializeComponent();
         BindingContext = this;
@@ -60,6 +66,11 @@ public partial class MessagesPage : DonyshPage
                 _subscribed = true;
             }
             await RefreshAsync();
+            if (_focusMessageId is Guid focusId && Messages.FirstOrDefault(x => x.Id == focusId) is { } focused)
+            {
+                focused.IsExpanded = true;
+                Dispatcher.Dispatch(() => MessagesList.ScrollTo(focused, position: ScrollToPosition.Center, animate: false));
+            }
             if (!_entered) { _entered = true; await UiMotion.EnterAsync(MessagesContent); }
         }
         catch (Exception exception) { UiSafety.Log(exception); }

@@ -198,6 +198,24 @@ internal static class StartupSmokeCheck
         {
             await WaitUntilAsync(() => page.Messages.Count == 1, "The message list did not load its isolated SMS.");
         });
+        await VisitAsync(shell, new AllMessagesPage(store), async page =>
+        {
+            await WaitUntilAsync(() => page.Messages.Count == 1,
+                "The redesigned all-messages list did not load the matching SMS.");
+            Check(page.Messages[0].SenderId == sender.Id,
+                "All-messages cards retain the sender route for the selected SMS");
+            page.FindByName<Button>("ReviewFilter").SendClicked();
+            Check(page.Messages.Count == 0, "The review filter excludes pending SMS");
+            page.FindByName<Button>("AllFilter").SendClicked();
+            Check(page.Messages.Count == 1, "The all-messages filter restores the SMS");
+            var chosen = page.Messages[0];
+            page.FindByName<CollectionView>("MessagesList").SelectedItem = chosen;
+            await WaitUntilAsync(() => shell.CurrentPage is MessagesPage details
+                && details.Messages.Any(x => x.Id == chosen.Id && x.IsExpanded),
+                "Selecting an all-messages card did not open that exact SMS.");
+            Check(true, "Selected all-messages card opens its matching expanded SMS");
+            await shell.Navigation.PopAsync(animated: false);
+        });
         await VisitAsync(shell, new TemplatesPage(store, sender.Id, address), async page =>
         {
             await WaitUntilAsync(() => page.Templates.Count == 1, "The template list did not load.");
@@ -308,8 +326,23 @@ internal static class StartupSmokeCheck
         string address, string sampleMessage)
     {
         SmsReceivedNotifier.Notify();
-        await WaitUntilAsync(() => home.SenderCount == "۱" && home.NextStepAction == "ادامهٔ راه‌اندازی",
-            "The home CTA did not offer the guided setup flow for the isolated queue.");
+        try
+        {
+            await WaitUntilAsync(() => home.SenderCount == "۱" && home.NextStepAction == "ادامهٔ راه‌اندازی",
+                "The home CTA did not offer the guided setup flow for the isolated queue.");
+        }
+        catch (InvalidOperationException exception)
+        {
+            throw new InvalidOperationException($"{exception.Message} SenderCount={home.SenderCount}, NextStepAction={home.NextStepAction}.", exception);
+        }
+        home.FindByName<Button>("SendersTabButton").SendClicked();
+        Check(!home.FindByName<RefreshView>("HomeRefreshView").IsVisible
+            && home.FindByName<RefreshView>("SenderRefreshView").IsVisible,
+            "The sender tab keeps sender tools close to the user");
+        home.FindByName<Button>("HomeTabButton").SendClicked();
+        Check(home.FindByName<RefreshView>("HomeRefreshView").IsVisible
+            && !home.FindByName<RefreshView>("SenderRefreshView").IsVisible,
+            "The home tab restores the action-first dashboard");
         var previousDepth = shell.Navigation.NavigationStack.Count;
         var settings = home.FindByName<Button>("SettingsButton");
         settings.SendClicked();

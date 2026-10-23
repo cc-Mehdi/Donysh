@@ -5,7 +5,7 @@
              xmlns:ui="clr-namespace:DonyshMobile.UI"
              x:Class="DonyshMobile.MainPage" x:DataType="local:MainPage"
              Title="دُنیش" Shell.NavBarIsVisible="False">
-    <Grid x:Name="PageContent" Padding="18,12" RowDefinitions="Auto,*" RowSpacing="14">
+    <Grid x:Name="PageContent" Padding="18,12,18,6" RowDefinitions="Auto,*,Auto" RowSpacing="10">
         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
             <Image Source="donysh_logo.png" WidthRequest="42" HeightRequest="42" SemanticProperties.Description="نشان دُنیش" />
             <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="1">
@@ -15,39 +15,61 @@
             <ui:DonyshButton x:Name="SettingsButton" Grid.Column="2" Glyph="{x:Static ui:AppIcons.Settings}" Text="تنظیمات" Clicked="OnConnectionClicked" Style="{StaticResource QuietAction}"
                     SemanticProperties.Hint="اتصال به سامانه، ظاهر و تنظیمات ارسال" />
         </Grid>
-        <RefreshView Grid.Row="1" IsRefreshing="{Binding IsRefreshing}" Refreshing="OnRefreshing">
-            <CollectionView ItemsSource="{Binding Senders}" SelectionMode="Single" SelectionChanged="OnSenderSelected">
-                <CollectionView.Header>
+        <Grid Grid.Row="1">
+            <RefreshView x:Name="HomeRefreshView" Refreshing="OnRefreshing">
+                <ScrollView>
                     <VerticalStackLayout Spacing="14" Padding="0,0,0,12">
-                        <Border Padding="20" StrokeThickness="0" StrokeShape="RoundRectangle 26">
+                        <VerticalStackLayout x:Name="HomeDashboard" Spacing="14">
+                        <Border Style="{StaticResource Card}" Padding="12,9" StrokeShape="RoundRectangle 16">
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                                <Label Text="●" FontSize="13" IsVisible="{Binding HasConnection}"
+                                       TextColor="{AppThemeBinding Light=#078675, Dark=#70D8BF}" VerticalOptions="Center" />
+                                <Label Text="●" FontSize="13" IsVisible="{Binding HasNoConnection}"
+                                       TextColor="{AppThemeBinding Light=#B65D08, Dark=#F5BB62}" VerticalOptions="Center" />
+                                <Label Grid.Column="1" Text="{Binding ConnectionText}" FontSize="12" FontFamily="YekanBakhBold"
+                                       LineBreakMode="TailTruncation" MaxLines="1" VerticalOptions="Center" />
+                            </Grid>
+                        </Border>
+                        <Border Padding="20" StrokeThickness="0" StrokeShape="RoundRectangle 24" IsVisible="{Binding HasNextStep}">
                             <Border.Background>
                                 <LinearGradientBrush StartPoint="1,0" EndPoint="0,1">
-                                    <GradientStop Color="#5143D8" Offset="0" />
-                                    <GradientStop Color="#087F82" Offset="1" />
+                                    <GradientStop Color="#5B4CF0" Offset="0" />
+                                    <GradientStop Color="#4D41C8" Offset="1" />
                                 </LinearGradientBrush>
                             </Border.Background>
                             <VerticalStackLayout Spacing="9">
-                                <Label Text="{Binding ConnectionText}" FontSize="12" TextColor="#DDEBFF" />
-                                <Label Text="پیامک‌ها، مرتب و آماده" FontSize="23" FontAttributes="Bold" TextColor="White" />
-                                <Label Text="{Binding NextStepText}" FontSize="14" LineHeight="1.35" TextColor="#E0EAFF" />
+                                <Label Text="کاری که به شما نیاز دارد" FontSize="12" TextColor="#E8E5FF" />
+                                <Label Text="{Binding PrimaryTaskTitle}" FontSize="23" FontFamily="YekanBakhBold" TextColor="White" />
+                                <Label Text="{Binding NextStepText}" FontSize="13" LineHeight="1.35" TextColor="#F1EFFF" />
                                 <ui:DonyshButton x:Name="NextStepButton" Glyph="{x:Static ui:AppIcons.Back}" Text="{Binding NextStepAction}" Clicked="OnNextStepClicked" BackgroundColor="White"
-                                        TextColor="#37328E" HorizontalOptions="Start" Margin="0,4,0,0"
-                                        IsVisible="{Binding HasNextStep}" />
+                                        TextColor="#453BB7" HorizontalOptions="Start" Margin="0,4,0,0" />
                             </VerticalStackLayout>
                         </Border>
-                        <Border Style="{StaticResource InfoCard}" Padding="14" IsVisible="{Binding HasConnection}">
-                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
-                                <Label Text="{x:Static ui:AppIcons.Workspace}" Style="{StaticResource SectionIcon}" VerticalOptions="Center" />
-                                <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
-                                    <Label Text="فضای مالی پیش‌فرض" Style="{StaticResource Caption}" />
-                                    <Label Text="{Binding WorkspaceText}" FontAttributes="Bold" LineBreakMode="TailTruncation" />
-                                </VerticalStackLayout>
-                                <ui:DonyshButton Grid.Column="2" Glyph="{x:Static ui:AppIcons.Sync}" Text="تغییر"
-                                                 Clicked="OnWorkspaceShortcutClicked" Style="{StaticResource SecondaryAction}" />
-                            </Grid>
+                        <Border Style="{StaticResource AccentCard}" Padding="17" IsVisible="{Binding IsReady}">
+                            <VerticalStackLayout Spacing="5">
+                                <Label Text="پیامک‌ها مرتب و آماده‌اند" Style="{StaticResource SectionTitle}" />
+                                <Label Text="پیام‌های تازه بر پایهٔ فرستنده‌ها و قالب‌های شما بررسی می‌شوند." Style="{StaticResource MutedText}" />
+                            </VerticalStackLayout>
                         </Border>
+                        <Border Padding="16" StrokeShape="RoundRectangle 20" IsVisible="{Binding HasReview}"
+                                BackgroundColor="{AppThemeBinding Light=#FFF8EA, Dark=#342816}"
+                                Stroke="{AppThemeBinding Light=#F1DFB4, Dark=#6B4C20}">
+                            <VerticalStackLayout Spacing="6">
+                                <Label Text="رسیدگی بعدی" FontSize="12" TextColor="{AppThemeBinding Light=#90601A, Dark=#F5BB62}" />
+                                <Label Text="{Binding ReviewText}" Style="{StaticResource SectionTitle}" />
+                                <Label Text="علت ارسال‌نشدن را ببینید و دربارهٔ تلاش دوباره تصمیم بگیرید." Style="{StaticResource MutedText}" />
+                                <ui:DonyshButton Glyph="{x:Static ui:AppIcons.Search}" Text="بررسی پیام‌ها"
+                                                 Clicked="OnReviewMessagesClicked" Style="{StaticResource SecondaryAction}"
+                                                 HorizontalOptions="Start" />
+                            </VerticalStackLayout>
+                        </Border>
+                        <Grid ColumnDefinitions="*,Auto" Margin="2,4,2,0">
+                            <Label Text="وضعیت پیام‌ها" Style="{StaticResource SectionTitle}" VerticalOptions="Center" />
+                            <Button Grid.Column="1" Text="دیدن همه" Clicked="OnAllMessagesClicked"
+                                    Style="{StaticResource QuietAction}" FontSize="12" />
+                        </Grid>
                         <Grid ColumnDefinitions="*,*,*" ColumnSpacing="9">
-                            <Border x:Name="SenderStatCard" Style="{StaticResource StatInfoCard}">
+                            <Border x:Name="SenderStatCard" Grid.Column="2" Style="{StaticResource StatInfoCard}">
                                 <VerticalStackLayout Spacing="2">
                                     <Label x:Name="SenderStatIcon" Text="{x:Static ui:AppIcons.Sms}" Style="{StaticResource StatIcon}"
                                            TextColor="{AppThemeBinding Light=#1478A8, Dark=#78C9EF}" />
@@ -55,15 +77,15 @@
                                     <Label Text="فرستنده" Style="{StaticResource Caption}" />
                                 </VerticalStackLayout>
                             </Border>
-                            <Border x:Name="PendingStatCard" Grid.Column="1" Style="{StaticResource StatWarningCard}">
+                            <Border x:Name="PendingStatCard" Style="{StaticResource StatWarningCard}">
                                 <VerticalStackLayout Spacing="2">
                                     <Label x:Name="PendingStatIcon" Text="{x:Static ui:AppIcons.Schedule}" Style="{StaticResource StatIcon}"
                                            TextColor="{AppThemeBinding Light=#B65D08, Dark=#F5BB62}" />
                                     <Label Text="{Binding PendingCount}" FontSize="25" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#9A4D08, Dark=#FFD18B}" />
-                                    <Label Text="در انتظار" Style="{StaticResource Caption}" />
+                                    <Label Text="در صف" Style="{StaticResource Caption}" />
                                 </VerticalStackLayout>
                             </Border>
-                            <Border x:Name="SentStatCard" Grid.Column="2" Style="{StaticResource StatSuccessCard}">
+                            <Border x:Name="SentStatCard" Grid.Column="1" Style="{StaticResource StatSuccessCard}">
                                 <VerticalStackLayout Spacing="2">
                                     <Label x:Name="SentStatIcon" Text="{x:Static ui:AppIcons.CheckCircle}" Style="{StaticResource StatIcon}"
                                            TextColor="{AppThemeBinding Light=#078675, Dark=#70D8BF}" />
@@ -72,13 +94,6 @@
                                 </VerticalStackLayout>
                             </Border>
                         </Grid>
-                        <Border Style="{StaticResource AccentCard}" Padding="16" IsVisible="{Binding HasUntitled}">
-                            <VerticalStackLayout Spacing="9">
-                                <Label Text="{Binding UntitledText}" Style="{StaticResource SectionTitle}" />
-                                <Label Text="عنوان را بنویسید تا پیام برای ارسال خودکار آماده شود." Style="{StaticResource MutedText}" />
-                                <ui:DonyshButton Glyph="{x:Static ui:AppIcons.Title}" Text="عنوان‌گذاری پیام‌ها" Clicked="OnPendingTitlesClicked" Style="{StaticResource SuccessAction}" />
-                            </VerticalStackLayout>
-                        </Border>
                         <Border Style="{StaticResource InfoCard}" Padding="16" IsVisible="{Binding NeedsPermissionAttention}">
                             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
                                 <VerticalStackLayout Spacing="4">
@@ -89,23 +104,39 @@
                                         Style="{StaticResource SecondaryAction}" VerticalOptions="Center" />
                             </Grid>
                         </Border>
-                        <Border Style="{StaticResource AccentCard}" Padding="16">
-                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="11">
-                                <Label Text="{x:Static ui:AppIcons.History}" Style="{StaticResource SectionIcon}"
-                                       VerticalOptions="Center" />
-                                <VerticalStackLayout Grid.Column="1" Spacing="3" VerticalOptions="Center">
-                                    <Label Text="پیامک‌های جامانده" Style="{StaticResource SectionTitle}" />
-                                    <Label Text="فرستنده و بازه را انتخاب کنید و پیش از افزودن، پیام‌ها را ببینید."
-                                           Style="{StaticResource Caption}" />
+                        <Label Text="دسترسی سریع" Style="{StaticResource SectionTitle}" Margin="2,5,0,0" />
+                        <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
+                            <Button Text="همهٔ پیام‌ها" Clicked="OnAllMessagesClicked" Style="{StaticResource HomeShortcut}" />
+                            <Button Grid.Column="1" Text="فرستنده‌ها" Clicked="OnSendersTabClicked" Style="{StaticResource HomeShortcut}" />
+                            <Button Grid.Column="2" Text="پیامک‌های جامانده" Clicked="OnMissedMessagesClicked" Style="{StaticResource HomeShortcut}" />
+                        </Grid>
+                        </VerticalStackLayout>
+                        <Grid ColumnDefinitions="*,Auto" Margin="2,4,2,0">
+                            <Label Text="فرستنده‌های زیر نظر" Style="{StaticResource SectionTitle}" VerticalOptions="Center" />
+                            <Button Grid.Column="1" Text="افزودن +" Clicked="OnAddSenderMenuClicked" Style="{StaticResource QuietAction}" FontSize="12" />
+                        </Grid>
+                        <Border IsVisible="{Binding HasFeaturedSender}" Style="{StaticResource Card}" Padding="14">
+                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                                <Label Text="{x:Static ui:AppIcons.Sms}" Style="{StaticResource SectionIcon}" VerticalOptions="Center" />
+                                <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                                    <Label Text="{Binding FeaturedSenderAddress}" FontFamily="YekanBakhBold" LineBreakMode="TailTruncation" />
+                                    <Label Text="{Binding FeaturedSenderDetails}" Style="{StaticResource Caption}" />
                                 </VerticalStackLayout>
-                                <ui:DonyshButton Grid.Column="2" Glyph="{x:Static ui:AppIcons.Search}"
-                                                 Text="بررسی" Clicked="OnMissedMessagesClicked"
-                                                 Style="{StaticResource SecondaryAction}"
-                                                 SemanticProperties.Hint="بازکردن بررسی پیامک‌های جامانده" />
+                                <Button Grid.Column="2" Text="دیدن" Clicked="OnSendersTabClicked" Style="{StaticResource QuietAction}" />
                             </Grid>
                         </Border>
+                        <Label IsVisible="{Binding HasNoSenders}" Text="هنوز فرستنده‌ای ثبت نشده است. از «افزودن» شروع کنید."
+                               Style="{StaticResource MutedText}" />
+                    </VerticalStackLayout>
+                </ScrollView>
+            </RefreshView>
+            <RefreshView x:Name="SenderRefreshView" IsVisible="False" Refreshing="OnRefreshing">
+            <CollectionView ItemsSource="{Binding Senders}" SelectionMode="Single" SelectionChanged="OnSenderSelected">
+                <CollectionView.Header>
+                    <VerticalStackLayout Spacing="14" Padding="0,0,0,12">
+
                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Margin="2,5,0,0">
-                            <Label Text="فرستنده‌های زیر نظر" Style="{StaticResource SectionTitle}" VerticalOptions="Center" />
+                            <Label x:Name="SenderSectionTitle" Text="فرستنده‌های زیر نظر" Style="{StaticResource SectionTitle}" VerticalOptions="Center" />
                             <ui:DonyshButton Grid.Column="1" Glyph="{x:Static ui:AppIcons.Add}" Text="افزودن" Clicked="OnAddSenderMenuClicked" Style="{StaticResource SecondaryAction}" />
                         </Grid>
                         <VerticalStackLayout x:Name="ManualPanel" IsVisible="False" Spacing="8">
@@ -149,6 +180,16 @@
                     <Label Text="برای به‌روزکردن وضعیت، صفحه را به پایین بکشید." Style="{StaticResource Caption}" Padding="8,14" HorizontalTextAlignment="Center" />
                 </CollectionView.Footer>
             </CollectionView>
-        </RefreshView>
+            </RefreshView>
+        </Grid>
+        <Grid Grid.Row="2" ColumnDefinitions="*,*,*" ColumnSpacing="4" Padding="0,4"
+              BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#162237}">
+            <ui:DonyshButton x:Name="HomeTabButton" Glyph="{x:Static ui:AppIcons.Workspace}" Text="خانه"
+                             Clicked="OnHomeTabClicked" Style="{StaticResource BottomTabActive}" AutomationId="HomeTab" />
+            <ui:DonyshButton Grid.Column="1" Glyph="{x:Static ui:AppIcons.Message}" Text="پیام‌ها"
+                             Clicked="OnAllMessagesClicked" Style="{StaticResource BottomTab}" AutomationId="MessagesTab" />
+            <ui:DonyshButton x:Name="SendersTabButton" Grid.Column="2" Glyph="{x:Static ui:AppIcons.Sms}" Text="فرستنده‌ها"
+                             Clicked="OnSendersTabClicked" Style="{StaticResource BottomTab}" AutomationId="SendersTab" />
+        </Grid>
     </Grid>
 </ui:DonyshPage>

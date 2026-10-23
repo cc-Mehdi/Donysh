@@ -100,6 +100,10 @@ internal static class TemplatePresetRegressionTests
         Check(!await store.CaptureAsync("Bank-Test", otp, now.AddSeconds(-1)), "Ignore second password");
         Check(await store.CaptureAsync("Bank-Test", withdrawal, now), "Capture matching withdrawal");
         Check((await store.GetMessagesAsync(senderId)).Single().Body == withdrawal, "Show only matching messages");
+        var inbox = await store.GetVisibleInboxAsync();
+        Check(inbox.Messages.Count == 1 && inbox.Messages[0].Body == withdrawal
+            && inbox.Templates.Count == 1 && inbox.Templates[0].SenderId == senderId,
+            "The all-messages inbox includes only SMS matching a configured template");
         Check((await store.GetUntitledMessagesAsync()).Single().Body == withdrawal, "Request a title only for matching messages");
         Check(!await store.SetTitleAsync(legacyId, "واریز"), "Do not title a legacy nonmatching message");
         Check((await store.GetSenderSummariesAsync()).Single().MessageCount == 1, "Count only matching messages");
