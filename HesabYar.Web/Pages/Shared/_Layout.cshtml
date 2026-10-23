@@ -25,7 +25,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#4f46e5" />
-    @if (isDashboard)
+    @if (authenticated)
     {
         <script src="~/js/finance-theme-init.js" asp-append-version="true"></script>
     }
@@ -112,6 +112,7 @@
                     </div>
                     <div class="flex items-center gap-2">
                         @await Component.InvokeAsync("ObligationAlert")
+                        <button type="button" class="theme-toggle" data-finance-theme-toggle aria-label="تغییر پوسته" aria-pressed="false"><svg class="lucide-icon theme-icon-moon" aria-hidden="true"><use href="/icons/lucide.svg#moon"></use></svg><svg class="lucide-icon theme-icon-sun" aria-hidden="true"><use href="/icons/lucide.svg#sun"></use></svg></button>
                         <a href="@lifeUrl" class="product-switcher-compact lg:hidden" aria-label="رفتن به دُنیش زندگی">
                             <img class="product-switcher-life-logo compact" src="~/images/donysh-life-logo.png" alt="" width="28" height="28" />
                             <span>زندگی</span>

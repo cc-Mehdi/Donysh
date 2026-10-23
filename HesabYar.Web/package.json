@@ -5,6 +5,7 @@
   "scripts": {
     "build:css": "npm run build:icons && tailwindcss -i ./Styles/app.css -o ./wwwroot/css/app.css --minify",
     "build:icons": "node ./scripts/build-icons.mjs",
+    "test:theme": "node --test ./scripts/test-finance-theme.mjs",
     "watch:css": "tailwindcss -i ./Styles/app.css -o ./wwwroot/css/app.css --watch"
   },
   "devDependencies": {
