@@ -677,20 +677,19 @@ html[data-finance-theme="dark"] .finance-dashboard .progress { background: #2a3b
 html[data-finance-theme="dark"] .finance-dashboard .text-indigo-700 { color: #aaa2ff; }
 html[data-finance-theme="dark"] .finance-sidebar .text-indigo-700 { color: #beb7ff; }
 
-/* Screenshot-matched Finance dashboard layout. */
+/* Shared Finance sidebar and screenshot-matched dashboard layout. */
 @media (min-width: 1024px) {
-    .finance-shell-dashboard { grid-template-columns: 228px minmax(0, 1fr); }
-    .finance-shell-dashboard .finance-sidebar { display: flex; flex-direction: column; min-height: 100vh; padding: 12px 11px; }
-    .finance-shell-dashboard .finance-sidebar > div:first-child { margin-bottom: 12px; }
-    .finance-shell-dashboard .finance-sidebar nav { display: grid; gap: 1px; }
-    .finance-shell-dashboard .finance-sidebar > div:nth-child(2) { margin-bottom: 9px; padding: 8px; background: #fff; border-color: #e7eaf4; border-radius: 10px; }
-    .finance-shell-dashboard .finance-sidebar > div:nth-child(2) > div { display: none; }
-    .finance-shell-dashboard .finance-sidebar > div:nth-child(2) select { border: 0; padding: 4px; background: transparent; font-size: 11px; }
-    .finance-shell-dashboard .finance-sidebar .nav-link { min-height: 32px; padding: 5px 10px; border-radius: 9px; font-size: 12px; }
-    .finance-shell-dashboard .finance-sidebar .nav-link .lucide-icon { width: 16px; height: 16px; }
-    .finance-shell-dashboard .finance-sidebar > div:last-child { margin-top: auto; }
-    .finance-shell-dashboard .product-switcher { gap: 7px; padding: 9px; }
-    .finance-shell-dashboard .product-switcher-life-logo { width: 38px; height: 38px; }
+    .finance-shell .finance-sidebar { display: flex; flex-direction: column; min-height: 100vh; padding: 12px 11px; }
+    .finance-sidebar .sidebar-brand-row { margin-bottom: 12px; }
+    .finance-sidebar nav { display: grid; gap: 1px; }
+    .finance-sidebar .sidebar-workspace { margin-bottom: 9px; padding: 8px; background: #fff; border-color: #e7eaf4; border-radius: 10px; }
+    .finance-sidebar .sidebar-workspace > div { display: none; }
+    .finance-sidebar .sidebar-workspace select { border: 0; padding: 4px; background: transparent; font-size: 11px; }
+    .finance-sidebar .nav-link { min-height: 32px; padding: 5px 10px; border-radius: 9px; font-size: 12px; }
+    .finance-sidebar .nav-link .lucide-icon { width: 16px; height: 16px; }
+    .finance-sidebar .sidebar-footer { margin-top: auto; }
+    .finance-sidebar .product-switcher { gap: 7px; padding: 9px; }
+    .finance-sidebar .product-switcher-life-logo { width: 38px; height: 38px; }
 }
 .finance-shell-dashboard { background: #f6f8fd; }
 .dashboard-main { width: 100%; min-width: 0; padding-bottom: 60px; }
