@@ -58,6 +58,8 @@ Production authentication smoke tests must cover:
 
 ## Commit messages
 
+After finishing a task, commit only its changes and push the commit to the remote branch. Preserve unrelated local changes.
+
 After completing each logical section, provide the user with a concise English commit message prefixed by the relevant gitmoji. Example:
 
 ```text

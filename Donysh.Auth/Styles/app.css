@@ -140,6 +140,7 @@
     .destination-card small { @apply text-[.68rem] text-slate-500; }
     .destination-card b { @apply text-indigo-600; }
     .destination-icon { @apply grid size-10 place-items-center rounded-xl font-black; }
+    .destination-icon img { width: 100%; height: 100%; object-fit: contain; }
     .finance-destination { @apply bg-indigo-50 text-indigo-700; }
     .life-destination { @apply bg-teal-50 text-teal-700; }
     .quiet-form { @apply mt-6!; }
