@@ -8,6 +8,7 @@
     var currentUserDisplayName = string.IsNullOrWhiteSpace(currentUser?.DisplayName)
         ? currentUser?.Email
         : currentUser?.DisplayName;
+    ViewData["DashboardDisplayName"] = string.IsNullOrWhiteSpace(currentUser?.DisplayName) ? "دوست من" : currentUser.DisplayName;
     IReadOnlyList<Workspace> workspaces = authenticated ? await WorkspaceContext.GetAccessibleAsync() : Array.Empty<Workspace>();
     var page = ViewContext.RouteData.Values["page"]?.ToString() ?? string.Empty;
     var isDashboard = page.Equals("/Index", StringComparison.OrdinalIgnoreCase);
@@ -38,7 +39,7 @@
 <body class="min-h-screen bg-slate-50 text-slate-900 antialiased">
 @if (authenticated)
 {
-    <div class="finance-shell min-h-screen lg:grid lg:grid-cols-[17rem_1fr]">
+    <div class="finance-shell @(isDashboard ? "finance-shell-dashboard" : "") min-h-screen lg:grid lg:grid-cols-[17rem_1fr]">
         <aside id="sidebar" class="finance-sidebar fixed inset-y-0 right-0 z-40 hidden w-72 border-l border-slate-200 bg-white p-5 lg:static lg:block lg:w-auto">
             <div class="mb-7 flex items-center justify-between">
                 <a asp-page="/Index" aria-label="Donysh">
@@ -102,6 +103,8 @@
         </aside>
 
         <div class="min-w-0">
+            @if (!isDashboard)
+            {
             <header class="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 backdrop-blur">
                 <div class="flex h-16 items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
                     <div class="flex min-w-0 items-center gap-3">
@@ -115,10 +118,6 @@
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
-                        @if (isDashboard)
-                        {
-                            <button type="button" class="theme-toggle" data-finance-theme-toggle aria-label="تغییر پوسته" aria-pressed="false"><svg class="lucide-icon theme-icon-moon" aria-hidden="true"><use href="/icons/lucide.svg#moon"></use></svg><svg class="lucide-icon theme-icon-sun" aria-hidden="true"><use href="/icons/lucide.svg#sun"></use></svg></button>
-                        }
                         @await Component.InvokeAsync("ObligationAlert")
                         <a href="@lifeUrl" class="product-switcher-compact lg:hidden" aria-label="رفتن به دُنیش زندگی">
                             <img class="product-switcher-life-logo compact" src="~/images/donysh-life-logo.png" alt="" width="28" height="28" />
@@ -128,8 +127,9 @@
                     </div>
                 </div>
             </header>
+            }
 
-            <main class="mx-auto @(isDashboard ? "max-w-[100rem]" : "max-w-7xl") p-4 pb-24 sm:p-6 lg:p-8 lg:pb-8">
+            <main class="@(isDashboard ? "dashboard-main" : "mx-auto max-w-7xl p-4 pb-24 sm:p-6 lg:p-8 lg:pb-8")">
                 @if (TempData["Success"] is string success)
                 {
                     <div class="toast toast-success" data-toast>@success</div>

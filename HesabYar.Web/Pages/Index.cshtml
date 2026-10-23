@@ -3,187 +3,130 @@
 @{
     ViewData["Title"] = "داشبورد";
     var categoryStops = new List<string>();
-    decimal categoryOffset = 0;
+    decimal offset = 0;
     foreach (var slice in Model.CategoryBreakdown)
     {
-        var end = categoryOffset + slice.Percent;
-        categoryStops.Add($"{slice.Color} {categoryOffset.ToString(System.Globalization.CultureInfo.InvariantCulture)}% {end.ToString(System.Globalization.CultureInfo.InvariantCulture)}%");
-        categoryOffset = end;
+        var end = offset + slice.Percent;
+        categoryStops.Add($"{slice.Color} {offset.ToString(System.Globalization.CultureInfo.InvariantCulture)}% {end.ToString(System.Globalization.CultureInfo.InvariantCulture)}%");
+        offset = end;
     }
-    if (categoryOffset < 100) categoryStops.Add($"#dbe3f1 {categoryOffset.ToString(System.Globalization.CultureInfo.InvariantCulture)}% 100%");
+    if (offset < 100) categoryStops.Add($"#e6eafa {offset.ToString(System.Globalization.CultureInfo.InvariantCulture)}% 100%");
     var categoryGradient = $"conic-gradient({string.Join(",", categoryStops)})";
+    var greeting = DateTime.Now.Hour < 12 ? "صبح بخیر" : DateTime.Now.Hour < 18 ? "روز بخیر" : "شب بخیر";
 }
 <div class="finance-dashboard">
     <section class="dashboard-hero">
-        <div class="dashboard-hero-top"><span><svg class="lucide-icon" aria-hidden="true"><use href="/icons/lucide.svg#calendar-days"></use></svg>@Formatters.PersianDate(Model.Today)</span><a asp-page="/Reports/Index">گزارش‌ها <svg class="lucide-icon" aria-hidden="true"><use href="/icons/lucide.svg#arrow-left"></use></svg></a></div>
-        <div class="dashboard-hero-body"><div><p>فضای مالی @Model.CurrentWorkspace.Name</p><h2>@(DateTime.Now.Hour < 12 ? "صبح بخیر" : DateTime.Now.Hour < 18 ? "روز بخیر" : "شب بخیر")</h2><span>نمای روشن‌تری از خرج‌ها، بودجه و هدف‌هایت داشته باش.</span></div><div class="dashboard-hero-actions"><a asp-page="/Expenses/Create" class="hero-action hero-action-primary"><svg class="lucide-icon" aria-hidden="true"><use href="/icons/lucide.svg#plus"></use></svg> ثبت خرج</a><a href="https://life.donysh.ir/" class="hero-action hero-action-life"><svg class="lucide-icon" aria-hidden="true"><use href="/icons/lucide.svg#leaf"></use></svg> دُنیش زندگی</a></div></div>
-    </section>
-    <div class="dashboard-metrics">
-        <a asp-page="/Expenses/Index" class="metric-card metric-primary"><div><span>خرج‌های این ماه</span><svg class="lucide-icon" aria-hidden="true"><use href="/icons/lucide.svg#receipt"></use></svg></div><strong>@Formatters.Money(Model.MonthTotal)</strong><small>@Model.MonthExpenseCount تراکنش ثبت‌شده</small></a>
-        <a asp-page="/Savings/Index" class="metric-card metric-savings"><div><span>پس‌انداز این ماه</span><svg class="lucide-icon" aria-hidden="true"><use href="/icons/lucide.svg#piggy-bank"></use></svg></div><strong>@Formatters.Money(Model.MonthSavings)</strong><small>واریزی هدف‌های فعال</small></a>
-        <a asp-page="/Budgets/Index" class="metric-card metric-budget"><div><span>جمع ماندهٔ بودجه‌ها</span><svg class="lucide-icon" aria-hidden="true"><use href="/icons/lucide.svg#wallet"></use></svg></div><strong>@Formatters.Money(Model.BudgetRemaining)</strong><small>@Model.BudgetCards.Count بودجه در این ماه</small></a>
-        <a asp-page="/Obligations/Index" class="metric-card metric-obligations"><div><span>تعهدات پرداخت‌نشده</span><svg class="lucide-icon" aria-hidden="true"><use href="/icons/lucide.svg#calendar-days"></use></svg></div><strong>@Formatters.Money(Model.MonthObligationUnpaid)</strong><small>از @Formatters.Money(Model.MonthObligationTotal) تعهد این ماه</small></a>
-    </div>
-
-@if (Model.BudgetCards.Any(x => x.IsExceeded))
-{
-    <div class="mt-6 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-rose-800">
-        <strong>هشدار بودجه:</strong> سقف @string.Join("، ", Model.BudgetCards.Where(x => x.IsExceeded).Select(x => x.Name)) رد شده است.
-    </div>
-}
-
-@if (Model.ObligationAlerts.Count > 0)
-{
-    <section class="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-            <div>
-                <strong class="text-amber-900">یادآوری پرداخت</strong>
-                <p class="mt-1 text-xs text-amber-800">موارد زیر به سررسید نزدیک شده‌اند یا پرداختشان عقب افتاده است.</p>
+        <div class="dashboard-hero-top">
+            <span class="dashboard-date"><svg class="lucide-icon" aria-hidden="true"><use href="/icons/lucide.svg#calendar-days"></use></svg>@Formatters.PersianDate(Model.Today)</span>
+            <div class="dashboard-hero-tools">
+                <form method="get" asp-page="/Expenses/Index" role="search" class="dashboard-search">
+                    <svg class="lucide-icon" aria-hidden="true"><use href="/icons/lucide.svg#search"></use></svg>
+                    <input name="Q" type="search" placeholder="جستجو در مخارج..." aria-label="جستجو در مخارج" />
+                </form>
+                <button type="button" class="dashboard-icon-button" data-finance-theme-toggle aria-label="تغییر پوسته" aria-pressed="false"><svg class="lucide-icon theme-icon-moon" aria-hidden="true"><use href="/icons/lucide.svg#moon"></use></svg><svg class="lucide-icon theme-icon-sun" aria-hidden="true"><use href="/icons/lucide.svg#sun"></use></svg></button>
+                <button type="button" class="dashboard-icon-button dashboard-menu-button" data-open-sidebar aria-label="بازکردن منو"><svg class="lucide-icon" aria-hidden="true"><use href="/icons/lucide.svg#menu"></use></svg></button>
+                <span class="dashboard-avatar" aria-hidden="true">@((ViewData["DashboardDisplayName"]?.ToString() ?? "د").Substring(0, 1))</span>
             </div>
-            <a asp-page="/Obligations/Index" class="text-sm font-bold text-amber-900">مدیریت تعهدات</a>
         </div>
-        <div class="mt-3 grid gap-2 md:grid-cols-2">
-            @foreach (var alert in Model.ObligationAlerts)
-            {
-                <a asp-page="/Obligations/Index" class="flex items-center justify-between gap-3 rounded-xl bg-white/80 p-3 text-sm">
-                    <span><strong><svg class="lucide-icon inline align-middle" aria-hidden="true"><use href="/icons/lucide.svg#calendar-days"></use></svg> @alert.Title</strong><span class="mt-1 block text-xs @(alert.IsOverdue ? "text-rose-700" : "text-amber-700")">@(alert.IsOverdue ? "از سررسید گذشته" : $"{alert.DaysUntilDue} روز تا سررسید") · @Formatters.PersianDate(alert.DueDate)</span></span>
-                    <strong class="shrink-0">@Formatters.Money(alert.Amount)</strong>
-                </a>
-            }
-        </div>
-    </section>
-}
-
-<div class="dashboard-analytics-grid">
-    <section class="dashboard-panel trend-panel">
-        <div class="dashboard-panel-head"><div><h3>روند خرج‌های این ماه</h3><p>مجموع خرج ثبت‌شده در هر روز</p></div><svg class="lucide-icon" aria-hidden="true"><use href="/icons/lucide.svg#chart-column-increasing"></use></svg></div>
-        @if (!Model.ExpenseTrend.Any(x => x.Amount > 0))
-        {
-            <div class="dashboard-empty">هنوز خرجی برای نمایش در نمودار ثبت نشده است.</div>
-        }
-        else
-        {
-            <div class="trend-scroll"><div class="trend-chart" role="img" aria-label="نمودار خرج روزانهٔ ماه جاری">
-                @foreach (var point in Model.ExpenseTrend)
-                {
-                    <div class="trend-day" title="روز @point.Day: @Formatters.Money(point.Amount)"><span class="trend-bar" style="height:@(point.Height.ToString(System.Globalization.CultureInfo.InvariantCulture))%"></span><small>@(point.Day == 1 || point.Day % 5 == 0 ? point.Day.ToString() : "")</small></div>
-                }
-            </div></div>
-        }
-    </section>
-    <section class="dashboard-panel category-panel">
-        <div class="dashboard-panel-head"><div><h3>دسته‌بندی خرج‌ها</h3><p>سهم هر دسته از این ماه</p></div><a asp-page="/Reports/Index">گزارش کامل</a></div>
-        @if (Model.CategoryBreakdown.Count == 0)
-        {
-            <div class="dashboard-empty">با ثبت اولین خرج، سهم دسته‌ها اینجا نمایش داده می‌شود.</div>
-        }
-        else
-        {
-            <div class="category-body"><div class="category-ring" style="background:@categoryGradient"><div><strong>@Formatters.Money(Model.MonthTotal)</strong><small>خرج این ماه</small></div></div><ul class="category-list">
-                @foreach (var category in Model.CategoryBreakdown)
-                {
-                    <li><span class="category-dot" style="background:@category.Color"></span><span>@category.Name</span><strong>@Formatters.Percent(category.Percent)</strong></li>
-                }
-            </ul></div>
-            <div class="category-segments" aria-hidden="true">@foreach (var category in Model.CategoryBreakdown)
-            {
-                <span style="background:@category.Color;flex-grow:@(category.Percent.ToString(System.Globalization.CultureInfo.InvariantCulture))"></span>
-            }</div>
-        }
-    </section>
-</div>
-
-<div class="dashboard-detail-grid mt-6 grid gap-6 xl:grid-cols-[1.2fr_.8fr]">
-    <section class="card dashboard-panel">
-        <div class="mb-5 flex items-center justify-between">
-            <div><h3 class="card-title">بودجه‌های این ماه</h3><p class="muted mt-1">پیگیری مصرف و باقی‌مانده هر بودجه</p></div>
-            <a asp-page="/Budgets/Index" class="text-sm font-bold text-indigo-700">مدیریت</a>
-        </div>
-        @if (Model.BudgetCards.Count == 0)
-        {
-            <div class="rounded-2xl bg-slate-50 p-6 text-center">
-                <p class="text-sm text-slate-500">هنوز بودجه‌ای برای این ماه ندارید.</p>
-                <a asp-page="/Budgets/Index" class="btn-soft mt-3">ساخت بودجه</a>
+        <div class="dashboard-hero-lower">
+            <div class="dashboard-greeting"><h1>@greeting،<br />@ViewData["DashboardDisplayName"]</h1><p>امروز یک قدم کوچک، فردای آرام‌تر 🌱</p></div>
+            <div class="dashboard-hero-actions">
+                <a asp-page="/Workspaces/Index" class="hero-workspace"><svg class="lucide-icon" aria-hidden="true"><use href="/icons/lucide.svg#wallet"></use></svg><span><small>فضای مالی</small><strong>@Model.CurrentWorkspace.Name</strong></span><svg class="lucide-icon" aria-hidden="true"><use href="/icons/lucide.svg#chevron-down"></use></svg></a>
+                <a asp-page="/Expenses/Create" class="hero-action hero-action-primary"><svg class="lucide-icon" aria-hidden="true"><use href="/icons/lucide.svg#plus"></use></svg>ثبت خرج</a>
+                <a href="https://life.donysh.ir/" class="hero-action hero-action-life"><svg class="lucide-icon" aria-hidden="true"><use href="/icons/lucide.svg#leaf"></use></svg>دُنیش زندگی</a>
             </div>
-        }
-        else
-        {
-            <div class="space-y-5">
-                @foreach (var budget in Model.BudgetCards)
-                {
-                    var width = Math.Min(budget.Percent, 100);
-                    <div>
-                        <div class="mb-2 flex items-center justify-between gap-3">
-                            <div class="flex items-center gap-2"><svg class="lucide-icon" aria-hidden="true"><use href="/icons/lucide.svg#wallet"></use></svg><strong class="text-sm">@budget.Name</strong></div>
-                            <span class="text-xs font-bold @(budget.IsExceeded ? "text-rose-600" : budget.IsWarning ? "text-amber-600" : "text-slate-500")">@Formatters.Percent(budget.Percent)</span>
+            <div class="dashboard-tip"><span class="dashboard-tip-icon">💡</span><div><strong>نکته امروز</strong><p>خرج‌هایت را ثبت کن تا تصویر روشنی از ماهت داشته باشی.</p></div></div>
+        </div>
+    </section>
+    <div class="dashboard-content">
+        <div class="dashboard-left">
+            <div class="dashboard-metrics">
+                <a asp-page="/Expenses/Index" class="metric-card metric-primary"><div><span>کل هزینه‌های این ماه</span><svg class="lucide-icon" aria-hidden="true"><use href="/icons/lucide.svg#chart-column-increasing"></use></svg></div><strong>@Model.MonthTotal.ToString("N0")</strong><small>تومان · @Model.MonthExpenseCount خرج ثبت‌شده</small></a>
+                <a asp-page="/Savings/Index" class="metric-card metric-savings"><div><span>پس‌انداز این ماه</span><svg class="lucide-icon" aria-hidden="true"><use href="/icons/lucide.svg#piggy-bank"></use></svg></div><strong>@Model.MonthSavings.ToString("N0")</strong><small>تومان · واریزی هدف‌ها</small></a>
+                <a asp-page="/Budgets/Index" class="metric-card metric-budget"><div><span>بودجه باقی‌مانده</span><svg class="lucide-icon" aria-hidden="true"><use href="/icons/lucide.svg#wallet"></use></svg></div><strong>@Model.BudgetRemaining.ToString("N0")</strong><small>تومان · @Model.BudgetCards.Count بودجه فعال</small></a>
+                <a asp-page="/Obligations/Index" class="metric-card metric-obligations"><div><span>تعهدات پرداخت‌نشده</span><svg class="lucide-icon" aria-hidden="true"><use href="/icons/lucide.svg#calendar-days"></use></svg></div><strong>@Model.MonthObligationUnpaid.ToString("N0")</strong><small>تومان · از @Formatters.Money(Model.MonthObligationTotal) این ماه</small></a>
+            </div>
+            <div class="dashboard-analytics-grid">
+                <section class="dashboard-panel trend-panel">
+                    <div class="dashboard-panel-head"><h2>روند هزینه‌ها</h2><a asp-page="/Reports/Index">گزارش کامل</a></div>
+                    <div class="dashboard-chart-tabs" aria-label="بازه نمودار"><span class="active">ماهانه</span><span>خرج روزانه</span></div>
+                    @if (!Model.ExpenseTrend.Any(x => x.Amount > 0))
+                    {
+                        <div class="dashboard-empty">هنوز خرجی برای نمایش در نمودار ثبت نشده است.</div>
+                    }
+                    else
+                    {
+                        <div class="trend-scroll"><div class="trend-chart" role="img" aria-label="نمودار خرج روزانهٔ ماه جاری">
+                            @foreach (var point in Model.ExpenseTrend)
+                            {
+                                <div class="trend-day" title="روز @point.Day: @Formatters.Money(point.Amount)"><span class="trend-bar" style="height:@(point.Height.ToString(System.Globalization.CultureInfo.InvariantCulture))%"></span><small>@(point.Day == 1 || point.Day % 5 == 0 ? point.Day.ToString() : "")</small></div>
+                            }
+                        </div></div>
+                    }
+                </section>
+                <section class="dashboard-panel category-panel">
+                    <div class="dashboard-panel-head"><h2>دسته‌بندی هزینه‌ها</h2><a asp-page="/Categories/Index">همه دسته‌ها</a></div>
+                    @if (Model.CategoryBreakdown.Count == 0)
+                    {
+                        <div class="dashboard-empty">با ثبت اولین خرج، سهم دسته‌ها اینجا نمایش داده می‌شود.</div>
+                    }
+                    else
+                    {
+                        <div class="category-body"><div class="category-ring" style="background:@categoryGradient"><div><strong>@Model.MonthTotal.ToString("N0")</strong><small>تومان</small></div></div><ul class="category-list">
+                            @foreach (var category in Model.CategoryBreakdown)
+                            {
+                                <li><span class="category-dot" style="background:@category.Color"></span><span>@category.Name</span><strong>@Formatters.Percent(category.Percent)</strong></li>
+                            }
+                        </ul></div>
+                    }
+                </section>
+                <section class="dashboard-panel recent-panel">
+                    <div class="dashboard-panel-head"><h2>آخرین مخارج</h2><a asp-page="/Expenses/Index">مشاهده همه</a></div>
+                    @if (Model.RecentExpenses.Count == 0)
+                    {
+                        <div class="dashboard-empty"><div>هنوز خرجی ثبت نشده.<br /><a asp-page="/Expenses/Create">اولین خرج را ثبت کن</a></div></div>
+                    }
+                    else
+                    {
+                        <div class="recent-list">
+                            @foreach (var expense in Model.RecentExpenses.Take(4))
+                            {
+                                <a asp-page="/Expenses/Index" class="recent-item"><span class="recent-icon">@expense.Category.Icon</span><span class="recent-copy"><strong>@expense.Reason</strong><small>@expense.Category.Name</small></span><b>@Formatters.Money(expense.Amount)</b></a>
+                            }
                         </div>
-                        <div class="progress"><div class="progress-bar @(budget.IsExceeded ? "bg-rose-600" : budget.IsWarning ? "bg-amber-500" : "bg-indigo-600")" style="width: @(width)%"></div></div>
-                        <div class="mt-2 flex justify-between text-xs text-slate-500">
-                            <span>مصرف: @Formatters.Money(budget.Spent)</span>
-                            <span class="@(budget.Remaining < 0 ? "text-rose-600" : "")">@(budget.Remaining >= 0 ? "مانده" : "کسری"): @Formatters.Money(Math.Abs(budget.Remaining))</span>
-                        </div>
-                        @if (budget.CarryoverDeduction > 0)
-                        {
-                            <p class="mt-2 text-[11px] font-bold text-rose-600">@Formatters.Money(budget.CarryoverDeduction) کسری از ماه قبل از سقف مؤثر کم شده است.</p>
-                        }
-                    </div>
-                }
+                    }
+                </section>
             </div>
-        }
-    </section>
-
-    <section class="card dashboard-panel">
-        <div class="mb-5 flex items-center justify-between">
-            <div><h3 class="card-title">هدف‌های پس‌انداز</h3><p class="muted mt-1">پیشرفت هدف‌های فعال</p></div>
-            <a asp-page="/Savings/Index" class="text-sm font-bold text-indigo-700">مدیریت</a>
-        </div>
-        @if (Model.SavingsCards.Count == 0)
-        {
-            <div class="rounded-2xl bg-slate-50 p-6 text-center">
-                <p class="text-sm text-slate-500">یک هدف پس‌انداز ایجاد کنید.</p>
-                <a asp-page="/Savings/Index" class="btn-soft mt-3">هدف جدید</a>
-            </div>
-        }
-        else
-        {
-            <div class="space-y-4">
-                @foreach (var goal in Model.SavingsCards.Take(4))
-                {
-                    var width = Math.Min(goal.Percent, 100);
-                    <a asp-page="/Savings/Index" class="block rounded-2xl border border-slate-200 p-4 transition hover:border-indigo-300">
-                        <div class="flex justify-between gap-3"><strong class="text-sm">@goal.Name</strong><span class="text-xs font-bold text-indigo-700">@Formatters.Percent(goal.Percent)</span></div>
-                        <div class="progress mt-3"><div class="progress-bar bg-emerald-500" style="width: @(width)%"></div></div>
-                        <div class="mt-2 flex justify-between text-xs text-slate-500"><span>@Formatters.Money(goal.Saved)</span><span>هدف @Formatters.Money(goal.Target)</span></div>
-                    </a>
-                }
-            </div>
-        }
-    </section>
-</div>
-
-<section class="card dashboard-panel mt-6">
-    <div class="mb-5 flex items-center justify-between">
-        <div><h3 class="card-title">آخرین مخارج</h3><p class="muted mt-1">جدیدترین تراکنش‌های فضای فعال</p></div>
-        <a asp-page="/Expenses/Index" class="text-sm font-bold text-indigo-700">مشاهده همه</a>
-    </div>
-    @if (Model.RecentExpenses.Count == 0)
-    {
-        <div class="empty"><svg class="lucide-icon mx-auto size-10" aria-hidden="true"><use href="/icons/lucide.svg#receipt"></use></svg><p class="mt-3 font-bold">هنوز خرجی ثبت نشده</p><a asp-page="/Expenses/Create" class="btn-primary mt-4">اولین خرج را ثبت کنید</a></div>
-    }
-    else
-    {
-        <div class="divide-y divide-slate-100">
-            @foreach (var expense in Model.RecentExpenses)
+            @if (Model.BudgetCards.Any(x => x.IsExceeded) || Model.ObligationAlerts.Count > 0)
             {
-                <div class="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
-                    <div class="flex min-w-0 items-center gap-3">
-                        <span class="grid size-11 shrink-0 place-items-center rounded-2xl bg-slate-100 text-xl"><svg class="lucide-icon" aria-hidden="true"><use href="/icons/lucide.svg#receipt"></use></svg></span>
-                        <div class="min-w-0"><p class="truncate text-sm font-bold">@expense.Reason</p><p class="truncate text-xs text-slate-500">@expense.Category.Name · @Formatters.PersianDate(expense.ExpenseDate) · @expense.CreatedByUser.DisplayName</p></div>
-                    </div>
-                    <strong class="shrink-0 text-sm text-rose-600">- @Formatters.Money(expense.Amount)</strong>
+                <div class="dashboard-alerts">
+                    @if (Model.BudgetCards.Any(x => x.IsExceeded))
+                    {
+                        <a asp-page="/Budgets/Index">سقف بودجهٔ @string.Join("، ", Model.BudgetCards.Where(x => x.IsExceeded).Select(x => x.Name)) رد شده است.</a>
+                    }
+                    @foreach (var alert in Model.ObligationAlerts)
+                    {
+                        <a asp-page="/Obligations/Index">@alert.Title: @(alert.IsOverdue ? "از سررسید گذشته" : $"{alert.DaysUntilDue} روز تا سررسید")</a>
+                    }
                 </div>
             }
         </div>
-    }
-</section>
+        <aside class="dashboard-goals dashboard-panel">
+            <div class="dashboard-panel-head"><h2>اهداف و برنامه‌ها</h2><a asp-page="/Savings/Index">مشاهده همه</a></div>
+            @if (Model.SavingsCards.Count == 0)
+            {
+                <div class="dashboard-empty"><div>هنوز هدفی نداری.<br /><a asp-page="/Savings/Index">هدف تازه بساز</a></div></div>
+            }
+            else
+            {
+                <div class="goal-list">
+                    @foreach (var goal in Model.SavingsCards.Take(3))
+                    {
+                        var width = Math.Clamp(goal.Percent, 0, 100);
+                        <a asp-page="/Savings/Index" class="goal-card"><div class="goal-title"><span class="goal-icon"><svg class="lucide-icon" aria-hidden="true"><use href="/icons/lucide.svg#target"></use></svg></span><strong>@goal.Name</strong></div><div class="goal-progress"><div class="progress"><span style="width:@(width.ToString(System.Globalization.CultureInfo.InvariantCulture))%"></span></div><b>@Formatters.Percent(goal.Percent)</b></div><small>@Formatters.Money(goal.Saved) / @Formatters.Money(goal.Target)</small></a>
+                    }
+                </div>
+            }
+        </aside>
+    </div>
 </div>
