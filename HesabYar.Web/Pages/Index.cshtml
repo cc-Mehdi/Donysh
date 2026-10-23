@@ -46,7 +46,7 @@
             <div class="dashboard-analytics-grid">
                 <section class="dashboard-panel trend-panel">
                     <div class="dashboard-panel-head"><h2>روند هزینه‌ها</h2><a asp-page="/Reports/Index">گزارش کامل</a></div>
-                    <div class="dashboard-chart-tabs" aria-label="بازه نمودار"><span class="active">ماهانه</span><span>خرج روزانه</span></div>
+                    <p class="trend-subtitle">خرج روزانهٔ این ماه</p>
                     @if (!Model.ExpenseTrend.Any(x => x.Amount > 0))
                     {
                         <div class="dashboard-empty">هنوز خرجی برای نمایش در نمودار ثبت نشده است.</div>
@@ -86,7 +86,7 @@
                     else
                     {
                         <div class="recent-list">
-                            @foreach (var expense in Model.RecentExpenses.Take(4))
+                            @foreach (var expense in Model.RecentExpenses.Take(6))
                             {
                                 <a asp-page="/Expenses/Index" class="recent-item"><span class="recent-icon">@expense.Category.Icon</span><span class="recent-copy"><strong>@expense.Reason</strong><small>@expense.Category.Name</small></span><b>@Formatters.Money(expense.Amount)</b></a>
                             }
@@ -108,22 +108,45 @@
                 </div>
             }
         </div>
-        <aside class="dashboard-goals dashboard-panel">
-            <div class="dashboard-panel-head"><h2>اهداف و برنامه‌ها</h2><a asp-page="/Savings/Index">مشاهده همه</a></div>
-            @if (Model.SavingsCards.Count == 0)
-            {
-                <div class="dashboard-empty"><div>هنوز هدفی نداری.<br /><a asp-page="/Savings/Index">هدف تازه بساز</a></div></div>
-            }
-            else
-            {
-                <div class="goal-list">
-                    @foreach (var goal in Model.SavingsCards.Take(3))
-                    {
-                        var width = Math.Clamp(goal.Percent, 0, 100);
-                        <a asp-page="/Savings/Index" class="goal-card"><div class="goal-title"><span class="goal-icon"><svg class="lucide-icon" aria-hidden="true"><use href="/icons/lucide.svg#target"></use></svg></span><strong>@goal.Name</strong></div><div class="goal-progress"><div class="progress"><span style="width:@(width.ToString(System.Globalization.CultureInfo.InvariantCulture))%"></span></div><b>@Formatters.Percent(goal.Percent)</b></div><small>@Formatters.Money(goal.Saved) / @Formatters.Money(goal.Target)</small></a>
-                    }
-                </div>
-            }
+        <aside class="dashboard-rail">
+            <section class="dashboard-goals dashboard-panel">
+                <div class="dashboard-panel-head"><h2>اهداف و برنامه‌ها</h2><a asp-page="/Savings/Index">مشاهده همه</a></div>
+                @if (Model.SavingsCards.Count == 0)
+                {
+                    <div class="dashboard-empty"><div>هنوز هدفی نداری.<br /><a asp-page="/Savings/Index">هدف تازه بساز</a></div></div>
+                }
+                else
+                {
+                    <div class="goal-list">
+                        @foreach (var goal in Model.SavingsCards.Take(3))
+                        {
+                            var width = Math.Clamp(goal.Percent, 0, 100);
+                            <a asp-page="/Savings/Index" class="goal-card"><div class="goal-title"><span class="goal-icon"><svg class="lucide-icon" aria-hidden="true"><use href="/icons/lucide.svg#target"></use></svg></span><strong>@goal.Name</strong></div><div class="goal-progress"><div class="progress"><span style="width:@(width.ToString(System.Globalization.CultureInfo.InvariantCulture))%"></span></div><b>@Formatters.Percent(goal.Percent)</b></div><small>@Formatters.Money(goal.Saved) / @Formatters.Money(goal.Target)</small></a>
+                        }
+                    </div>
+                }
+            </section>
+            <section class="dashboard-budgets dashboard-panel">
+                <div class="dashboard-panel-head"><h2>بودجه‌های این ماه</h2><a asp-page="/Budgets/Index">مشاهده همه</a></div>
+                @if (Model.BudgetCards.Count == 0)
+                {
+                    <div class="dashboard-empty"><div>هنوز بودجه‌ای برای این ماه ندارید.<br /><a asp-page="/Budgets/Index">بودجه بسازید</a></div></div>
+                }
+                else
+                {
+                    <div class="budget-list">
+                        @foreach (var budget in Model.BudgetCards.Take(3))
+                        {
+                            var width = Math.Clamp(budget.Percent, 0, 100);
+                            <a asp-page="/Budgets/Index" class="budget-item">
+                                <div class="budget-item-title"><span>@budget.Icon</span><strong>@budget.Name</strong><b>@Formatters.Percent(budget.Percent)</b></div>
+                                <div class="progress"><span class="@(budget.IsExceeded ? "over" : budget.IsWarning ? "warning" : "")" style="width:@(width.ToString(System.Globalization.CultureInfo.InvariantCulture))%"></span></div>
+                                <small>@Formatters.Money(budget.Spent) از @Formatters.Money(budget.Amount)</small>
+                            </a>
+                        }
+                    </div>
+                }
+            </section>
         </aside>
     </div>
 </div>
