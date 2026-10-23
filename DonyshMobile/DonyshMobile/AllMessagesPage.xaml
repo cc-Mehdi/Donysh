@@ -56,14 +56,15 @@
                 </CollectionView.ItemTemplate>
             </CollectionView>
         </RefreshView>
-        <Grid Grid.Row="3" ColumnDefinitions="*,*,*" ColumnSpacing="4" Padding="0,4"
-              BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#162237}">
-            <ui:DonyshButton Glyph="{x:Static ui:AppIcons.Workspace}" Text="خانه" Clicked="OnHomeClicked"
-                             Style="{StaticResource BottomTab}" AutomationId="HomeTab" />
-            <ui:DonyshButton Grid.Column="1" Glyph="{x:Static ui:AppIcons.Message}" Text="پیام‌ها"
-                             Style="{StaticResource BottomTabActive}" AutomationId="MessagesTab" />
-            <ui:DonyshButton Grid.Column="2" Glyph="{x:Static ui:AppIcons.Sms}" Text="فرستنده‌ها"
-                             Clicked="OnSendersClicked" Style="{StaticResource BottomTab}" AutomationId="SendersTab" />
-        </Grid>
+        <Border Grid.Row="3" Style="{StaticResource BottomNavSurface}">
+            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="0">
+                <ui:DonyshButton Glyph="{x:Static ui:AppIcons.Workspace}" Text="خانه" Clicked="OnHomeClicked"
+                                 Style="{StaticResource BottomTab}" AutomationId="HomeTab" />
+                <ui:DonyshButton Grid.Column="1" Glyph="{x:Static ui:AppIcons.Message}" Text="پیام‌ها"
+                                 Style="{StaticResource BottomTabActive}" AutomationId="MessagesTab" />
+                <ui:DonyshButton Grid.Column="2" Glyph="{x:Static ui:AppIcons.Sms}" Text="فرستنده‌ها"
+                                 Clicked="OnSendersClicked" Style="{StaticResource BottomTab}" AutomationId="SendersTab" />
+            </Grid>
+        </Border>
     </Grid>
 </ui:DonyshPage>

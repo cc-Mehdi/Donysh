@@ -168,17 +168,27 @@
         <Setter Property="Padding" Value="8,10" />
         <Setter Property="MinimumHeightRequest" Value="58" />
     </Style>
+    <Style x:Key="BottomNavSurface" TargetType="Border">
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=#FFFFFF, Dark=#162237}" />
+        <Setter Property="Stroke" Value="{AppThemeBinding Light=#DEE5F1, Dark=#2A3953}" />
+        <Setter Property="StrokeThickness" Value="1" />
+        <Setter Property="StrokeShape" Value="RoundRectangle 20" />
+        <Setter Property="Padding" Value="4" />
+    </Style>
     <Style x:Key="BottomTab" TargetType="ui:DonyshButton" BasedOn="{StaticResource ButtonBase}">
         <Setter Property="BackgroundColor" Value="Transparent" />
         <Setter Property="TextColor" Value="{AppThemeBinding Light=#687990, Dark=#ACBBD1}" />
-        <Setter Property="FontSize" Value="12" />
-        <Setter Property="Padding" Value="4,7" />
-        <Setter Property="CornerRadius" Value="14" />
-        <Setter Property="MinimumHeightRequest" Value="50" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontAttributes" Value="None" />
+        <Setter Property="FlowDirection" Value="LeftToRight" />
+        <Setter Property="Padding" Value="4,10" />
+        <Setter Property="CornerRadius" Value="0" />
+        <Setter Property="MinimumHeightRequest" Value="54" />
     </Style>
     <Style x:Key="BottomTabActive" TargetType="ui:DonyshButton" BasedOn="{StaticResource BottomTab}">
-        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=#EEEFFD, Dark=#292C56}" />
+        <Setter Property="BackgroundColor" Value="Transparent" />
         <Setter Property="TextColor" Value="{AppThemeBinding Light=#453BB7, Dark=#DDD9FF}" />
+        <Setter Property="FontAttributes" Value="Bold" />
     </Style>
     <Style x:Key="DangerAction" TargetType="Button" BasedOn="{StaticResource ButtonBase}">
         <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=#FFF0F1, Dark=#412336}" />
