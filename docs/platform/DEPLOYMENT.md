@@ -28,6 +28,8 @@ notepad .\DonyshMobile\DonyshMobile\DonyshMobile.csproj
 
 **مرحلهٔ ۲ ـ اطلاعات امضا را در همین پنجره وارد کنید.** مسیر keystore و نام alias را هنگام پرسش وارد کنید. رمزها هنگام تایپ نمایش داده نمی‌شوند.
 
+اگر از Git Bash یا WSL استفاده می‌کنید، پس از افزایش دستی نسخه کافی است از ریشهٔ مخزن `./scripts/Publish-MobileApk.sh` را اجرا کنید. این راه‌انداز مسیر پیش‌فرض `DonyshSigning/donysh-release.jks` در پوشهٔ کاربر و نام کلید `donysh-mobile` را می‌گذارد، دو رمز را مخفیانه می‌پرسد و همان اسکریپت PowerShell انتشار و بررسی دانلود را اجرا می‌کند. برای مسیر یا نام کلید متفاوت، متغیرهای `DONYSH_ANDROID_KEYSTORE` (با مسیر ویندوز) و `DONYSH_ANDROID_KEY_ALIAS` را پیش از اجرا تنظیم کنید. برای بازیابی انتشار پس از آپلود موفق، از دستور `-ResumeUploadedSha256` پایین استفاده کنید؛ اجرای دوبارهٔ راه‌انداز Bash یک APK تازه می‌سازد.
+
 ```powershell
 $env:DONYSH_ANDROID_KEYSTORE = Read-Host 'Full path to release keystore'
 $env:DONYSH_ANDROID_KEY_ALIAS = Read-Host 'Release key alias'
