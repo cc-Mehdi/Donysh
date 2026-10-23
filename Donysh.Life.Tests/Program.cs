@@ -140,6 +140,13 @@ using (var response = await client.GetAsync("/images/donysh-life-logo.png"))
         && response.Content.Headers.ContentType?.MediaType == "image/png");
 }
 
+using (var response = await client.GetAsync("/images/today-mountains.webp"))
+{
+    Check("Life serves the local Today illustration",
+        response.StatusCode == HttpStatusCode.OK
+        && response.Content.Headers.ContentType?.MediaType == "image/webp");
+}
+
 using (var response = await client.GetAsync("/js/week-planner.js"))
 {
     var script = await response.Content.ReadAsStringAsync();
@@ -206,11 +213,24 @@ using (var authenticatedClient = authenticatedFactory.CreateClient(new WebApplic
         response.StatusCode == HttpStatusCode.OK
         && html.Contains("/images/donysh-life-logo.png", StringComparison.Ordinal)
         && html.Contains("rel=\"icon\" type=\"image/png\" href=\"/images/donysh-life-logo.png\"", StringComparison.Ordinal)
-        && html.Contains("برای چیزهای مهم، جا باز کن", StringComparison.Ordinal)
+        && html.Contains("id=\"today-title\"", StringComparison.Ordinal)
         && html.Contains("برنامهٔ هفته", StringComparison.Ordinal)
         && html.Contains("فعالیت‌های فعال", StringComparison.Ordinal)
         && html.Contains("فعالیتی انجام دادی", StringComparison.Ordinal)
+        && html.Contains("id=\"today-agenda-title\"", StringComparison.Ordinal)
+        && html.Contains("id=\"life-sidebar\"", StringComparison.Ordinal)
         && html.Contains("aria-current=\"page\"", StringComparison.Ordinal));
+    foreach (var path in new[] { "/Activities", "/Week", "/Ai", "/Progress", "/Setup" })
+    {
+        using var pageResponse = await authenticatedClient.GetAsync(path);
+        var pageHtml = await pageResponse.Content.ReadAsStringAsync();
+        Check($"Life shared navigation appears on {path}",
+            pageResponse.StatusCode == HttpStatusCode.OK
+            && pageHtml.Contains("id=\"life-sidebar\"", StringComparison.Ordinal)
+            && pageHtml.Contains("/icons/activities.svg#calendar-days", StringComparison.Ordinal)
+            && pageHtml.Contains("data-life-sidebar-toggle", StringComparison.Ordinal)
+            && pageHtml.Contains("class=\"mobile-nav\"", StringComparison.Ordinal));
+    }
     Check("Authenticated Life shell monitors cross-product logout",
         html.Contains("/js/session-sync.js", StringComparison.Ordinal)
         && html.Contains("data-session-status-url=\"/Account/SessionStatus\"", StringComparison.Ordinal));

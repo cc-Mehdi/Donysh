@@ -108,13 +108,13 @@ test('sidebar uses a 64px icon rail and preserves the mobile navigation', { skip
     const compact = render(1100, 'collapsed');
     const mediumExpanded = render(1100, 'expanded');
     const mobile = render(800, 'collapsed');
-    assert.equal(wide.sidebarWidth, 280);
+    assert.equal(wide.sidebarWidth, 236);
     assert.notEqual(wide.labelDisplay, 'none');
     assert.equal(compact.sidebarWidth, 64);
     assert.equal(compact.labelDisplay, 'none');
     assert.notEqual(compact.expandIconDisplay, 'none');
     assert.equal(compact.footerBelowNav, true);
-    assert.equal(mediumExpanded.sidebarWidth, 280);
+    assert.equal(mediumExpanded.sidebarWidth, 236);
     assert.equal(mobile.sidebarDisplay, 'none');
     assert.equal(mobile.mobileNavDisplay, 'grid');
 });

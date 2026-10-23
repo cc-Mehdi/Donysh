@@ -8,7 +8,8 @@ const names = [
   'activity', 'bike', 'book-open', 'briefcase', 'calendar-days', 'camera',
   'circle', 'code-xml', 'coffee', 'dumbbell', 'gamepad-2', 'graduation-cap',
   'heart', 'house', 'laptop', 'leaf', 'lightbulb', 'moon', 'music', 'palette',
-  'pen-tool', 'plane', 'sparkles', 'sun', 'target', 'users', 'utensils', 'wallet'
+  'pen-tool', 'plane', 'plus', 'log-out', 'panel-right-close', 'panel-right-open',
+  'chart-no-axes-combined', 'sparkles', 'sun', 'target', 'users', 'utensils', 'wallet'
 ];
 
 const symbols = await Promise.all(names.map(async (name) => {
