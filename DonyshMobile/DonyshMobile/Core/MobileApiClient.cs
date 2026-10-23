@@ -23,13 +23,17 @@ public sealed class MobileApiClient
         return uri.GetLeftPart(UriPartial.Authority);
     }
 
-    public async Task<PairResult?> PairAsync(string server, string code, CancellationToken cancellationToken = default)
+    public async Task<PairResult?> PairAsync(string server, string code, string installationId,
+        string? previousToken = null, CancellationToken cancellationToken = default)
     {
         server = NormalizeServer(server) ?? throw new ArgumentException("آدرس سرور باید یک نشانی امن و معتبر باشد.", nameof(server));
         var normalizedCode = NormalizePairingCode(code)
             ?? throw new ArgumentException("کد اتصال باید همان کد ۳۲ نویسه‌ای نمایش‌داده‌شده در سامانه باشد.", nameof(code));
+        if (installationId.Length != 64 || !installationId.All(Uri.IsHexDigit))
+            throw new ArgumentException("شناسهٔ نصب گوشی معتبر نیست.", nameof(installationId));
         using var client = _clientFactory();
-        using var response = await client.PostAsJsonAsync(server + "/api/mobile/pair", new PairRequest(normalizedCode), JsonOptions, cancellationToken);
+        using var response = await client.PostAsJsonAsync(server + "/api/mobile/pair",
+            new PairRequest(normalizedCode, installationId, previousToken), JsonOptions, cancellationToken);
         if (response.StatusCode == HttpStatusCode.Unauthorized) return null;
         response.EnsureSuccessStatusCode();
         var result = await response.Content.ReadFromJsonAsync<PairResult>(JsonOptions, cancellationToken);
@@ -40,7 +44,8 @@ public sealed class MobileApiClient
     }
 
     public async Task<MobileSessionResult?> LoginAsync(string server, string email, string password,
-        string installationId, string deviceName, CancellationToken cancellationToken = default)
+        string installationId, string deviceName, string? previousToken = null,
+        CancellationToken cancellationToken = default)
     {
         server = NormalizeServer(server) ?? throw new ArgumentException("آدرس سامانه معتبر نیست.", nameof(server));
         email = email.Trim();
@@ -51,7 +56,7 @@ public sealed class MobileApiClient
             throw new ArgumentException("اطلاعات ورود کامل یا معتبر نیست.");
         using var client = _clientFactory();
         using var response = await client.PostAsJsonAsync(server + "/api/mobile/login",
-            new MobileLoginRequest(email, password, installationId, deviceName), JsonOptions, cancellationToken);
+            new MobileLoginRequest(email, password, installationId, deviceName, previousToken), JsonOptions, cancellationToken);
         if (response.StatusCode == HttpStatusCode.Unauthorized) return null;
         if (response.StatusCode == HttpStatusCode.Conflict)
             throw new InvalidOperationException("حساب یا فضای مالی برای اتصال این گوشی آماده نیست.");

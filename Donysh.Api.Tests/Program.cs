@@ -221,6 +221,8 @@ using (var configurationWithoutToken = new HttpRequestMessage(HttpMethod.Get, "/
 await Check("Pairing missing code", "/api/mobile/pair", "{}", HttpStatusCode.BadRequest);
 await Check("Pairing null payload", "/api/mobile/pair", "null", HttpStatusCode.BadRequest);
 await Check("Non-hex pairing code rejected without database work", "/api/mobile/pair", "{\"code\":\"" + new string('Z', 32) + "\"}", HttpStatusCode.BadRequest);
+await Check("Malformed installation identity rejected before pairing", "/api/mobile/pair",
+    "{\"code\":\"" + new string('A', 32) + "\",\"installationId\":\"invalid\"}", HttpStatusCode.BadRequest);
 await Check("Malformed JSON", "/api/mobile/pair", "{", HttpStatusCode.BadRequest);
 using (var workspacesWithoutToken = new HttpRequestMessage(HttpMethod.Get, "/api/mobile/workspaces"))
 {

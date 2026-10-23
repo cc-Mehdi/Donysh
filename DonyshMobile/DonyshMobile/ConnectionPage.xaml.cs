@@ -251,8 +251,13 @@ public partial class ConnectionPage : DonyshPage
                         $"{UiText.Digits(queue.Pending)} پیام منتظر دارید. پس از ورود، این پیام‌ها به فضای مالی انتخاب‌شده فرستاده می‌شوند. ادامه می‌دهید؟",
                         "ادامه", "انصراف")) return;
                 var installationId = await MobileConnectionStore.GetInstallationIdAsync();
+                var previousConnection = await _loadConnectionAsync();
+                var previousToken = previousConnection is not null
+                    && MobileApiClient.NormalizeServer(previousConnection.Server) == server
+                    ? previousConnection.Token : null;
                 var result = await _api.LoginAsync(server, email, password, installationId,
-                    string.IsNullOrWhiteSpace(DeviceInfo.Name) ? "گوشی همراه" : DeviceInfo.Name);
+                    string.IsNullOrWhiteSpace(DeviceInfo.Name) ? "گوشی همراه" : DeviceInfo.Name,
+                    previousToken);
                 PasswordEntry.Text = string.Empty;
                 if (result is null)
                 {
@@ -357,7 +362,13 @@ public partial class ConnectionPage : DonyshPage
                     $"{UiText.Digits(queue.Pending)} پیام هنوز روی گوشی منتظر ارسال است. با اتصال جدید، این پیام‌ها به فضای مالیِ کد جدید ارسال می‌شوند. ادامه می‌دهید؟", "ادامهٔ اتصال", "انصراف")) return;
             try
             {
-                var result = await _api.PairAsync(server, PairCodeEntry.Text ?? string.Empty);
+                var installationId = await MobileConnectionStore.GetInstallationIdAsync();
+                var previousConnection = await _loadConnectionAsync();
+                var previousToken = previousConnection is not null
+                    && MobileApiClient.NormalizeServer(previousConnection.Server) == server
+                    ? previousConnection.Token : null;
+                var result = await _api.PairAsync(server, PairCodeEntry.Text ?? string.Empty,
+                    installationId, previousToken);
                 if (result is null)
                 {
                     await AlertAsync("کد پذیرفته نشد", "کد اتصال نامعتبر یا منقضی شده است. در سایت یک کد تازه بسازید.", "باشه");

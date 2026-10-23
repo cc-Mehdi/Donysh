@@ -13,6 +13,7 @@ namespace HesabYar.Web.Sms;
 
 public static class MobileApi
 {
+    public const int MaxActiveConnections = 3;
     private const int MaxConfigurationBytes = 8 * 1024 * 1024;
     public static string Hash(string value) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
     public static string NewSecret() => Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
@@ -79,6 +80,7 @@ public static class MobileApi
             || email.Any(char.IsControl)
             || string.IsNullOrEmpty(password) || password.Length > 256
             || !IsHexSecret(input?.InstallationId, 64)
+            || input?.PreviousToken is { } previousToken && !IsHexSecret(previousToken, 64)
             || string.IsNullOrWhiteSpace(deviceName) || deviceName.Length > 80 || deviceName.Any(char.IsControl))
             return Results.BadRequest(new { error = "Invalid login" });
 
@@ -94,6 +96,7 @@ public static class MobileApi
         if (workspaces.Count == 0) return Results.Conflict(new { error = "No workspace" });
 
         var instanceHash = Hash(input!.InstallationId.ToUpperInvariant());
+        var previousTokenHash = input.PreviousToken is null ? null : Hash(input.PreviousToken.ToUpperInvariant());
         var token = NewSecret();
         return await db.Database.CreateExecutionStrategy().ExecuteAsync<IResult>(async () =>
         {
@@ -102,9 +105,19 @@ public static class MobileApi
             await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({user.Id}, 0))", ct);
             var device = await db.MobileDevices.SingleOrDefaultAsync(
                 x => x.UserId == user.Id && x.ClientInstanceHash == instanceHash, ct);
+            var existingDeviceId = device?.Id;
+            if (previousTokenHash is not null)
+                await db.MobileDevices.Where(x => x.UserId == user.Id && x.TokenHash == previousTokenHash
+                        && (existingDeviceId == null || x.Id != existingDeviceId))
+                    .ExecuteUpdateAsync(s => s.SetProperty(x => x.Revoked, true)
+                        .SetProperty(x => x.TokenHash, (string?)null)
+                        .SetProperty(x => x.PairCodeHash, (string?)null)
+                        .SetProperty(x => x.ClientInstanceHash, (string?)null), ct);
             if (device is null)
             {
-                if (await db.MobileDevices.CountAsync(x => x.UserId == user.Id && !x.Revoked, ct) >= 5)
+                var now = DateTime.UtcNow;
+                if (await db.MobileDevices.CountAsync(x => x.UserId == user.Id && !x.Revoked
+                    && (x.TokenHash != null || x.PairExpiresAtUtc > now), ct) >= MaxActiveConnections)
                     return Results.Conflict(new { error = "Device limit" });
                 var destination = await ResolveDestinationAsync(db, user.Id, workspaces[0].Id, ct);
                 if (destination is null) return Results.Conflict(new { error = "No category" });
@@ -365,20 +378,45 @@ public static class MobileApi
         if (!ctx.Request.IsHttps) return Results.BadRequest(new { error = "HTTPS required" });
         var input = await ReadAsync<PairRequest>(ctx, ct);
         if (!IsHexSecret(input?.Code, 32)) return Results.BadRequest(new { error = "Invalid pairing code" });
+        if (input!.InstallationId is not null && !IsHexSecret(input.InstallationId, 64)
+            || input.PreviousToken is not null && !IsHexSecret(input.PreviousToken, 64))
+            return Results.BadRequest(new { error = "Invalid device identity" });
         var hash = Hash(input!.Code.ToUpperInvariant());
-        var now = DateTime.UtcNow;
-        var device = await db.MobileDevices.AsNoTracking().Include(x => x.Workspace).Include(x => x.Category)
-            .SingleOrDefaultAsync(x => x.PairCodeHash == hash && !x.Revoked && x.PairExpiresAtUtc > now && x.TokenHash == null, ct);
-        if (device is null || !await HasAccessAsync(db, device, ct)) return Results.Unauthorized();
+        var instanceHash = input.InstallationId is null ? null : Hash(input.InstallationId.ToUpperInvariant());
+        var previousTokenHash = input.PreviousToken is null ? null : Hash(input.PreviousToken.ToUpperInvariant());
         var token = NewSecret();
-        // Recheck expiry and destination in the atomic consume, not only the earlier lookup.
-        now = DateTime.UtcNow;
-        var changed = await db.MobileDevices.Where(x => x.Id == device.Id && x.PairCodeHash == hash && !x.Revoked
-                && x.TokenHash == null && x.PairExpiresAtUtc > now
-                && db.WorkspaceMembers.Any(m => m.UserId == x.UserId && m.WorkspaceId == x.WorkspaceId)
-                && db.ExpenseCategories.Any(c => c.Id == x.CategoryId && c.WorkspaceId == x.WorkspaceId && !c.IsArchived))
-            .ExecuteUpdateAsync(s => s.SetProperty(x => x.TokenHash, Hash(token)).SetProperty(x => x.PairCodeHash, (string?)null), ct);
-        return changed == 1 ? Results.Ok(new PairResult(token, device.Workspace.Name, device.Category.Name, device.UserId)) : Results.Unauthorized();
+        return await db.Database.CreateExecutionStrategy().ExecuteAsync<IResult>(async () =>
+        {
+            db.ChangeTracker.Clear();
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
+            var now = DateTime.UtcNow;
+            var device = await db.MobileDevices.AsNoTracking().Include(x => x.Workspace).Include(x => x.Category)
+                .SingleOrDefaultAsync(x => x.PairCodeHash == hash && !x.Revoked
+                    && x.PairExpiresAtUtc > now && x.TokenHash == null, ct);
+            if (device is null) return Results.Unauthorized();
+            await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({device.UserId}, 0))", ct);
+            // Pairing by an older app still works, but a current app identifies its installation.
+            // Retire its previous token (including a legacy token without an installation ID).
+            if (instanceHash is not null || previousTokenHash is not null)
+                await db.MobileDevices.Where(x => x.UserId == device.UserId && x.Id != device.Id
+                    && ((instanceHash != null && x.ClientInstanceHash == instanceHash)
+                        || (previousTokenHash != null && x.TokenHash == previousTokenHash)))
+                    .ExecuteUpdateAsync(s => s.SetProperty(x => x.Revoked, true)
+                        .SetProperty(x => x.TokenHash, (string?)null)
+                        .SetProperty(x => x.PairCodeHash, (string?)null)
+                        .SetProperty(x => x.ClientInstanceHash, (string?)null), ct);
+            now = DateTime.UtcNow;
+            var changed = await db.MobileDevices.Where(x => x.Id == device.Id && x.PairCodeHash == hash && !x.Revoked
+                    && x.TokenHash == null && x.PairExpiresAtUtc > now
+                    && db.WorkspaceMembers.Any(m => m.UserId == x.UserId && m.WorkspaceId == x.WorkspaceId)
+                    && db.ExpenseCategories.Any(c => c.Id == x.CategoryId && c.WorkspaceId == x.WorkspaceId && !c.IsArchived))
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.TokenHash, Hash(token))
+                    .SetProperty(x => x.PairCodeHash, (string?)null)
+                    .SetProperty(x => x.ClientInstanceHash, instanceHash), ct);
+            if (changed != 1) return Results.Unauthorized();
+            await tx.CommitAsync(ct);
+            return Results.Ok(new PairResult(token, device.Workspace.Name, device.Category.Name, device.UserId));
+        });
     }
 
     private static Task<bool> HasAccessAsync(ApplicationDbContext db, MobileDevice device, CancellationToken ct) =>

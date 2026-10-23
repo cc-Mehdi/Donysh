@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Security.Cryptography;
 using HesabYar.Web.Data;
 using HesabYar.Web.Domain;
+using HesabYar.Web.Helpers;
 using HesabYar.Web.Services;
 using HesabYar.Web.Sms;
 using Microsoft.AspNetCore.Mvc;
@@ -14,12 +15,22 @@ namespace HesabYar.Web.Pages.Mobile;
 [EnableRateLimiting("account")]
 public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext workspaceContext) : PageModel
 {
-    [BindProperty, Required, StringLength(80)] public string DeviceName { get; set; } = "گوشی من";
+    [BindProperty, Required, StringLength(80)] public string DeviceName { get; set; } = "";
     [BindProperty] public Guid CategoryId { get; set; }
     public string? PairCode { get; private set; }
     public Workspace Workspace { get; private set; } = null!;
     public List<ExpenseCategory> Categories { get; private set; } = [];
-    public List<MobileDevice> Devices { get; private set; } = [];
+    public List<MobileDevice> ActiveDevices { get; private set; } = [];
+    public List<MobileDevice> PendingDevices { get; private set; } = [];
+    public List<MobileDevice> HistoryDevices { get; private set; } = [];
+    public int HistoryCount { get; private set; }
+    public List<string> DuplicateNames { get; private set; } = [];
+    public static string TehranDate(DateTime utc)
+    {
+        var local = TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc),
+            TimeZoneInfo.FindSystemTimeZoneById("Asia/Tehran"));
+        return $"{Formatters.PersianDate(DateOnly.FromDateTime(local))}، {local:HH:mm}";
+    }
     public async Task OnGetAsync(CancellationToken ct) => await LoadAsync(ct);
 
     public async Task<IActionResult> OnPostAsync(CancellationToken ct)
@@ -47,9 +58,9 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
             // A commit whose acknowledgement was lost must not create another connection on retry.
             if (await db.MobileDevices.AnyAsync(x => x.Id == device.Id, ct)) return true;
             var now = DateTime.UtcNow;
-            if (await db.MobileDevices.CountAsync(x => x.UserId == device.UserId && !x.Revoked && (x.TokenHash != null || x.PairExpiresAtUtc > now), ct) >= 3)
+            if (await db.MobileDevices.CountAsync(x => x.UserId == device.UserId && !x.Revoked && (x.TokenHash != null || x.PairExpiresAtUtc > now), ct) >= MobileApi.MaxActiveConnections)
             {
-                ModelState.AddModelError("", "حداکثر ۳ اتصال فعال؛ ابتدا یکی را لغو کنید.");
+                ModelState.AddModelError("", "حداکثر ۳ اتصال فعال یا کد منتظر مجاز است؛ یکی را لغو کنید.");
                 return false;
             }
             db.MobileDevices.Add(device);
@@ -76,7 +87,19 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
         Response.Headers.CacheControl = "no-store";
         Workspace = await workspaceContext.RequireCurrentAsync(ct);
         Categories = await db.ExpenseCategories.AsNoTracking().Where(x => x.WorkspaceId == Workspace.Id && !x.IsArchived).OrderBy(x => x.Name).ToListAsync(ct);
-        Devices = await db.MobileDevices.AsNoTracking().Include(x => x.Workspace).Include(x => x.Category)
-            .Where(x => x.UserId == workspaceContext.UserId).OrderByDescending(x => x.CreatedAtUtc).Take(100).ToListAsync(ct);
+        var now = DateTime.UtcNow;
+        var devices = db.MobileDevices.AsNoTracking().Include(x => x.Workspace).Include(x => x.Category)
+            .Where(x => x.UserId == workspaceContext.UserId);
+        ActiveDevices = await devices.Where(x => !x.Revoked && x.TokenHash != null)
+            .OrderByDescending(x => x.CreatedAtUtc).ToListAsync(ct);
+        PendingDevices = await devices.Where(x => !x.Revoked && x.TokenHash == null
+                && x.PairCodeHash != null && x.PairExpiresAtUtc > now)
+            .OrderByDescending(x => x.CreatedAtUtc).ToListAsync(ct);
+        var history = devices.Where(x => x.Revoked || x.TokenHash == null
+            && (x.PairCodeHash == null || x.PairExpiresAtUtc <= now));
+        HistoryCount = await history.CountAsync(ct);
+        HistoryDevices = await history.OrderByDescending(x => x.CreatedAtUtc).Take(20).ToListAsync(ct);
+        DuplicateNames = ActiveDevices.GroupBy(x => x.Name.Trim(), StringComparer.OrdinalIgnoreCase)
+            .Where(x => x.Count() > 1).Select(x => x.Key).ToList();
     }
 }

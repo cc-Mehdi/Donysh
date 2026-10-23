@@ -1,54 +1,105 @@
 @page
 @model HesabYar.Web.Pages.Mobile.IndexModel
 @{ ViewData["Title"] = "همراه دُنیش"; }
-<div class="mb-6"><h2 class="text-2xl font-black">همراه دُنیش · پیامک بانکی</h2>
-<p class="mt-2 text-sm text-slate-500">ثبت خودکار برداشت‌های ملت، بلو و رسالت با برنامهٔ اندروید؛ همه خرج‌ها ابتدا «نیازمند بررسی» هستند.</p></div>
-<section class="card mb-5 overflow-hidden border-indigo-200 bg-gradient-to-l from-indigo-50 to-white">
-    <div class="flex flex-col items-start justify-between gap-5 sm:flex-row sm:items-center">
-        <div class="flex items-start gap-4">
-            <span class="grid size-14 shrink-0 place-items-center rounded-2xl bg-indigo-100 text-indigo-700" aria-hidden="true">
-                <svg class="size-7 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M10 5h4M10 18h4"/></svg>
-            </span>
-            <div>
-                <h3 class="card-title">دریافت برنامهٔ اندروید دُنیش</h3>
-                <p class="mt-2 max-w-2xl text-sm leading-7 text-slate-600">نسخهٔ رسمی را مستقیم از سرور دُنیش دریافت کنید. پس از نصب، همین صفحه را برای ساخت کد اتصال باز نگه دارید.</p>
-            </div>
+
+<div class="mobile-page">
+    <header class="mobile-page-head">
+        <div class="mobile-page-icon" aria-hidden="true"><svg class="lucide-icon"><use href="/icons/lucide.svg#smartphone"></use></svg></div>
+        <div>
+            <p class="mobile-eyebrow">مدیریت گوشی‌ها</p>
+            <h1>همراه دُنیش</h1>
+            <p>دسترسی گوشی‌ها و مقصد پیامک‌ها را یک‌جا ببینید. «فعال» به معنی آنلاین بودن گوشی نیست.</p>
         </div>
-        <a href="https://donysh.ir/downloads/donysh-mobile.apk" class="btn-primary w-full shrink-0 sm:w-auto" download>دانلود فایل نصب</a>
+    </header>
+
+    <div class="mobile-summary" aria-label="خلاصهٔ اتصال‌ها">
+        <div><strong>@Model.ActiveDevices.Count</strong><span>اتصال فعال</span></div>
+        <div><strong>@Model.PendingDevices.Count</strong><span>کد در انتظار</span></div>
+        <div><strong>@Model.HistoryCount</strong><span>اتصال پیشین</span></div>
     </div>
-</section>
-<section class="card mb-5 space-y-4">
-    <h3 class="card-title">اتصال گوشی به «@Model.Workspace.Name»</h3>
-    <p>برای تغییر مقصد، ابتدا فضای مالی را از منو انتخاب کنید و سپس اتصال بسازید. تغییر فضای فعال سایت، مقصد اتصال‌های قبلی را تغییر نمی‌دهد.</p>
-    <p class="text-sm text-slate-500">برنامه فقط پیامک‌های فرستنده‌هایی را که خودتان فعال می‌کنید بررسی می‌کند. اطلاعات حساس مانند ماندهٔ حساب به سرور فرستاده نمی‌شود و پیام‌های ناموفق تا زمان ارسال دوباره روی گوشی می‌مانند. ارسال ممکن است به علت محدودیت باتری اندروید با تأخیر انجام شود.</p>
-    <form method="post" class="space-y-4">
-        <div asp-validation-summary="All" class="field-error"></div>
-        <div><label asp-for="DeviceName" class="label">نام اتصال</label><input asp-for="DeviceName" class="input" maxlength="80" /></div>
-        <div><label asp-for="CategoryId" class="label">دسته اولیه خرج‌های پیامکی</label>
-            <select asp-for="CategoryId" class="input"><option value="">انتخاب دسته</option>
-            @foreach (var category in Model.Categories) { <option value="@category.Id">@category.Icon @category.Name</option> }
-            </select>
-            <p class="muted">می‌توانید ابتدا دسته‌ای به نام «نیازمند بررسی» بسازید. دسته بعداً برای هر خرج قابل ویرایش است.</p>
+
+    @if (Model.DuplicateNames.Count > 0)
+    {
+        <div class="mobile-duplicate-note" role="note">
+            <svg class="lucide-icon" aria-hidden="true"><use href="/icons/lucide.svg#circle-alert"></use></svg>
+            <p>چند اتصال فعال با نام یکسان دیده می‌شود: <strong>@string.Join("، ", Model.DuplicateNames)</strong>. نام دستگاه به‌تنهایی هویت آن را ثابت نمی‌کند؛ شناسه و مقصد هر اتصال را بررسی کنید و دسترسی‌های قدیمی را لغو کنید.</p>
         </div>
-        <button type="submit" class="btn-primary">ساخت کد اتصال ۱۰ دقیقه‌ای</button>
-    </form>
-    @if (Model.PairCode is not null)
-    {
-        <div class="rounded-xl bg-indigo-50 p-4"><p>این کد یک‌بارمصرف را در اپ وارد کنید؛ آن را با دیگران به اشتراک نگذارید.</p>
-        <input readonly value="@Model.PairCode" aria-label="کد اتصال" class="input ltr-input mt-3" /></div>
     }
-</section>
-<section class="card space-y-4">
-    <h3 class="card-title">اتصال‌های من</h3>
-    @foreach (var device in Model.Devices)
+
+    <section class="mobile-connections" aria-labelledby="active-connections-title">
+        <div class="mobile-section-head"><div><p class="mobile-eyebrow">دسترسی‌های کنونی</p><h2 id="active-connections-title">گوشی‌های متصل</h2></div><span class="mobile-count">@Model.ActiveDevices.Count فعال</span></div>
+        @if (Model.ActiveDevices.Count == 0)
+        {
+            <div class="mobile-empty">هنوز گوشی فعالی به حساب شما متصل نیست.</div>
+        }
+        else
+        {
+            <div class="mobile-device-grid">
+                @foreach (var device in Model.ActiveDevices)
+                {
+                    <article class="mobile-device-card">
+                        <div class="mobile-device-top">
+                            <span class="mobile-device-icon" aria-hidden="true"><svg class="lucide-icon"><use href="/icons/lucide.svg#smartphone"></use></svg></span>
+                            <div class="mobile-device-identity"><h3>@device.Name</h3><small>شناسهٔ اتصال <bdi>@device.Id.ToString("N")[..8]</bdi></small></div>
+                            <span class="mobile-status is-active">دسترسی فعال</span>
+                        </div>
+                        <dl class="mobile-device-details">
+                            <div><dt>مقصد پیامک‌ها</dt><dd>@device.Workspace.Name / @device.Category.Name</dd></div>
+                            <div><dt>ساخته‌شده</dt><dd><time datetime="@device.CreatedAtUtc.ToString("O")">@IndexModel.TehranDate(device.CreatedAtUtc)</time></dd></div>
+                            <div><dt>آخرین درخواست ارسال</dt><dd>@(device.NextAllowedAtUtc > DateTime.UnixEpoch ? IndexModel.TehranDate(device.NextAllowedAtUtc.AddSeconds(-30)) : "هنوز ارسالی ثبت نشده")</dd></div>
+                        </dl>
+                        <form method="post" asp-page-handler="Revoke" class="mobile-device-actions">
+                            <input type="hidden" name="id" value="@device.Id" />
+                            <button type="submit" data-confirm="دسترسی این اتصال لغو شود؟ پس از آن پیامک‌های این گوشی با این اتصال ثبت نمی‌شوند.">لغو دسترسی</button>
+                        </form>
+                    </article>
+                }
+            </div>
+        }
+    </section>
+
+    @if (Model.PendingDevices.Count > 0)
     {
-        <div class="border-b border-slate-100 pb-3">
-            <strong>@device.Name</strong> <span>@device.Workspace.Name / @device.Category.Name</span>
-            <span class="badge">@(device.Revoked ? "لغوشده" : device.TokenHash != null ? "متصل" : device.PairExpiresAtUtc < DateTime.UtcNow ? "کد منقضی" : "در انتظار اتصال")</span>
-            @if (!device.Revoked) {
-                <form method="post" asp-page-handler="Revoke" class="mt-2"><input type="hidden" name="id" value="@device.Id" /><button class="btn-secondary" data-confirm="دسترسی این گوشی لغو شود؟" type="submit">لغو دسترسی</button></form>
+        <section class="mobile-connections" aria-labelledby="pending-connections-title">
+            <div class="mobile-section-head"><div><p class="mobile-eyebrow">کدهای ده‌دقیقه‌ای</p><h2 id="pending-connections-title">در انتظار اتصال</h2></div><span class="mobile-count">@Model.PendingDevices.Count کد</span></div>
+            <div class="mobile-device-grid">
+                @foreach (var device in Model.PendingDevices)
+                {
+                    <article class="mobile-device-card is-pending">
+                        <div class="mobile-device-top"><span class="mobile-device-icon" aria-hidden="true"><svg class="lucide-icon"><use href="/icons/lucide.svg#clock-3"></use></svg></span><div class="mobile-device-identity"><h3>@device.Name</h3><small>شناسهٔ اتصال <bdi>@device.Id.ToString("N")[..8]</bdi></small></div><span class="mobile-status is-pending">منتظر کد</span></div>
+                        <dl class="mobile-device-details"><div><dt>مقصد</dt><dd>@device.Workspace.Name / @device.Category.Name</dd></div><div><dt>اعتبار تا</dt><dd><time datetime="@device.PairExpiresAtUtc.ToString("O")">@IndexModel.TehranDate(device.PairExpiresAtUtc)</time></dd></div></dl>
+                        <form method="post" asp-page-handler="Revoke" class="mobile-device-actions"><input type="hidden" name="id" value="@device.Id" /><button type="submit" data-confirm="این کد اتصال لغو شود؟">لغو کد</button></form>
+                    </article>
+                }
+            </div>
+        </section>
+    }
+
+    <section class="mobile-setup" aria-labelledby="mobile-setup-title">
+        <div><p class="mobile-eyebrow">اتصال گوشی تازه</p><h2 id="mobile-setup-title">ساخت کد اتصال</h2><p>برای اتصال با کد، نامی بگذارید که بعداً گوشی را با آن بشناسید. مقصد پیامک‌ها فضای «@Model.Workspace.Name» است.</p></div>
+        <form method="post" class="mobile-setup-form">
+            <div asp-validation-summary="All" class="field-error"></div>
+            <div><label asp-for="DeviceName" class="label">نام قابل‌شناسایی گوشی</label><input asp-for="DeviceName" class="input" maxlength="80" placeholder="مثلاً گوشی شخصی یا FRL-L22" autocomplete="off" /></div>
+            <div><label asp-for="CategoryId" class="label">دستهٔ اولیهٔ برداشت‌ها</label><select asp-for="CategoryId" class="input"><option value="">انتخاب دسته</option>@foreach (var category in Model.Categories) { <option value="@category.Id">@category.Icon @category.Name</option> }</select><p class="muted">دسته و عنوان هر خرج بعداً قابل ویرایش است.</p></div>
+            <button type="submit" class="btn-primary">ساخت کد ۱۰ دقیقه‌ای</button>
+        </form>
+        @if (Model.PairCode is not null)
+        {
+            <div class="mobile-pair-code" role="status"><strong>کد اتصال آماده است</strong><p>کد یک‌بارمصرف زیر را فقط در اپ دُنیش وارد کنید.</p><input readonly value="@Model.PairCode" aria-label="کد اتصال" class="input ltr-input" /></div>
+        }
+    </section>
+
+    <div class="mobile-help-links"><a href="https://donysh.ir/downloads/donysh-mobile.apk" class="btn-secondary" download>دریافت برنامهٔ اندروید</a><a asp-page="/Expenses/Index" asp-route-NeedsReview="true" class="btn-secondary">خرج‌های نیازمند بررسی</a></div>
+    <p class="mobile-privacy-note">اپ فقط پیامک‌هایی را که برای فرستنده‌ها و قالب‌های فعال شما با برداشت همخوانی دارند بررسی می‌کند. اطلاعاتی مانند ماندهٔ حساب به سرور فرستاده نمی‌شود.</p>
+
+    @if (Model.HistoryCount > 0)
+    {
+        <details class="mobile-history"><summary>اتصال‌های پیشین <span>@Model.HistoryCount مورد</span></summary><div class="mobile-history-list">
+            @foreach (var device in Model.HistoryDevices)
+            {
+                <div class="mobile-history-row"><div><strong>@device.Name</strong><small>شناسهٔ <bdi>@device.Id.ToString("N")[..8]</bdi> · @device.Workspace.Name / @device.Category.Name</small></div><div><span class="mobile-status">@(device.Revoked ? "لغوشده" : "کد منقضی")</span><time datetime="@device.CreatedAtUtc.ToString("O")">@IndexModel.TehranDate(device.CreatedAtUtc)</time></div></div>
             }
-        </div>
+            @if (Model.HistoryCount > Model.HistoryDevices.Count) { <p class="muted">۲۰ مورد تازه‌تر نمایش داده شده است.</p> }
+        </div></details>
     }
-    <a asp-page="/Expenses/Index" asp-route-NeedsReview="true" class="btn-secondary">خرج‌های نیازمند بررسیِ فضای فعال</a>
-</section>
+</div>

@@ -335,6 +335,47 @@ internal static class PostgresChecks
             using var deniedDestination = await loginClient.PutAsJsonAsync("/api/mobile/destination", new MobileDestinationRequest(sharedWorkspace.Id));
             Check(deniedDestination.StatusCode == HttpStatusCode.Forbidden,
                 "device cannot change to another user's workspace");
+            var replacementCode = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(16));
+            var replacement = new MobileDevice { Name = "Replacement for same phone", UserId = user.Id,
+                WorkspaceId = workspace.Id, CategoryId = category.Id,
+                PairCodeHash = MobileApi.Hash(replacementCode), PairExpiresAtUtc = DateTime.UtcNow.AddMinutes(10) };
+            db.MobileDevices.Add(replacement);
+            await db.SaveChangesAsync();
+            using var replaced = await client.PostAsJsonAsync("/api/mobile/pair",
+                new PairRequest(replacementCode, installationId, session.Token));
+            Check(replaced.StatusCode == HttpStatusCode.OK, "pairing replaces the same installation's prior login");
+            var replacementToken = (await replaced.Content.ReadFromJsonAsync<PairResult>())!.Token;
+            var installationHash = MobileApi.Hash(installationId);
+            Check(await db.MobileDevices.CountAsync(x => x.UserId == user.Id && !x.Revoked
+                    && x.ClientInstanceHash == installationHash && x.TokenHash != null) == 1
+                && await db.MobileDevices.AnyAsync(x => x.Id == replacement.Id && x.ClientInstanceHash == installationHash)
+                && await db.MobileDevices.AnyAsync(x => x.UserId == user.Id && x.Revoked && x.TokenHash == null
+                    && x.Name == "Login device"),
+                "one active connection remains for a re-paired installation");
+            using var oldLoginToken = await loginClient.GetAsync("/api/mobile/workspaces");
+            Check(oldLoginToken.StatusCode == HttpStatusCode.Unauthorized,
+                "replaced token cannot access mobile data");
+            var anotherCode = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(16));
+            var anotherReplacement = new MobileDevice { Name = "Second replacement", UserId = user.Id,
+                WorkspaceId = workspace.Id, CategoryId = category.Id,
+                PairCodeHash = MobileApi.Hash(anotherCode), PairExpiresAtUtc = DateTime.UtcNow.AddMinutes(10) };
+            db.MobileDevices.Add(anotherReplacement);
+            await db.SaveChangesAsync();
+            using var replacedAgain = await client.PostAsJsonAsync("/api/mobile/pair",
+                new PairRequest(anotherCode, installationId, replacementToken));
+            Check(replacedAgain.StatusCode == HttpStatusCode.OK
+                && await db.MobileDevices.CountAsync(x => x.UserId == user.Id && !x.Revoked
+                    && x.ClientInstanceHash == installationHash && x.TokenHash != null) == 1
+                && await db.MobileDevices.AnyAsync(x => x.Id == replacement.Id && x.Revoked && x.TokenHash == null),
+                "repeated pairing does not accumulate active connections for one installation");
+            var latestPair = (await replacedAgain.Content.ReadFromJsonAsync<PairResult>())!;
+            var restoredInstallationId = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
+            using var restoredLogin = await client.PostAsJsonAsync("/api/mobile/login",
+                new MobileLoginRequest(user.Email!, "Secret123", restoredInstallationId, "Restored phone", latestPair.Token));
+            Check(restoredLogin.StatusCode == HttpStatusCode.OK
+                && await db.MobileDevices.AnyAsync(x => x.Id == anotherReplacement.Id && x.Revoked && x.TokenHash == null)
+                && await db.MobileDevices.CountAsync(x => x.UserId == user.Id && !x.Revoked && x.TokenHash != null) == 2,
+                "login after reinstall retires the previous token without duplicating access");
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", pair.Token);
             var sms = new SmsEnvelope("Mellat", "حساب5555555555\nبرداشت50,000,000\nمانده111,111,111\n05/06/15-12:14", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
             using var oversized = await client.PostAsJsonAsync("/api/mobile/sms", new SmsBatch(Enumerable.Repeat(sms, 6).ToList()));

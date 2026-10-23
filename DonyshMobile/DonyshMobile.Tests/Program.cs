@@ -242,7 +242,9 @@ try
         Assert(request.RequestUri?.AbsolutePath == "/api/mobile/login", "Use mobile login endpoint");
         var payload = request.Content!.ReadFromJsonAsync<MobileLoginRequest>().GetAwaiter().GetResult();
         Assert(payload is { Email: "user@example.com", Password: "Secret123", DeviceName: "گوشی من" }
-               && payload.InstallationId == new string('1', 64), "Send website credentials only to login endpoint");
+               && payload.InstallationId == new string('1', 64)
+               && payload.PreviousToken == new string('2', 64),
+            "Login sends the installation and previous token to replace old access");
         return new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = JsonContent.Create(new MobileSessionResult(new string('A', 64), "کاربر",
@@ -250,8 +252,25 @@ try
         };
     })));
     var loginResult = await loginApi.LoginAsync("https://donysh.ir", " user@example.com ", "Secret123",
-        new string('1', 64), "گوشی من");
+        new string('1', 64), "گوشی من", new string('2', 64));
     Assert(loginResult?.WorkspaceId == loginWorkspaceId, "Accept authenticated mobile session");
+
+    var pairingApi = new MobileApiClient(() => new HttpClient(new StubHandler(request =>
+    {
+        Assert(request.RequestUri?.AbsolutePath == "/api/mobile/pair", "Use mobile pairing endpoint");
+        var payload = request.Content!.ReadFromJsonAsync<PairRequest>().GetAwaiter().GetResult();
+        Assert(payload is { Code.Length: 32, InstallationId.Length: 64, PreviousToken.Length: 64 }
+               && payload.InstallationId == new string('1', 64)
+               && payload.PreviousToken == new string('2', 64),
+            "Pairing sends installation identity and the previous token");
+        return new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = JsonContent.Create(new PairResult(new string('A', 64), "شخصی", "سایر"))
+        };
+    })));
+    var pairingResult = await pairingApi.PairAsync("https://donysh.ir", new string('F', 32),
+        new string('1', 64), new string('2', 64));
+    Assert(pairingResult?.WorkspaceName == "شخصی", "Accept paired mobile session");
 
     var workspaceApi = new MobileApiClient(() => new HttpClient(new StubHandler(request =>
     {
