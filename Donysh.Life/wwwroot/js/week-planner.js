@@ -150,8 +150,8 @@
         interactionForm.requestSubmit();
     }));
 
-    const selectedDay = document.querySelector(".calendar-days-header .selected");
-    selectedDay?.scrollIntoView({ inline: "center", block: "nearest" });
+    const todayHeader = document.querySelector(".calendar-days-header .today");
+    todayHeader?.scrollIntoView({ inline: "center", block: "nearest" });
     const board = document.querySelector("[data-calendar-board]");
     const starts = [...document.querySelectorAll(".calendar-event")].map(block => Number(block.dataset.startMinute));
     const initialMinute = starts.length ? Math.max(0, Math.min(...starts) - 60) : 7 * 60;

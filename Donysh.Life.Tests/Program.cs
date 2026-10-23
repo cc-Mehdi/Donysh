@@ -340,6 +340,23 @@ using (var authenticatedClient = authenticatedFactory.CreateClient(new WebApplic
             && !calendarWeekHtml.Contains("style=", StringComparison.OrdinalIgnoreCase));
     }
 
+    using (var currentWeekResponse = await authenticatedClient.GetAsync("/Week?view=week"))
+    {
+        var currentWeekHtml = await currentWeekResponse.Content.ReadAsStringAsync();
+        Check("Life weekly calendar marks today's date instead of defaulting to Saturday",
+            currentWeekResponse.StatusCode == HttpStatusCode.OK
+            && Regex.IsMatch(currentWeekHtml, "<a class=\"[^\"]*today[^\"]*\" aria-current=\"date\"", RegexOptions.CultureInvariant)
+            && Regex.Matches(currentWeekHtml, "aria-current=\"date\"", RegexOptions.CultureInvariant).Count == 1);
+    }
+
+    using (var previousWeekResponse = await authenticatedClient.GetAsync($"/Week?week={WeekCalendar.CurrentSaturday().AddDays(-7):yyyy-MM-dd}&view=week"))
+    {
+        var previousWeekHtml = await previousWeekResponse.Content.ReadAsStringAsync();
+        Check("Life weekly calendar does not mark a day in another week as today",
+            previousWeekResponse.StatusCode == HttpStatusCode.OK
+            && !previousWeekHtml.Contains("aria-current=\"date\"", StringComparison.Ordinal));
+    }
+
     string calendarAntiforgery;
     using (var calendarDayResponse = await authenticatedClient.GetAsync("/Week?day=Wednesday&view=day"))
     {

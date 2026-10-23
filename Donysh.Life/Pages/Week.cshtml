@@ -8,6 +8,7 @@
     var selectedDay = Model.View.Days.Single(day => day.IsSelected);
     var visibleDays = Model.DisplayMode == "day" ? new[] { selectedDay } : Model.View.Days;
     var displayMode = Model.DisplayMode ?? "week";
+    var today = WeekCalendar.Today();
 }
 
 <section class="calendar-toolbar" aria-label="ابزارهای برنامه‌ریزی">
@@ -50,7 +51,7 @@ else
     <nav class="calendar-day-tabs" aria-label="انتخاب روز">
         @foreach (var day in Model.View.Days)
         {
-            <a class="@(day.IsSelected ? "active" : "")" asp-page="/Week" asp-route-day="@day.DayOfWeek" asp-route-week="@Model.View.WeekStart.ToString("yyyy-MM-dd")" asp-route-view="day"><strong>@day.Name</strong><small>@day.PersianDate[5..]</small></a>
+            <a class="@(day.IsSelected ? "active" : "") @(day.Date == today ? "today" : "")" asp-page="/Week" asp-route-day="@day.DayOfWeek" asp-route-week="@Model.View.WeekStart.ToString("yyyy-MM-dd")" asp-route-view="day" aria-label="@day.Name @day.PersianDate@(day.Date == today ? "، امروز" : "")"><strong>@day.Name</strong><small>@(day.Date == today ? "امروز" : day.PersianDate[5..])</small></a>
         }
     </nav>
 
@@ -59,7 +60,7 @@ else
         <div class="calendar-days-header" data-column-count="@visibleDays.Count">
             @foreach (var day in visibleDays)
             {
-                <a class="@(day.IsSelected ? "selected" : "") @(day.DayOfWeek == DayOfWeek.Friday ? "friday" : "")" asp-page="/Week" asp-route-day="@day.DayOfWeek" asp-route-week="@Model.View.WeekStart.ToString("yyyy-MM-dd")" asp-route-view="day"><strong>@day.Name</strong><span>@day.PersianDate[8..]</span><small>@day.Blocks.Count برنامه</small></a>
+                <a class="@(day.Date == today ? "today" : "") @(day.DayOfWeek == DayOfWeek.Friday ? "friday" : "")" aria-current="@(day.Date == today ? "date" : null)" asp-page="/Week" asp-route-day="@day.DayOfWeek" asp-route-week="@Model.View.WeekStart.ToString("yyyy-MM-dd")" asp-route-view="day"><strong>@day.Name</strong><span>@day.PersianDate[8..]</span><small>@(day.Date == today ? "امروز · " : "")@day.Blocks.Count برنامه</small></a>
             }
         </div>
         <div class="calendar-time-gutter" aria-hidden="true">

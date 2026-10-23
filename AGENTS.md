@@ -59,6 +59,7 @@ Production authentication smoke tests must cover:
 ## Commit messages
 
 After finishing a task, commit only its changes and push the commit to the remote branch. Preserve unrelated local changes.
+Complete all checks before committing. The push must be the final work step; do not monitor CI, inspect the deployment, or perform a post-deployment review unless the user explicitly requests it.
 
 After completing each logical section, provide the user with a concise English commit message prefixed by the relevant gitmoji. Example:
 

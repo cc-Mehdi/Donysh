@@ -4,7 +4,8 @@
   "version": "1.0.0",
   "scripts": {
     "build:css": "tailwindcss -i ./Styles/app.css -o ./wwwroot/css/app.css --minify",
-    "test:sidebar": "node --test ./scripts/test-life-sidebar.mjs"
+    "test:sidebar": "node --test ./scripts/test-life-sidebar.mjs",
+    "test:calendar": "node --test ./scripts/test-week-calendar.mjs"
   },
   "devDependencies": {
     "@tailwindcss/cli": "4.3.3",

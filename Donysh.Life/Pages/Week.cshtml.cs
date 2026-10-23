@@ -10,7 +10,7 @@ public sealed class WeekModel(WeeklyScheduleService schedules, OccurrenceTrackin
     [BindProperty] public SchedulePatternForm Input { get; set; } = new();
     [BindProperty] public Guid? PatternId { get; set; }
     [BindProperty] public bool ConfirmDelete { get; set; }
-    [BindProperty] public DayOfWeek SelectedDay { get; set; } = DayOfWeek.Saturday;
+    [BindProperty] public DayOfWeek SelectedDay { get; set; } = WeekCalendar.Today().DayOfWeek;
     [BindProperty] public DateOnly WeekStart { get; set; }
     [BindProperty] public ScheduleInteractionForm Interaction { get; set; } = new();
     [BindProperty] public DateOnly OriginalDate { get; set; }
@@ -24,7 +24,7 @@ public sealed class WeekModel(WeeklyScheduleService schedules, OccurrenceTrackin
     public async Task OnGetAsync(DayOfWeek? day, DateOnly? week, CancellationToken cancellationToken)
     {
         DisplayMode = DisplayMode == "day" ? "day" : "week";
-        SelectedDay = day is not null && WeekCalendar.Days.Contains(day.Value) ? day.Value : DayOfWeek.Saturday;
+        SelectedDay = day is not null && WeekCalendar.Days.Contains(day.Value) ? day.Value : WeekCalendar.Today().DayOfWeek;
         Input.DayOfWeek = SelectedDay;
         await LoadAsync(SelectedDay, week, cancellationToken);
     }
