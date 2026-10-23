@@ -1,266 +1,185 @@
 @page
 @model IndexModel
+@using System.Globalization
 @{
     ViewData["Title"] = "گزارش‌ها";
-    var anchorValue = FormValueHelper.RawOrPersianDate(ViewData, "Anchor", Model.Anchor ?? DateOnly.FromDateTime(DateTime.Now));
+    var anchor = Model.Anchor ?? DateOnly.FromDateTime(DateTime.Now);
+    var anchorValue = FormValueHelper.RawOrPersianDate(ViewData, "Anchor", anchor);
+    string MoneyNumber(decimal amount) => amount.ToString("N0", CultureInfo.GetCultureInfo("fa-IR"));
+    var chartValues = Model.Trend.Select(point => point.Amount).ToArray();
+    var averageValues = chartValues.Select((_, index) => chartValues.Skip(Math.Max(0, index - 2)).Take(Math.Min(3, index + 1)).Average()).ToArray();
+    var chartMax = Math.Max(chartValues.DefaultIfEmpty(0).Max(), 1m);
+    string ChartX(int index) => (30 + (Model.Trend.Count == 1 ? 300 : index * 600d / Math.Max(Model.Trend.Count - 1, 1))).ToString("0.##", CultureInfo.InvariantCulture);
+    string ChartY(decimal value) => (184 - (double)(value / chartMax) * 144).ToString("0.##", CultureInfo.InvariantCulture);
+    string ChartPoints(IReadOnlyList<decimal> values) => string.Join(" ", values.Select((value, index) => $"{ChartX(index)},{ChartY(value)}"));
+    var expensePoints = ChartPoints(chartValues);
+    var averagePoints = ChartPoints(averageValues);
+    var expenseArea = $"M 30 184 L {string.Join(" L ", chartValues.Select((value, index) => $"{ChartX(index)} {ChartY(value)}"))} L 630 184 Z";
+    var chartLabelStep = Math.Max(1, (int)Math.Ceiling(Model.Trend.Count / 6d));
+
+    var categoryColors = new[] { "#795cff", "#e96bbf", "#ffb84d", "#44c6d8", "#22bba8" };
+    var slices = new List<(string Name, decimal Amount, decimal Percent, string Color)>();
+    foreach (var category in Model.Categories.Take(4))
+    {
+        slices.Add((category.Name, category.Amount, category.Percent, categoryColors[slices.Count]));
+    }
+    if (Model.Categories.Count > 4)
+    {
+        var otherAmount = Model.Categories.Skip(4).Sum(item => item.Amount);
+        slices.Add(("سایر", otherAmount, Model.Total > 0 ? Math.Round(otherAmount / Model.Total * 100, 1) : 0, categoryColors[4]));
+    }
+    var stops = new List<string>();
+    var angle = 0m;
+    foreach (var slice in slices)
+    {
+        var next = Model.Total > 0 ? angle + slice.Amount / Model.Total * 360 : angle;
+        stops.Add($"{slice.Color} {angle.ToString("0.##", CultureInfo.InvariantCulture)}deg {next.ToString("0.##", CultureInfo.InvariantCulture)}deg");
+        angle = next;
+    }
+    var donutBackground = slices.Count == 0 ? "#dbe4f3" : $"conic-gradient({string.Join(",", stops)})";
+
+    var obligationPercent = Model.MonthlyObligationExpected <= 0 ? 0 : Math.Min(100, Math.Round(Model.MonthlyObligationPaid / Model.MonthlyObligationExpected * 100));
+    var month = PersianCalendarHelper.GetYearMonth(anchor);
+    var monthStart = PersianCalendarHelper.StartOfMonth(month);
+    var monthEnd = PersianCalendarHelper.EndOfMonthExclusive(month);
+    var calendarOffset = ((int)monthStart.DayOfWeek + 1) % 7;
+    var daysInMonth = monthEnd.DayNumber - monthStart.DayNumber;
+    var today = DateOnly.FromDateTime(DateTime.Now);
+    var upcoming = Model.MonthlyObligations.Where(item => !item.IsPaid).OrderBy(item => item.DueDate).Take(3).ToList();
+    var memberExpenseTotal = Model.Members.Sum(item => item.ExpenseAmount);
 }
-<div class="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
-    <div><h2 class="text-2xl font-black">گزارش مالی</h2><p class="mt-1 text-sm text-slate-500">تحلیل مخارج و مشاهده سهم هزینه و پس‌انداز اعضای فضای فعال</p></div>
-    <div class="flex flex-wrap items-end gap-2">
-        <form method="get" class="flex flex-wrap items-end gap-2">
-            <div><label asp-for="Period" class="label">نوع گزارش</label><select asp-for="Period" class="input min-w-32"><option value="daily">روزانه</option><option value="weekly">هفتگی</option><option value="monthly">ماهانه</option><option value="yearly">سالانه</option></select></div>
-            <div><label asp-for="Anchor" class="label">تاریخ مبنا</label><input id="Anchor" name="Anchor" value="@anchorValue" type="text" inputmode="numeric" autocomplete="off" data-persian-date class="input ltr-input" placeholder="۱۴۰۵/۰۵/۰۸" /></div>
-            <button type="submit" class="btn-primary">نمایش</button>
+
+<div class="finance-reports">
+    <header class="report-hero" id="report-overview">
+        <div>
+            <span class="report-eyebrow">مرور وضعیت مالی</span>
+            <h2>گزارش مالی</h2>
+            <p>روند هزینه‌ها، دسته‌ها، تعهدات و سهم اعضای فضای مالی را در یک نگاه ببینید.</p>
+        </div>
+        <form method="get" class="report-filter" aria-label="بازه گزارش">
+            <div><label asp-for="Period">بازه</label><select asp-for="Period"><option value="daily">روزانه</option><option value="weekly">هفتگی</option><option value="monthly">ماهانه</option><option value="yearly">سالانه</option></select></div>
+            <div><label asp-for="Anchor">تاریخ مبنا</label><input id="Anchor" name="Anchor" value="@anchorValue" type="text" inputmode="numeric" autocomplete="off" data-persian-date placeholder="۱۴۰۵/۰۱/۰۱" /></div>
+            <button type="submit">نمایش گزارش</button>
         </form>
+    </header>
+
+    <div class="report-toolbar">
+        <nav class="report-period-nav" aria-label="جابجایی بازه گزارش">
+            <a asp-page="Index" asp-route-period="@Model.Period" asp-route-anchor="@Model.PreviousAnchor.ToString("yyyy-MM-dd")" aria-label="بازه قبلی">→</a>
+            <strong>@Model.PeriodTitle</strong>
+            <a asp-page="Index" asp-route-period="@Model.Period" asp-route-anchor="@Model.NextAnchor.ToString("yyyy-MM-dd")" aria-label="بازه بعدی">←</a>
+        </nav>
+        <nav class="report-tabs" aria-label="بخش‌های گزارش">
+            <a href="#report-overview" aria-current="location">نمای کلی</a>
+            <a href="#report-categories">دسته‌های خرج</a>
+            <a href="#report-obligations">اقساط</a>
+            <a href="#report-members">عملکرد اعضا</a>
+        </nav>
     </div>
-</div>
 
-<div class="mb-5 flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-3">
-    <a asp-page="Index" asp-route-period="@Model.Period" asp-route-anchor="@Model.PreviousAnchor.ToString("yyyy-MM-dd")" class="btn-secondary px-3">→ قبلی</a>
-    <strong class="px-3 text-center">@Model.PeriodTitle</strong>
-    <a asp-page="Index" asp-route-period="@Model.Period" asp-route-anchor="@Model.NextAnchor.ToString("yyyy-MM-dd")" class="btn-secondary px-3">بعدی ←</a>
-</div>
+    <section class="report-metrics" aria-label="شاخص‌های بازه انتخابی">
+        <article class="report-metric report-metric-violet"><span class="report-metric-icon"><svg class="lucide-icon"><use href="/icons/lucide.svg#tags"></use></svg></span><span>بیشترین دسته</span><strong>@(Model.TopCategory?.Name ?? "—")</strong><small>@(Model.TopCategory is null ? "هنوز خرجی ثبت نشده" : Formatters.Money(Model.TopCategory.Amount))</small></article>
+        <article class="report-metric report-metric-blue"><span class="report-metric-icon"><svg class="lucide-icon"><use href="/icons/lucide.svg#chart-column-increasing"></use></svg></span><span>تعداد خرج‌ها</span><strong>@Model.ExpenseCount</strong><small>تراکنش در بازه انتخابی</small></article>
+        <article class="report-metric report-metric-pink"><span class="report-metric-icon"><svg class="lucide-icon"><use href="/icons/lucide.svg#receipt"></use></svg></span><span>مجموع مخارج</span><strong>@MoneyNumber(Model.Total)</strong><small>تومان</small></article>
+        <article class="report-metric report-metric-teal"><span class="report-metric-icon"><svg class="lucide-icon"><use href="/icons/lucide.svg#chart-no-axes-combined"></use></svg></span><span>میانگین روزانهٔ خرج</span><strong>@MoneyNumber(Model.AveragePerDay)</strong><small>تومان در روز</small></article>
+    </section>
 
-<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-    <section class="stat"><span class="stat-label">مجموع مخارج</span><div class="stat-value">@Formatters.Money(Model.Total)</div></section>
-    <section class="stat"><span class="stat-label">تعداد مخارج</span><div class="stat-value">@Model.ExpenseCount</div><p class="mt-2 text-xs text-slate-500">تراکنش در این بازه</p></section>
-    <section class="stat"><span class="stat-label">میانگین روزانه</span><div class="stat-value">@Formatters.Money(Model.AveragePerDay)</div></section>
-    <section class="stat"><span class="stat-label">بیشترین دسته</span><div class="stat-value text-xl">@(Model.TopCategory is null ? "—" : $"{Model.TopCategory.Icon} {Model.TopCategory.Name}")</div>@if(Model.TopCategory is not null){<p class="mt-2 text-xs text-slate-500">@Formatters.Money(Model.TopCategory.Amount)</p>}</section>
-</div>
+    <div class="report-primary-grid">
+        <section class="report-panel report-trend" aria-labelledby="report-trend-title">
+            <div class="report-panel-head"><div><h3 id="report-trend-title">روند مخارج</h3><p>خرج هر بازه و میانگین متحرک سه نقطهٔ اخیر</p></div><span class="report-panel-chip">@Model.PeriodTitle</span></div>
+            @if (Model.Total == 0)
+            {
+                <div class="report-empty">در این بازه خرجی ثبت نشده است. پس از ثبت خرج، روند اینجا نمایش داده می‌شود.</div>
+            }
+            else
+            {
+                <div class="report-chart-legend"><span><i class="report-dot is-pink"></i>مخارج</span><span><i class="report-dot is-teal"></i>میانگین متحرک</span></div>
+                <div class="report-chart-scroll"><svg class="report-line-chart" viewBox="0 0 660 222" role="img" aria-label="نمودار خطی مخارج در بازه انتخابی">
+                    <defs><linearGradient id="report-expense-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#f16db1" stop-opacity=".34"/><stop offset="1" stop-color="#f16db1" stop-opacity="0"/></linearGradient></defs>
+                    <path class="report-chart-grid" d="M30 40H630 M30 88H630 M30 136H630 M30 184H630" />
+                    <path d="@expenseArea" fill="url(#report-expense-fill)" />
+                    <polyline points="@averagePoints" class="report-line-average" />
+                    <polyline points="@expensePoints" class="report-line-expense" />
+                    @for (var i = 0; i < Model.Trend.Count; i++)
+                    {
+                        if (i % chartLabelStep == 0 || i == Model.Trend.Count - 1)
+                        {
+                            @Html.Raw($"<text x=\"{ChartX(i)}\" y=\"214\" text-anchor=\"middle\" class=\"report-axis-label\">{System.Text.Encodings.Web.HtmlEncoder.Default.Encode(Model.Trend[i].Label)}</text>")
+                        }
+                        if (Model.Trend[i].Amount > 0)
+                        {
+                            <circle cx="@ChartX(i)" cy="@ChartY(Model.Trend[i].Amount)" r="3.5" class="report-chart-point"><title>@Model.Trend[i].Label: @Formatters.Money(Model.Trend[i].Amount)</title></circle>
+                        }
+                    }
+                </svg></div>
+                <p class="report-chart-caption">بیشترین خرج در یک نقطه: @Formatters.Money(Model.MaxTrendAmount)</p>
+                <details class="report-detail report-chart-data"><summary>داده‌های نمودار</summary><div class="report-member-table-wrap"><table class="report-member-table"><thead><tr><th>زمان</th><th>مخارج</th><th>تعداد خرج</th></tr></thead><tbody>@foreach (var point in Model.Trend) { <tr><td>@point.Label</td><td>@Formatters.Money(point.Amount)</td><td>@point.Count</td></tr> }</tbody></table></div></details>
+            }
+        </section>
 
-<div class="mt-6 grid gap-6 xl:grid-cols-[1.25fr_.75fr]">
-    <section class="card overflow-hidden">
-        <div class="mb-6"><h3 class="card-title">روند هزینه</h3><p class="muted mt-1">مقایسه مبلغ خرج در طول بازه انتخابی</p></div>
-        @if (Model.Total == 0)
+        <section class="report-panel" id="report-categories" aria-labelledby="report-categories-title">
+            <div class="report-panel-head"><div><h3 id="report-categories-title">دسته‌های اصلی</h3><p>سهم هر دسته از خرج‌های بازه</p></div><span class="report-panel-chip">@Model.Categories.Count دسته</span></div>
+            @if (Model.Categories.Count == 0)
+            {
+                <div class="report-empty">هنوز دسته‌ای با خرج ثبت‌شده وجود ندارد.</div>
+            }
+            else
+            {
+                <div class="report-category-content"><div class="report-donut" style="background:@donutBackground" role="img" aria-label="نمودار سهم دسته‌های خرج"><div><strong>@MoneyNumber(Model.Total)</strong><span>تومان خرج</span></div></div>
+                    <ul class="report-category-list">
+                        @foreach (var slice in slices)
+                        {
+                            <li><span><i class="report-dot" style="background:@slice.Color"></i>@slice.Name</span><strong>@Formatters.Percent(slice.Percent)</strong></li>
+                        }
+                    </ul>
+                </div>
+                <details class="report-detail report-category-data"><summary>جزئیات همهٔ دسته‌ها</summary><div class="report-member-table-wrap"><table class="report-member-table"><thead><tr><th>دسته</th><th>مبلغ</th><th>تعداد خرج</th><th>سهم</th></tr></thead><tbody>@foreach (var category in Model.Categories) { <tr><td>@category.Icon @category.Name</td><td>@Formatters.Money(category.Amount)</td><td>@category.Count</td><td>@Formatters.Percent(category.Percent)</td></tr> }</tbody></table></div></details>
+            }
+        </section>
+    </div>
+
+    <section class="report-obligations" id="report-obligations" aria-labelledby="report-obligations-title">
+        <div class="report-section-title"><div><h3 id="report-obligations-title">اقساط و تعهدات</h3><p>وضعیت ماه @Model.MemberMonthTitle، مستقل از بازهٔ نمودار بالا</p></div><a asp-page="/Obligations/Index">مدیریت تعهدات ←</a></div>
+        <div class="report-obligation-grid">
+            <article class="report-panel report-obligation-summary"><div class="report-panel-head"><h4>وضعیت پرداخت</h4><span class="report-panel-chip">@Model.MonthlyObligations.Count تعهد</span></div>
+                <div class="report-obligation-summary-body"><div class="report-gauge" style="--progress:@(obligationPercent.ToString(CultureInfo.InvariantCulture))%"><strong>@Formatters.Percent(obligationPercent)</strong><span>پرداخت‌شده</span></div><div class="report-obligation-totals"><div><span>تعهد ماه</span><strong>@Formatters.Money(Model.MonthlyObligationExpected)</strong></div><div><span>پرداخت‌شده</span><strong>@Formatters.Money(Model.MonthlyObligationPaid)</strong></div><div><span>باقی‌مانده</span><strong>@Formatters.Money(Model.MonthlyObligationUnpaid)</strong></div></div></div>
+            </article>
+            <article class="report-panel"><div class="report-panel-head"><h4>نزدیک‌ترین سررسیدها</h4><span class="report-panel-chip">@Model.MemberMonthTitle</span></div>
+                @if (upcoming.Count == 0) { <div class="report-empty is-compact">تعهد پرداخت‌نشده‌ای برای این ماه نیست.</div> }
+                else { <ul class="report-due-list">@foreach (var item in upcoming) { <li><span class="report-due-icon">@item.CategoryIcon</span><span class="report-due-name"><strong>@item.Title</strong><small>@item.Status · @Formatters.PersianDate(item.DueDate)</small></span><b>@MoneyNumber(item.RemainingAmount)<small> تومان</small></b></li> }</ul> }
+            </article>
+            <article class="report-panel"><div class="report-panel-head"><h4>تقویم سررسید</h4><span class="report-panel-chip">@Model.MemberMonthTitle</span></div>
+                <div class="report-calendar" aria-label="تقویم سررسید ماه @Model.MemberMonthTitle"><div class="report-calendar-weekdays">@foreach (var day in new[] { "ش", "ی", "د", "س", "چ", "پ", "ج" }) { <span>@day</span> }</div><div class="report-calendar-days">
+                    @for (var blank = 0; blank < calendarOffset; blank++) { <span aria-hidden="true"></span> }
+                    @for (var day = 1; day <= daysInMonth; day++)
+                    {
+                        var date = monthStart.AddDays(day - 1);
+                        var dueItems = Model.MonthlyObligations.Where(item => item.DueDate == date).ToList();
+                        var dayClass = dueItems.Count == 0 ? "" : dueItems.All(item => item.IsPaid) ? "is-paid" : date < today ? "is-overdue" : "is-due";
+                        <span class="@dayClass" title="@(dueItems.Count == 0 ? "بدون سررسید" : string.Join("، ", dueItems.Select(item => item.Title + "، " + item.Status)))">@day</span>
+                    }
+                </div><div class="report-calendar-key"><span><i class="report-dot is-teal"></i>پرداخت‌شده</span><span><i class="report-dot is-pink"></i>عقب‌افتاده</span><span><i class="report-dot is-amber"></i>در انتظار</span></div></div>
+            </article>
+        </div>
+        @if (Model.MonthlyObligations.Count > 0)
         {
-            <div class="empty border-0 bg-slate-50"><p class="text-sm text-slate-500">داده‌ای برای نمایش وجود ندارد.</p></div>
-        }
-        else
-        {
-            <div class="flex h-72 items-end gap-1 overflow-x-auto border-b border-slate-200 pb-2">
-                @foreach (var point in Model.Trend)
-                {
-                    var height = Model.MaxTrendAmount <= 0 ? 0 : Math.Max(point.Amount / Model.MaxTrendAmount * 100, point.Amount > 0 ? 4 : 0);
-                    <div class="group flex min-w-8 flex-1 flex-col items-center justify-end gap-2" title="@point.Label: @Formatters.Money(point.Amount)">
-                        <div class="hidden text-[10px] font-bold text-slate-600 group-hover:block">@point.Amount.ToString("N0")</div>
-                        <div class="w-full max-w-12 rounded-t-lg bg-indigo-500 transition hover:bg-indigo-700" style="height: @(height)%"></div>
-                        <span class="text-[10px] text-slate-500">@point.Label</span>
-                    </div>
-                }
-            </div>
+            <details class="report-detail"><summary>دیدن همهٔ تعهدات ماه</summary><div class="report-obligation-all">@foreach (var item in Model.MonthlyObligations) { <div><span>@item.CategoryIcon @item.Title</span><span>سررسید @Formatters.PersianDate(item.DueDate)</span><strong>@item.Status</strong><span>تعهد @Formatters.Money(item.ExpectedAmount)</span><span>پرداخت @Formatters.Money(item.PaidAmount)</span><b>مانده @Formatters.Money(item.RemainingAmount)</b></div> }</div></details>
         }
     </section>
 
-    <section class="card">
-        <div class="mb-5"><h3 class="card-title">سهم دسته‌ها</h3><p class="muted mt-1">مخارج به تفکیک دسته‌بندی</p></div>
-        @if (Model.Categories.Count == 0)
-        {
-            <p class="rounded-2xl bg-slate-50 p-6 text-center text-sm text-slate-500">دسته‌ای برای نمایش نیست.</p>
-        }
+    <section class="report-members" id="report-members" aria-labelledby="report-members-title">
+        <div class="report-section-title"><div><h3 id="report-members-title">عملکرد اعضا</h3><p>سهم خرج هر عضو در ماه @Model.MemberMonthTitle؛ پس‌انداز جداگانه نمایش داده می‌شود.</p></div><span class="report-panel-chip">@Model.Members.Count عضو</span></div>
+        @if (Model.Members.Count == 0) { <div class="report-empty">عضوی برای نمایش وجود ندارد.</div> }
         else
         {
-            <div class="space-y-5">
-                @foreach (var category in Model.Categories)
-                {
-                    <div>
-                        <div class="mb-2 flex items-center justify-between gap-3"><div class="flex items-center gap-2"><span>@category.Icon</span><strong class="text-sm">@category.Name</strong></div><span class="text-xs font-bold text-indigo-700">@Formatters.Percent(category.Percent)</span></div>
-                        <div class="progress"><div class="progress-bar" style="width: @(category.Percent)%"></div></div>
-                        <div class="mt-2 flex justify-between text-xs text-slate-500"><span>@category.Count مورد</span><span>@Formatters.Money(category.Amount)</span></div>
-                    </div>
-                }
-            </div>
+            <div class="report-members-grid"><div class="report-panel"><h4>سهم اعضا از مخارج ماه</h4><div class="report-member-bars">@foreach (var member in Model.Members.OrderByDescending(item => item.ExpenseAmount)) { var share = memberExpenseTotal <= 0 ? 0 : Math.Round(member.ExpenseAmount / memberExpenseTotal * 100); <div class="report-member-bar"><span class="report-avatar">@member.DisplayName.FirstOrDefault()</span><strong>@member.DisplayName</strong><div class="report-bar-track"><i style="width:@(share.ToString(CultureInfo.InvariantCulture))%"></i></div><b>@Formatters.Percent(share)</b></div> }</div></div>
+                <div class="report-panel"><h4>جزئیات اعضا</h4><div class="report-member-table-wrap"><table class="report-member-table"><thead><tr><th>عضو</th><th>تعداد خرج</th><th>مجموع مخارج</th><th>دستهٔ اصلی</th><th>پس‌انداز</th></tr></thead><tbody>@foreach (var member in Model.Members.OrderByDescending(item => item.ExpenseAmount)) { <tr><td><span class="report-avatar">@member.DisplayName.FirstOrDefault()</span>@member.DisplayName</td><td>@member.ExpenseCount</td><td>@Formatters.Money(member.ExpenseAmount)</td><td>@(member.Categories.FirstOrDefault()?.Name ?? "—")</td><td>@Formatters.Money(member.SavingsAmount)</td></tr> }</tbody></table></div></div></div>
+            <details class="report-detail"><summary>جزئیات دسته‌ها و هدف‌های هر عضو</summary><div class="report-member-details">@foreach (var member in Model.Members) { <article><h4>@member.DisplayName</h4><p>@member.ExpenseCount خرج · @member.SavingsCount واریزی پس‌انداز</p><div><strong>دسته‌های خرج</strong><ul>@foreach (var category in member.Categories) { <li>@category.Icon @category.Name <span>@Formatters.Percent(category.Percent) · @Formatters.Money(category.Amount)</span></li> }@if (member.Categories.Count == 0) { <li>خرجی ثبت نشده است.</li> }</ul></div><div><strong>هدف‌های پس‌انداز</strong><ul>@foreach (var goal in member.SavingsGoals) { <li>@goal.GoalName <span>@goal.Count واریزی · @Formatters.Money(goal.Amount)</span></li> }@if (member.SavingsGoals.Count == 0) { <li>واریزی ثبت نشده است.</li> }</ul></div></article> }</div></details>
         }
     </section>
+
+    <section class="report-panel report-transfers" aria-labelledby="report-transfers-title"><div class="report-panel-head"><div><h3 id="report-transfers-title">تاریخچهٔ انتقال بودجه</h3><p>جابه‌جایی‌های ثبت‌شده در @Model.PeriodTitle</p></div><span class="report-panel-chip">@Model.BudgetTransfers.Count انتقال</span></div>
+        @if (Model.BudgetTransfers.Count == 0) { <div class="report-empty is-compact">در این بازه انتقال بودجه‌ای ثبت نشده است.</div> }
+        else { <div class="report-member-table-wrap"><table class="report-member-table"><thead><tr><th>تاریخ</th><th>مبدأ</th><th>مقصد</th><th>مبلغ</th><th>ثبت‌کننده</th><th>توضیح</th></tr></thead><tbody>@foreach (var item in Model.BudgetTransfers) { <tr><td>@Formatters.PersianDate(item.TransferDate)</td><td>@item.SourceIcon @item.SourceName</td><td>@item.DestinationIcon @item.DestinationName</td><td>@Formatters.Money(item.Amount)</td><td>@item.CreatedBy</td><td>@(string.IsNullOrWhiteSpace(item.Note) ? "—" : item.Note)</td></tr> }</tbody></table></div> }
+    </section>
 </div>
-
-<section class="card mt-6">
-    <div class="mb-5 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
-        <div>
-            <h3 class="card-title">اقساط و هزینه‌های ثابت @Model.MemberMonthTitle</h3>
-            <p class="muted mt-1">وضعیت تعهدات ماهانه برای تشخیص پرداخت‌های انجام‌شده، باقی‌مانده و موارد عقب‌افتاده</p>
-        </div>
-        <div class="flex flex-wrap gap-2 text-xs">
-            <span class="badge">تعهد @Formatters.Money(Model.MonthlyObligationExpected)</span>
-            <span class="badge">پرداخت @Formatters.Money(Model.MonthlyObligationPaid)</span>
-            <span class="badge">باقی‌مانده @Formatters.Money(Model.MonthlyObligationUnpaid)</span>
-        </div>
-    </div>
-    @if (Model.MonthlyObligations.Count == 0)
-    {
-        <p class="rounded-2xl bg-slate-50 p-5 text-center text-sm text-slate-500">برای این ماه قسط یا هزینه ثابت فعالی وجود ندارد.</p>
-    }
-    else
-    {
-        <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            @foreach (var item in Model.MonthlyObligations)
-            {
-                <article class="rounded-2xl border @(item.IsPaid ? "border-emerald-200 bg-emerald-50" : item.Status.Contains("عقب‌افتاده") ? "border-rose-200 bg-rose-50" : item.PaidAmount > 0 ? "border-amber-200 bg-amber-50" : "border-slate-200 bg-slate-50") p-4">
-                    <div class="flex items-start justify-between gap-3">
-                        <div><strong>@item.CategoryIcon @item.Title</strong><p class="mt-1 text-xs text-slate-500">@item.CategoryName · سررسید @Formatters.PersianDate(item.DueDate)</p></div>
-                        <span class="badge">@item.Status</span>
-                    </div>
-                    <div class="mt-3 flex items-center justify-between text-sm"><span>مبلغ برنامه‌ریزی‌شده</span><strong>@Formatters.Money(item.ExpectedAmount)</strong></div>
-                    @if (item.PaidAmount > 0)
-                    {
-                        <div class="mt-2 flex items-center justify-between text-xs text-emerald-800"><span>پرداخت‌شده تا @Formatters.PersianDate(item.PaidDate!.Value)</span><strong>@Formatters.Money(item.PaidAmount)</strong></div>
-                    }
-                    @if (item.RemainingAmount > 0)
-                    {
-                        <div class="mt-2 flex items-center justify-between text-xs text-amber-800"><span>باقی‌مانده</span><strong>@Formatters.Money(item.RemainingAmount)</strong></div>
-                    }
-                </article>
-            }
-        </div>
-    }
-</section>
-
-<section class="card mt-6">
-    <div class="mb-5 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
-        <div>
-            <h3 class="card-title">تاریخچه انتقال بودجه</h3>
-            <p class="muted mt-1">تمام قرض‌ها و جابه‌جایی‌های بودجه در بازه انتخابی، با تاریخ، مبلغ، مبدا، مقصد و ثبت‌کننده</p>
-        </div>
-        <span class="badge">@Model.BudgetTransfers.Count انتقال</span>
-    </div>
-
-    @if (Model.BudgetTransfers.Count == 0)
-    {
-        <p class="rounded-2xl bg-slate-50 p-5 text-center text-sm text-slate-500">در این بازه انتقال بودجه‌ای ثبت نشده است.</p>
-    }
-    else
-    {
-        <div class="hidden md:block table-wrap">
-            <table class="table">
-                <thead><tr><th>تاریخ</th><th>بودجه مبدا</th><th>بودجه مقصد</th><th>مبلغ</th><th>ثبت‌کننده</th><th>توضیح</th></tr></thead>
-                <tbody>
-                @foreach (var item in Model.BudgetTransfers)
-                {
-                    <tr>
-                        <td class="text-slate-500">@Formatters.PersianDate(item.TransferDate)</td>
-                        <td class="font-bold">@item.SourceIcon @item.SourceName</td>
-                        <td class="font-bold">@item.DestinationIcon @item.DestinationName</td>
-                        <td class="font-black text-indigo-700">@Formatters.Money(item.Amount)</td>
-                        <td class="text-slate-500">@item.CreatedBy</td>
-                        <td class="text-slate-500">@(string.IsNullOrWhiteSpace(item.Note) ? "—" : item.Note)</td>
-                    </tr>
-                }
-                </tbody>
-            </table>
-        </div>
-        <div class="space-y-3 md:hidden">
-            @foreach (var item in Model.BudgetTransfers)
-            {
-                <article class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <div class="flex items-center justify-between gap-3">
-                        <strong class="text-indigo-700">@Formatters.Money(item.Amount)</strong>
-                        <span class="text-xs text-slate-500">@Formatters.PersianDate(item.TransferDate)</span>
-                    </div>
-                    <p class="mt-3 text-sm font-bold">@item.SourceIcon @item.SourceName ← @item.DestinationIcon @item.DestinationName</p>
-                    <p class="mt-2 text-xs text-slate-500">ثبت توسط @item.CreatedBy@(string.IsNullOrWhiteSpace(item.Note) ? "" : $" · {item.Note}")</p>
-                </article>
-            }
-        </div>
-    }
-</section>
-
-<section class="card mt-6">
-    <div class="mb-5 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
-        <div>
-            <h3 class="card-title">عملکرد اعضا در این ماه</h3>
-            <p class="muted mt-1">خرج‌ها، دسته‌بندی هزینه و واریزی‌های پس‌انداز هر شخص در @Model.MemberMonthTitle</p>
-        </div>
-        <span class="badge">@Model.Members.Count نفر</span>
-    </div>
-
-    @if (Model.Members.Count == 0)
-    {
-        <div class="empty border-0 bg-slate-50">
-            <p class="text-sm text-slate-500">عضوی برای نمایش وجود ندارد.</p>
-        </div>
-    }
-    else
-    {
-        <div class="grid gap-4 lg:grid-cols-2">
-            @foreach (var member in Model.Members)
-            {
-                <article class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <div class="flex flex-wrap items-start justify-between gap-3">
-                        <div class="min-w-0">
-                            <h4 class="truncate font-black">@member.DisplayName</h4>
-                            @if (!string.IsNullOrWhiteSpace(member.Email))
-                            {
-                                <p class="mt-1 truncate text-xs text-slate-500" dir="ltr">@member.Email</p>
-                            }
-                        </div>
-                        <div class="grid grid-cols-2 gap-2 text-center text-xs">
-                            <div class="rounded-xl bg-rose-50 px-3 py-2 text-rose-700">
-                                <span class="block text-[11px]">خرج ماه</span>
-                                <strong class="mt-1 block">@Formatters.Money(member.ExpenseAmount)</strong>
-                            </div>
-                            <div class="rounded-xl bg-emerald-50 px-3 py-2 text-emerald-700">
-                                <span class="block text-[11px]">پس‌انداز ماه</span>
-                                <strong class="mt-1 block">@Formatters.Money(member.SavingsAmount)</strong>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mt-4 grid gap-4 md:grid-cols-2">
-                        <div>
-                            <div class="mb-2 flex items-center justify-between gap-2">
-                                <strong class="text-sm">دسته‌های هزینه</strong>
-                                <span class="text-xs text-slate-500">@member.ExpenseCount تراکنش</span>
-                            </div>
-                            @if (member.Categories.Count == 0)
-                            {
-                                <p class="rounded-xl bg-white p-3 text-xs text-slate-500">خرجی ثبت نشده است.</p>
-                            }
-                            else
-                            {
-                                <div class="grid gap-2">
-                                    @foreach (var category in member.Categories)
-                                    {
-                                        <div class="rounded-xl bg-white p-3">
-                                            <div class="flex items-center justify-between gap-2 text-xs">
-                                                <span class="font-bold">@category.Icon @category.Name</span>
-                                                <span>@Formatters.Money(category.Amount)</span>
-                                            </div>
-                                            <div class="progress mt-2">
-                                                <div class="progress-bar bg-rose-600" style="width: @(Math.Min(category.Percent, 100))%"></div>
-                                            </div>
-                                        </div>
-                                    }
-                                </div>
-                            }
-                        </div>
-
-                        <div>
-                            <div class="mb-2 flex items-center justify-between gap-2">
-                                <strong class="text-sm">پس‌انداز در هدف‌ها</strong>
-                                <span class="text-xs text-slate-500">@member.SavingsCount واریزی</span>
-                            </div>
-                            @if (member.SavingsGoals.Count == 0)
-                            {
-                                <p class="rounded-xl bg-white p-3 text-xs text-slate-500">واریزی پس‌انداز ثبت نشده است.</p>
-                            }
-                            else
-                            {
-                                <div class="grid gap-2">
-                                    @foreach (var goal in member.SavingsGoals)
-                                    {
-                                        <div class="flex items-center justify-between gap-3 rounded-xl bg-white p-3 text-xs">
-                                            <div class="min-w-0">
-                                                <p class="truncate font-bold">🎯 @goal.GoalName</p>
-                                                <p class="mt-1 text-[11px] text-slate-500">@goal.Count واریزی</p>
-                                            </div>
-                                            <strong class="shrink-0 text-emerald-700">@Formatters.Money(goal.Amount)</strong>
-                                        </div>
-                                    }
-                                </div>
-                            }
-                        </div>
-                    </div>
-                </article>
-            }
-        </div>
-    }
-</section>

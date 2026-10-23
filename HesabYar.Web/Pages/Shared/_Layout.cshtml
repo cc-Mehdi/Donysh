@@ -9,6 +9,7 @@
     IReadOnlyList<Workspace> workspaces = authenticated ? await WorkspaceContext.GetAccessibleAsync() : Array.Empty<Workspace>();
     var page = ViewContext.RouteData.Values["page"]?.ToString() ?? string.Empty;
     var isDashboard = page.Equals("/Index", StringComparison.OrdinalIgnoreCase);
+    var isReports = page.Equals("/Reports/Index", StringComparison.OrdinalIgnoreCase);
     var configuredLifeUrl = Configuration["Products:LifeUrl"];
     var lifeUrl = Uri.TryCreate(configuredLifeUrl, UriKind.Absolute, out var parsedLifeUrl)
         && parsedLifeUrl.Scheme == Uri.UriSchemeHttps
@@ -124,7 +125,7 @@
             </header>
             }
 
-            <main class="@(isDashboard ? "dashboard-main" : "mx-auto max-w-7xl p-4 pb-24 sm:p-6 lg:p-8 lg:pb-8")">
+            <main class="@(isDashboard ? "dashboard-main" : isReports ? "mx-auto max-w-[100rem] p-4 pb-24 sm:p-6 lg:p-8 lg:pb-8" : "mx-auto max-w-7xl p-4 pb-24 sm:p-6 lg:p-8 lg:pb-8")">
                 @if (TempData["Success"] is string success)
                 {
                     <div class="toast toast-success" data-toast>@success</div>

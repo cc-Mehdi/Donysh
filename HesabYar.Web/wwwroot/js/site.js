@@ -2,6 +2,18 @@
     document.querySelectorAll('[data-finance-theme-toggle]').forEach((button) => {
         button.addEventListener('click', () => window.donyshFinanceTheme?.toggle());
     });
+    const reportTabs = [...document.querySelectorAll('.report-tabs a[href^="#"]')];
+    if (reportTabs.length > 0) {
+        const syncReportTabs = () => {
+            const current = reportTabs.find((tab) => tab.hash === window.location.hash) ?? reportTabs[0];
+            reportTabs.forEach((tab) => {
+                if (tab === current) tab.setAttribute('aria-current', 'location');
+                else tab.removeAttribute('aria-current');
+            });
+        };
+        window.addEventListener('hashchange', syncReportTabs);
+        syncReportTabs();
+    }
     const toLatinDigits = (value) => String(value ?? '')
         .replace(/[۰-۹]/g, (digit) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit)))
         .replace(/[٠-٩]/g, (digit) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit)));
