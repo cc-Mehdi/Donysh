@@ -6,12 +6,24 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace HesabYar.Web.Pages.Settings;
 
-public sealed class IndexModel(UserManager<ApplicationUser> userManager) : PageModel
+public sealed class IndexModel(UserManager<ApplicationUser> userManager, IConfiguration configuration) : PageModel
 {
     [BindProperty]
     public ProfileInput Input { get; set; } = new();
 
     public string Email { get; private set; } = string.Empty;
+    public string? CentralAccountUrl
+    {
+        get
+        {
+            var authority = configuration["CentralAuth:Authority"];
+            return configuration.GetValue<bool>("CentralAuth:Enabled")
+                && Uri.TryCreate(authority, UriKind.Absolute, out var uri)
+                && uri.Scheme == Uri.UriSchemeHttps
+                    ? new Uri(uri, "/Account/Manage").AbsoluteUri
+                    : null;
+        }
+    }
 
     public sealed class ProfileInput
     {

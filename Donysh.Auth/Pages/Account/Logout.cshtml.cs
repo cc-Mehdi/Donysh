@@ -8,10 +8,28 @@ using Microsoft.AspNetCore.WebUtilities;
 
 namespace Donysh.Auth.Pages.Account;
 
-[Authorize]
+[AllowAnonymous]
 public sealed class LogoutModel(SignInManager<AuthUser> signInManager, IConfiguration configuration) : PageModel
 {
-    public IActionResult OnPost()
+    public IActionResult OnGet() => User.Identity?.IsAuthenticated == true ? Page() : Challenge();
+
+    public IActionResult OnPost() => User.Identity?.IsAuthenticated == true
+        ? Redirect(FederatedSignOutUrl.Create(configuration))
+        : Challenge();
+
+    public async Task<IActionResult> OnGetFinalizeAsync(string? token)
+    {
+        var secret = configuration["CrossAppLogout:Secret"] ?? string.Empty;
+        if (!CrossAppLogoutToken.TryValidate(token, secret, "auth-finalize")) return NotFound();
+        await signInManager.SignOutAsync();
+        Response.Headers.CacheControl = "no-store, no-cache";
+        return RedirectToPage("/Account/SignedOut");
+    }
+}
+
+public static class FederatedSignOutUrl
+{
+    public static string Create(IConfiguration configuration)
     {
         var secret = configuration["CrossAppLogout:Secret"];
         var financeUrl = configuration["Products:FinanceUrl"];
@@ -22,16 +40,6 @@ public sealed class LogoutModel(SignInManager<AuthUser> signInManager, IConfigur
 
         var endpoint = new Uri(finance, "/Account/FederatedLogout").AbsoluteUri;
         var proof = CrossAppLogoutToken.Create(secret, "finance-auth");
-        Response.Headers.CacheControl = "no-store, no-cache";
-        return Redirect(QueryHelpers.AddQueryString(endpoint, "proof", proof));
-    }
-
-    public async Task<IActionResult> OnGetFinalizeAsync(string? token)
-    {
-        var secret = configuration["CrossAppLogout:Secret"] ?? string.Empty;
-        if (!CrossAppLogoutToken.TryValidate(token, secret, "auth-finalize")) return NotFound();
-        await signInManager.SignOutAsync();
-        Response.Headers.CacheControl = "no-store, no-cache";
-        return RedirectToPage("/Account/SignedOut");
+        return QueryHelpers.AddQueryString(endpoint, "proof", proof);
     }
 }

@@ -20,6 +20,14 @@ public static class AuthEmailTemplates
         callbackUrl,
         "اگر این درخواست را ثبت نکرده‌اید، نیازی به انجام کاری نیست.");
 
+    public static string ChangeEmail(string callbackUrl) => Build(
+        "تأیید ایمیل تازه",
+        "درخواست تغییر ایمیل حساب دُنیش دریافت شد.",
+        "برای ثبت نشانی تازه، پیوند زیر را باز کنید.",
+        "تأیید ایمیل تازه",
+        callbackUrl,
+        "اگر شما این درخواست را ثبت نکرده‌اید، این پیام را نادیده بگیرید.");
+
     private static string Build(
         string title,
         string greeting,

@@ -14,7 +14,9 @@ public sealed class AuthDbContext(DbContextOptions<AuthDbContext> options)
 
         builder.Entity<AuthUser>(entity =>
         {
-            entity.Property(user => user.DisplayName).HasMaxLength(100);
+            entity.Property(user => user.FirstName).HasMaxLength(100);
+            entity.Property(user => user.LastName).HasMaxLength(100);
+            entity.Property(user => user.DisplayName).HasMaxLength(201);
             entity.HasIndex(user => user.NormalizedEmail).IsUnique();
         });
     }

@@ -1,4 +1,5 @@
 using System.Net;
+using System.ComponentModel.DataAnnotations;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Donysh.Auth.Domain;
@@ -29,6 +30,14 @@ void Check(string name, bool condition)
         Console.WriteLine($"FAIL {name}");
     }
 }
+
+var emptyRegistration = new Donysh.Auth.Pages.Account.RegisterModel.InputModel();
+var registrationErrors = new List<ValidationResult>();
+Validator.TryValidateObject(emptyRegistration, new ValidationContext(emptyRegistration), registrationErrors, validateAllProperties: true);
+var missingFields = registrationErrors.SelectMany(error => error.MemberNames).ToHashSet(StringComparer.Ordinal);
+Check("Registration requires identity, contact and credentials",
+    new[] { "FirstName", "LastName", "PhoneNumber", "Email", "UserName", "Password", "ConfirmPassword" }
+        .All(missingFields.Contains));
 
 Check("Local return path is preserved", SafeReturnUrl.Normalize("/connect/authorize?client_id=finance") == "/connect/authorize?client_id=finance");
 foreach (var hostile in new[] { "https://evil.example/", "//evil.example/", "/\\evil.example/", "javascript:alert(1)", null })
@@ -67,7 +76,11 @@ var centralLogout = new Donysh.Auth.Pages.Account.LogoutModel(null!, centralLogo
 {
     PageContext = new Microsoft.AspNetCore.Mvc.RazorPages.PageContext
     {
-        HttpContext = new DefaultHttpContext()
+        HttpContext = new DefaultHttpContext
+        {
+            User = new System.Security.Claims.ClaimsPrincipal(
+                new System.Security.Claims.ClaimsIdentity([new System.Security.Claims.Claim("sub", "test-user")], "test"))
+        }
     }
 };
 var centralPeerRedirect = centralLogout.OnPost() as Microsoft.AspNetCore.Mvc.RedirectResult;
@@ -178,7 +191,7 @@ using (var response = await client.GetAsync("/Account/Login"))
         && !html.Contains("id=\"loginForm\"", StringComparison.Ordinal));
     Check("Login copy is natural Persian without the old greeting",
         html.Contains("به دُنیش وارد شوید", StringComparison.Ordinal)
-        && html.Contains("ایمیل و رمز عبور خود را وارد کنید.", StringComparison.Ordinal)
+        && html.Contains("ایمیل یا نام کاربری و رمز عبور خود را وارد کنید.", StringComparison.Ordinal)
         && html.Contains("در این دستگاه وارد بمانم", StringComparison.Ordinal)
         && html.Contains("یک حساب برای دو بخش", StringComparison.Ordinal)
         && !html.Contains("برگشتی", StringComparison.Ordinal));
@@ -242,7 +255,11 @@ using (var registrationClient = registrationFactory.CreateClient(new WebApplicat
         Check("Enabled registration renders a complete confirmation flow",
             response.StatusCode == HttpStatusCode.OK
             && html.Contains("ساخت حساب جدید", StringComparison.Ordinal)
-            && html.Contains("name=\"Input.DisplayName\"", StringComparison.Ordinal)
+            && html.Contains("name=\"Input.FirstName\"", StringComparison.Ordinal)
+            && html.Contains("name=\"Input.LastName\"", StringComparison.Ordinal)
+            && html.Contains("name=\"Input.PhoneNumber\"", StringComparison.Ordinal)
+            && html.Contains("name=\"Input.UserName\"", StringComparison.Ordinal)
+            && html.Contains("name=\"Input.Email\"", StringComparison.Ordinal)
             && html.Contains("name=\"Input.ConfirmPassword\"", StringComparison.Ordinal)
             && html.Contains("name=\"ReturnUrl\"", StringComparison.Ordinal)
             && html.Contains("/connect/authorize?client_id=finance-web", StringComparison.Ordinal)
@@ -266,6 +283,21 @@ using (var registrationClient = registrationFactory.CreateClient(new WebApplicat
             && html.Contains("ارسال دوبارهٔ پیوند تأیید", StringComparison.Ordinal)
             && html.Contains("وجود یا نبود حساب نمایش داده نمی‌شود", StringComparison.Ordinal));
     }
+}
+
+using (var response = await client.GetAsync("/Account/Manage"))
+{
+    var location = response.Headers.Location;
+    var path = location?.IsAbsoluteUri == true ? location.AbsolutePath : location?.OriginalString;
+    Check("Central account management requires sign-in", response.StatusCode == HttpStatusCode.Redirect
+        && path?.StartsWith("/Account/Login", StringComparison.Ordinal) == true);
+}
+using (var response = await client.GetAsync("/Account/CloseAccount"))
+{
+    var location = response.Headers.Location;
+    var path = location?.IsAbsoluteUri == true ? location.AbsolutePath : location?.OriginalString;
+    Check("Account closure requires sign-in", response.StatusCode == HttpStatusCode.Redirect
+        && path?.StartsWith("/Account/Login", StringComparison.Ordinal) == true);
 }
 
 await using (var throttledRegistrationFactory = new RegistrationAuthApplicationFactory())
@@ -294,6 +326,8 @@ using (var response = await client.GetAsync("/Account/Logout"))
     Check("Anonymous logout page is protected", response.StatusCode == HttpStatusCode.Redirect
         && locationPath?.StartsWith("/Account/Login", StringComparison.Ordinal) == true);
 }
+using (var response = await client.GetAsync("/Account/Logout?handler=Finalize&token=invalid"))
+    Check("Logout completion rejects invalid proof before sign-in", response.StatusCode == HttpStatusCode.NotFound);
 
 using (var response = await client.GetAsync("/Account/SignedOut"))
 {

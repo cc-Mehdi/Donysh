@@ -37,16 +37,16 @@
             <header class="panel-header">
                 <span class="login-step"><i aria-hidden="true"></i> ورود به فضای شخصی</span>
                 <h1 id="login-title">به دُنیش وارد شوید <span aria-hidden="true">✦</span></h1>
-                <p>ایمیل و رمز عبور خود را وارد کنید.</p>
+                <p>ایمیل یا نام کاربری و رمز عبور خود را وارد کنید.</p>
             </header>
 
             <form method="post" asp-page="/Account/Login" class="auth-form">
                 <input type="hidden" asp-for="ReturnUrl" />
                 <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
                 <div class="field">
-                    <label asp-for="Input.Email">آدرس ایمیل</label>
+                    <label asp-for="Input.Email">ایمیل یا نام کاربری</label>
                     <div class="login-input-wrap" dir="ltr">
-                        <input asp-for="Input.Email" autocomplete="username" inputmode="email" dir="ltr" autofocus placeholder="you@example.com" />
+                        <input asp-for="Input.Email" autocomplete="username" dir="ltr" autofocus placeholder="نام کاربری یا ایمیل" />
                         <svg class="login-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m4 7 8 6 8-6"/></svg>
                     </div>
                     <span asp-validation-for="Input.Email"></span>

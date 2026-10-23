@@ -1,0 +1,7 @@
+@page
+@model Donysh.Auth.Pages.Account.ChangeEmailModel
+@{ ViewData["Title"] = "تغییر ایمیل"; }
+<section class="form-card account-action-card"><partial name="_Brand" /><a asp-page="/Account/Manage" class="account-back">بازگشت به مدیریت حساب ←</a><header class="panel-header"><p class="eyebrow">اطلاعات حساب</p><h1>تغییر ایمیل</h1><p>نشانی فعلی: <strong dir="ltr">@Model.CurrentEmail</strong></p></header>
+    @if (Model.Sent) { <p class="account-success" role="status">پیوند تأیید به ایمیل تازه فرستاده شد. با بازکردن آن، تغییر ثبت می‌شود.</p> }
+    <form method="post" class="auth-form"><div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div><div class="field"><label asp-for="NewEmail"></label><input asp-for="NewEmail" autocomplete="email" dir="ltr" required /><span asp-validation-for="NewEmail"></span></div><button class="primary-button" type="submit">فرستادن پیوند تأیید</button></form>
+</section>

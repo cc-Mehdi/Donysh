@@ -41,7 +41,7 @@ public sealed class AuthorizationController(UserManager<AuthUser> users, SignInM
         }
 
         var user = await users.GetUserAsync(authentication.Principal!);
-        if (user is null || !await signInManager.CanSignInAsync(user))
+        if (user is null || user.IsDeactivated || !await signInManager.CanSignInAsync(user))
         {
             await signInManager.SignOutAsync();
             return Challenge(new AuthenticationProperties
@@ -83,7 +83,7 @@ public sealed class AuthorizationController(UserManager<AuthUser> users, SignInM
     {
         var subject = User.GetClaim(Claims.Subject);
         var user = string.IsNullOrWhiteSpace(subject) ? null : await users.FindByIdAsync(subject);
-        if (user is null) return Challenge(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+        if (user is null || user.IsDeactivated) return Challenge(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
         return Ok(new Dictionary<string, object?>
         {
             [Claims.Subject] = user.Id,

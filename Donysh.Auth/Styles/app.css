@@ -240,3 +240,51 @@
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
 }
+
+/* Central account registration and management */
+.registration-name-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; }
+.auth-manage-page .auth-shell { align-items:start; }
+.account-shell { width:min(100%,70rem); margin:auto; padding:clamp(1.25rem,3vw,2.5rem); border:1px solid #e1e6f2; border-radius:2rem; background:#f8faff; box-shadow:0 30px 90px #02061748; }
+.account-header { display:flex; align-items:center; justify-content:space-between; gap:1rem; }
+.account-back { color:#5144c8; font-size:.82rem; font-weight:800; text-decoration:none; }
+.account-back:hover { text-decoration:underline; }
+.account-intro { margin:2.4rem 0 1.5rem; }
+.account-intro h1 { margin:.4rem 0; color:#111c37; font-size:clamp(1.8rem,3vw,2.7rem); font-weight:900; }
+.account-intro p { margin:0; color:#64728b; font-size:.88rem; line-height:1.9; }
+.account-grid { display:grid; grid-template-columns:minmax(0,1.7fr) minmax(16rem,1fr); gap:1.25rem; align-items:start; }
+.account-side { display:grid; gap:1.25rem; }
+.account-card { padding:1.5rem; border:1px solid #e0e7f1; border-radius:1.3rem; background:#fff; box-shadow:0 9px 30px #1725540b; }
+.account-card-heading { display:flex; align-items:start; justify-content:space-between; gap:1rem; padding-bottom:1rem; border-bottom:1px solid #e8edf5; }
+.account-card-heading h2 { margin:0; color:#14213d; font-size:1.05rem; font-weight:900; }
+.account-card-heading p { margin:.4rem 0 0; color:#6b7890; font-size:.76rem; line-height:1.8; }
+.account-card-icon { display:grid; flex:none; width:2.5rem; height:2.5rem; place-items:center; border-radius:.8rem; background:#eeecff; font-size:1.15rem; }
+.account-card-icon svg { width:1.25rem; height:1.25rem; fill:none; stroke:#5944cc; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.account-profile-form { margin-top:1.3rem; }
+.account-email-row { display:flex; flex-wrap:wrap; align-items:center; gap:.55rem; padding:.9rem 1rem; border:1px solid #e4eaf3; border-radius:.8rem; background:#f8fafc; font-size:.8rem; }
+.account-email-row > span { color:#5f6d83; }
+.account-email-row strong { margin-inline-end:auto; color:#182640; overflow-wrap:anywhere; }
+.account-email-row a { color:#5144c8; font-weight:800; text-decoration:none; }
+.account-switch { display:flex; align-items:start; gap:.8rem; padding:1rem; border:1px solid #d9e7e5; border-radius:.9rem; background:#f1faf8; cursor:pointer; }
+.account-switch input { width:1.15rem; height:1.15rem; margin-top:.12rem; accent-color:#119e85; }
+.account-switch span { display:grid; gap:.25rem; }
+.account-switch strong { color:#163c39; font-size:.86rem; }
+.account-switch small { color:#567773; font-size:.72rem; line-height:1.8; }
+.account-save { width:auto; min-width:12rem; }
+.account-link-list { display:grid; gap:.5rem; margin-top:1rem; }
+.account-link-list a { display:flex; justify-content:space-between; gap:.6rem; padding:.8rem; border:1px solid #edf0f5; border-radius:.75rem; color:#2a3854; font-size:.82rem; font-weight:800; text-decoration:none; }
+.account-link-list a:hover { border-color:#c9c2fc; background:#f6f4ff; color:#4f3cd3; }
+.account-coming-soon { display:inline-block; margin-top:1rem; padding:.35rem .7rem; border-radius:99px; background:#eef2f7; color:#58667e; font-size:.72rem; font-weight:800; }
+.account-success { margin:0 0 1rem; padding:.9rem 1rem; border:1px solid #96d9c4; border-radius:.85rem; background:#ebfaf3; color:#116249; font-size:.84rem; font-weight:800; }
+.account-action-card > .brand { margin-bottom:1rem; }
+.account-action-card > .account-back { display:inline-block; margin-bottom:1.5rem; }
+.account-close-options { display:grid; gap:1rem; margin-top:1.5rem; }
+.account-close-options > section { padding:1.2rem; border:1px solid #dce4ee; border-radius:1rem; background:#fff; }
+.account-close-options h2 { margin:0; font-size:1rem; font-weight:900; }
+.account-close-options p { margin:.5rem 0 0; color:#5d6b82; font-size:.78rem; line-height:1.9; }
+.account-close-options .auth-form { margin-top:1rem; }
+.account-close-options .account-danger { border-color:#f3c4cb; background:#fff7f8; }
+.account-danger h2 { color:#ac2945; }
+.account-delete-button { width:100%; min-height:3rem; border:0; border-radius:.75rem; background:#b82749; color:#fff; font-size:.86rem; font-weight:800; cursor:pointer; }
+.account-delete-button:hover { background:#921b37; }
+@media (max-width:800px) { .account-grid { grid-template-columns:1fr; }.account-side { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (max-width:580px) { .registration-name-grid,.account-side { grid-template-columns:1fr; }.account-shell { padding:1rem; border-radius:1.3rem; }.account-card { padding:1rem; }.account-header { flex-wrap:wrap; }.account-intro { margin:1.5rem 0 1rem; }.account-save { width:100%; } }

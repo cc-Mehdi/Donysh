@@ -20,12 +20,17 @@
         <form method="post" class="auth-form">
             <input type="hidden" asp-for="ReturnUrl" />
             <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
-            <div class="field"><label asp-for="Input.DisplayName"></label><input asp-for="Input.DisplayName" autocomplete="name" /><span asp-validation-for="Input.DisplayName"></span></div>
-            <div class="field"><label asp-for="Input.Email"></label><input asp-for="Input.Email" autocomplete="email" dir="ltr" /><span asp-validation-for="Input.Email"></span></div>
+            <div class="registration-name-grid">
+                <div class="field"><label asp-for="Input.FirstName"></label><input asp-for="Input.FirstName" autocomplete="given-name" required /><span asp-validation-for="Input.FirstName"></span></div>
+                <div class="field"><label asp-for="Input.LastName"></label><input asp-for="Input.LastName" autocomplete="family-name" required /><span asp-validation-for="Input.LastName"></span></div>
+            </div>
+            <div class="field"><label asp-for="Input.PhoneNumber"></label><input asp-for="Input.PhoneNumber" autocomplete="tel" inputmode="tel" dir="ltr" required placeholder="09123456789" /><span asp-validation-for="Input.PhoneNumber"></span></div>
+            <div class="field"><label asp-for="Input.Email"></label><input asp-for="Input.Email" autocomplete="email" dir="ltr" required /><span asp-validation-for="Input.Email"></span></div>
+            <div class="field"><label asp-for="Input.UserName"></label><input asp-for="Input.UserName" autocomplete="username" dir="ltr" required placeholder="yourname" /><span asp-validation-for="Input.UserName"></span></div>
             <div class="field">
                 <label asp-for="Input.Password"></label>
                 <div class="password-field" dir="ltr">
-                    <input asp-for="Input.Password" class="password-input" autocomplete="new-password" dir="ltr" />
+                    <input asp-for="Input.Password" class="password-input" autocomplete="new-password" dir="ltr" required />
                     <button type="button" class="password-toggle" data-password-toggle aria-controls="Input_Password" aria-label="نمایش رمز عبور" aria-pressed="false">
                         <svg data-eye-open aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.75"/></svg>
                         <svg data-eye-closed aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" hidden><path d="m3 3 18 18M10.6 6.1A9.9 9.9 0 0 1 12 6c6 0 9.5 6 9.5 6a15.7 15.7 0 0 1-2.2 2.8M6.2 6.2C3.8 7.8 2.5 12 2.5 12s3.5 6 9.5 6a9.8 9.8 0 0 0 3.1-.5M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>
@@ -36,7 +41,7 @@
             <div class="field">
                 <label asp-for="Input.ConfirmPassword"></label>
                 <div class="password-field" dir="ltr">
-                    <input asp-for="Input.ConfirmPassword" class="password-input" autocomplete="new-password" dir="ltr" />
+                    <input asp-for="Input.ConfirmPassword" class="password-input" autocomplete="new-password" dir="ltr" required />
                     <button type="button" class="password-toggle" data-password-toggle aria-controls="Input_ConfirmPassword" aria-label="نمایش رمز عبور" aria-pressed="false">
                         <svg data-eye-open aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.75"/></svg>
                         <svg data-eye-closed aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" hidden><path d="m3 3 18 18M10.6 6.1A9.9 9.9 0 0 1 12 6c6 0 9.5 6 9.5 6a15.7 15.7 0 0 1-2.2 2.8M6.2 6.2C3.8 7.8 2.5 12 2.5 12s3.5 6 9.5 6a9.8 9.8 0 0 0 3.1-.5M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>

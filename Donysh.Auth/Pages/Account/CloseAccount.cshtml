@@ -1,0 +1,10 @@
+@page
+@model Donysh.Auth.Pages.Account.CloseAccountModel
+@{ ViewData["Title"] = "وضعیت حساب"; }
+<section class="form-card account-action-card"><partial name="_Brand" /><a asp-page="/Account/Manage" class="account-back">بازگشت به مدیریت حساب ←</a><header class="panel-header"><p class="eyebrow">امنیت حساب</p><h1>وضعیت حساب</h1><p>هر اقدام نیاز به رمز عبور و تأیید جداگانه دارد.</p></header>
+    <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
+    <div class="account-close-options">
+        <section><h2>غیرفعال‌سازی موقت</h2><p>از حساب خارج می‌شوید و ورود به محصولات متوقف می‌شود. با ورود دوباره و رمز درست، حساب فعال خواهد شد.</p><form method="post" asp-page-handler="Deactivate" class="auth-form"><div class="field"><label for="deactivate-password">رمز عبور</label><input id="deactivate-password" name="password" type="password" autocomplete="current-password" required /></div><label class="check-row"><input name="confirmDeactivate" type="checkbox" value="true" required /> غیرفعال‌سازی را تأیید می‌کنم.</label><button class="secondary-button" type="submit">غیرفعال‌سازی حساب</button></form></section>
+        <section class="account-danger"><h2>حذف حساب مرکزی</h2><p>این کار برگشت‌پذیر نیست و دسترسی شما به محصولات دُنیش با این شناسه از بین می‌رود. داده‌های مشترک اعضای دیگر خودکار حذف نمی‌شوند.</p><form method="post" asp-page-handler="Delete" class="auth-form"><div class="field"><label for="delete-password">رمز عبور</label><input id="delete-password" name="password" type="password" autocomplete="current-password" required /></div><label class="check-row"><input name="confirmDelete" type="checkbox" value="true" required /> حذف دائمی حساب مرکزی را تأیید می‌کنم.</label><button class="account-delete-button" type="submit">حذف حساب مرکزی</button></form></section>
+    </div>
+</section>

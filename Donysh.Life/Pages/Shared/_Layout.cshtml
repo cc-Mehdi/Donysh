@@ -5,6 +5,11 @@
         && parsedFinanceUrl.Scheme == Uri.UriSchemeHttps
             ? parsedFinanceUrl.AbsoluteUri
             : "https://finance.donysh.ir/";
+    var configuredAuthUrl = Configuration["CentralAuth:Authority"];
+    var accountManageUrl = Uri.TryCreate(configuredAuthUrl, UriKind.Absolute, out var parsedAuthUrl)
+        && parsedAuthUrl.Scheme == Uri.UriSchemeHttps
+            ? new Uri(parsedAuthUrl, "/Account/Manage").AbsoluteUri
+            : "https://auth.donysh.ir/Account/Manage";
     var accountName = User.FindFirst("name")?.Value
         ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value
         ?? User.Identity?.Name
@@ -64,6 +69,7 @@
                     </span>
                     <span class="account-status" title="حساب فعال" aria-label="حساب فعال"></span>
                 </section>
+                <a class="account-manage-link" href="@accountManageUrl" aria-label="مدیریت حساب مرکزی" title="مدیریت حساب مرکزی"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3"/><path d="M5 20a7 7 0 0 1 14 0M18 3l2 2-2 2"/></svg><span>مدیریت حساب مرکزی</span></a>
                 <a class="product-switcher" href="@financeUrl" aria-label="رفتن به دُنیش مالی">
                     <span class="product-switcher-icon" aria-hidden="true">
                         <svg viewBox="0 0 24 24"><path d="M4 7.5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-12a2 2 0 0 1 2-2h11" /><path d="M16 12h4v3h-4a1.5 1.5 0 0 1 0-3Z" /></svg>
@@ -82,10 +88,10 @@
                 <a class="brand life-brand compact-brand" asp-page="/Index" aria-label="دُنیش زندگی، صفحهٔ اصلی"><img class="life-brand-logo" src="~/images/donysh-life-icon.png" alt="" width="40" height="40" /><strong class="life-brand-name">دُنیش زندگی</strong></a>
                 <div class="mobile-header-actions">
                     <button type="button" class="theme-toggle compact" data-life-theme-toggle aria-label="فعال کردن حالت تیره" aria-pressed="false" title="حالت تیره"><svg class="theme-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.3A8.5 8.5 0 0 1 9.7 3.5 8.5 8.5 0 1 0 20.5 14.3Z"/></svg><svg class="theme-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg></button>
-                    <span class="mobile-account" title="حساب واردشده: @accountName">
+                    <a class="mobile-account" href="@accountManageUrl" title="مدیریت حساب مرکزی: @accountName" aria-label="مدیریت حساب مرکزی">
                         <span class="account-avatar" aria-hidden="true">@accountInitial</span>
                         <strong>@accountName</strong>
-                    </span>
+                    </a>
                     <a class="product-switcher compact" href="@financeUrl" aria-label="رفتن به دُنیش مالی">
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-12a2 2 0 0 1 2-2h11" /><path d="M16 12h4v3h-4a1.5 1.5 0 0 1 0-3Z" /></svg>
                         <span>مالی</span>

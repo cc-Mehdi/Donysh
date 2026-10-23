@@ -1,0 +1,31 @@
+@page
+@model Donysh.Auth.Pages.Account.ManageModel
+@{
+    ViewData["Title"] = "مدیریت حساب";
+    ViewData["BodyClass"] = "auth-manage-page";
+}
+<div class="account-shell">
+    <header class="account-header">
+        <partial name="_Brand" />
+        <a asp-page="/Index" class="account-back">بازگشت به محصولات ←</a>
+    </header>
+    <div class="account-intro"><span class="eyebrow">حساب مرکزی دُنیش</span><h1>مدیریت حساب</h1><p>اطلاعات و تنظیمات مشترک همهٔ بخش‌های دُنیش را اینجا مدیریت کنید.</p></div>
+    @if (Model.Notice is not null) { <p class="account-success" role="status">@Model.Notice</p> }
+    <div class="account-grid">
+        <section class="account-card account-profile" aria-labelledby="profile-title">
+            <div class="account-card-heading"><div><h2 id="profile-title">اطلاعات شخصی</h2><p>این مشخصات در حساب مرکزی شما نگهداری می‌شود.</p></div><span class="account-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span></div>
+            <form method="post" class="auth-form account-profile-form">
+                <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
+                <div class="registration-name-grid"><div class="field"><label asp-for="Input.FirstName"></label><input asp-for="Input.FirstName" autocomplete="given-name" required /><span asp-validation-for="Input.FirstName"></span></div><div class="field"><label asp-for="Input.LastName"></label><input asp-for="Input.LastName" autocomplete="family-name" required /><span asp-validation-for="Input.LastName"></span></div></div>
+                <div class="registration-name-grid"><div class="field"><label asp-for="Input.PhoneNumber"></label><input asp-for="Input.PhoneNumber" autocomplete="tel" inputmode="tel" dir="ltr" required /><span asp-validation-for="Input.PhoneNumber"></span></div><div class="field"><label asp-for="Input.UserName"></label><input asp-for="Input.UserName" autocomplete="username" dir="ltr" required /><span asp-validation-for="Input.UserName"></span></div></div>
+                <div class="account-email-row"><span>ایمیل</span><strong dir="ltr">@Model.Email</strong><a asp-page="/Account/ChangeEmail">تغییر ایمیل</a></div>
+                <label class="account-switch"><input asp-for="Input.NotificationsEnabled" /><span><strong>اعلان‌های حساب</strong><small>ترجیح دریافت اعلان‌های اختیاری حساب ذخیره می‌شود؛ پیام‌های امنیتی ضروری همچنان ارسال می‌شوند.</small></span></label>
+                <button class="primary-button account-save" type="submit">ذخیرهٔ تغییرات</button>
+            </form>
+        </section>
+        <aside class="account-side">
+            <section class="account-card"><div class="account-card-heading"><div><h2>امنیت و دسترسی</h2><p>رمز عبور و وضعیت حساب</p></div><span class="account-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span></div><div class="account-link-list"><a asp-page="/Account/ChangePassword">تغییر رمز عبور <span>←</span></a><a asp-page="/Account/CloseAccount">غیرفعال‌سازی یا حذف حساب <span>←</span></a></div></section>
+            <section class="account-card"><div class="account-card-heading"><div><h2>درخواست‌های پشتیبانی</h2><p>مدیریت تیکت‌ها پس از راه‌اندازی این بخش در همین صفحه قرار می‌گیرد.</p></div><span class="account-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h16v12H9l-5 4V5Z"/><path d="M8 9h8m-8 4h5"/></svg></span></div><span class="account-coming-soon">به‌زودی</span></section>
+        </aside>
+    </div>
+</div>
