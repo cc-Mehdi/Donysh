@@ -9,7 +9,8 @@
         <h2 class="text-2xl font-black">تعهدات ماهانه</h2>
         <p class="mt-1 text-sm text-slate-500">قسط‌ها و هزینه‌های ثابت را یک‌بار تعریف کنید؛ Donysh سررسید، پرداخت و مبلغ باقی‌مانده هر ماه را برایتان پیگیری می‌کند.</p>
     </div>
-    <div class="flex items-center gap-2">
+    <div class="flex flex-wrap items-center gap-2">
+        <button type="button" class="btn-primary" data-open-obligation="obligation-create-dialog">＋ تعریف تعهد</button>
         <a asp-page="Index" asp-route-year="@Model.PreviousPeriod.Year" asp-route-month="@Model.PreviousPeriod.Month" class="btn-secondary px-3">→</a>
         <span class="min-w-36 text-center font-black">@Model.PeriodTitle</span>
         <a asp-page="Index" asp-route-year="@Model.NextPeriod.Year" asp-route-month="@Model.NextPeriod.Month" class="btn-secondary px-3">←</a>
@@ -39,9 +40,9 @@
     </section>
 </div>
 
-<div class="mt-6 grid gap-6 xl:grid-cols-[23rem_1fr]">
-    <section class="card h-fit">
-        <h3 class="card-title">تعریف تعهد جدید</h3>
+<dialog id="obligation-create-dialog" class="obligation-dialog" aria-labelledby="obligation-create-title" data-obligation-error="@(!ViewData.ModelState.IsValid && !Model.Input.Id.HasValue ? "true" : null)">
+    <section class="obligation-dialog-content">
+        <div class="obligation-dialog-heading"><div><h3 id="obligation-create-title" class="card-title">تعریف تعهد جدید</h3><p class="muted mt-1">قسط یا هزینهٔ ثابت را برای پیگیری ماهانه تعریف کنید.</p></div><button type="button" class="obligation-dialog-close" data-close-obligation aria-label="بستن پنجره">×</button></div>
         <p class="muted mt-1">برای قسط مدت مشخص کنید؛ هزینه ثابت تا زمانی که متوقفش کنید هر ماه تکرار می‌شود.</p>
         <form method="post" asp-page-handler="Save" class="mt-5 space-y-4" data-obligation-form>
             <div asp-validation-summary="ModelOnly"></div>
@@ -103,17 +104,19 @@
                 <label asp-for="Input.Note" class="label">توضیحات (اختیاری)</label>
                 <textarea asp-for="Input.Note" rows="3" class="input" placeholder="شماره قرارداد، توضیح پرداخت و ..."></textarea>
             </div>
-            <button type="submit" class="btn-primary w-full">ذخیره تعهد</button>
+            <div class="flex gap-2"><button type="button" class="btn-secondary" data-close-obligation>انصراف</button><button type="submit" class="btn-primary flex-1">ذخیرهٔ تعهد</button></div>
         </form>
     </section>
+</dialog>
 
+<div class="mt-6">
     <section class="space-y-4">
         @if (Model.Items.Count == 0)
         {
             <div class="empty">
                 <div class="text-5xl">◷</div>
                 <h3 class="mt-4 text-lg font-bold">برای @Model.PeriodTitle تعهدی ندارید</h3>
-                <p class="mt-1 text-sm text-slate-500">قسط یا هزینه ثابت را از فرم کناری اضافه کنید.</p>
+                <p class="mt-1 text-sm text-slate-500">با دکمهٔ «تعریف تعهد» اولین قسط یا هزینهٔ ثابت را اضافه کنید.</p>
             </div>
         }
         else
@@ -240,7 +243,8 @@
         <div class="grid gap-4 lg:grid-cols-2">
             @foreach (var item in Model.Definitions)
             {
-                <article class="rounded-2xl border border-slate-200 p-4 @(item.IsActive ? "bg-white" : "bg-slate-50 opacity-75")">
+                var editInput = !ViewData.ModelState.IsValid && Model.Input.Id == item.Id ? Model.Input : null;
+                <article class="rounded-2xl border border-slate-200 p-4 @(item.IsActive ? "bg-white" : "bg-slate-50")">
                     <div class="flex items-start justify-between gap-3">
                         <div>
                             <div class="flex flex-wrap items-center gap-2">
@@ -258,19 +262,22 @@
                         </form>
                     </div>
 
-                    <details class="mt-4 border-t border-slate-100 pt-3">
-                        <summary class="cursor-pointer text-sm font-bold text-indigo-700">ویرایش</summary>
+                    <button type="button" class="btn-soft mt-4" data-open-obligation="obligation-edit-@item.Id" aria-label="ویرایش @item.Title">ویرایش تعهد</button>
+                    <dialog id="obligation-edit-@item.Id" class="obligation-dialog" aria-labelledby="obligation-edit-title-@item.Id" data-obligation-error="@(!ViewData.ModelState.IsValid && Model.Input.Id == item.Id ? "true" : null)">
+                        <div class="obligation-dialog-content">
+                        <div class="obligation-dialog-heading"><div><h3 id="obligation-edit-title-@item.Id" class="card-title">ویرایش @item.Title</h3><p class="muted mt-1">تغییرها روی تعهدهای آینده اعمال می‌شوند.</p></div><button type="button" class="obligation-dialog-close" data-close-obligation aria-label="بستن پنجره">×</button></div>
                         <form method="post" asp-page-handler="Save" class="mt-4 grid gap-3 sm:grid-cols-2" data-obligation-form>
                             <input type="hidden" name="Input.Id" value="@item.Id" />
+                            @if (!ViewData.ModelState.IsValid && Model.Input.Id == item.Id) { <div class="sm:col-span-2" asp-validation-summary="All"></div> }
                             <div class="sm:col-span-2">
                                 <label class="label">عنوان</label>
-                                <input name="Input.Title" value="@item.Title" class="input" />
+                                <input name="Input.Title" value="@(editInput?.Title ?? item.Title)" class="input" />
                             </div>
                             <div>
                                 <label class="label">نوع</label>
                                 <select name="Input.Type" class="input" data-obligation-type>
-                                    <option value="1" selected="@(item.Type == RecurringObligationType.Installment)">قسط</option>
-                                    <option value="2" selected="@(item.Type == RecurringObligationType.FixedMonthlyExpense)">هزینه ثابت</option>
+                                    <option value="1" selected="@((editInput?.Type ?? item.Type) == RecurringObligationType.Installment)">قسط</option>
+                                    <option value="2" selected="@((editInput?.Type ?? item.Type) == RecurringObligationType.FixedMonthlyExpense)">هزینه ثابت</option>
                                 </select>
                             </div>
                             <div>
@@ -278,42 +285,43 @@
                                 <select name="Input.CategoryId" class="input">
                                     @foreach (var category in Model.Categories)
                                     {
-                                        <option value="@category.Id" selected="@(category.Id == item.CategoryId)">@category.Icon @category.Name</option>
+                                        <option value="@category.Id" selected="@(category.Id == (editInput?.CategoryId ?? item.CategoryId))">@category.Icon @category.Name</option>
                                     }
                                 </select>
                             </div>
                             <div>
                                 <label class="label">مبلغ</label>
-                                <input name="Input.Amount" value="@item.Amount.ToString("0")" data-money class="input ltr-input" />
+                                <input name="Input.Amount" value="@((editInput?.Amount ?? item.Amount).ToString("0"))" data-money class="input ltr-input" />
                             </div>
                             <div class="rounded-2xl bg-indigo-50 p-3" data-obligation-duration>
                                 <label class="label">تعداد اقساط (ماه)</label>
-                                <input name="Input.DurationMonths" value="@item.DurationMonths" type="number" min="1" class="input" data-obligation-duration-input />
+                                <input name="Input.DurationMonths" value="@(editInput?.DurationMonths ?? item.DurationMonths)" type="number" min="1" class="input" data-obligation-duration-input />
                                 <p class="mt-1 text-xs text-indigo-700">تعداد کل ماه‌های این قسط را وارد کنید.</p>
                             </div>
                             <div>
                                 <label class="label">سال شروع</label>
-                                <input name="Input.StartYear" value="@item.StartYear" type="number" class="input" />
+                                <input name="Input.StartYear" value="@(editInput?.StartYear ?? item.StartYear)" type="number" class="input" />
                             </div>
                             <div>
                                 <label class="label">ماه شروع</label>
-                                <input name="Input.StartMonth" value="@item.StartMonth" type="number" min="1" max="12" class="input" />
+                                <input name="Input.StartMonth" value="@(editInput?.StartMonth ?? item.StartMonth)" type="number" min="1" max="12" class="input" />
                             </div>
                             <div>
                                 <label class="label">روز سررسید</label>
-                                <input name="Input.DueDay" value="@item.DueDay" type="number" min="1" max="31" class="input" />
+                                <input name="Input.DueDay" value="@(editInput?.DueDay ?? item.DueDay)" type="number" min="1" max="31" class="input" />
                             </div>
                             <div>
                                 <label class="label">یادآوری قبل از سررسید</label>
-                                <input name="Input.ReminderDaysBefore" value="@item.ReminderDaysBefore" type="number" min="0" max="30" class="input" />
+                                <input name="Input.ReminderDaysBefore" value="@(editInput?.ReminderDaysBefore ?? item.ReminderDaysBefore)" type="number" min="0" max="30" class="input" />
                             </div>
                             <div class="sm:col-span-2">
                                 <label class="label">توضیحات</label>
-                                <textarea name="Input.Note" rows="2" class="input">@item.Note</textarea>
+                                <textarea name="Input.Note" rows="2" class="input">@(editInput?.Note ?? item.Note)</textarea>
                             </div>
-                            <button type="submit" class="btn-soft sm:col-span-2">ذخیره تغییرات</button>
+                            <div class="flex gap-2 sm:col-span-2"><button type="button" class="btn-secondary" data-close-obligation>انصراف</button><button type="submit" class="btn-primary flex-1">ذخیرهٔ تغییرات</button></div>
                         </form>
-                    </details>
+                        </div>
+                    </dialog>
                     <form method="post" asp-page-handler="Delete" asp-route-id="@item.Id" asp-route-year="@Model.Year" asp-route-month="@Model.Month" class="mt-3">
                         <button type="submit" class="text-xs font-bold text-rose-600" data-confirm="این تعهد حذف شود؟">حذف</button>
                     </form>

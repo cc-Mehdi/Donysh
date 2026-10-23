@@ -491,6 +491,21 @@
         syncDuration();
     });
 
+    document.querySelectorAll('[data-open-obligation]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const dialog = document.getElementById(button.dataset.openObligation);
+            if (dialog instanceof HTMLDialogElement && !dialog.open) dialog.showModal();
+        });
+    });
+    document.querySelectorAll('.obligation-dialog').forEach((dialog) => {
+        dialog.querySelectorAll('[data-close-obligation]').forEach((button) =>
+            button.addEventListener('click', () => dialog.close()));
+        dialog.addEventListener('click', (event) => {
+            if (event.target === dialog) dialog.close();
+        });
+        if (dialog.dataset.obligationError === 'true') dialog.showModal();
+    });
+
     document.querySelectorAll('[data-payment-form]').forEach((form) => {
         form.addEventListener('submit', () => {
             const submit = form.querySelector('[data-payment-submit]');
