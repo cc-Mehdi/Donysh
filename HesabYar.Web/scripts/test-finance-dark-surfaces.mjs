@@ -30,11 +30,11 @@ const fixture = `<!doctype html><html lang="fa" dir="rtl" data-finance-theme="da
   })));
 });</script></body></html>`;
 
-function render() {
+function render(markup = fixture) {
   const directory = mkdtempSync(join(tmpdir(), 'donysh-dark-surfaces-'));
   try {
     const page = join(directory, 'fixture.html');
-    writeFileSync(page, fixture);
+    writeFileSync(page, markup);
     const result = spawnSync(browser, ['--headless=new', '--disable-gpu', '--no-sandbox', '--disable-extensions',
       `--user-data-dir=${join(directory, 'profile')}`, '--virtual-time-budget=1000', '--dump-dom', pathToFileURL(page).href],
     { encoding: 'utf8', timeout: 20000 });
@@ -72,4 +72,37 @@ test('Finance dark surfaces keep readable labels and distinct expense rows', { s
   }
   assert.notEqual(styles['row-odd'].background, styles['row-even'].background);
   assert.notEqual(styles.alert.background, styles.stat.background);
+});
+
+test('dashboard alerts remain readable in dark mode', { skip: !browser }, () => {
+  const markup = `<!doctype html><html lang="fa" dir="rtl" data-finance-theme="dark"><head><link rel="stylesheet" href="${css}"></head><body><div class="finance-shell finance-shell-dashboard"><main class="dashboard-alerts"><a class="dashboard-alert-danger" id="danger">کسری بودجه</a><a id="reminder">سررسید نزدیک</a></main></div><output id="result"></output><script>addEventListener('load',()=>{document.querySelector('#result').textContent=JSON.stringify(Object.fromEntries(['danger','reminder'].map(id=>{const style=getComputedStyle(document.getElementById(id));return[id,{color:style.color,background:style.backgroundColor}]})))})</script></body></html>`;
+  const styles = render(markup);
+  for (const id of ['danger', 'reminder']) {
+    assert.ok(contrast(styles[id].color, styles[id].background) >= 4.5, `${id} lacks dark contrast`);
+    assert.notEqual(styles[id].background, 'rgb(255, 248, 233)');
+  }
+});
+
+test('budget, AI, workspaces and mobile status colors stay readable', { skip: !browser }, () => {
+  const markup = `<!doctype html><html lang="fa" dir="rtl" data-finance-theme="dark"><head><link rel="stylesheet" href="${css}"></head><body><div class="finance-shell"><main>
+  <span id="positive" class="budget-percent bg-emerald-100 text-emerald-700">۰٪</span><span id="warning" class="budget-percent bg-amber-100 text-amber-700">۸۰٪</span><span id="negative" class="budget-percent bg-rose-100 text-rose-700">۱۰۰٪</span>
+  <p id="ai-warning" class="bg-amber-50 text-amber-800">هشدار دستیار</p><p id="ai-success" class="bg-emerald-50 text-emerald-800">تأیید دستیار</p>
+  <p id="workspace-guide" class="bg-emerald-50 text-emerald-950">راهنمای فضای مشترک</p><p id="workspace-total" class="bg-indigo-50 text-indigo-900">مجموع بودجه</p>
+  <span id="mobile-active" class="mobile-status is-active">فعال</span><span id="mobile-pending" class="mobile-status is-pending">در انتظار</span><div id="mobile-warning" class="mobile-duplicate-note">اتصال تکراری</div>
+  </main></div><output id="result"></output><script>addEventListener('load',()=>{const ids=['positive','warning','negative','ai-warning','ai-success','workspace-guide','workspace-total','mobile-active','mobile-pending','mobile-warning'];document.querySelector('#result').textContent=JSON.stringify(Object.fromEntries(ids.map(id=>{const style=getComputedStyle(document.getElementById(id));return[id,{color:style.color,background:style.backgroundColor}]})))})</script></body></html>`;
+  const styles = render(markup);
+  for (const [id, style] of Object.entries(styles)) {
+    assert.ok(contrast(style.color, style.background) >= 4.5, `${id} lacks dark contrast`);
+  }
+  assert.equal(new Set(['positive', 'warning', 'negative'].map(id => styles[id].background)).size, 3);
+});
+
+test('budget dialog opens for validation errors and can be closed and reopened', { skip: !browser }, () => {
+  const script = pathToFileURL(fileURLToPath(new URL('../wwwroot/js/site.js', import.meta.url))).href;
+  const markup = `<!doctype html><html lang="fa" dir="rtl" data-finance-theme="dark"><head><link rel="stylesheet" href="${css}"></head><body><button data-open-budget="budget-create-dialog">تعریف بودجه</button><dialog id="budget-create-dialog" class="budget-dialog" data-budget-error="true"><button data-close-budget>بستن</button><label class="budget-carryover-option"><strong>انتقال کسری به ماه بعد</strong></label></dialog><script src="${script}"></script><output id="result"></output><script>addEventListener('load',()=>{const dialog=document.querySelector('dialog');const initialOpen=dialog.open;document.querySelector('[data-close-budget]').click();const closed=!dialog.open;document.querySelector('[data-open-budget]').click();const reopened=dialog.open;const title=getComputedStyle(dialog.querySelector('strong'));const option=getComputedStyle(dialog.querySelector('label'));document.querySelector('#result').textContent=JSON.stringify({initialOpen,closed,reopened,title:{color:title.color},option:{background:option.backgroundColor}})})</script></body></html>`;
+  const result = render(markup);
+  assert.equal(result.initialOpen, true);
+  assert.equal(result.closed, true);
+  assert.equal(result.reopened, true);
+  assert.ok(contrast(result.title.color, result.option.background) >= 4.5);
 });

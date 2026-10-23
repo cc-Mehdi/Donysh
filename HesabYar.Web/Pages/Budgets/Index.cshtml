@@ -9,7 +9,8 @@
         <p class="mt-1 text-sm text-slate-500">برای هر دسته سقف تعیین کنید؛ کسری را ابتدا با انتقال بین دسته‌ها مدیریت کنید و در صورت باقی‌ماندن، آن را شفاف به ماه بعد منتقل کنید.</p>
         <p class="mt-2 text-xs font-bold text-indigo-700">در شروع هر ماه، بودجه‌های ماه قبل با همان مبلغ و تنظیمات به ماه جاری منتقل می‌شوند؛ تاریخچه ماه قبل حذف یا تغییر نمی‌کند.</p>
     </div>
-    <div class="flex items-center gap-2">
+    <div class="flex flex-wrap items-center gap-2">
+        <button type="button" class="btn-primary" data-open-budget="budget-create-dialog" aria-haspopup="dialog">＋ تعریف بودجه</button>
         <a asp-page="Index" asp-route-year="@Model.PreviousPeriod.Year" asp-route-month="@Model.PreviousPeriod.Month" class="btn-secondary px-3">→</a>
         <span class="min-w-36 text-center font-black">@Model.PeriodTitle</span>
         <a asp-page="Index" asp-route-year="@Model.NextPeriod.Year" asp-route-month="@Model.NextPeriod.Month" class="btn-secondary px-3">←</a>
@@ -34,9 +35,9 @@
     </div>
 </section>
 
-<div class="grid gap-6 xl:grid-cols-[23rem_1fr]">
-    <section class="card h-fit">
-        <h3 class="card-title">تعریف بودجه</h3>
+<div>
+    <dialog id="budget-create-dialog" class="budget-dialog" aria-labelledby="budget-create-title" data-budget-error="@(!ViewData.ModelState.IsValid ? "true" : null)">
+        <div class="budget-dialog-heading"><h3 id="budget-create-title" class="card-title">تعریف بودجه</h3><button type="button" class="budget-dialog-close" data-close-budget aria-label="بستن پنجره">×</button></div>
         <p class="muted mt-1">اگر برای این دسته بودجه وجود داشته باشد، مقدار آن به‌روزرسانی می‌شود.</p>
         <form method="post" asp-page-handler="Save" class="mt-5 space-y-4">
             <input asp-for="Input.Year" type="hidden" />
@@ -64,16 +65,16 @@
                 <span asp-validation-for="Input.WarningPercent" class="field-error"></span>
                 <p class="mt-1 text-xs text-slate-500">پیشنهاد: ۸۰٪</p>
             </div>
-            <label class="flex items-start gap-3 rounded-2xl border border-indigo-100 bg-indigo-50 p-3">
+            <label class="budget-carryover-option flex items-start gap-3 rounded-2xl border border-indigo-100 bg-indigo-50 p-3">
                 <input asp-for="Input.CarryOverOverspend" type="checkbox" class="mt-1 size-4" />
                 <span>
                     <strong class="block text-sm text-indigo-900">انتقال کسری به ماه بعد</strong>
                     <span class="mt-1 block text-xs text-indigo-700">اگر بعد از انتقال بودجه بین دسته‌ها هنوز از سقف عبور کرده باشید، کسری از سقف مؤثر همین بودجه در ماه بعد کم می‌شود؛ سقف اصلی و تاریخچه دست‌نخورده می‌ماند.</span>
                 </span>
             </label>
-            <button type="submit" class="btn-primary w-full">ذخیره بودجه</button>
+            <div class="flex gap-2"><button type="button" class="btn-secondary" data-close-budget>انصراف</button><button type="submit" class="btn-primary flex-1">ذخیره بودجه</button></div>
         </form>
-    </section>
+    </dialog>
 
     <section>
         @if (Model.Items.Count == 0)
@@ -81,7 +82,7 @@
             <div class="empty">
                 <div class="text-5xl">◎</div>
                 <h3 class="mt-4 text-lg font-bold">برای این ماه بودجه‌ای ندارید</h3>
-                <p class="mt-1 text-sm text-slate-500">از فرم کناری اولین سقف هزینه را تعیین کنید.</p>
+                <p class="mt-1 text-sm text-slate-500">با دکمهٔ «تعریف بودجه» اولین سقف هزینه را تعیین کنید.</p>
             </div>
         }
         else
@@ -99,7 +100,7 @@
                                     <p class="mt-1 text-xs text-slate-500">هشدار از @row.Budget.WarningPercent٪</p>
                                 </div>
                             </div>
-                            <span class="rounded-full px-2 py-1 text-xs font-black @(row.IsExceeded ? "bg-rose-100 text-rose-700" : row.IsWarning ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700")">@Formatters.Percent(row.Percent)</span>
+                            <span class="budget-percent rounded-full px-2 py-1 text-xs font-black @(row.IsExceeded ? "bg-rose-100 text-rose-700" : row.IsWarning ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700")">@Formatters.Percent(row.Percent)</span>
                         </div>
 
                         <div class="progress mt-5">

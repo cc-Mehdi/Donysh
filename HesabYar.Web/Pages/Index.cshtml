@@ -94,11 +94,11 @@
                 <div class="dashboard-alerts">
                     @if (Model.BudgetCards.Any(x => x.IsExceeded))
                     {
-                        <a asp-page="/Budgets/Index">سقف بودجهٔ @string.Join("، ", Model.BudgetCards.Where(x => x.IsExceeded).Select(x => x.Name)) رد شده است.</a>
+                        <a asp-page="/Budgets/Index" class="dashboard-alert-danger"><svg class="lucide-icon" aria-hidden="true"><use href="/icons/lucide.svg#circle-alert"></use></svg><span>سقف بودجهٔ @string.Join("، ", Model.BudgetCards.Where(x => x.IsExceeded).Select(x => x.Name)) رد شده است.</span></a>
                     }
                     @foreach (var alert in Model.ObligationAlerts)
                     {
-                        <a asp-page="/Obligations/Index">@alert.Title: @(alert.IsOverdue ? "از سررسید گذشته" : $"{alert.DaysUntilDue} روز تا سررسید")</a>
+                        <a asp-page="/Obligations/Index" class="@(alert.IsOverdue ? "dashboard-alert-danger" : "")"><svg class="lucide-icon" aria-hidden="true"><use href="/icons/lucide.svg#bell"></use></svg><span>@alert.Title: @(alert.IsOverdue ? "از سررسید گذشته" : $"{alert.DaysUntilDue} روز تا سررسید")</span></a>
                     }
                 </div>
             }

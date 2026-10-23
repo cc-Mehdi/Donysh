@@ -506,6 +506,21 @@
         if (dialog.dataset.obligationError === 'true') dialog.showModal();
     });
 
+    document.querySelectorAll('[data-open-budget]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const dialog = document.getElementById(button.dataset.openBudget);
+            if (dialog instanceof HTMLDialogElement && !dialog.open) dialog.showModal();
+        });
+    });
+    document.querySelectorAll('.budget-dialog').forEach((dialog) => {
+        dialog.querySelectorAll('[data-close-budget]').forEach((button) =>
+            button.addEventListener('click', () => dialog.close()));
+        dialog.addEventListener('click', (event) => {
+            if (event.target === dialog) dialog.close();
+        });
+        if (dialog.dataset.budgetError === 'true') dialog.showModal();
+    });
+
     document.querySelectorAll('[data-payment-form]').forEach((form) => {
         form.addEventListener('submit', () => {
             const submit = form.querySelector('[data-payment-submit]');
