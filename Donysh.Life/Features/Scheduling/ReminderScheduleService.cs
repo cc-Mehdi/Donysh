@@ -17,7 +17,7 @@ public sealed class ReminderScheduleService(WeeklyScheduleService schedules)
         if (latestPossibleStart >= saturday.AddDays(7))
             weeks.Add(await schedules.GetWeekAsync(DayOfWeek.Saturday, saturday.AddDays(7), cancellationToken));
         return weeks.SelectMany(week => week.Days).SelectMany(day => day.Blocks)
-            .Where(block => block.IsActive && block.OutcomeStatus is null && block.ReminderMinutesBefore.HasValue)
+            .Where(block => !block.IsContinuation && block.IsActive && block.OutcomeStatus is null && block.ReminderMinutesBefore.HasValue)
             .Select(block =>
             {
                 var localStart = block.ScheduledDate.ToDateTime(TimeOnly.MinValue).AddMinutes(block.StartMinute);

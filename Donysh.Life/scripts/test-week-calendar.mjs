@@ -68,3 +68,29 @@ test('only the actual date receives the today highlight', { skip: !chrome }, () 
   const layout = render(800);
   assert.notEqual(layout.todayBackground, layout.firstDayBackground);
 });
+
+test('overlapping cards remain separate and dragging previews the proposed time before dropping', { skip: !chrome }, () => {
+  const temporary = mkdtempSync(join(tmpdir(), 'donysh-week-drag-'));
+  try {
+    const script = pathToFileURL(fileURLToPath(new URL('../wwwroot/js/week-planner.js', import.meta.url))).href;
+    const event = (title, start, duration, visible) => `<div class="calendar-slot" data-minute="${start}"><button class="time-slot"></button><article class="calendar-event" draggable="true" data-pattern-id="${title}" data-original-date="2026-10-24" data-scheduled-date="2026-10-24" data-start-minute="${start}" data-duration="${duration}" data-display-start-minute="${start}" data-display-duration="${visible}"><div class="block-main"><div><strong>${title}</strong><span class="block-time"></span></div></div></article></div>`;
+    const fixture = `<!doctype html><html lang="fa" dir="rtl"><head><link rel="stylesheet" href="${css}"></head><body><section class="calendar-board" data-calendar-board><div class="calendar-day-column" data-date="2026-10-24">${event('خواب', 1320, 480, 120)}${event('مطالعه', 1350, 60, 60)}<div class="calendar-slot" data-minute="1380"><button class="time-slot"></button></div></div></section><dialog id="schedule-create-dialog"><form class="schedule-form"><input name="Input.StartTime" value="22:00"><input name="Input.EndTime" value="06:00"><input name="Input.DurationMinutes" value="60"><p data-end-day-hint></p></form></dialog><dialog id="schedule-scope-dialog"></dialog><form id="schedule-interaction-form"></form><output id="result"></output><script src="${script}"></script><script>addEventListener('load',()=>{const events=[...document.querySelectorAll('.calendar-event')],target=document.querySelector('[data-minute="1380"]'),transfer=new DataTransfer();events[0].dispatchEvent(new DragEvent('dragstart',{bubbles:true,cancelable:true,dataTransfer:transfer}));target.dispatchEvent(new DragEvent('dragover',{bubbles:true,cancelable:true,dataTransfer:transfer}));const preview=target.querySelector('.calendar-drag-preview');document.querySelector('#result').textContent=JSON.stringify({columns:events.map(e=>e.style.getPropertyValue('--overlap-width')),positions:events.map(e=>({x:e.getBoundingClientRect().x,width:e.getBoundingClientRect().width})),dayWidth:document.querySelector('.calendar-day-column').getBoundingClientRect().width,preview:preview?.textContent,duration:document.querySelector('[name="Input.DurationMinutes"]').value,hint:document.querySelector('[data-end-day-hint]').textContent})})</script></body></html>`;
+    const file = join(temporary, 'drag.html');
+    writeFileSync(file, fixture);
+    const result = spawnSync(chrome, ['--headless=new', '--disable-gpu', '--no-sandbox', '--disable-extensions',
+      `--user-data-dir=${join(temporary, 'profile')}`, '--virtual-time-budget=1000', '--dump-dom', pathToFileURL(file).href],
+    { encoding: 'utf8', timeout: 20000 });
+    assert.equal(result.status, 0, result.stderr);
+    const match = result.stdout.match(/<output id="result">([^<]+)<\/output>/);
+    assert.ok(match, result.stdout);
+    const actual = JSON.parse(match[1].replaceAll('&quot;', '"'));
+    assert.deepEqual(actual.columns, ['50%', '50%']);
+    assert.ok(actual.positions.every(item => item.width < actual.dayWidth * .55));
+    assert.notEqual(actual.positions[0].x, actual.positions[1].x);
+    assert.match(actual.preview, /23:00 تا 07:00 فردا/);
+    assert.equal(actual.duration, '480');
+    assert.match(actual.hint, /روز بعد/);
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});

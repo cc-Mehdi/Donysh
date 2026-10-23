@@ -63,7 +63,7 @@ public sealed class ProgressReportService(
             var manualMinutes = manualByActivity[activity.Id].Sum(entry => entry.ActualMinutes);
             return new ActivityProgressItem(
                 activity.Id, activity.Title, activity.ColorHex, activity.IconKey, activity.IsActive, activity.TargetMinutes,
-                activityBlocks.Sum(block => block.DurationMinutes) + snapshotMinutes,
+                activityBlocks.Sum(block => block.VisibleDurationMinutes) + snapshotMinutes,
                 activityRecords.Sum(record => record.ActualMinutes ?? 0), manualMinutes,
                 activityRecords.Count(record => record.Status == OccurrenceOutcomeStatus.Completed),
                 activityRecords.Count(record => record.Status == OccurrenceOutcomeStatus.Partial),
@@ -76,7 +76,7 @@ public sealed class ProgressReportService(
         {
             var date = weekStart.AddDays(index);
             var dayRecords = recordsByDate[date];
-            var plannedFromBlocks = blocksByDate[date].Sum(block => block.DurationMinutes);
+            var plannedFromBlocks = blocksByDate[date].Sum(block => block.VisibleDurationMinutes);
             var snapshotMinutes = dayRecords.Where(record => !blockKeys.Contains((record.PatternId, record.OriginalDate)))
                 .Sum(record => record.PlannedMinutes);
             return new DailyProgressItem(date, day, plannedFromBlocks + snapshotMinutes,
@@ -95,7 +95,8 @@ public sealed class ProgressReportService(
             records.Count(record => record.Status == OccurrenceOutcomeStatus.Partial),
             records.Count(record => record.Status == OccurrenceOutcomeStatus.Missed),
             records.Count(record => record.Status == OccurrenceOutcomeStatus.Moved),
-            activeBlocks.Count(block => !recordKeys.Contains((block.Id, block.OriginalDate))),
+            activeBlocks.Where(block => !recordKeys.Contains((block.Id, block.OriginalDate)))
+                .Select(block => (block.Id, block.OriginalDate)).Distinct().Count(),
             activityRows, days);
     }
 

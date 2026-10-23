@@ -58,7 +58,7 @@ public sealed class LifeDbContext(DbContextOptions<LifeDbContext> options) : DbC
         {
             table.HasCheckConstraint("CK_LifeSchedulePatterns_DayOfWeek", "\"DayOfWeek\" BETWEEN 0 AND 6");
             table.HasCheckConstraint("CK_LifeSchedulePatterns_StartMinute", "\"StartMinute\" BETWEEN 0 AND 1410 AND \"StartMinute\" % 30 = 0");
-            table.HasCheckConstraint("CK_LifeSchedulePatterns_Duration", "\"DurationMinutes\" BETWEEN 30 AND 1440 AND \"DurationMinutes\" % 30 = 0 AND \"StartMinute\" + \"DurationMinutes\" <= 1440");
+            table.HasCheckConstraint("CK_LifeSchedulePatterns_Duration", "\"DurationMinutes\" BETWEEN 30 AND 1440 AND \"DurationMinutes\" % 30 = 0");
             table.HasCheckConstraint("CK_LifeSchedulePatterns_Reminder", "\"ReminderMinutesBefore\" IS NULL OR \"ReminderMinutesBefore\" BETWEEN 0 AND 120");
         });
         schedulePattern.HasKey(item => item.Id);
@@ -80,7 +80,7 @@ public sealed class LifeDbContext(DbContextOptions<LifeDbContext> options) : DbC
         });
         scheduleSlot.HasKey(item => new { item.PatternId, item.SlotIndex });
         scheduleSlot.Property(item => item.UserSubject).HasMaxLength(450).IsRequired();
-        scheduleSlot.HasIndex(item => new { item.UserSubject, item.DayOfWeek, item.SlotIndex }).IsUnique();
+        scheduleSlot.HasIndex(item => new { item.UserSubject, item.DayOfWeek, item.SlotIndex });
         scheduleSlot.HasOne(item => item.Pattern)
             .WithMany(item => item.Slots)
             .HasPrincipalKey(item => new { item.Id, item.UserSubject })
@@ -91,7 +91,7 @@ public sealed class LifeDbContext(DbContextOptions<LifeDbContext> options) : DbC
         occurrenceOverride.ToTable("LifeScheduleOccurrenceOverrides", table =>
         {
             table.HasCheckConstraint("CK_LifeScheduleOccurrenceOverrides_StartMinute", "\"StartMinute\" BETWEEN 0 AND 1410 AND \"StartMinute\" % 30 = 0");
-            table.HasCheckConstraint("CK_LifeScheduleOccurrenceOverrides_Duration", "\"DurationMinutes\" BETWEEN 30 AND 1440 AND \"DurationMinutes\" % 30 = 0 AND \"StartMinute\" + \"DurationMinutes\" <= 1440");
+            table.HasCheckConstraint("CK_LifeScheduleOccurrenceOverrides_Duration", "\"DurationMinutes\" BETWEEN 30 AND 1440 AND \"DurationMinutes\" % 30 = 0");
         });
         occurrenceOverride.HasKey(item => item.Id);
         occurrenceOverride.Property(item => item.UserSubject).HasMaxLength(450).IsRequired();

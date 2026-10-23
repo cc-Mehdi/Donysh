@@ -15,6 +15,9 @@ public sealed class SchedulePatternForm
     [RegularExpression("^(?:[01]\\d|2[0-3]):(?:00|30)$", ErrorMessage = "ساعت شروع باید روی نیم‌ساعت باشد.")]
     public string StartTime { get; set; } = "08:00";
 
+    [RegularExpression("^(?:[01]\\d|2[0-3]):(?:00|30)$", ErrorMessage = "ساعت پایان باید روی نیم‌ساعت باشد.")]
+    public string? EndTime { get; set; }
+
     [Range(30, 1440, ErrorMessage = "مدت فعالیت باید بین ۳۰ دقیقه تا ۲۴ ساعت باشد.")]
     public int DurationMinutes { get; set; } = 60;
 
@@ -51,9 +54,16 @@ public sealed record ScheduleBlockItem(
     DateOnly? MovedToDate,
     string? OutcomeNote)
 {
+    public int DisplayStartMinute { get; init; } = -1;
+    public int DisplayDurationMinutes { get; init; } = -1;
+    public bool IsContinuation { get; init; }
+    public int VisibleStartMinute => DisplayStartMinute < 0 ? StartMinute : DisplayStartMinute;
+    public int VisibleDurationMinutes => DisplayDurationMinutes < 0 ? DurationMinutes : DisplayDurationMinutes;
+    public string VisibleStartLabel => FormatMinute(VisibleStartMinute);
     public int EndMinute => StartMinute + DurationMinutes;
+    public bool EndsNextDay => EndMinute >= 1440;
     public string StartLabel => FormatMinute(StartMinute);
-    public string EndLabel => FormatMinute(EndMinute);
+    public string EndLabel => FormatMinute(EndMinute % 1440);
     public string DurationLabel => DurationMinutes < 60
         ? $"{DurationMinutes} دقیقه"
         : DurationMinutes % 60 == 0

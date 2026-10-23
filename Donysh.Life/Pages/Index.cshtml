@@ -75,7 +75,7 @@
                     @foreach (var block in Model.TodayBlocks)
                     {
                         <li class="today-agenda-item @block.ColorClass">
-                            <span class="today-agenda-time"><bdi dir="ltr">@block.StartLabel</bdi><small><bdi dir="ltr">@block.EndLabel</bdi></small></span>
+                            <span class="today-agenda-time"><bdi dir="ltr">@block.VisibleStartLabel</bdi><small><bdi dir="ltr">@block.EndLabel</bdi>@(block.EndsNextDay && !block.IsContinuation ? " فردا" : "")</small></span>
                             <span class="today-agenda-icon" aria-hidden="true"><svg><use href="/icons/activities.svg#@ActivityCatalog.IconSymbol(block.IconKey)"></use></svg></span>
                             <span class="today-agenda-copy"><strong>@block.ActivityTitle</strong><small>@block.DurationLabel@(block.Note is null ? "" : $" · {block.Note}")</small></span>
                             @if (block.OutcomeStatus is not null) { <span class="today-agenda-status @block.OutcomeClass">@block.OutcomeLabel</span> }

@@ -210,7 +210,7 @@ namespace Donysh.Life.Data.Migrations
                         {
                             t.HasCheckConstraint("CK_LifeSchedulePatterns_DayOfWeek", "\"DayOfWeek\" BETWEEN 0 AND 6");
 
-                            t.HasCheckConstraint("CK_LifeSchedulePatterns_Duration", "\"DurationMinutes\" BETWEEN 30 AND 1440 AND \"DurationMinutes\" % 30 = 0 AND \"StartMinute\" + \"DurationMinutes\" <= 1440");
+                            t.HasCheckConstraint("CK_LifeSchedulePatterns_Duration", "\"DurationMinutes\" BETWEEN 30 AND 1440 AND \"DurationMinutes\" % 30 = 0");
 
                             t.HasCheckConstraint("CK_LifeSchedulePatterns_Reminder", "\"ReminderMinutesBefore\" IS NULL OR \"ReminderMinutesBefore\" BETWEEN 0 AND 120");
 
@@ -238,8 +238,7 @@ namespace Donysh.Life.Data.Migrations
 
                     b.HasIndex("PatternId", "UserSubject");
 
-                    b.HasIndex("UserSubject", "DayOfWeek", "SlotIndex")
-                        .IsUnique();
+                    b.HasIndex("UserSubject", "DayOfWeek", "SlotIndex");
 
                     b.ToTable("LifeScheduleSlots", null, t =>
                         {
@@ -298,7 +297,7 @@ namespace Donysh.Life.Data.Migrations
 
                     b.ToTable("LifeScheduleOccurrenceOverrides", null, t =>
                         {
-                            t.HasCheckConstraint("CK_LifeScheduleOccurrenceOverrides_Duration", "\"DurationMinutes\" BETWEEN 30 AND 1440 AND \"DurationMinutes\" % 30 = 0 AND \"StartMinute\" + \"DurationMinutes\" <= 1440");
+                            t.HasCheckConstraint("CK_LifeScheduleOccurrenceOverrides_Duration", "\"DurationMinutes\" BETWEEN 30 AND 1440 AND \"DurationMinutes\" % 30 = 0");
 
                             t.HasCheckConstraint("CK_LifeScheduleOccurrenceOverrides_StartMinute", "\"StartMinute\" BETWEEN 0 AND 1410 AND \"StartMinute\" % 30 = 0");
                         });

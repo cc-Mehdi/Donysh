@@ -690,8 +690,11 @@ Check("Life AI parser accepts a valid weekly plan", LifeAiPlanService.Parse(aiJs
 var expandedAiJson = aiJson.Replace("\"color\":\"#2563EB\",\"icon\":\"book\"", "\"color\":\"#059669\",\"icon\":\"fitness\"", StringComparison.Ordinal);
 Check("Life AI parser accepts expanded activity colors and icons",
     LifeAiPlanService.Parse(expandedAiJson).Plan?.Activities?.FirstOrDefault()?.Icon == "fitness");
-Check("Life AI parser lets users repair overlapping suggestions in preview",
+Check("Life AI parser allows overlapping suggestions in preview",
     LifeAiPlanService.Parse(aiJson.Replace("Sunday", "Saturday").Replace("10:00", "09:30")).Plan is not null);
+Check("Life AI parser accepts an overnight schedule as one slot",
+    LifeAiPlanService.Parse(aiJson.Replace("\"start\":\"09:00\",\"durationMinutes\":60",
+        "\"start\":\"22:00\",\"durationMinutes\":480", StringComparison.Ordinal)).Plan is not null);
 Check("Life AI parser rejects unsupported colors and malformed days",
     LifeAiPlanService.Parse(aiJson.Replace("#2563EB", "#FFFFFF")).Error is not null
     && LifeAiPlanService.Parse(aiJson.Replace("Saturday", "Funday")).Error is not null);
@@ -735,20 +738,21 @@ using (var aiClient = aiFactory.CreateClient(new WebApplicationFactoryClientOpti
         ["Selections[1].Slots[0].Day"] = "Sunday", ["Selections[1].Slots[0].Start"] = "10:00",
         ["Selections[1].Slots[0].DurationMinutes"] = "60"
     };
-    var conflictingValues = new Dictionary<string, string>(applyValues)
+    var invalidValues = new Dictionary<string, string>(applyValues)
     {
         ["Selections[1].Included"] = "true",
         ["Selections[1].Slots[0].Day"] = "Monday",
-        ["Selections[1].Slots[0].Start"] = "15:00"
+        ["Selections[1].Slots[0].Start"] = "15:00",
+        ["Selections[1].Slots[0].DurationMinutes"] = "45"
     };
-    using var conflictingContent = new FormUrlEncodedContent(conflictingValues);
-    using var conflictingResponse = await aiClient.PostAsync("/Ai?handler=Apply", conflictingContent);
-    var conflictingHtml = WebUtility.HtmlDecode(await conflictingResponse.Content.ReadAsStringAsync());
+    using var invalidContent = new FormUrlEncodedContent(invalidValues);
+    using var invalidResponse = await aiClient.PostAsync("/Ai?handler=Apply", invalidContent);
+    var invalidHtml = WebUtility.HtmlDecode(await invalidResponse.Content.ReadAsStringAsync());
     await using var conflictScope = aiFactory.Services.CreateAsyncScope();
     var conflictDb = conflictScope.ServiceProvider.GetRequiredService<LifeDbContext>();
-    Check("Life AI rejects overlapping edits without partially creating activities",
-        conflictingResponse.StatusCode == HttpStatusCode.OK
-        && conflictingHtml.Contains("تداخل", StringComparison.Ordinal)
+    Check("Life AI rejects invalid durations without partially creating activities",
+        invalidResponse.StatusCode == HttpStatusCode.OK
+        && invalidHtml.Contains("معتبر", StringComparison.Ordinal)
         && !await conflictDb.Activities.AnyAsync(x => x.Title.EndsWith("AI")));
     using var applyContent = new FormUrlEncodedContent(applyValues);
     using var applyResponse = await aiClient.PostAsync("/Ai?handler=Apply", applyContent);
@@ -855,11 +859,45 @@ await using (var activityDb = new LifeDbContext(activityOptions))
         DurationMinutes = 60
     });
     var ownerWeek = await scheduler.GetWeekAsync(DayOfWeek.Saturday);
-    Check("Life weekly planner stores 30-minute slots and rejects overlaps",
+    Check("Life weekly planner accepts overlapping activities",
         scheduled.Succeeded
-        && !overlap.Succeeded
-        && ownerWeek.Days.Single(day => day.DayOfWeek == DayOfWeek.Saturday).Blocks.Count == 1
-        && await activityDb.ScheduleSlots.CountAsync() == 2);
+        && overlap.Succeeded
+        && ownerWeek.Days.Single(day => day.DayOfWeek == DayOfWeek.Saturday).Blocks.Count == 2
+        && await activityDb.ScheduleSlots.CountAsync() == 0);
+    var overlappingPatternId = ownerWeek.Days.Single(day => day.DayOfWeek == DayOfWeek.Saturday).Blocks.Single(block => block.StartMinute == 510).Id;
+    await scheduler.DeleteAsync(overlappingPatternId);
+    ownerWeek = await scheduler.GetWeekAsync(DayOfWeek.Saturday);
+
+    var overnight = await scheduler.SaveAsync(null, new SchedulePatternForm
+    {
+        ActivityId = ownerItems[0].Id, DayOfWeek = DayOfWeek.Friday,
+        StartTime = "22:00", EndTime = "06:00", DurationMinutes = 60
+    });
+    var overnightWeek = await scheduler.GetWeekAsync(DayOfWeek.Friday, ownerWeek.WeekStart);
+    var overnightNextWeek = await scheduler.GetWeekAsync(DayOfWeek.Saturday, ownerWeek.WeekStart.AddDays(7));
+    var overnightReport = await new ProgressReportService(activityDb, new HttpContextAccessor { HttpContext = httpContext }, scheduler)
+        .GetWeekAsync(ownerWeek.WeekStart);
+    var fridayNight = overnightWeek.Days.Single(day => day.DayOfWeek == DayOfWeek.Friday).Blocks.Single();
+    var saturdayMorning = overnightNextWeek.Days.Single(day => day.DayOfWeek == DayOfWeek.Saturday).Blocks.Single(block => block.IsContinuation);
+    Check("Life overnight activity remains one pattern and continues across the week boundary",
+        overnight.Succeeded && fridayNight.DurationMinutes == 480 && fridayNight.VisibleDurationMinutes == 120
+        && fridayNight.EndLabel == "06:00" && fridayNight.EndsNextDay
+        && saturdayMorning.IsContinuation && saturdayMorning.VisibleStartMinute == 0
+        && saturdayMorning.VisibleDurationMinutes == 360 && saturdayMorning.OriginalDate == ownerWeek.WeekStart.AddDays(6)
+        && overnightWeek.PlannedMinutes == 540
+        && overnightNextWeek.Days.Single(day => day.DayOfWeek == DayOfWeek.Saturday).Blocks.Sum(block => block.VisibleDurationMinutes) == 420
+        && overnightNextWeek.PlannedMinutes == 540
+        && overnightReport.PlannedMinutes == 540);
+    var overnightReschedule = await scheduler.ApplyInteractionAsync(new ScheduleInteractionForm
+    {
+        PatternId = fridayNight.Id, OriginalDate = fridayNight.OriginalDate, TargetDate = fridayNight.OriginalDate,
+        StartMinute = 1410, DurationMinutes = 480, Scope = "occurrence"
+    });
+    var adjustedNight = (await scheduler.GetWeekAsync(DayOfWeek.Friday, ownerWeek.WeekStart)).Days
+        .Single(day => day.DayOfWeek == DayOfWeek.Friday).Blocks.Single();
+    Check("Life occurrence drag can move an overnight activity within one week",
+        overnightReschedule.Succeeded && adjustedNight.StartMinute == 1410 && adjustedNight.VisibleDurationMinutes == 30);
+    await scheduler.DeleteAsync(fridayNight.Id);
 
     var reminderBlock = ownerWeek.Days.Single(day => day.DayOfWeek == DayOfWeek.Saturday).Blocks.Single();
     var calendarExport = ScheduleCalendarExport.Build(reminderBlock);
@@ -912,7 +950,7 @@ await using (var activityDb = new LifeDbContext(activityOptions))
         && occurrenceRestored.Succeeded
         && await activityDb.SchedulePatterns.AnyAsync(item => item.Id == ownerPatternId));
 
-    var tracking = new OccurrenceTrackingService(activityDb, new HttpContextAccessor { HttpContext = httpContext }, scheduler);
+    var tracking = new OccurrenceTrackingService(activityDb, new HttpContextAccessor { HttpContext = httpContext });
     var completed = await tracking.RecordAsync(new OccurrenceRecordForm
     {
         PatternId = ownerPatternId, OriginalDate = weekStart,
@@ -1045,13 +1083,13 @@ await using (var activityDb = new LifeDbContext(activityOptions))
         StartTime = "09:00",
         DurationMinutes = 30
     });
-    var conflictingResume = await scheduler.ToggleAsync(ownerPatternId);
-    Check("Life schedule edits rebuild reservations and paused blocks release their slots",
+    var overlappingResume = await scheduler.ToggleAsync(ownerPatternId);
+    Check("Life paused schedules can resume alongside other activities",
         moved.Succeeded
         && paused.Succeeded
         && replacement.Succeeded
-        && !conflictingResume.Succeeded
-        && await activityDb.ScheduleSlots.CountAsync(item => item.UserSubject == "activity-owner-a") == 1);
+        && overlappingResume.Succeeded
+        && await activityDb.ScheduleSlots.CountAsync(item => item.UserSubject == "activity-owner-a") == 0);
 
     httpContext.User = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "activity-owner-b")], "test"));
     var ownerBService = new LifeActivityService(activityDb, new HttpContextAccessor { HttpContext = httpContext });
@@ -1075,7 +1113,7 @@ await using (var activityDb = new LifeDbContext(activityOptions))
         PatternId = ownerPatternId, OriginalDate = weekStart, TargetDate = weekStart,
         StartMinute = 600, DurationMinutes = 30, Scope = "occurrence"
     });
-    var ownerBTracking = new OccurrenceTrackingService(activityDb, new HttpContextAccessor { HttpContext = httpContext }, ownerBScheduler);
+    var ownerBTracking = new OccurrenceTrackingService(activityDb, new HttpContextAccessor { HttpContext = httpContext });
     var forbiddenOutcome = await ownerBTracking.RecordAsync(new OccurrenceRecordForm
     {
         PatternId = ownerPatternId, OriginalDate = weekStart,

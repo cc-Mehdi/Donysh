@@ -38,7 +38,7 @@ public sealed class WeekModel(WeeklyScheduleService schedules, OccurrenceTrackin
     public async Task<IActionResult> OnGetCalendarReminderAsync(Guid patternId, DateOnly scheduledDate, CancellationToken cancellationToken)
     {
         var week = await schedules.GetWeekAsync(scheduledDate.DayOfWeek, scheduledDate, cancellationToken);
-        var block = week.Days.SelectMany(day => day.Blocks).SingleOrDefault(item => item.Id == patternId
+        var block = week.Days.SelectMany(day => day.Blocks).SingleOrDefault(item => !item.IsContinuation && item.Id == patternId
             && item.ScheduledDate == scheduledDate && item.IsActive && item.ReminderMinutesBefore.HasValue);
         if (block is null) return NotFound();
         var calendar = ScheduleCalendarExport.Build(block);

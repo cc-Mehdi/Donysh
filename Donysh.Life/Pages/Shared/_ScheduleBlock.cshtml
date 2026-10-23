@@ -4,10 +4,18 @@
 @{
     var block = Model.Block;
 }
-<article class="schedule-block calendar-event @block.ColorClass @(block.IsActive ? "" : "inactive") @(block.DurationMinutes <= 30 ? "schedule-block-short" : "")" draggable="true"
+@if (block.IsContinuation)
+{
+    <article class="schedule-block calendar-event schedule-continuation @block.ColorClass @(block.IsActive ? "" : "inactive")" data-display-start-minute="@block.VisibleStartMinute" data-display-duration="@block.VisibleDurationMinutes" aria-label="ادامهٔ @block.ActivityTitle تا @block.EndLabel">
+        <a class="continuation-open" asp-page="/Week" asp-route-day="@block.OriginalDate.DayOfWeek" asp-route-week="@block.OriginalDate.ToString("yyyy-MM-dd")" asp-route-view="day" aria-label="دیدن آغاز @block.ActivityTitle در روز قبل"><span class="block-main"><span class="block-icon" aria-hidden="true"><svg><use href="/icons/activities.svg#@ActivityCatalog.IconSymbol(block.IconKey)"></use></svg></span><span><strong>@block.ActivityTitle</strong><span class="block-time">ادامه تا <bdi dir="ltr">@block.EndLabel</bdi></span><small>از شبِ روز قبل</small></span></span></a>
+    </article>
+}
+else
+{
+<article class="schedule-block calendar-event @block.ColorClass @(block.IsActive ? "" : "inactive") @(block.VisibleDurationMinutes <= 30 ? "schedule-block-short" : "")" draggable="true"
          data-pattern-id="@block.Id" data-original-date="@block.OriginalDate.ToString("yyyy-MM-dd")"
-         data-scheduled-date="@block.ScheduledDate.ToString("yyyy-MM-dd")" data-start-minute="@block.StartMinute" data-duration="@block.DurationMinutes">
-    <div class="block-main"><span class="block-icon" aria-hidden="true"><svg><use href="/icons/activities.svg#@ActivityCatalog.IconSymbol(block.IconKey)"></use></svg></span><div><strong>@block.ActivityTitle</strong><span class="block-time"><bdi dir="ltr">@block.StartLabel</bdi> تا <bdi dir="ltr">@block.EndLabel</bdi></span>@if (!string.IsNullOrWhiteSpace(block.Note)) { <small>@block.Note</small> }</div></div>
+         data-scheduled-date="@block.ScheduledDate.ToString("yyyy-MM-dd")" data-start-minute="@block.StartMinute" data-duration="@block.DurationMinutes" data-display-start-minute="@block.VisibleStartMinute" data-display-duration="@block.VisibleDurationMinutes">
+    <div class="block-main"><span class="block-icon" aria-hidden="true"><svg><use href="/icons/activities.svg#@ActivityCatalog.IconSymbol(block.IconKey)"></use></svg></span><div><strong>@block.ActivityTitle</strong><span class="block-time"><bdi dir="ltr">@block.StartLabel</bdi> تا <bdi dir="ltr">@block.EndLabel</bdi>@(block.EndsNextDay ? " فردا" : "")</span>@if (!string.IsNullOrWhiteSpace(block.Note)) { <small>@block.Note</small> }</div></div>
     @if (block.ReminderMinutesBefore.HasValue) { <span class="block-reminder" title="یادآوری @(block.ReminderMinutesBefore == 0 ? "هنگام شروع" : $"{block.ReminderMinutesBefore} دقیقه پیش از شروع")" aria-label="یادآور فعال"><svg aria-hidden="true"><use href="/icons/activities.svg#bell"></use></svg></span> }
     @if (block.OutcomeStatus is not null)
     {
@@ -17,7 +25,7 @@
     <button type="button" class="block-actions" data-open-edit="@block.Id" aria-label="ویرایش @block.ActivityTitle"><svg aria-hidden="true"><use href="/icons/activities.svg#ellipsis"></use></svg></button>
     <dialog id="schedule-edit-@block.Id" class="calendar-dialog schedule-edit-dialog" aria-labelledby="edit-title-@block.Id">
         <div class="dialog-heading">
-            <div><span class="section-icon" aria-hidden="true"><svg><use href="/icons/activities.svg#@ActivityCatalog.IconSymbol(block.IconKey)"></use></svg></span><div><h2 id="edit-title-@block.Id">ویرایش @block.ActivityTitle</h2><p><bdi dir="ltr">@block.StartLabel</bdi> تا <bdi dir="ltr">@block.EndLabel</bdi> · @block.DurationLabel</p></div></div>
+            <div><span class="section-icon" aria-hidden="true"><svg><use href="/icons/activities.svg#@ActivityCatalog.IconSymbol(block.IconKey)"></use></svg></span><div><h2 id="edit-title-@block.Id">ویرایش @block.ActivityTitle</h2><p><bdi dir="ltr">@block.StartLabel</bdi> تا <bdi dir="ltr">@block.EndLabel</bdi>@(block.EndsNextDay ? " روز بعد" : "") · @block.DurationLabel</p></div></div>
             <button type="button" class="dialog-close" data-close-edit aria-label="بستن">×</button>
         </div>
         <div class="schedule-edit-content">
@@ -52,7 +60,8 @@
                 <input type="hidden" name="view" value="@Model.DisplayMode" />
                 <label class="field"><span>فعالیت</span><select name="Input.ActivityId">@foreach (var activity in Model.Activities) { <option value="@activity.Id" selected="@(activity.Id == block.ActivityId ? "selected" : null)">@activity.IconGlyph @activity.Title</option> }</select></label>
                 <label class="field"><span>روز</span><select name="Input.DayOfWeek">@foreach (var day in WeekCalendar.Days) { <option value="@day" selected="@(day == block.DayOfWeek ? "selected" : null)">@WeekCalendar.DayName(day)</option> }</select></label>
-                <div class="field-grid"><label class="field"><span>شروع</span><input name="Input.StartTime" value="@block.StartLabel" type="time" step="1800" required /></label><label class="field"><span>مدت</span><select name="Input.DurationMinutes">@foreach (var duration in WeekCalendar.DurationOptions) { <option value="@duration" selected="@(duration == block.DurationMinutes ? "selected" : null)">@WeekCalendar.DurationName(duration)</option> }</select></label></div>
+                <div class="field-grid schedule-time-fields"><label class="field"><span>ساعت شروع</span><input name="Input.StartTime" value="@block.StartLabel" type="time" step="1800" required /></label><label class="field"><span>ساعت پایان</span><input name="Input.EndTime" value="@block.EndLabel" type="time" step="1800" required /></label></div>
+                <input type="hidden" name="Input.DurationMinutes" value="@block.DurationMinutes" /><p class="schedule-end-hint" data-end-day-hint>اگر پایان پیش از شروع باشد، برنامه تا روز بعد ادامه دارد.</p>
                 <label class="field"><span>یادداشت</span><input name="Input.Note" value="@block.Note" maxlength="160" /></label>
                 <label class="field"><span>یادآوری پیش از شروع</span><select name="Input.ReminderMinutesBefore"><option value="" selected="@(block.ReminderMinutesBefore is null)">بدون یادآور</option><option value="0" selected="@(block.ReminderMinutesBefore == 0)">هنگام شروع</option><option value="5" selected="@(block.ReminderMinutesBefore == 5)">۵ دقیقه قبل</option><option value="10" selected="@(block.ReminderMinutesBefore == 10)">۱۰ دقیقه قبل</option><option value="15" selected="@(block.ReminderMinutesBefore == 15)">۱۵ دقیقه قبل</option><option value="30" selected="@(block.ReminderMinutesBefore == 30)">۳۰ دقیقه قبل</option><option value="60" selected="@(block.ReminderMinutesBefore == 60)">یک ساعت قبل</option></select></label>
                 <p class="calendar-reminder-help">اعلان مرورگر هنگام باز بودن دنیش نمایش داده می‌شود.</p>
@@ -65,7 +74,7 @@
             }
             <div class="resize-actions" aria-label="تغییر مدت این برنامه">
                 <button type="button" class="text-button resize-block" data-resize="-30" disabled="@(block.DurationMinutes <= 30 ? "disabled" : null)">۳۰ دقیقه کمتر</button>
-                <button type="button" class="text-button resize-block" data-resize="30" disabled="@(block.EndMinute >= 1440 ? "disabled" : null)">۳۰ دقیقه بیشتر</button>
+                <button type="button" class="text-button resize-block" data-resize="30" disabled="@(block.DurationMinutes >= 1440 ? "disabled" : null)">۳۰ دقیقه بیشتر</button>
             </div>
             <div class="block-secondary-actions">
                 <form method="post" asp-page="/Week" asp-page-handler="CancelOccurrence"><input type="hidden" name="PatternId" value="@block.Id" /><input type="hidden" name="OriginalDate" value="@block.OriginalDate.ToString("yyyy-MM-dd")" /><input type="hidden" name="SelectedDay" value="@block.DayOfWeek" /><input type="hidden" name="WeekStart" value="@Model.WeekStart.ToString("yyyy-MM-dd")" /><input type="hidden" name="view" value="@Model.DisplayMode" /><button class="text-button danger" type="submit">حذف فقط از این هفته</button></form>
@@ -76,3 +85,4 @@
     </dialog>
     <button type="button" class="schedule-resize-handle" aria-label="تغییر مدت @block.ActivityTitle؛ اکنون @block.DurationLabel" title="برای تغییر مدت بکشید"><span aria-hidden="true"></span></button>
 </article>
+}

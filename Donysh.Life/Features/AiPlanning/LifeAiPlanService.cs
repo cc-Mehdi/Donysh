@@ -31,7 +31,7 @@ public sealed class LifeAiPlanService(LifeDbContext db, IHttpContextAccessor con
             }
           ]
         }
-        روزها فقط Saturday, Sunday, Monday, Tuesday, Wednesday, Thursday, Friday باشند. ساعت با قالب 24 ساعته HH:mm و روی نیم‌ساعت (00 یا 30) باشد. مدت هر بازه مضرب 30 دقیقه و حداقل 30 دقیقه باشد. بازه‌ها از نیمه‌شب عبور نکنند و با هم تداخل نداشته باشند. برای هر فعالیت حداکثر 10 بازه، در مجموع حداکثر 20 فعالیت و 80 بازه بساز. weeklyHours بین 0.5 و 168 باشد. رنگ را فقط از {{string.Join(", ", ActivityCatalog.Colors.Keys)}} و نماد را فقط از {{string.Join(", ", ActivityCatalog.Icons.Keys)}} انتخاب کن. هر فعالیت عنوان یکتا داشته باشد. اگر اطلاعات زمان‌بندی کافی ندارم، پیش از تولید JSON از من بپرس؛ زمان یا تعهدی را حدس نزن. خروجی را به صورت فایل .json قابل دانلود بده.
+        روزها فقط Saturday, Sunday, Monday, Tuesday, Wednesday, Thursday, Friday باشند. ساعت با قالب 24 ساعته HH:mm و روی نیم‌ساعت (00 یا 30) باشد. مدت هر بازه مضرب 30 دقیقه و بین 30 دقیقه تا 24 ساعت باشد. عبور از نیمه‌شب و هم‌زمانی فعالیت‌ها مجاز است؛ خواب شبانه را یک بازه بساز. برای هر فعالیت حداکثر 10 بازه، در مجموع حداکثر 20 فعالیت و 80 بازه بساز. weeklyHours بین 0.5 و 168 باشد. رنگ را فقط از {{string.Join(", ", ActivityCatalog.Colors.Keys)}} و نماد را فقط از {{string.Join(", ", ActivityCatalog.Icons.Keys)}} انتخاب کن. هر فعالیت عنوان یکتا داشته باشد. اگر اطلاعات زمان‌بندی کافی ندارم، پیش از تولید JSON از من بپرس؛ زمان یا تعهدی را حدس نزن. خروجی را به صورت فایل .json قابل دانلود بده.
         """;
 
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true, MaxDepth = 12 };
@@ -80,7 +80,6 @@ public sealed class LifeAiPlanService(LifeDbContext db, IHttpContextAccessor con
         var subject = context.HttpContext?.User.FindFirstValue("sub");
         if (string.IsNullOrWhiteSpace(subject)) return "نشست ورود معتبر نیست؛ دوباره وارد شوید.";
         var chosen = new List<(AiActivity Activity, List<(DayOfWeek Day, int Start, int Duration)> Slots)>();
-        var proposedSlots = new HashSet<(DayOfWeek, int)>();
         foreach (var (activity, index) in plan.Activities.Select((value, index) => (value, index)))
         {
             var selection = selections[index];
@@ -91,8 +90,6 @@ public sealed class LifeAiPlanService(LifeDbContext db, IHttpContextAccessor con
             {
                 if (!TrySlot(new AiSlot { Day = edit.Day, Start = edit.Start, DurationMinutes = edit.DurationMinutes }, out var day, out var start))
                     return $"روز، ساعت یا مدت «{activity.Title}» معتبر نیست.";
-                for (var minute = start; minute < start + edit.DurationMinutes; minute += 30)
-                    if (!proposedSlots.Add((day, minute))) return "زمان‌های انتخاب‌شده با هم تداخل دارند؛ آن‌ها را ویرایش کنید.";
                 slots.Add((day, start, edit.DurationMinutes));
             }
             chosen.Add((activity, slots));
@@ -103,16 +100,6 @@ public sealed class LifeAiPlanService(LifeDbContext db, IHttpContextAccessor con
         var existingTitles = await db.Activities.AsNoTracking().Where(x => x.UserSubject == subject && titles.Contains(x.NormalizedTitle))
             .Select(x => x.Title).ToListAsync(ct);
         if (existingTitles.Count > 0) return $"فعالیت «{existingTitles[0]}» از قبل وجود دارد. آن را از انتخاب خارج کنید یا در فعالیت‌ها ویرایش کنید.";
-        var days = chosen.SelectMany(x => x.Slots).Select(x => x.Day).Distinct().ToList();
-        var existing = await db.SchedulePatterns.AsNoTracking().Where(x => x.UserSubject == subject && x.IsActive && days.Contains(x.DayOfWeek))
-            .Select(x => new { x.DayOfWeek, x.StartMinute, x.DurationMinutes, x.Activity.Title }).ToListAsync(ct);
-        foreach (var row in chosen.SelectMany(x => x.Slots))
-        {
-            var conflict = existing.FirstOrDefault(x => x.DayOfWeek == row.Day && x.StartMinute < row.Start + row.Duration
-                && row.Start < x.StartMinute + x.DurationMinutes);
-            if (conflict is not null) return $"زمان انتخاب‌شده با «{conflict.Title}» تداخل دارد؛ روز یا ساعت را تغییر دهید.";
-        }
-
         var now = DateTimeOffset.UtcNow;
         if (!await db.Profiles.AnyAsync(x => x.UserSubject == subject, ct))
             db.Profiles.Add(new LifeProfile { Id = Guid.NewGuid(), UserSubject = subject, CreatedAtUtc = now, UpdatedAtUtc = now });
@@ -136,14 +123,12 @@ public sealed class LifeAiPlanService(LifeDbContext db, IHttpContextAccessor con
                     Id = Guid.NewGuid(), UserSubject = subject, ActivityId = activity.Id, DayOfWeek = day,
                     StartMinute = start, DurationMinutes = duration, IsActive = true, CreatedAtUtc = now, UpdatedAtUtc = now
                 };
-                for (var minute = start; minute < start + duration; minute += 30)
-                    pattern.Slots.Add(new RecurringScheduleSlot { PatternId = pattern.Id, UserSubject = subject, DayOfWeek = day, SlotIndex = minute / 30 });
                 activity.SchedulePatterns.Add(pattern);
             }
             db.Activities.Add(activity);
         }
         try { await db.SaveChangesAsync(ct); return null; }
-        catch (DbUpdateException) { return "برنامه هم‌زمان تغییر کرده یا یک فعالیت/زمان تکراری است؛ صفحه را تازه کنید و دوباره تلاش کنید."; }
+        catch (DbUpdateException) { return "برنامه هم‌زمان تغییر کرده یا یک فعالیت تکراری است؛ صفحه را تازه کنید و دوباره تلاش کنید."; }
     }
 
     public static bool TrySlot(AiSlot slot, out DayOfWeek day, out int start)
@@ -153,7 +138,7 @@ public sealed class LifeAiPlanService(LifeDbContext db, IHttpContextAccessor con
             || !TimeOnly.TryParseExact(slot.Start, "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var time)) return false;
         start = time.Hour * 60 + time.Minute;
         return start % 30 == 0 && slot.DurationMinutes is >= 30 and <= 1440
-            && slot.DurationMinutes % 30 == 0 && start + slot.DurationMinutes <= 1440;
+            && slot.DurationMinutes % 30 == 0;
     }
 
     private static string NormalizeTitle(string value) => value.Trim().Replace('ي', 'ی').Replace('ك', 'ک').ToUpperInvariant();

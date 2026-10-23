@@ -9,8 +9,7 @@ namespace Donysh.Life.Features.Scheduling;
 
 public sealed class OccurrenceTrackingService(
     LifeDbContext db,
-    IHttpContextAccessor httpContextAccessor,
-    WeeklyScheduleService weeklySchedules)
+    IHttpContextAccessor httpContextAccessor)
 {
     public async Task<ActivityCommandResult> RecordAsync(OccurrenceRecordForm input, CancellationToken cancellationToken = default)
     {
@@ -39,11 +38,6 @@ public sealed class OccurrenceTrackingService(
         var wasMoved = record?.Status == OccurrenceOutcomeStatus.Moved;
         if (input.Status == OccurrenceOutcomeStatus.Moved)
         {
-            var conflict = await FindMoveConflictAsync(pattern.Id, input.OriginalDate, movedToDate!.Value,
-                occurrenceOverride?.StartMinute ?? pattern.StartMinute, plannedMinutes, cancellationToken);
-            if (conflict is not null)
-                return ActivityCommandResult.Failure($"این انتقال با «{conflict.ActivityTitle}» از {conflict.StartLabel} تا {conflict.EndLabel} تداخل دارد.");
-
             if (occurrenceOverride is null)
             {
                 occurrenceOverride = new ScheduleOccurrenceOverride
@@ -54,7 +48,7 @@ public sealed class OccurrenceTrackingService(
                 };
                 db.ScheduleOccurrenceOverrides.Add(occurrenceOverride);
             }
-            occurrenceOverride.ScheduledDate = movedToDate.Value;
+            occurrenceOverride.ScheduledDate = movedToDate!.Value;
             occurrenceOverride.IsCancelled = false;
             occurrenceOverride.UpdatedAtUtc = now;
         }
@@ -106,16 +100,6 @@ public sealed class OccurrenceTrackingService(
         db.ScheduleOccurrenceRecords.Remove(record);
         await db.SaveChangesAsync(cancellationToken);
         return ActivityCommandResult.Success("وضعیت عملکرد پاک شد.");
-    }
-
-    private async Task<ScheduleBlockItem?> FindMoveConflictAsync(Guid patternId, DateOnly originalDate, DateOnly targetDate,
-        int startMinute, int durationMinutes, CancellationToken cancellationToken)
-    {
-        var week = await weeklySchedules.GetWeekAsync(targetDate.DayOfWeek, targetDate, cancellationToken);
-        var endMinute = startMinute + durationMinutes;
-        return week.Days.Single(day => day.Date == targetDate).Blocks.FirstOrDefault(block =>
-            block.IsActive && (block.Id != patternId || block.OriginalDate != originalDate)
-            && block.StartMinute < endMinute && startMinute < block.EndMinute);
     }
 
     private void RestoreMovedOverride(ScheduleOccurrenceOverride occurrenceOverride, DateOnly restoreDate)

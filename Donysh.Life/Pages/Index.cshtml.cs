@@ -81,7 +81,7 @@ public sealed class IndexModel(
         Week = await schedules.GetWeekAsync(TodayDate.DayOfWeek, cancellationToken: cancellationToken);
         Progress = await reports.GetWeekAsync(cancellationToken: cancellationToken);
         TodayBlocks = Week.Days.FirstOrDefault(day => day.Date == TodayDate)?.Blocks
-            .Where(block => block.IsActive).OrderBy(block => block.StartMinute).ToList() ?? [];
+            .Where(block => block.IsActive).OrderBy(block => block.VisibleStartMinute).ToList() ?? [];
     }
 
     private static DateTime TehranNow()
