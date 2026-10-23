@@ -37,7 +37,7 @@
     <title>@ViewData["Title"] - Donysh</title>
     <link rel="stylesheet" href="~/css/app.css" asp-append-version="true" />
 </head>
-<body class="min-h-screen bg-slate-50 text-slate-900 antialiased">
+<body class="@(authenticated ? "finance-body " : "")min-h-screen bg-slate-50 text-slate-900 antialiased">
 @if (authenticated)
 {
     <div class="finance-shell @(isDashboard ? "finance-shell-dashboard" : "") min-h-screen lg:grid lg:grid-cols-[17rem_1fr]">
@@ -95,7 +95,7 @@
             </div>
         </aside>
 
-        <div class="min-w-0">
+        <div class="finance-content-scroll min-w-0">
             @if (!isDashboard)
             {
             <header class="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 backdrop-blur">
