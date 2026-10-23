@@ -6,19 +6,19 @@
 }
 <div class="auth-frame">
     <aside class="auth-story" aria-labelledby="story-title">
-        <div class="story-top"><span class="story-status"><i aria-hidden="true"></i> حساب دُنیش</span><span class="story-index">یک حساب برای دو بخش</span></div>
+        <div class="story-top"><span class="story-status"><i aria-hidden="true"></i> اکوسیستم یکپارچهٔ دُنیش</span><span class="story-index" dir="ltr">ONE ACCOUNT / 01</span></div>
         <div class="story-copy">
-            <span class="eyebrow">برای کارهای هر روز</span>
-            <h2 id="story-title">پول و زمانت را<br /><strong>سر و سامان بده.</strong></h2>
-            <p>با یک حساب به دُنیش مالی و دُنیش زندگی دسترسی داری. اطلاعات هر بخش جداگانه نگهداری می‌شود.</p>
+            <span class="eyebrow">همه‌چیز از یک نقطه شروع می‌شود</span>
+            <h2 id="story-title">زندگی را <strong>روشن‌تر</strong><br />مدیریت کن.</h2>
+            <p>یک حساب برای ابزارهای دُنیش؛ از مدیریت مالی تا برنامه‌ریزی روزهای بهتر. هر محصول فضای مستقل خودش را دارد.</p>
         </div>
         <div class="story-art" aria-hidden="true">
             <span class="art-orbit art-orbit-one"></span><span class="art-orbit art-orbit-two"></span>
             <span class="art-center"><img src="~/images/donysh-icon.png" asp-append-version="true" alt="" width="140" height="140" /></span>
-            <span class="art-card art-card-finance"><b>↗</b><span><strong>دُنیش مالی</strong><small>خرج‌ها و بودجه‌ها</small></span></span>
-            <span class="art-card art-card-life"><b>✓</b><span><strong>دُنیش زندگی</strong><small>برنامهٔ روز و هفته</small></span></span>
+            <span class="art-card art-card-finance"><b>↗</b><span><strong>دُنیش مالی</strong><small>پول، واضح‌تر</small></span></span>
+            <span class="art-card art-card-life"><b>✓</b><span><strong>دُنیش زندگی</strong><small>زمان، منظم‌تر</small></span></span>
         </div>
-        <p class="story-footer">دو بخش جدا، یک راه ورود.</p>
+        <p class="story-footer">هر بخش از زندگی، در جای خودش.</p>
     </aside>
 
     <section class="auth-panel" aria-labelledby="login-title">
@@ -31,13 +31,13 @@
             {
                 <div class="phase-notice" role="status">
                     <span aria-hidden="true">◉</span>
-                    <p><strong>انتقال حساب‌ها در جریان است.</strong> حساب‌های فعلی بخش مالی هنوز به این صفحه منتقل نشده‌اند.</p>
+                    <p><strong>نسخهٔ زیرساختی</strong> حساب‌های فعلی بخش مالی هنوز به این صفحه منتقل نشده‌اند.</p>
                 </div>
             }
             <header class="panel-header">
-                <span class="login-step"><i aria-hidden="true"></i> حساب کاربری</span>
-                <h1 id="login-title">به دُنیش وارد شوید <span aria-hidden="true">✦</span></h1>
-                <p>ایمیل و رمز عبور خود را وارد کنید.</p>
+                <span class="login-step"><i aria-hidden="true"></i> ورود به فضای شخصی</span>
+                <h1 id="login-title">خوش برگشتی <span aria-hidden="true">✦</span></h1>
+                <p>برای ادامه، وارد حساب دُنیش خودت شو.</p>
             </header>
 
             <form method="post" asp-page="/Account/Login" class="auth-form">
@@ -72,7 +72,7 @@
                 </div>
                 <label class="check-row">
                     <input asp-for="Input.RememberMe" />
-                    <span>در این دستگاه وارد بمانم</span>
+                    <span>مرا روی این دستگاه به خاطر بسپار</span>
                 </label>
                 <button class="primary-button" type="submit"><span>ورود به حساب دُنیش</span><span aria-hidden="true">←</span></button>
             </form>
@@ -84,10 +84,10 @@
             else
             {
                 <p class="panel-foot muted">@(Model.MigrationCompleted
-                    ? "اکنون امکان ساخت حساب تازه وجود ندارد."
-                    : "پس از انتقال حساب‌های کاربران، امکان ساخت حساب تازه فراهم می‌شود.")</p>
+                    ? "ساخت حساب جدید در حال حاضر غیرفعال است."
+                    : "ساخت حساب جدید پس از آماده‌شدن انتقال کاربران فعال می‌شود.")</p>
             }
         </div>
-        <footer class="login-footer"><span>© @DateTime.UtcNow.Year دُنیش</span><a href="https://donysh.ir/">بازگشت به صفحهٔ اصلی ←</a></footer>
+        <footer class="login-footer"><span>© @DateTime.UtcNow.Year دُنیش</span><a href="https://donysh.ir/">بازگشت به وب‌سایت اصلی ←</a></footer>
     </section>
 </div>
