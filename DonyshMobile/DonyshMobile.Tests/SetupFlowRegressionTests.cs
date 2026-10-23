@@ -22,6 +22,14 @@ internal static class SetupFlowRegressionTests
                && SetupFlow.Progress(SetupStep.Template) == 3
                && SetupFlow.Progress(SetupStep.Complete) == 3,
             "Progress keeps permission within the sender step");
+        Assert(StartupFlow.Resolve(false, false, SetupStep.Connection) == StartupDestination.Login,
+            "A disconnected installation opens login first");
+        Assert(StartupFlow.Resolve(true, false, SetupStep.Sender) == StartupDestination.Setup,
+            "A new account resumes its first missing setup step");
+        Assert(StartupFlow.Resolve(true, true, SetupStep.Sender) == StartupDestination.Home,
+            "A returning account does not repeat setup after settings change");
+        Assert(StartupFlow.Resolve(true, false, SetupStep.Complete) == StartupDestination.Home,
+            "Restored settings allow a returning account to go home");
         Console.WriteLine("PASS Setup flow order and progress regressions");
     }
 

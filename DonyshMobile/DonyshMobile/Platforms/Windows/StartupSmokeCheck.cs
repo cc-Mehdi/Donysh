@@ -190,6 +190,16 @@ internal static class StartupSmokeCheck
         }
         finally { application.UserAppTheme = previousTheme; }
 
+        await VisitAsync(shell, new LoginPage(store), async page =>
+        {
+            Check(page.FindByName<Image>("LoginBrand").IsVisible,
+                "Login opens as its own branded screen before setup");
+            Check(page.FindByName<Border>("PairingCard").IsVisible
+                && !page.FindByName<Border>("ConnectionStatusCard").IsVisible,
+                "Login shows credentials without setup or settings controls");
+            await Task.CompletedTask;
+        });
+
         await ExerciseConnectionButtonsAsync(shell, home, store, address, preset.SampleMessage);
         await ExerciseFailureBoundariesAsync(shell, store, address, preset.SampleMessage);
         await ExerciseSetupWizardAsync(shell);

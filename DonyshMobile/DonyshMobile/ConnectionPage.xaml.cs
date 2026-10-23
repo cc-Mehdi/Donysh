@@ -55,17 +55,16 @@ public partial class ConnectionPage : DonyshPage
         NotificationSettingsButton.IsVisible = DeviceInfo.Platform == DevicePlatform.Android;
         if (_setupMode)
         {
-            Title = "مرحلهٔ ۱ · اتصال";
+            Title = "ورود به دُنیش";
             PageHeadingLabel.Text = "وارد حساب دُنیش شوید";
-            PageDescriptionLabel.Text = "همان اطلاعات ورود سایت را وارد کنید؛ سپس فضای مالی را انتخاب می‌کنید.";
+            PageDescriptionLabel.Text = "با حساب دُنیش وارد شوید. اگر این نخستین بار است، راه‌اندازی پس از ورود آغاز می‌شود.";
             ConnectionStatusCard.IsVisible = false;
             TitleSettingsCard.IsVisible = false;
             RecoverySettingsCard.IsVisible = false;
             AppearanceCard.IsVisible = false;
             PrivacyCard.IsVisible = false;
-            CustomServerButton.IsVisible = false;
-            ServerPanel.IsVisible = false;
             PairingCard.IsVisible = true;
+            LoginBrand.IsVisible = true;
         }
         _settingsLoaded = true;
         UpdateActions();
@@ -287,9 +286,10 @@ public partial class ConnectionPage : DonyshPage
                 _showPairing = false;
                 UiMotion.Feedback();
                 SyncPlatform.Schedule();
-                await AlertAsync("ورود انجام شد", restored
-                    ? $"فرستنده‌ها و قالب‌ها بازیابی شدند. فضای پیش‌فرض: {workspaceName}"
-                    : $"فضای پیش‌فرض: {workspaceName}", "باشه");
+                if (!_setupMode)
+                    await AlertAsync("ورود انجام شد", restored
+                        ? $"فرستنده‌ها و قالب‌ها بازیابی شدند. فضای پیش‌فرض: {workspaceName}"
+                        : $"فضای پیش‌فرض: {workspaceName}", "باشه");
                 loggedIn = true;
             });
         });
@@ -372,9 +372,10 @@ public partial class ConnectionPage : DonyshPage
                 _showPairing = false;
                 UiMotion.Feedback();
                 SyncPlatform.Schedule();
-                await AlertAsync("گوشی متصل شد", restored
-                    ? $"فرستنده‌ها و قالب‌ها بازیابی شدند. مقصد پیام‌ها: {result.WorkspaceName} / {result.CategoryName}"
-                    : $"مقصد پیام‌ها: {result.WorkspaceName} / {result.CategoryName}", "باشه");
+                if (!_setupMode)
+                    await AlertAsync("گوشی متصل شد", restored
+                        ? $"فرستنده‌ها و قالب‌ها بازیابی شدند. مقصد پیام‌ها: {result.WorkspaceName} / {result.CategoryName}"
+                        : $"مقصد پیام‌ها: {result.WorkspaceName} / {result.CategoryName}", "باشه");
                 paired = true;
             }
             catch (ArgumentException)

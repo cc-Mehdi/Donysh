@@ -21,5 +21,6 @@
     <Compile Include="..\DonyshMobile\Core\MobileApiClient.cs" Link="Core\MobileApiClient.cs" />
     <Compile Include="..\DonyshMobile\Core\SmsPrivacy.cs" Link="Core\SmsPrivacy.cs" />
     <Compile Include="..\DonyshMobile\Core\SetupFlow.cs" Link="Core\SetupFlow.cs" />
+    <Compile Include="..\DonyshMobile\Core\StartupFlow.cs" Link="Core\StartupFlow.cs" />
   </ItemGroup>
 </Project>

@@ -5,6 +5,8 @@
              x:Class="DonyshMobile.ConnectionPage" Title="تنظیمات و اتصال">
     <ScrollView>
         <VerticalStackLayout x:Name="ConnectionContent" Padding="18,12,18,28" Spacing="14" MaximumWidthRequest="800" HorizontalOptions="Fill">
+            <Image x:Name="LoginBrand" Source="donysh_logo.png" WidthRequest="74" HeightRequest="74"
+                   HorizontalOptions="Center" IsVisible="False" SemanticProperties.Description="نشان دُنیش" />
             <VerticalStackLayout Spacing="4">
                 <Label x:Name="PageHeadingLabel" Text="همه‌چیز تحت کنترل شما" Style="{StaticResource PageTitle}" />
                 <Label x:Name="PageDescriptionLabel" Text="مقصد ارسال، عنوان پیام‌ها و ظاهر برنامه را تنظیم کنید." Style="{StaticResource MutedText}" />

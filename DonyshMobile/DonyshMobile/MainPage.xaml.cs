@@ -22,10 +22,11 @@ public partial class MainPage : DonyshPage
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
     private readonly List<SenderItem> _allSenders = [];
     private bool _subscribed, _hasPermission, _entered, _busy, _openingPage, _requestingPermission;
-    private bool _setupWizardChecked;
+    private bool _setupWizardChecked, _legacyMigrationChecked;
     private string _search = string.Empty;
     private int _nextStep = -1;
     private SetupStep _setupStep = SetupStep.Connection;
+    private MobileConnection? _activeConnection;
 
     public ObservableCollection<SenderItem> Senders { get; } = [];
     public string PermissionStatusText { get; private set; } = "در حال بررسی…";
@@ -94,6 +95,31 @@ public partial class MainPage : DonyshPage
         if (Interlocked.Exchange(ref _sendersRequested, 0) == 1) ShowSendersTab();
         SyncPlatform.Schedule();
         if (!_entered) { _entered = true; await UiMotion.EnterAsync(PageContent); }
+        if (!_legacyMigrationChecked)
+        {
+            _legacyMigrationChecked = true;
+            SetupCompletionStore.MigrateLegacyFor(_activeConnection);
+        }
+#if DEBUG && WINDOWS
+        if (!WinUI.StartupSmokeCheck.IsEnabled)
+#endif
+        {
+            var destination = StartupFlow.Resolve(_activeConnection is not null,
+                _activeConnection is not null && SetupCompletionStore.IsFinishedFor(_activeConnection), _setupStep);
+            if (destination == StartupDestination.Login)
+            {
+                await OpenPageAsync(() => new LoginPage(_store));
+                return;
+            }
+            if (destination == StartupDestination.Setup && !_setupWizardChecked)
+            {
+                await OpenPageAsync(() => new SetupWizardPage(_store));
+                _setupWizardChecked = Navigation.NavigationStack.LastOrDefault() is SetupWizardPage;
+                return;
+            }
+            if (_setupStep == SetupStep.Complete && _activeConnection is not null)
+                SetupCompletionStore.MarkFinished(_activeConnection);
+        }
         if (ConsumePendingTitlesRequest())
         {
             try { await Navigation.PushAsync(new PendingTitlesPage(_store)); }
@@ -104,14 +130,6 @@ public partial class MainPage : DonyshPage
             }
             return;
         }
-        if (!_setupWizardChecked && !SetupWizardPage.WasFinished && _setupStep != SetupStep.Complete)
-        {
-            _setupWizardChecked = true;
-            await OpenPageAsync(() => new SetupWizardPage(_store));
-            return;
-        }
-        if (_setupStep == SetupStep.Complete && !SetupWizardPage.WasFinished)
-            SetupWizardPage.MarkFinished();
 #if ANDROID
         if (_hasPermission) await RequestNotificationPermissionAsync();
         await TitleReminderNotifier.RefreshAsync(global::Android.App.Application.Context);
@@ -411,6 +429,9 @@ public partial class MainPage : DonyshPage
 #else
             var connection = await MobileConnectionStore.LoadAsync();
 #endif
+            if (_activeConnection?.Token != connection?.Token || _activeConnection?.Server != connection?.Server)
+                _setupWizardChecked = false;
+            _activeConnection = connection;
             var hasTemplate = false;
             foreach (var summary in summaries)
             {

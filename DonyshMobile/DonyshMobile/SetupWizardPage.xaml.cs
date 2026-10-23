@@ -8,7 +8,6 @@ namespace DonyshMobile;
 
 public partial class SetupWizardPage : DonyshPage
 {
-    private const string FinishedKey = "setup-wizard-finished-v1";
     private readonly SmsMonitorStore _store;
     private readonly Func<Task<MobileConnection?>> _loadConnectionAsync;
     private readonly Func<Task<bool>> _hasReceivePermissionAsync;
@@ -21,9 +20,6 @@ public partial class SetupWizardPage : DonyshPage
 #endif
     private SetupStep _step = SetupStep.Connection;
     private SenderSummary? _selectedSender;
-
-    public static bool WasFinished => Preferences.Default.Get(FinishedKey, false);
-    public static void MarkFinished() => Preferences.Default.Set(FinishedKey, true);
 
     public bool IsConnectionStep => _step == SetupStep.Connection;
     public bool IsSenderStep => _step == SetupStep.Sender;
@@ -271,7 +267,14 @@ public partial class SetupWizardPage : DonyshPage
 
     private async void OnFinishClicked(object? sender, EventArgs e)
     {
-        MarkFinished();
+        await RefreshAsync();
+        var connection = await _loadConnectionAsync();
+        if (_step != SetupStep.Complete || connection is null)
+        {
+            ShowStatus("راه‌اندازی هنوز کامل نشده است؛ گام‌های باقی‌مانده را انجام دهید.");
+            return;
+        }
+        SetupCompletionStore.MarkFinished(connection);
         UiMotion.Feedback();
         try { await Navigation.PopAsync(); }
         catch (Exception exception)
