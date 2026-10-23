@@ -9,6 +9,7 @@ public sealed class RecurringSchedulePattern
     public int StartMinute { get; set; }
     public int DurationMinutes { get; set; }
     public string? Note { get; set; }
+    public int? ReminderMinutesBefore { get; set; }
     public bool IsActive { get; set; } = true;
     public DateTimeOffset CreatedAtUtc { get; set; }
     public DateTimeOffset UpdatedAtUtc { get; set; }

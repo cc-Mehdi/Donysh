@@ -186,6 +186,9 @@ namespace Donysh.Life.Data.Migrations
                         .HasMaxLength(160)
                         .HasColumnType("character varying(160)");
 
+                    b.Property<int?>("ReminderMinutesBefore")
+                        .HasColumnType("integer");
+
                     b.Property<int>("StartMinute")
                         .HasColumnType("integer");
 
@@ -208,6 +211,8 @@ namespace Donysh.Life.Data.Migrations
                             t.HasCheckConstraint("CK_LifeSchedulePatterns_DayOfWeek", "\"DayOfWeek\" BETWEEN 0 AND 6");
 
                             t.HasCheckConstraint("CK_LifeSchedulePatterns_Duration", "\"DurationMinutes\" BETWEEN 30 AND 1440 AND \"DurationMinutes\" % 30 = 0 AND \"StartMinute\" + \"DurationMinutes\" <= 1440");
+
+                            t.HasCheckConstraint("CK_LifeSchedulePatterns_Reminder", "\"ReminderMinutesBefore\" IS NULL OR \"ReminderMinutesBefore\" BETWEEN 0 AND 120");
 
                             t.HasCheckConstraint("CK_LifeSchedulePatterns_StartMinute", "\"StartMinute\" BETWEEN 0 AND 1410 AND \"StartMinute\" % 30 = 0");
                         });

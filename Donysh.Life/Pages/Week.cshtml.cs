@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace Donysh.Life.Pages;
 
-public sealed class WeekModel(WeeklyScheduleService schedules, OccurrenceTrackingService tracking) : PageModel
+public sealed class WeekModel(WeeklyScheduleService schedules, OccurrenceTrackingService tracking, ReminderScheduleService reminders) : PageModel
 {
     [BindProperty] public SchedulePatternForm Input { get; set; } = new();
     [BindProperty] public Guid? PatternId { get; set; }
@@ -27,6 +27,22 @@ public sealed class WeekModel(WeeklyScheduleService schedules, OccurrenceTrackin
         SelectedDay = day is not null && WeekCalendar.Days.Contains(day.Value) ? day.Value : WeekCalendar.Today().DayOfWeek;
         Input.DayOfWeek = SelectedDay;
         await LoadAsync(SelectedDay, week, cancellationToken);
+    }
+
+    public async Task<IActionResult> OnGetDueRemindersAsync(CancellationToken cancellationToken)
+    {
+        Response.Headers.CacheControl = "no-store";
+        return new JsonResult(await reminders.UpcomingAsync(cancellationToken));
+    }
+
+    public async Task<IActionResult> OnGetCalendarReminderAsync(Guid patternId, DateOnly scheduledDate, CancellationToken cancellationToken)
+    {
+        var week = await schedules.GetWeekAsync(scheduledDate.DayOfWeek, scheduledDate, cancellationToken);
+        var block = week.Days.SelectMany(day => day.Blocks).SingleOrDefault(item => item.Id == patternId
+            && item.ScheduledDate == scheduledDate && item.IsActive && item.ReminderMinutesBefore.HasValue);
+        if (block is null) return NotFound();
+        var calendar = ScheduleCalendarExport.Build(block);
+        return File(System.Text.Encoding.UTF8.GetBytes(calendar), "text/calendar; charset=utf-8", $"donysh-life-{scheduledDate:yyyy-MM-dd}.ics");
     }
 
     public async Task<IActionResult> OnPostSaveAsync(CancellationToken cancellationToken)

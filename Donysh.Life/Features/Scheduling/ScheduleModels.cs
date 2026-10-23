@@ -20,6 +20,9 @@ public sealed class SchedulePatternForm
 
     [StringLength(160, ErrorMessage = "یادداشت نمی‌تواند بیشتر از ۱۶۰ نویسه باشد.")]
     public string? Note { get; set; }
+
+    [Range(0, 120, ErrorMessage = "یادآور باید حداکثر دو ساعت پیش از شروع باشد.")]
+    public int? ReminderMinutesBefore { get; set; }
 }
 
 public sealed record ScheduleActivityOption(Guid Id, string Title, string ColorHex, string IconKey)
@@ -38,6 +41,7 @@ public sealed record ScheduleBlockItem(
     int StartMinute,
     int DurationMinutes,
     string? Note,
+    int? ReminderMinutesBefore,
     bool IsActive,
     DateOnly OriginalDate,
     DateOnly ScheduledDate,

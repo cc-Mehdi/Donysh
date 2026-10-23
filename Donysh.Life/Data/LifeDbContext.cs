@@ -59,6 +59,7 @@ public sealed class LifeDbContext(DbContextOptions<LifeDbContext> options) : DbC
             table.HasCheckConstraint("CK_LifeSchedulePatterns_DayOfWeek", "\"DayOfWeek\" BETWEEN 0 AND 6");
             table.HasCheckConstraint("CK_LifeSchedulePatterns_StartMinute", "\"StartMinute\" BETWEEN 0 AND 1410 AND \"StartMinute\" % 30 = 0");
             table.HasCheckConstraint("CK_LifeSchedulePatterns_Duration", "\"DurationMinutes\" BETWEEN 30 AND 1440 AND \"DurationMinutes\" % 30 = 0 AND \"StartMinute\" + \"DurationMinutes\" <= 1440");
+            table.HasCheckConstraint("CK_LifeSchedulePatterns_Reminder", "\"ReminderMinutesBefore\" IS NULL OR \"ReminderMinutesBefore\" BETWEEN 0 AND 120");
         });
         schedulePattern.HasKey(item => item.Id);
         schedulePattern.Property(item => item.UserSubject).HasMaxLength(450).IsRequired();

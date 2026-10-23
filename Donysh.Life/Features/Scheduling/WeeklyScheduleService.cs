@@ -96,6 +96,7 @@ public sealed class WeeklyScheduleService(LifeDbContext db, IHttpContextAccessor
         pattern.StartMinute = startMinute;
         pattern.DurationMinutes = input.DurationMinutes;
         pattern.Note = string.IsNullOrWhiteSpace(input.Note) ? null : input.Note.Trim();
+        pattern.ReminderMinutesBefore = input.ReminderMinutesBefore;
         pattern.UpdatedAtUtc = DateTimeOffset.UtcNow;
         SyncSlots(pattern, pattern.IsActive ? SlotIndexes(startMinute, input.DurationMinutes) : []);
         try
@@ -117,7 +118,8 @@ public sealed class WeeklyScheduleService(LifeDbContext db, IHttpContextAccessor
         if (pattern is null) return ActivityCommandResult.Failure("برنامهٔ انتخاب‌شده پیدا نشد.");
         if (input.Scope == "series")
             return await SaveAsync(pattern.Id, new SchedulePatternForm { ActivityId = pattern.ActivityId, DayOfWeek = input.TargetDate.DayOfWeek,
-                StartTime = FormatMinute(input.StartMinute), DurationMinutes = input.DurationMinutes, Note = pattern.Note }, cancellationToken);
+                StartTime = FormatMinute(input.StartMinute), DurationMinutes = input.DurationMinutes, Note = pattern.Note,
+                ReminderMinutesBefore = pattern.ReminderMinutesBefore }, cancellationToken);
         if (input.Scope != "occurrence") return ActivityCommandResult.Failure("دامنهٔ تغییر معتبر نیست.");
         if (input.OriginalDate.DayOfWeek != pattern.DayOfWeek) return ActivityCommandResult.Failure("تاریخ رخداد با الگوی برنامه هماهنگ نیست.");
         if (await db.ScheduleOccurrenceRecords.AnyAsync(x => x.PatternId == pattern.Id && x.UserSubject == subject
@@ -248,7 +250,7 @@ public sealed class WeeklyScheduleService(LifeDbContext db, IHttpContextAccessor
 
     private static ScheduleBlockItem ToBlock(RecurringSchedulePattern p, DateOnly original, DateOnly scheduled, int start, int duration, bool changed) =>
         new(p.Id, p.ActivityId, p.Activity.Title, p.Activity.ColorHex, p.Activity.IconKey, scheduled.DayOfWeek, start, duration,
-            p.Note, p.IsActive, original, scheduled, changed, null, null, null, null);
+            p.Note, p.ReminderMinutesBefore, p.IsActive, original, scheduled, changed, null, null, null, null);
 
     private static bool TryParse(SchedulePatternForm input, out int startMinute, out string error)
     {
@@ -260,6 +262,7 @@ public sealed class WeeklyScheduleService(LifeDbContext db, IHttpContextAccessor
         if (input.DurationMinutes is < 30 or > 1440 || input.DurationMinutes % 30 != 0) { error = "مدت فعالیت باید مضربی از ۳۰ دقیقه باشد."; return false; }
         if (startMinute + input.DurationMinutes > 1440) { error = "بازهٔ زمانی نمی‌تواند از پایان روز عبور کند."; return false; }
         if (input.Note?.Trim().Length > 160) { error = "یادداشت بیش از حد طولانی است."; return false; }
+        if (input.ReminderMinutesBefore is < 0 or > 120) { error = "زمان یادآور معتبر نیست."; return false; }
         return true;
     }
 

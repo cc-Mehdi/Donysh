@@ -48,6 +48,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<LifeActivityService>();
 builder.Services.AddScoped<LifeAiPlanService>();
 builder.Services.AddScoped<WeeklyScheduleService>();
+builder.Services.AddScoped<ReminderScheduleService>();
 builder.Services.AddScoped<OccurrenceTrackingService>();
 builder.Services.AddScoped<ActualActivityService>();
 builder.Services.AddScoped<ProgressReportService>();

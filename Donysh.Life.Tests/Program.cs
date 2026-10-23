@@ -160,6 +160,20 @@ using (var response = await client.GetAsync("/js/week-planner.js"))
         && !script.Contains("new Function", StringComparison.Ordinal));
 }
 
+using (var response = await client.GetAsync("/js/life-reminders.js"))
+{
+    Check("Life reminder runner is served locally",
+        response.StatusCode == HttpStatusCode.OK
+        && response.Content.Headers.ContentType?.MediaType is "text/javascript" or "application/javascript");
+}
+
+using (var response = await client.GetAsync("/life-reminder-worker.js"))
+{
+    Check("Life serves its notification worker locally",
+        response.StatusCode == HttpStatusCode.OK
+        && response.Content.Headers.ContentType?.MediaType is "text/javascript" or "application/javascript");
+}
+
 using (var response = await client.GetAsync("/js/interaction-feedback.js"))
 {
     var script = await response.Content.ReadAsStringAsync();
@@ -234,6 +248,19 @@ using (var authenticatedClient = authenticatedFactory.CreateClient(new WebApplic
     Check("Authenticated Life shell monitors cross-product logout",
         html.Contains("/js/session-sync.js", StringComparison.Ordinal)
         && html.Contains("data-session-status-url=\"/Account/SessionStatus\"", StringComparison.Ordinal));
+    using (var reminderResponse = await authenticatedClient.GetAsync("/Week?handler=DueReminders"))
+    {
+        var remindersJson = await reminderResponse.Content.ReadAsStringAsync();
+        Check("Life reminder feed is authenticated, private, and initially empty",
+            reminderResponse.StatusCode == HttpStatusCode.OK
+            && reminderResponse.Headers.CacheControl?.NoStore == true
+            && remindersJson.Trim() == "[]");
+    }
+    using (var calendarResponse = await authenticatedClient.GetAsync($"/Week?handler=CalendarReminder&patternId={Guid.NewGuid()}&scheduledDate=2026-10-23"))
+    {
+        Check("Life calendar alarms cannot be downloaded for an unknown schedule",
+            calendarResponse.StatusCode == HttpStatusCode.NotFound);
+    }
     using var sessionStatus = await authenticatedClient.GetAsync("/Account/SessionStatus");
     Check("Authenticated Life session status remains active",
         sessionStatus.StatusCode == HttpStatusCode.NoContent
@@ -749,7 +776,8 @@ await using (var activityDb = new LifeDbContext(activityOptions))
         DayOfWeek = DayOfWeek.Saturday,
         StartTime = "08:00",
         DurationMinutes = 60,
-        Note = "شروع هفته"
+        Note = "شروع هفته",
+        ReminderMinutesBefore = 15
     });
     var overlap = await scheduler.SaveAsync(null, new SchedulePatternForm
     {
@@ -764,6 +792,14 @@ await using (var activityDb = new LifeDbContext(activityOptions))
         && !overlap.Succeeded
         && ownerWeek.Days.Single(day => day.DayOfWeek == DayOfWeek.Saturday).Blocks.Count == 1
         && await activityDb.ScheduleSlots.CountAsync() == 2);
+
+    var reminderBlock = ownerWeek.Days.Single(day => day.DayOfWeek == DayOfWeek.Saturday).Blocks.Single();
+    var calendarExport = ScheduleCalendarExport.Build(reminderBlock);
+    Check("Life reminder preference persists and exports a native calendar alarm",
+        reminderBlock.ReminderMinutesBefore == 15
+        && calendarExport.Contains("BEGIN:VALARM\r\nACTION:DISPLAY", StringComparison.Ordinal)
+        && calendarExport.Contains("TRIGGER:-PT15M", StringComparison.Ordinal)
+        && calendarExport.Contains("SUMMARY:ورزش", StringComparison.Ordinal));
 
     var ownerPatternId = ownerWeek.Days.Single(day => day.DayOfWeek == DayOfWeek.Saturday).Blocks[0].Id;
     var weekStart = ownerWeek.WeekStart;
@@ -983,6 +1019,39 @@ await using (var activityDb = new LifeDbContext(activityOptions))
         && !forbiddenScheduleDelete.Succeeded
         && !forbiddenOccurrenceEdit.Succeeded
         && !forbiddenOutcome.Succeeded);
+}
+
+var reminderOptions = new DbContextOptionsBuilder<LifeDbContext>()
+    .UseInMemoryDatabase("life-reminder-tests-" + Guid.NewGuid().ToString("N")).Options;
+await using (var reminderDb = new LifeDbContext(reminderOptions))
+{
+    var identity = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "reminder-owner")], "test")) };
+    var accessor = new HttpContextAccessor { HttpContext = identity };
+    var activityService = new LifeActivityService(reminderDb, accessor);
+    var createdActivity = await activityService.SaveAsync(null, new ActivityForm { Title = "تمرین زبان", WeeklyHours = 2 });
+    var activity = (await activityService.ListAsync()).Single();
+    var scheduler = new WeeklyScheduleService(reminderDb, accessor);
+    var localNow = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, ReminderScheduleService.TehranTimeZone()).DateTime;
+    var nearStart = localNow.AddMinutes(11);
+    var startMinute = ((nearStart.Hour * 60 + nearStart.Minute + 29) / 30) * 30;
+    var targetDate = DateOnly.FromDateTime(nearStart);
+    if (startMinute == 1440) { targetDate = targetDate.AddDays(1); startMinute = 0; }
+    var targetLocal = targetDate.ToDateTime(TimeOnly.MinValue).AddMinutes(startMinute);
+    var leadMinutes = (int)Math.Ceiling((targetLocal - localNow).TotalMinutes);
+    var createdSchedule = await scheduler.SaveAsync(null, new SchedulePatternForm
+    {
+        ActivityId = activity.Id, DayOfWeek = targetDate.DayOfWeek,
+        StartTime = $"{startMinute / 60:00}:{startMinute % 60:00}", DurationMinutes = 30,
+        ReminderMinutesBefore = leadMinutes
+    });
+    var reminders = await new ReminderScheduleService(scheduler).UpcomingAsync();
+    identity.User = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "other-reminder-owner")], "test"));
+    var otherUserReminders = await new ReminderScheduleService(scheduler).UpcomingAsync();
+    Check("Life schedules an upcoming reminder without exposing another user's task",
+        createdActivity.Succeeded && createdSchedule.Succeeded
+        && reminders.Count == 1 && reminders[0].Title == "تمرین زبان"
+        && reminders[0].ScheduledDate == targetDate.ToString("yyyy-MM-dd")
+        && otherUserReminders.Count == 0);
 }
 
 var postgres = Environment.GetEnvironmentVariable("DONYSH_LIFE_TEST_POSTGRES");

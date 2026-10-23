@@ -5,8 +5,8 @@ const root = resolve(import.meta.dirname, '..');
 const packageRoot = resolve(root, 'node_modules/lucide-static');
 const destination = resolve(root, 'wwwroot/icons');
 const names = [
-  'activity', 'bike', 'book-open', 'briefcase', 'calendar-days', 'camera',
-  'circle', 'code-xml', 'coffee', 'dumbbell', 'gamepad-2', 'graduation-cap',
+  'activity', 'bell', 'bike', 'book-open', 'briefcase', 'calendar-days', 'camera',
+  'circle', 'code-xml', 'coffee', 'dumbbell', 'ellipsis', 'gamepad-2', 'graduation-cap',
   'heart', 'house', 'laptop', 'leaf', 'lightbulb', 'moon', 'music', 'palette',
   'pen-tool', 'plane', 'plus', 'log-out', 'panel-right-close', 'panel-right-open',
   'chart-no-axes-combined', 'sparkles', 'sun', 'target', 'users', 'utensils', 'wallet'
