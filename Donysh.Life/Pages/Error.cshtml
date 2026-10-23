@@ -2,4 +2,28 @@
 @{
     Layout = null;
 }
-<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><title>خطا</title><link rel="stylesheet" href="~/css/app.css" /></head><body class="auth-body"><main class="auth-card"><span class="placeholder-icon">!</span><h1>مشکلی پیش آمد</h1><p>کمی بعد دوباره تلاش کن. اطلاعاتی از دست نرفته است.</p><a class="button primary" href="/">بازگشت به خانه</a></main></body></html>
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#0d9488" />
+    <title>خطا | دُنیش زندگی</title>
+    <link rel="icon" type="image/png" href="~/images/donysh-life-icon.png" />
+    <script src="~/js/life-theme.js" asp-append-version="true"></script>
+    <link rel="stylesheet" href="~/css/app.css" asp-append-version="true" />
+</head>
+<body class="auth-body">
+    <button type="button" class="theme-toggle auth-theme-toggle" data-life-theme-toggle aria-label="فعال کردن حالت تیره" aria-pressed="false" title="حالت تیره">
+        <svg class="theme-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.3A8.5 8.5 0 0 1 9.7 3.5 8.5 8.5 0 1 0 20.5 14.3Z"/></svg>
+        <svg class="theme-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+        <span class="theme-toggle-label">حالت تیره</span>
+    </button>
+    <main class="auth-card">
+        <span class="placeholder-icon">!</span>
+        <h1>مشکلی پیش آمد</h1>
+        <p>کمی بعد دوباره تلاش کن. اطلاعاتی از دست نرفته است.</p>
+        <a class="button primary" href="/">بازگشت به خانه</a>
+    </main>
+</body>
+</html>

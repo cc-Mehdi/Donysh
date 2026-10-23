@@ -913,3 +913,24 @@ html[data-life-theme="dark"] .life-reminder-toast span { color:#c0d7d4; }
 html[data-life-theme="dark"] .ai-prompt-box pre { color:#e6f3f1; }
 html[data-life-theme="dark"] .ai-count { color:#a2f3de; }
 html[data-life-theme="dark"] .ai-step-number { color:#a2f3de; }
+/* Complete the dark states shared by Today, setup, activities, week and progress. */
+html[data-life-theme="dark"] .skip-link { color:#edf6f7; background:#203a4e; }
+html[data-life-theme="dark"] :is(.field-error,.validation-summary) { color:#ffc7bd; }
+html[data-life-theme="dark"] .validation-summary:not(:empty) { border:1px solid #864850; border-radius:.75rem; background:#402a32; padding:.7rem .9rem; }
+html[data-life-theme="dark"] :is(.stepper,.compact-empty,.mobile-empty,.expand-mark,.delete-form) { color:#b3c7ce; }
+html[data-life-theme="dark"] .stepper .active { color:#8af0df; }
+html[data-life-theme="dark"] .stepper .complete { color:#d2e9e6; }
+html[data-life-theme="dark"] .stepper li+li:before { background:#3a5263; }
+html[data-life-theme="dark"] .text-button.danger { color:#ffb4a8; }
+html[data-life-theme="dark"] :is(.readiness-list li,.goal-input,.clear-outcome-form,.resize-actions,.block-secondary-actions,.outcome-summary-list>div,.progress-activity[open]>summary) { border-color:#304456; }
+html[data-life-theme="dark"] .plan-summary progress,html[data-life-theme="dark"] .plan-summary progress::-webkit-progress-bar { background:#304c59; }
+html[data-life-theme="dark"] .calendar-board { scrollbar-color:#557683 #142437; }
+html[data-life-theme="dark"] .outcome-choice.completed { color:#9cf2ce; }
+html[data-life-theme="dark"] .outcome-choice.missed { color:#ffb7ab; }
+html[data-life-theme="dark"] .outcome-choice.partial { color:#ffdf9c; }
+html[data-life-theme="dark"] .outcome-choice.moved { color:#b5cbff; }
+html[data-life-theme="dark"] .outcome-choice[aria-pressed="true"] { background:#244b53; box-shadow:0 0 0 2px #63dbc477; }
+html[data-life-theme="dark"] :is(.today-agenda-open,.calendar-export-link:hover) { color:#91ecdf; }
+html[data-life-theme="dark"] .today-heading-icon.blue { color:#a4caff; background:#243f60; }
+html[data-life-theme="dark"] .today-heading-icon.violet { color:#d0bbff; background:#3a345d; }
+html[data-life-theme="dark"] .today-heading-icon.coral,html[data-life-theme="dark"] .section-icon.coral { color:#ffb7aa; background:#50363e; }

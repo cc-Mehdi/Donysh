@@ -75,7 +75,7 @@ test('dark palette reaches the shell, content, form, calendar and account surfac
     const temporary = mkdtempSync(join(tmpdir(), 'donysh-life-theme-'));
     try {
         const css = pathToFileURL(fileURLToPath(new URL('../wwwroot/css/app.css', import.meta.url))).href;
-        const fixture = `<!doctype html><html lang="fa" dir="rtl" data-life-theme="dark"><head><link rel="stylesheet" href="${css}"></head><body><aside class="sidebar"><button class="theme-toggle">حالت روشن</button></aside><main><article class="panel">متن</article><article class="auth-card">حساب</article><article class="metric-card"><span>هدف هفته</span><strong>۶ ساعت</strong></article><div class="calendar-board">تقویم</div><label class="field">عنوان<input placeholder="عنوان"></label></main><output id="result"></output><script>addEventListener('load',()=>{const color=s=>getComputedStyle(document.querySelector(s)).backgroundColor;document.querySelector('#result').textContent=JSON.stringify({scheme:getComputedStyle(document.documentElement).colorScheme,body:color('body'),sidebar:color('.sidebar'),panel:color('.panel'),auth:color('.auth-card'),metric:color('.metric-card'),metricLabel:getComputedStyle(document.querySelector('.metric-card span')).color,calendar:color('.calendar-board'),input:color('input')})})</script></body></html>`;
+        const fixture = `<!doctype html><html lang="fa" dir="rtl" data-life-theme="dark"><head><link rel="stylesheet" href="${css}"></head><body><aside class="sidebar"><button class="theme-toggle">حالت روشن</button></aside><main><article class="panel">متن</article><article class="auth-card">حساب</article><article class="metric-card"><span>هدف هفته</span><strong>۶ ساعت</strong></article><article class="today-stat">امروز</article><article class="template-card">راه‌اندازی</article><article class="activity-card">فعالیت</article><article class="progress-activity">پیشرفت</article><article class="ai-prompt-box">دستیار</article><div class="calendar-board">تقویم</div><dialog class="activity-create-dialog">افزودن فعالیت</dialog><label class="field">عنوان<input placeholder="عنوان"></label></main><output id="result"></output><script>addEventListener('load',()=>{const color=s=>getComputedStyle(document.querySelector(s)).backgroundColor;document.querySelector('#result').textContent=JSON.stringify({scheme:getComputedStyle(document.documentElement).colorScheme,body:color('body'),sidebar:color('.sidebar'),panel:color('.panel'),auth:color('.auth-card'),metric:color('.metric-card'),today:color('.today-stat'),setup:color('.template-card'),activity:color('.activity-card'),progress:color('.progress-activity'),ai:color('.ai-prompt-box'),activityDialog:color('.activity-create-dialog'),metricLabel:getComputedStyle(document.querySelector('.metric-card span')).color,calendar:color('.calendar-board'),input:color('input')})})</script></body></html>`;
         const file = join(temporary, 'theme.html');
         writeFileSync(file, fixture);
         const result = spawnSync(chrome, ['--headless=new', '--disable-gpu', '--no-sandbox', '--disable-extensions',
@@ -88,9 +88,68 @@ test('dark palette reaches the shell, content, form, calendar and account surfac
         assert.equal(colors.scheme, 'dark');
         assert.equal(colors.body, 'rgb(11, 21, 35)');
         assert.equal(colors.sidebar, 'rgb(16, 29, 46)');
-        for (const surface of ['panel', 'auth', 'metric', 'calendar']) assert.equal(colors[surface], 'rgb(20, 36, 55)');
+        for (const surface of ['panel', 'auth', 'metric', 'calendar', 'today', 'setup', 'activity', 'progress', 'activityDialog']) assert.equal(colors[surface], 'rgb(20, 36, 55)');
+        assert.equal(colors.ai, 'rgb(28, 52, 71)');
         assert.equal(colors.metricLabel, 'rgb(174, 192, 201)');
         assert.equal(colors.input, 'rgb(16, 31, 48)');
+    } finally {
+        rmSync(temporary, { recursive: true, force: true });
+    }
+});
+
+test('dark validation, setup and activity outcome states remain readable', { skip: !chrome }, () => {
+    const temporary = mkdtempSync(join(tmpdir(), 'donysh-life-dark-states-'));
+    try {
+        const css = pathToFileURL(fileURLToPath(new URL('../wwwroot/css/app.css', import.meta.url))).href;
+        const fixture = `<!doctype html><html lang="fa" dir="rtl" data-life-theme="dark"><head><link rel="stylesheet" href="${css}"></head><body><main class="panel"><div class="validation-summary">خطای فرم</div><p class="field-error">فیلد الزامی است</p><ol class="stepper"><li class="active">مرحلهٔ فعال</li><li class="complete">مرحلهٔ کامل</li></ol><button class="outcome-choice missed" aria-pressed="true">انجام‌نشده</button><a class="text-button danger">حذف فعالیت</a></main><output id="result"></output><script>addEventListener('load',()=>{const selectors=['.panel','.validation-summary','.field-error','.stepper .active','.stepper .complete','.outcome-choice.missed','.text-button.danger'];document.querySelector('#result').textContent=JSON.stringify(Object.fromEntries(selectors.map(selector=>{const style=getComputedStyle(document.querySelector(selector));return[selector,{color:style.color,background:style.backgroundColor}]})))})</script></body></html>`;
+        const file = join(temporary, 'states.html');
+        writeFileSync(file, fixture);
+        const result = spawnSync(chrome, ['--headless=new', '--disable-gpu', '--no-sandbox', '--disable-extensions',
+            `--user-data-dir=${join(temporary, 'profile')}`, '--virtual-time-budget=1000',
+            '--dump-dom', pathToFileURL(file).href], { encoding: 'utf8', timeout: 20000 });
+        assert.equal(result.status, 0, result.stderr);
+        const match = result.stdout.match(/<output id="result">([^<]+)<\/output>/);
+        assert.ok(match, result.stdout);
+        const styles = JSON.parse(match[1].replaceAll('&quot;', '"'));
+        const luminance = color => color.match(/[\d.]+/g).slice(0, 3).map(Number).map(value => {
+            const channel = value / 255;
+            return channel <= .04045 ? channel / 12.92 : ((channel + .055) / 1.055) ** 2.4;
+        }).reduce((sum, channel, index) => sum + channel * [.2126, .7152, .0722][index], 0);
+        const contrast = (foreground, background) => {
+            const [bright, dark] = [luminance(foreground), luminance(background)].sort((a, b) => b - a);
+            return (bright + .05) / (dark + .05);
+        };
+        for (const selector of ['.validation-summary', '.field-error', '.stepper .active', '.stepper .complete', '.outcome-choice.missed', '.text-button.danger']) {
+            const ownBackground = styles[selector].background;
+            const background = ownBackground === 'rgba(0, 0, 0, 0)' ? styles['.panel'].background : ownBackground;
+            assert.ok(contrast(styles[selector].color, background) >= 4.5, `${selector} lacks dark-mode contrast`);
+        }
+    } finally {
+        rmSync(temporary, { recursive: true, force: true });
+    }
+});
+
+test('standalone error page follows the same dark theme as account pages', { skip: !chrome }, () => {
+    const temporary = mkdtempSync(join(tmpdir(), 'donysh-life-error-theme-'));
+    try {
+        const css = pathToFileURL(fileURLToPath(new URL('../wwwroot/css/app.css', import.meta.url))).href;
+        const script = pathToFileURL(fileURLToPath(new URL('../wwwroot/js/life-theme.js', import.meta.url))).href;
+        const source = readFileSync(new URL('../Pages/Error.cshtml', import.meta.url), 'utf8');
+        const fixture = source.replace(/^@page\s*\r?\n@\{[\s\S]*?\}\s*\r?\n/, '')
+            .replace('~/js/life-theme.js', script).replace('~/css/app.css', css)
+            .replace('</body>', '<output id="result"></output><script>addEventListener("load",()=>{const card=getComputedStyle(document.querySelector(".auth-card"));document.querySelector("#result").textContent=JSON.stringify({theme:document.documentElement.dataset.lifeTheme,card:card.backgroundColor,toggle:!!document.querySelector("[data-life-theme-toggle]")})})</script></body>');
+        const file = join(temporary, 'error.html');
+        writeFileSync(file, fixture);
+        const result = spawnSync(chrome, ['--headless=new', '--force-dark-mode', '--disable-gpu', '--no-sandbox', '--disable-extensions',
+            `--user-data-dir=${join(temporary, 'profile')}`, '--virtual-time-budget=1000',
+            '--dump-dom', pathToFileURL(file).href], { encoding: 'utf8', timeout: 20000 });
+        assert.equal(result.status, 0, result.stderr);
+        const match = result.stdout.match(/<output id="result">([^<]+)<\/output>/);
+        assert.ok(match, result.stdout);
+        const actual = JSON.parse(match[1].replaceAll('&quot;', '"'));
+        assert.equal(actual.theme, 'dark');
+        assert.equal(actual.card, 'rgb(20, 36, 55)');
+        assert.equal(actual.toggle, true);
     } finally {
         rmSync(temporary, { recursive: true, force: true });
     }
