@@ -433,6 +433,21 @@
     };
 
     const sidebar = document.getElementById('sidebar');
+    document.querySelectorAll('[data-toggle-sidebar-collapse]').forEach((button) => {
+        const refresh = () => {
+            const collapsed = document.documentElement.dataset.financeSidebar === 'collapsed';
+            button.setAttribute('aria-expanded', String(!collapsed));
+            button.setAttribute('aria-label', collapsed ? 'بازکردن سایدبار' : 'جمع‌کردن سایدبار');
+            button.title = collapsed ? 'بازکردن سایدبار' : 'جمع‌کردن سایدبار';
+        };
+        refresh();
+        button.addEventListener('click', () => {
+            const collapsed = document.documentElement.dataset.financeSidebar !== 'collapsed';
+            document.documentElement.dataset.financeSidebar = collapsed ? 'collapsed' : 'expanded';
+            try { localStorage.setItem('donysh-finance-sidebar', collapsed ? 'collapsed' : 'expanded'); } catch { /* The change still applies for this visit. */ }
+            refresh();
+        });
+    });
     document.querySelectorAll('[data-open-sidebar]').forEach((button) => {
         button.addEventListener('click', () => sidebar?.classList.remove('hidden'));
     });

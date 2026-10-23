@@ -17,15 +17,13 @@
 <div class="finance-dashboard">
     <section class="dashboard-hero">
         <div class="dashboard-hero-top">
-            <span class="dashboard-date"><svg class="lucide-icon" aria-hidden="true"><use href="/icons/lucide.svg#calendar-days"></use></svg>@Formatters.PersianDate(Model.Today)</span>
+            <div class="dashboard-hero-start"><button type="button" class="dashboard-icon-button dashboard-menu-button" data-open-sidebar aria-label="بازکردن منو"><svg class="lucide-icon" aria-hidden="true"><use href="/icons/lucide.svg#menu"></use></svg></button><span class="dashboard-date"><svg class="lucide-icon" aria-hidden="true"><use href="/icons/lucide.svg#calendar-days"></use></svg>@Formatters.PersianDate(Model.Today)</span></div>
             <div class="dashboard-hero-tools">
                 <form method="get" asp-page="/Expenses/Index" role="search" class="dashboard-search">
                     <svg class="lucide-icon" aria-hidden="true"><use href="/icons/lucide.svg#search"></use></svg>
                     <input name="Q" type="search" placeholder="جستجو در مخارج..." aria-label="جستجو در مخارج" />
                 </form>
                 <button type="button" class="dashboard-icon-button" data-finance-theme-toggle aria-label="تغییر پوسته" aria-pressed="false"><svg class="lucide-icon theme-icon-moon" aria-hidden="true"><use href="/icons/lucide.svg#moon"></use></svg><svg class="lucide-icon theme-icon-sun" aria-hidden="true"><use href="/icons/lucide.svg#sun"></use></svg></button>
-                <button type="button" class="dashboard-icon-button dashboard-menu-button" data-open-sidebar aria-label="بازکردن منو"><svg class="lucide-icon" aria-hidden="true"><use href="/icons/lucide.svg#menu"></use></svg></button>
-                <span class="dashboard-avatar" aria-hidden="true">@((ViewData["DashboardDisplayName"]?.ToString() ?? "د").Substring(0, 1))</span>
             </div>
         </div>
         <div class="dashboard-hero-lower">
@@ -33,7 +31,6 @@
             <div class="dashboard-hero-actions">
                 <a asp-page="/Workspaces/Index" class="hero-workspace"><svg class="lucide-icon" aria-hidden="true"><use href="/icons/lucide.svg#wallet"></use></svg><span><small>فضای مالی</small><strong>@Model.CurrentWorkspace.Name</strong></span><svg class="lucide-icon" aria-hidden="true"><use href="/icons/lucide.svg#chevron-down"></use></svg></a>
                 <a asp-page="/Expenses/Create" class="hero-action hero-action-primary"><svg class="lucide-icon" aria-hidden="true"><use href="/icons/lucide.svg#plus"></use></svg>ثبت خرج</a>
-                <a href="https://life.donysh.ir/" class="hero-action hero-action-life"><svg class="lucide-icon" aria-hidden="true"><use href="/icons/lucide.svg#leaf"></use></svg>دُنیش زندگی</a>
             </div>
             <div class="dashboard-tip"><span class="dashboard-tip-icon">💡</span><div><strong>نکته امروز</strong><p>خرج‌هایت را ثبت کن تا تصویر روشنی از ماهت داشته باشی.</p></div></div>
         </div>

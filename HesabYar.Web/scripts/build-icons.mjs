@@ -8,7 +8,8 @@ const names = [
   'arrow-left', 'banknote', 'bell', 'calendar-days', 'chart-column-increasing',
   'chart-no-axes-combined', 'chart-pie', 'chevron-down', 'circle-alert',
   'circle-check', 'circle-dollar-sign', 'clock-3', 'credit-card', 'house',
-  'landmark', 'leaf', 'lightbulb', 'menu', 'moon', 'piggy-bank', 'plus',
+  'landmark', 'leaf', 'lightbulb', 'log-out', 'menu', 'moon', 'panel-right-close',
+  'panel-right-open', 'piggy-bank', 'plus',
   'receipt', 'repeat-2', 'search', 'settings', 'smartphone', 'sparkles',
   'sun', 'tags', 'target', 'trending-down', 'trending-up', 'wallet', 'x'
 ];
