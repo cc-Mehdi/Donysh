@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256"><defs>
+<linearGradient id="teal" x1=".2" y1="0" x2=".8" y2="1"><stop stop-color="#5DE2B3"/><stop offset=".48" stop-color="#08BAAD"/><stop offset="1" stop-color="#006B85"/></linearGradient>
+<linearGradient id="coral" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#FFB178"/><stop offset="1" stop-color="#FF687D"/></linearGradient>
+<linearGradient id="mint" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#B7F2DC"/><stop offset="1" stop-color="#54D4BA"/></linearGradient>
+<linearGradient id="blue" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#3BCED0"/><stop offset="1" stop-color="#2252B4"/></linearGradient>
+<linearGradient id="violet" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#848EFF"/><stop offset="1" stop-color="#5A37CB"/></linearGradient>
+<filter id="shadow"><feGaussianBlur stdDeviation="4"/></filter>
+</defs><rect x="7" y="7" width="242" height="242" rx="62" fill="#0E2946"/><path d="M82 48 V170 Q82 200 114 200 H167" fill="none" stroke="#F7FEFF" stroke-width="44" stroke-linecap="round" stroke-linejoin="round"/><rect x="141" y="61" width="40" height="40" rx="13" fill="#FF8A70"/><rect x="141" y="109" width="40" height="40" rx="13" fill="#83DEC7"/><rect x="187" y="179" width="40" height="40" rx="13" fill="#FF8A70"/></svg>

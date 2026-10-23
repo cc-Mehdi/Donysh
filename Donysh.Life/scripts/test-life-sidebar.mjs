@@ -71,17 +71,23 @@ const chrome = [
     '/usr/bin/chromium'
 ].find((path) => path && existsSync(path));
 const css = pathToFileURL(fileURLToPath(new URL('../wwwroot/css/app.css', import.meta.url))).href;
+const mark = pathToFileURL(fileURLToPath(new URL('../wwwroot/images/donysh-life-mark.svg', import.meta.url))).href;
 const fixture = `<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><link rel="stylesheet" href="${css}"><script>
 document.documentElement.dataset.lifeSidebar = new URLSearchParams(location.search).get('state');</script></head><body>
-<div class="app-shell"><aside class="sidebar"><div class="sidebar-header"><a class="brand life-brand"><svg class="life-brand-mark" viewBox="0 0 24 24"><path d="M20 4C12 4 5 7 5 15a5 5 0 0 0 5 5c8 0 11-7 10-16Z"/></svg></a><button class="sidebar-toggle"><svg class="sidebar-toggle-expand" viewBox="0 0 24 24"><path d="M9 3v18"/></svg></button></div>
-<p class="sidebar-caption">زمانت را آگاهانه زندگی کن</p><nav class="side-nav"><a><span>⌂</span><span class="nav-label">امروز</span></a><a><span>◎</span><span class="nav-label">فعالیت‌ها</span></a><a><span>▦</span><span class="nav-label">برنامهٔ هفته</span></a><a><span>✦</span><span class="nav-label">دستیار هوشمند</span></a><a><span>↗</span><span class="nav-label">پیشرفت</span></a></nav>
+<div class="app-shell"><aside class="sidebar"><div class="sidebar-header"><a class="brand life-brand"><img class="life-brand-logo" src="${mark}" width="44" height="44"><strong class="life-brand-name">دُنیش زندگی</strong></a><button class="sidebar-toggle"><svg class="sidebar-toggle-collapse" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M15 3v18m-7-12 3 3-3 3"/></svg><svg class="sidebar-toggle-expand" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M15 3v18M10 9l-3 3 3 3"/></svg></button></div>
+<p class="sidebar-caption">زمانت را آگاهانه زندگی کن</p><nav class="side-nav"><a><span>⌂</span><span class="nav-label">امروز</span></a><a><span>◎</span><span class="nav-label">فعالیت‌ها</span></a><a><span>▦</span><span class="nav-label">برنامهٔ هفته</span></a><a><span>✦</span><span class="nav-label">دستیار هوشمند</span></a><a><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M3 3v18h18M7 17l4-5 3 2 5-7m-4 0h4v4"/></svg></span><span class="nav-label">پیشرفت</span></a></nav>
 <div class="sidebar-footer"><section class="account-card"><span class="account-avatar">د</span><span class="account-copy">کاربر</span></section><a class="product-switcher"><span class="product-switcher-icon">◉</span><span class="product-switcher-copy">مالی</span></a><form class="logout-form"><button><span class="logout-icon">⇥</span><span class="logout-label">خروج امن</span></button></form></div></aside>
-<div class="page-column"><header class="mobile-header">دنیش زندگی</header><main class="content-shell">محتوا</main><nav class="mobile-nav">ناوبری موبایل</nav></div></div>
+<div class="page-column"><header class="mobile-header">دنیش زندگی</header><main class="content-shell">محتوا</main><nav class="mobile-nav"><form class="mobile-logout-form"><button><span><svg viewBox="0 0 24 24"><path d="m16 17 5-5-5-5M21 12H9M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></svg></span><small>خروج</small></button></form></nav></div></div>
 <output id="result"></output><script>addEventListener('load', () => {
 const sidebar = document.querySelector('.sidebar'), nav = document.querySelector('.side-nav'), footer = document.querySelector('.sidebar-footer');
 document.querySelector('#result').textContent = JSON.stringify({ width: innerWidth, sidebarWidth: sidebar.getBoundingClientRect().width,
 sidebarDisplay: getComputedStyle(sidebar).display, labelDisplay: getComputedStyle(document.querySelector('.nav-label')).display,
 expandIconDisplay: getComputedStyle(document.querySelector('.sidebar-toggle-expand')).display,
+collapseIconDisplay: getComputedStyle(document.querySelector('.sidebar-toggle-collapse')).display,
+brandLogoDisplay: getComputedStyle(document.querySelector('.sidebar .life-brand-logo')).display,
+brandLogoWidth: document.querySelector('.sidebar .life-brand-logo').getBoundingClientRect().width,
+progressIconWidth: document.querySelector('.side-nav .nav-icon svg').getBoundingClientRect().width,
+mobileLogoutIconWidth: document.querySelector('.mobile-logout-form svg').getBoundingClientRect().width,
 footerBelowNav: footer.getBoundingClientRect().top >= nav.getBoundingClientRect().bottom,
 mobileNavDisplay: getComputedStyle(document.querySelector('.mobile-nav')).display });
 });</script></body></html>`;
@@ -113,8 +119,14 @@ test('sidebar uses a 64px icon rail and preserves the mobile navigation', { skip
     assert.equal(compact.sidebarWidth, 64);
     assert.equal(compact.labelDisplay, 'none');
     assert.notEqual(compact.expandIconDisplay, 'none');
+    assert.equal(compact.collapseIconDisplay, 'none');
+    assert.notEqual(wide.collapseIconDisplay, 'none');
+    assert.notEqual(compact.brandLogoDisplay, 'none');
+    assert.equal(compact.brandLogoWidth, wide.brandLogoWidth);
+    assert.ok(compact.progressIconWidth > 0);
     assert.equal(compact.footerBelowNav, true);
     assert.equal(mediumExpanded.sidebarWidth, 236);
     assert.equal(mobile.sidebarDisplay, 'none');
     assert.equal(mobile.mobileNavDisplay, 'grid');
+    assert.ok(mobile.mobileLogoutIconWidth > 0);
 });

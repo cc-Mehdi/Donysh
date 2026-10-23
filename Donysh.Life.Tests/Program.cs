@@ -140,6 +140,15 @@ using (var response = await client.GetAsync("/images/donysh-life-logo.png"))
         && response.Content.Headers.ContentType?.MediaType == "image/png");
 }
 
+using (var response = await client.GetAsync("/images/donysh-life-mark.svg"))
+{
+    var mark = await response.Content.ReadAsStringAsync();
+    Check("Life serves the shared sidebar brand mark",
+        response.StatusCode == HttpStatusCode.OK
+        && response.Content.Headers.ContentType?.MediaType == "image/svg+xml"
+        && mark.Contains("viewBox=\"0 0 256 256\"", StringComparison.Ordinal));
+}
+
 using (var response = await client.GetAsync("/images/today-mountains.webp"))
 {
     Check("Life serves the local Today illustration",
@@ -308,7 +317,16 @@ using (var authenticatedClient = authenticatedFactory.CreateClient(new WebApplic
         Check("Life activity management renders create and empty states",
             activitiesResponse.StatusCode == HttpStatusCode.OK
             && activitiesHtml.Contains("فعالیت تازه", StringComparison.Ordinal)
-            && activitiesHtml.Contains("هنوز فعالیتی نداری", StringComparison.Ordinal));
+            && activitiesHtml.Contains("هنوز فعالیتی نداری", StringComparison.Ordinal)
+            && activitiesHtml.Contains("<dialog id=\"activity-create-dialog\"", StringComparison.Ordinal)
+            && activitiesHtml.Contains("data-open-activity-dialog", StringComparison.Ordinal)
+            && activitiesHtml.Contains("activity-dialog.js", StringComparison.Ordinal));
+        Check("Life sidebar keeps one brand mark and visible local action icons",
+            Regex.Matches(activitiesHtml, "src=\"/images/donysh-life-mark.svg\"", RegexOptions.CultureInvariant).Count == 2
+            && activitiesHtml.Contains("class=\"sidebar-toggle-collapse\" viewBox=\"0 0 24 24\"", StringComparison.Ordinal)
+            && activitiesHtml.Contains("class=\"sidebar-toggle-expand\" viewBox=\"0 0 24 24\"", StringComparison.Ordinal)
+            && activitiesHtml.Contains("aria-label=\"پیشرفت\"", StringComparison.Ordinal)
+            && activitiesHtml.Contains("aria-label=\"خروج از حساب\"><span aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"", StringComparison.Ordinal));
         Check("Life activity creation offers visual color and icon choices",
             activitiesHtml.Contains("data-activity-appearance", StringComparison.Ordinal)
             && activitiesHtml.Contains("data-appearance-preview", StringComparison.Ordinal)
@@ -317,6 +335,23 @@ using (var authenticatedClient = authenticatedFactory.CreateClient(new WebApplic
             && activitiesHtml.Contains("/icons/activities.svg#dumbbell", StringComparison.Ordinal)
             && activitiesHtml.Contains("activity-appearance.js", StringComparison.Ordinal)
             && !activitiesHtml.Contains("style=", StringComparison.OrdinalIgnoreCase));
+
+        var activityAntiforgery = WebUtility.HtmlDecode(Regex.Match(
+            activitiesHtml, "name=\"__RequestVerificationToken\" type=\"hidden\" value=\"([^\"]+)\"").Groups[1].Value);
+        using var invalidActivityResponse = await authenticatedClient.PostAsync("/Activities?handler=Save",
+            new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["__RequestVerificationToken"] = activityAntiforgery,
+                ["Input.Title"] = "",
+                ["Input.WeeklyHours"] = "2",
+                ["Input.ColorHex"] = "#0d9488",
+                ["Input.IconKey"] = "activity"
+            }));
+        var invalidActivityHtml = await invalidActivityResponse.Content.ReadAsStringAsync();
+        Check("Life reopens the creation dialog after invalid activity input",
+            invalidActivityResponse.StatusCode == HttpStatusCode.OK
+            && invalidActivityHtml.Contains("id=\"activity-create-dialog\"", StringComparison.Ordinal)
+            && invalidActivityHtml.Contains("data-reopen=\"true\"", StringComparison.Ordinal));
     }
 
     using (var weekResponse = await authenticatedClient.GetAsync("/Week?day=Monday"))

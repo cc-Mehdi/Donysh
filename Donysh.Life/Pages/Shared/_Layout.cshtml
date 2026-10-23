@@ -34,12 +34,12 @@
         <aside id="life-sidebar" class="sidebar">
             <div class="sidebar-header">
                 <a class="brand life-brand" asp-page="/Index" aria-label="دُنیش زندگی، صفحهٔ اصلی" title="دُنیش زندگی">
-                    <img class="life-brand-logo" src="~/images/donysh-life-logo.png" alt="دنیش زندگی" width="176" height="176" />
-                    <svg class="life-brand-mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 4C12 4 5 7 5 15a5 5 0 0 0 5 5c8 0 11-7 10-16Z"/><path d="M5 20c3-6 7-9 13-12"/></svg>
+                    <img class="life-brand-logo" src="~/images/donysh-life-mark.svg" alt="" width="44" height="44" />
+                    <strong class="life-brand-name">دُنیش زندگی</strong>
                 </a>
                 <button type="button" class="sidebar-toggle" data-life-sidebar-toggle aria-controls="life-sidebar" aria-expanded="true" aria-label="جمع‌کردن سایدبار" title="جمع‌کردن سایدبار">
-                    <svg class="sidebar-toggle-collapse" aria-hidden="true"><use href="/icons/activities.svg#panel-right-close"></use></svg>
-                    <svg class="sidebar-toggle-expand" aria-hidden="true"><use href="/icons/activities.svg#panel-right-open"></use></svg>
+                    <svg class="sidebar-toggle-collapse" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M15 3v18m-7-12 3 3-3 3"/></svg>
+                    <svg class="sidebar-toggle-expand" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M15 3v18M10 9l-3 3 3 3"/></svg>
                 </button>
             </div>
             <p class="sidebar-caption">زمانت را آگاهانه زندگی کن</p>
@@ -48,7 +48,7 @@
                 <a class="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Activities" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Activities" ? "page" : null)" aria-label="فعالیت‌ها" title="فعالیت‌ها" asp-page="/Activities"><span class="nav-icon" aria-hidden="true"><svg><use href="/icons/activities.svg#circle"></use></svg></span><span class="nav-label">فعالیت‌ها</span></a>
                 <a class="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Week" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Week" ? "page" : null)" aria-label="برنامهٔ هفته" title="برنامهٔ هفته" asp-page="/Week"><span class="nav-icon" aria-hidden="true"><svg><use href="/icons/activities.svg#calendar-days"></use></svg></span><span class="nav-label">برنامهٔ هفته</span></a>
                 <a class="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Ai" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Ai" ? "page" : null)" aria-label="دستیار هوشمند" title="دستیار هوشمند" asp-page="/Ai"><span class="nav-icon" aria-hidden="true"><svg><use href="/icons/activities.svg#sparkles"></use></svg></span><span class="nav-label">دستیار هوشمند</span></a>
-                <a class="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Progress" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Progress" ? "page" : null)" aria-label="پیشرفت" title="پیشرفت" asp-page="/Progress"><span class="nav-icon" aria-hidden="true"><svg><use href="/icons/activities.svg#chart-no-axes-combined"></use></svg></span><span class="nav-label">پیشرفت</span></a>
+                <a class="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Progress" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Progress" ? "page" : null)" aria-label="پیشرفت" title="پیشرفت" asp-page="/Progress"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 3v18h18M7 17l4-5 3 2 5-7m-4 0h4v4"/></svg></span><span class="nav-label">پیشرفت</span></a>
             </nav>
             <div class="sidebar-footer">
                 <section class="account-card" aria-label="حساب واردشده">
@@ -71,13 +71,13 @@
                     <span class="product-switcher-arrow" aria-hidden="true">←</span>
                 </a>
                 <form method="post" asp-page="/Account/Logout" class="logout-form" data-native-submit data-logout-form>
-                    <button type="submit" aria-label="خروج امن" title="خروج امن"><span class="logout-icon" aria-hidden="true"><svg><use href="/icons/activities.svg#log-out"></use></svg></span><span class="logout-label">خروج امن</span></button>
+                    <button type="submit" aria-label="خروج امن" title="خروج امن"><span class="logout-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m16 17 5-5-5-5M21 12H9M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></svg></span><span class="logout-label">خروج امن</span></button>
                 </form>
             </div>
         </aside>
         <div class="page-column">
             <header class="mobile-header">
-                <a class="brand life-brand compact-brand" asp-page="/Index"><img class="life-brand-logo" src="~/images/donysh-life-logo.png" alt="دنیش زندگی" width="104" height="104" /></a>
+                <a class="brand life-brand compact-brand" asp-page="/Index" aria-label="دُنیش زندگی، صفحهٔ اصلی"><img class="life-brand-logo" src="~/images/donysh-life-mark.svg" alt="" width="40" height="40" /><strong class="life-brand-name">دُنیش زندگی</strong></a>
                 <div class="mobile-header-actions">
                     <span class="mobile-account" title="حساب واردشده: @accountName">
                         <span class="account-avatar" aria-hidden="true">@accountInitial</span>
@@ -97,9 +97,9 @@
                 <a class="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Activities" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Activities" ? "page" : null)" asp-page="/Activities"><span aria-hidden="true"><svg><use href="/icons/activities.svg#circle"></use></svg></span><small>فعالیت‌ها</small></a>
                 <a class="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Week" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Week" ? "page" : null)" asp-page="/Week"><span aria-hidden="true"><svg><use href="/icons/activities.svg#calendar-days"></use></svg></span><small>هفته</small></a>
                 <a class="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Ai" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Ai" ? "page" : null)" asp-page="/Ai"><span aria-hidden="true"><svg><use href="/icons/activities.svg#sparkles"></use></svg></span><small>دستیار</small></a>
-                <a class="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Progress" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Progress" ? "page" : null)" asp-page="/Progress"><span aria-hidden="true"><svg><use href="/icons/activities.svg#chart-no-axes-combined"></use></svg></span><small>پیشرفت</small></a>
+                <a class="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Progress" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Progress" ? "page" : null)" asp-page="/Progress"><span aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 3v18h18M7 17l4-5 3 2 5-7m-4 0h4v4"/></svg></span><small>پیشرفت</small></a>
                 <form method="post" asp-page="/Account/Logout" class="mobile-logout-form" data-native-submit data-logout-form>
-                    <button type="submit" aria-label="خروج از حساب"><span aria-hidden="true"><svg><use href="/icons/activities.svg#log-out"></use></svg></span><small>خروج</small></button>
+                    <button type="submit" aria-label="خروج از حساب"><span aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m16 17 5-5-5-5M21 12H9M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></svg></span><small>خروج</small></button>
                 </form>
             </nav>
         </div>

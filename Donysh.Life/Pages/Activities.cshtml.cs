@@ -12,6 +12,7 @@ public sealed class ActivitiesModel(LifeActivityService activities) : PageModel
 
     public IReadOnlyList<ActivityListItem> Items { get; private set; } = [];
     public string? CommandError { get; private set; }
+    public bool OpenCreateDialog { get; private set; }
 
     public async Task OnGetAsync(CancellationToken cancellationToken) => await LoadAsync(cancellationToken);
 
@@ -19,6 +20,7 @@ public sealed class ActivitiesModel(LifeActivityService activities) : PageModel
     {
         if (!ModelState.IsValid)
         {
+            OpenCreateDialog = ActivityId is null;
             await LoadAsync(cancellationToken);
             return Page();
         }
@@ -27,6 +29,7 @@ public sealed class ActivitiesModel(LifeActivityService activities) : PageModel
         if (!result.Succeeded)
         {
             CommandError = result.Message;
+            OpenCreateDialog = ActivityId is null;
             await LoadAsync(cancellationToken);
             return Page();
         }

@@ -7,29 +7,30 @@
 
 <section class="page-head compact">
     <div><p class="eyebrow">ساختن یک هفتهٔ واقعی</p><h1>فعالیت‌های من</h1><p>برای هر فعالیت یک رنگ، نماد و هدف زمانی هفتگی تعیین کن. فعالیت غیرفعال در جمع هدف هفته حساب نمی‌شود.</p></div>
-    <a class="button secondary" asp-page="/Setup" asp-route-step="2">انتخاب از پیشنهادها</a>
+    <div class="activity-page-actions"><button type="button" class="button primary" data-open-activity-dialog aria-haspopup="dialog" aria-controls="activity-create-dialog">+ افزودن فعالیت</button><a class="button secondary" asp-page="/Setup" asp-route-step="2">انتخاب از پیشنهادها</a></div>
 </section>
 
 @if (TempData["ActivityMessage"] is string message) { <div class="notice success" role="status">@message</div> }
-@if (!string.IsNullOrWhiteSpace(Model.CommandError)) { <div class="notice error" role="alert">@Model.CommandError</div> }
+@if (!string.IsNullOrWhiteSpace(Model.CommandError) && !Model.OpenCreateDialog) { <div class="notice error" role="alert">@Model.CommandError</div> }
 
-<section class="activity-layout">
-    <article class="panel create-activity-panel">
-        <div class="panel-head"><div><span class="section-icon">＋</span><h2>فعالیت تازه</h2></div></div>
+<dialog id="activity-create-dialog" class="activity-create-dialog" aria-labelledby="activity-create-title" data-reopen="@(Model.OpenCreateDialog ? "true" : "false")">
+    <div class="dialog-heading"><div><span class="section-icon">＋</span><div><h2 id="activity-create-title">فعالیت تازه</h2><p>رنگ، نماد و هدف هفتگی را تعیین کن.</p></div></div><button type="button" class="dialog-close" data-close-activity-dialog aria-label="بستن">×</button></div>
+        @if (!string.IsNullOrWhiteSpace(Model.CommandError) && Model.OpenCreateDialog) { <div class="notice error" role="alert">@Model.CommandError</div> }
         <form method="post" asp-page-handler="Save" class="activity-form">
-            @if (!ViewData.ModelState.IsValid)
+            @if (Model.OpenCreateDialog && !ViewData.ModelState.IsValid)
             {
                 <div class="validation-summary" role="alert"><ul>@foreach (var error in ViewData.ModelState.Values.SelectMany(entry => entry.Errors)) { <li>@error.ErrorMessage</li> }</ul></div>
             }
             <partial name="Shared/_ActivityFields" model="Model.Input" />
             <button class="button primary" type="submit">افزودن فعالیت</button>
         </form>
-    </article>
+</dialog>
 
+<section class="activity-layout">
     <section class="activity-list" aria-label="فهرست فعالیت‌ها">
         @if (Model.Items.Count == 0)
         {
-            <article class="panel empty-activity-list"><span class="empty-mark">◎</span><h2>هنوز فعالیتی نداری</h2><p>از فرم کنار صفحه یک فعالیت بساز یا از پیشنهادهای آماده شروع کن.</p></article>
+            <article class="panel empty-activity-list"><span class="empty-mark">◎</span><h2>هنوز فعالیتی نداری</h2><p>با دکمهٔ «افزودن فعالیت» یک فعالیت بساز یا از پیشنهادهای آماده شروع کن.</p><button type="button" class="button primary" data-open-activity-dialog>افزودن نخستین فعالیت</button></article>
         }
         @foreach (var item in Model.Items)
         {
@@ -60,4 +61,4 @@
     </section>
 </section>
 
-@section Scripts { <script src="~/js/activity-appearance.js" asp-append-version="true" defer></script> }
+@section Scripts { <script src="~/js/activity-appearance.js" asp-append-version="true" defer></script><script src="~/js/activity-dialog.js" asp-append-version="true" defer></script> }
