@@ -303,6 +303,14 @@ using (var authenticatedClient = authenticatedFactory.CreateClient(new WebApplic
         html.Contains("href=\"https://finance.test/\"", StringComparison.Ordinal)
         && html.Contains("دُنیش مالی", StringComparison.Ordinal)
         && html.Contains("رفتن به دُنیش مالی", StringComparison.Ordinal));
+    Check("Life Finance switchers show the Finance brand on desktop and mobile",
+        Regex.Matches(html, "src=\"/images/donysh-finance-logo.png\"", RegexOptions.CultureInvariant).Count == 2);
+    using (var financeLogoResponse = await authenticatedClient.GetAsync("/images/donysh-finance-logo.png"))
+    {
+        Check("Life serves the Finance brand locally",
+            financeLogoResponse.StatusCode == HttpStatusCode.OK
+            && financeLogoResponse.Content.Headers.ContentType?.MediaType == "image/png");
+    }
     Check("Life shell identifies the signed-in account",
         html.Contains("حساب واردشده", StringComparison.Ordinal)
         && decodedHtml.Contains("کاربر آزمایشی", StringComparison.Ordinal));

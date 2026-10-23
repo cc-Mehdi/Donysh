@@ -71,6 +71,29 @@ const chrome = [
     'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'
 ].find(path => path && existsSync(path));
 
+test('activity swatches keep distinct colors and scrollbars follow each theme', { skip: !chrome }, () => {
+    const temporary = mkdtempSync(join(tmpdir(), 'donysh-life-colors-'));
+    try {
+        const css = pathToFileURL(fileURLToPath(new URL('../wwwroot/css/app.css', import.meta.url))).href;
+        const fixture = `<!doctype html><html lang="fa" dir="rtl" data-life-theme="dark"><head><link rel="stylesheet" href="${css}"></head><body><aside class="sidebar">منو</aside><main><label class="color-option"><input type="radio" name="color" checked><span class="color-option-face activity-teal"></span></label><label class="color-option"><input type="radio" name="color"><span class="color-option-face activity-blue"></span></label><label class="color-option"><input type="radio" name="color"><span class="color-option-face activity-orange"></span></label></main><output id="result"></output><script>addEventListener('load',()=>{const swatches=[...document.querySelectorAll('.color-option-face')];const read=()=>({colors:swatches.map(s=>getComputedStyle(s).backgroundColor),pageScroll:getComputedStyle(document.documentElement).scrollbarColor,sidebarScroll:getComputedStyle(document.querySelector('.sidebar')).scrollbarColor});const dark=read();document.documentElement.dataset.lifeTheme='light';document.querySelector('#result').textContent=JSON.stringify({dark,light:read()})})</script></body></html>`;
+        const file = join(temporary, 'colors.html');
+        writeFileSync(file, fixture);
+        const result = spawnSync(chrome, ['--headless=new', '--disable-gpu', '--no-sandbox', '--disable-extensions',
+            `--user-data-dir=${join(temporary, 'profile')}`, '--virtual-time-budget=1000',
+            '--dump-dom', pathToFileURL(file).href], { encoding: 'utf8', timeout: 20000 });
+        assert.equal(result.status, 0, result.stderr);
+        const match = result.stdout.match(/<output id="result">([^<]+)<\/output>/);
+        assert.ok(match, result.stdout);
+        const actual = JSON.parse(match[1].replaceAll('&quot;', '"'));
+        assert.equal(new Set(actual.dark.colors).size, 3);
+        assert.deepEqual(actual.dark.colors, actual.light.colors);
+        assert.notEqual(actual.dark.pageScroll, actual.light.pageScroll);
+        assert.notEqual(actual.light.sidebarScroll, actual.light.pageScroll);
+    } finally {
+        rmSync(temporary, { recursive: true, force: true });
+    }
+});
+
 test('dark palette reaches the shell, content, form, calendar and account surfaces', { skip: !chrome }, () => {
     const temporary = mkdtempSync(join(tmpdir(), 'donysh-life-theme-'));
     try {
