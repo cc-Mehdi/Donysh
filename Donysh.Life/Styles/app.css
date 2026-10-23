@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @source "../Pages/**/*.cshtml";
+@source not "../scripts/test-life-sidebar.mjs";
 
 @font-face { font-family: YekanBakh; src: url('/fonts/YekanBakh-Regular.woff2') format('woff2'); font-weight: 400; font-display: swap; }
 @font-face { font-family: YekanBakh; src: url('/fonts/YekanBakh-SemiBold.woff2') format('woff2'); font-weight: 600; font-display: swap; }
@@ -14,9 +15,15 @@ button { font:inherit; }
 :focus-visible { outline:3px solid #ff806b; outline-offset:3px; }
 .skip-link { position:fixed; top:-5rem; right:1rem; z-index:50; background:#fff; padding:.75rem 1rem; border-radius:.75rem; }
 .skip-link:focus { top:1rem; }
-.app-shell { min-height:100vh; display:grid; grid-template-columns:17.5rem 1fr; }
-.sidebar { position:sticky; top:0; height:100vh; padding:1.1rem; overflow:hidden; background:linear-gradient(165deg,#123449 0%,#0d2536 58%,#0a202f 100%); border-left:1px solid #ffffff12; display:flex; flex-direction:column; box-shadow:-14px 0 45px #102a3a12; }
+.app-shell { min-height:100vh; display:grid; grid-template-columns:17.5rem minmax(0,1fr); }
+.sidebar { position:sticky; top:0; height:100vh; height:100dvh; padding:1.1rem; overflow-y:auto; scrollbar-width:thin; background:linear-gradient(165deg,#123449 0%,#0d2536 58%,#0a202f 100%); border-left:1px solid #ffffff12; display:flex; flex-direction:column; box-shadow:-14px 0 45px #102a3a12; }
 .sidebar::before { content:""; position:absolute; inset:auto -6rem -8rem auto; width:17rem; aspect-ratio:1; border-radius:50%; background:#10b7a625; filter:blur(2px); pointer-events:none; }
+.sidebar-header { display:flex; align-items:center; gap:.5rem; }
+.sidebar-header .life-brand { flex:1; min-width:0; }
+.sidebar-toggle { display:grid; place-items:center; flex:none; width:2.25rem; height:2.25rem; border:1px solid #ffffff50; border-radius:.7rem; color:#d4f2eb; background:#ffffff12; cursor:pointer; }
+.sidebar-toggle:hover { color:#fff; background:#ffffff25; }
+.sidebar-toggle svg { width:1.3rem; height:1.3rem; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+.sidebar-toggle-expand,.life-brand-mark { display:none; }
 .brand { display:flex; align-items:center; gap:.7rem; }
 .brand img { border-radius:.85rem; }
 .brand span { display:flex; align-items:baseline; gap:.4rem; }
@@ -29,10 +36,10 @@ button { font:inherit; }
 .compact-brand .life-brand-logo { width:6.7rem; max-height:3.3rem; margin:0; }
 .side-nav { display:grid; gap:.45rem; margin-top:1.55rem; }
 .side-nav a { display:flex; align-items:center; gap:.8rem; min-height:3.25rem; padding:.72rem .85rem; border:1px solid transparent; border-radius:1rem; color:#b9ccd3; font-weight:600; transition:background-color .18s ease,color .18s ease,transform .18s ease; }
-.side-nav a span { display:grid; place-items:center; width:2rem; height:2rem; border-radius:.68rem; color:#95b6be; background:#ffffff0a; font-size:1.1rem; }
+.side-nav a span:first-child { display:grid; place-items:center; flex:none; width:2rem; height:2rem; border-radius:.68rem; color:#95b6be; background:#ffffff0a; font-size:1.1rem; }
 .side-nav a:hover { color:#fff; background:#ffffff0b; transform:translateX(-2px); }
 .side-nav a.active { color:#0d3f47; border-color:#9fe9da; background:linear-gradient(135deg,#ecfff9,#c8f8ed); box-shadow:0 10px 25px #06192633; }
-.side-nav a.active span { color:#067c73; background:#ffffffa8; }
+.side-nav a.active span:first-child { color:#067c73; background:#ffffffa8; }
 .sidebar-footer { display:grid; gap:.75rem; margin-top:auto; }
 .account-card { position:relative; display:flex; align-items:center; gap:.65rem; min-width:0; padding:.75rem; border:1px solid #ffffff1a; border-radius:1.05rem; color:#fff; background:#ffffff0b; }
 .account-avatar { display:grid; place-items:center; flex:0 0 auto; width:2.35rem; height:2.35rem; border-radius:.82rem; color:#0b4f52; background:linear-gradient(145deg,#d5fff5,#8ce9d7); font-size:.9rem; font-weight:800; box-shadow:0 7px 18px #04151f42; }
@@ -55,6 +62,24 @@ button { font:inherit; }
 .product-switcher.compact svg { width:1rem; height:1rem; }
 .logout-form button { width:100%; border:1px solid #ffffff1a; background:#ffffff08; color:#bdd0d6; padding:.7rem; border-radius:.9rem; cursor:pointer; transition:background-color .16s ease,color .16s ease; }
 .logout-form button:hover { color:#fff; background:#ffffff12; }
+.logout-icon { display:none; font-size:1.35rem; line-height:1; }
+html[data-life-sidebar="collapsed"] .app-shell { grid-template-columns:4rem minmax(0,1fr); }
+html[data-life-sidebar="collapsed"] .sidebar { padding:.7rem .5rem; }
+html[data-life-sidebar="collapsed"] .sidebar-header { flex-direction:column; gap:.5rem; }
+html[data-life-sidebar="collapsed"] .sidebar-header .life-brand { flex:none; width:3rem; min-height:3rem; height:3rem; padding:0; border-radius:.9rem; }
+html[data-life-sidebar="collapsed"] .life-brand-logo,html[data-life-sidebar="collapsed"] .sidebar-caption,html[data-life-sidebar="collapsed"] .nav-label,html[data-life-sidebar="collapsed"] .account-copy,html[data-life-sidebar="collapsed"] .account-status,html[data-life-sidebar="collapsed"] .product-switcher-copy,html[data-life-sidebar="collapsed"] .product-switcher-arrow,html[data-life-sidebar="collapsed"] .logout-label,html[data-life-sidebar="collapsed"] .sidebar-toggle-collapse { display:none; }
+html[data-life-sidebar="collapsed"] .life-brand-mark { display:block; width:1.65rem; height:1.65rem; fill:none; stroke:#078c81; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+html[data-life-sidebar="collapsed"] .sidebar-toggle-expand { display:block; }
+html[data-life-sidebar="collapsed"] .sidebar-toggle { width:2.75rem; height:2.25rem; }
+html[data-life-sidebar="collapsed"] .side-nav { margin-top:1rem; gap:.35rem; }
+html[data-life-sidebar="collapsed"] .side-nav a { justify-content:center; width:2.75rem; min-height:2.75rem; height:2.75rem; padding:0; }
+html[data-life-sidebar="collapsed"] .side-nav a span:first-child { flex:none; }
+html[data-life-sidebar="collapsed"] .sidebar-footer { justify-items:center; gap:.55rem; }
+html[data-life-sidebar="collapsed"] .account-card { justify-content:center; width:2.75rem; height:2.75rem; padding:0; }
+html[data-life-sidebar="collapsed"] .account-avatar { width:2.1rem; height:2.1rem; }
+html[data-life-sidebar="collapsed"] .product-switcher { justify-content:center; width:2.75rem; height:2.75rem; padding:0; }
+html[data-life-sidebar="collapsed"] .logout-form button { display:grid; place-items:center; width:2.75rem; height:2.75rem; padding:0; }
+html[data-life-sidebar="collapsed"] .logout-icon { display:block; }
 .page-column { min-width:0; }
 .content-shell { width:min(1180px, 100%); margin:auto; padding:3rem clamp(1.25rem,4vw,3.5rem) 5rem; }
 .mobile-header,.mobile-nav { display:none; }
@@ -411,7 +436,7 @@ progress::-moz-progress-bar { border-radius:999px; background:var(--progress-val
 .daily-progress-item progress { --progress-value:var(--life); height:.38rem; }
 .manual-source { display:block; margin-top:.45rem; color:#6b7b77; font-size:.58rem; }
 @media (max-width:900px) {
-  .app-shell { display:block; }
+  .app-shell,html[data-life-sidebar="collapsed"] .app-shell { display:block; }
   .sidebar { display:none; }
   .mobile-header { display:flex; position:sticky; top:0; z-index:20; justify-content:space-between; align-items:center; gap:.75rem; min-height:4.35rem; padding:.6rem 1rem; background:#fffffff2; backdrop-filter:blur(18px) saturate(140%); border-bottom:1px solid var(--line); box-shadow:0 8px 28px #102a3a0a; }
   .mobile-header-actions { display:flex; align-items:center; gap:.5rem; min-width:0; }
