@@ -813,3 +813,103 @@ html[data-life-sidebar="collapsed"] .logout-icon { display:grid; place-items:cen
 .calendar-export-link:hover { text-decoration:underline; }
 .calendar-reminder-help { margin:.3rem 0 .8rem; color:#728580; font-size:.68rem; line-height:1.7; }
 @media (max-width:900px) { .life-reminder-toast { bottom:5rem; } .calendar-reminder-button { justify-content:center; width:2.7rem; min-height:2.7rem; padding:.55rem; } .calendar-reminder-button span { display:none; } }
+
+/* The Life theme is shared by the authenticated shell and the account pages. */
+.theme-toggle { display:flex; align-items:center; justify-content:center; gap:.55rem; width:100%; min-height:2.75rem; padding:.55rem .7rem; border:1px solid #dce9e9; border-radius:.85rem; background:#f7fbfb; color:#315c69; cursor:pointer; font-size:.78rem; font-weight:800; }
+.theme-toggle:hover { border-color:#80cfc6; background:#ecf8f5; }
+.theme-toggle svg { flex:none; width:1.2rem; height:1.2rem; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.theme-toggle .theme-sun { display:none; }
+html[data-life-theme="dark"] .theme-toggle .theme-moon { display:none; }
+html[data-life-theme="dark"] .theme-toggle .theme-sun { display:block; }
+html[data-life-sidebar="collapsed"] .sidebar .theme-toggle { width:2.75rem; padding:0; }
+html[data-life-sidebar="collapsed"] .sidebar .theme-toggle-label { display:none; }
+.theme-toggle.compact { flex:none; width:2.45rem; min-height:2.45rem; padding:0; }
+.auth-theme-toggle { position:fixed; z-index:2; top:1rem; left:1rem; width:auto; padding-inline:.85rem; }
+@media (max-width:440px) { .mobile-header .theme-toggle.compact { width:2.2rem; min-height:2.2rem; } .mobile-header .mobile-account { max-width:none; padding:.2rem; } .mobile-header .mobile-account strong { display:none; } }
+
+html[data-life-theme="dark"] { color-scheme:dark; --life:#2dc9b7; --life-deep:#78e6d6; --life-dark:#edf6f7; --mint:#183b40; --canvas:#0b1523; --line:#304456; --sidebar:#101e30; background:#0b1523; color:#edf6f7; }
+html[data-life-theme="dark"] body { color:#edf6f7; background:radial-gradient(circle at 92% 2%,#125b5736,transparent 27rem),linear-gradient(#ffffff04 1px,transparent 1px),linear-gradient(90deg,#ffffff04 1px,transparent 1px),#0b1523; background-size:auto,3.5rem 3.5rem,3.5rem 3.5rem,auto; }
+html[data-life-theme="dark"] :is(.sidebar,.mobile-header,.mobile-nav) { border-color:#304456; background:#101d2e; box-shadow:none; }
+html[data-life-theme="dark"] :is(.life-brand-name,.mobile-account strong) { color:#eef6f8; }
+html[data-life-theme="dark"] :is(.sidebar-caption,.account-copy small,.account-copy>span) { color:#a1b6be; }
+html[data-life-theme="dark"] :is(.side-nav a,.mobile-nav a,.mobile-nav button) { color:#b4c5d0; }
+html[data-life-theme="dark"] .side-nav a span:first-child { color:#a8bdc9; background:#203449; }
+html[data-life-theme="dark"] .side-nav a:hover { color:#e8fffb; background:#203d48; }
+html[data-life-theme="dark"] .side-nav a.active { color:#b4fff0; border-color:#176c67; background:#164146; }
+html[data-life-theme="dark"] .side-nav a.active span:first-child { color:#68e7d1; background:#205b59; }
+html[data-life-theme="dark"] .mobile-nav a.active { color:#71e8d7; }
+html[data-life-theme="dark"] :is(.sidebar-toggle,.theme-toggle,.logout-form button,.mobile-account,.account-card,.product-switcher) { color:#d1e1e8; border-color:#345066; background:#1a2d42; }
+html[data-life-theme="dark"] :is(.sidebar-toggle,.theme-toggle,.logout-form button,.product-switcher):hover { color:#baffee; border-color:#4f9a94; background:#254658; }
+html[data-life-theme="dark"] .product-switcher-icon { color:#b4baff; background:#303960; }
+html[data-life-theme="dark"] .product-switcher-copy small { color:#b0b7ef; }
+html[data-life-theme="dark"] .product-switcher-arrow { color:#b0b7ef; }
+html[data-life-theme="dark"] .account-avatar { color:#12363b; box-shadow:none; }
+html[data-life-theme="dark"] .sidebar-footer { border-color:#304456; }
+html[data-life-theme="dark"][data-life-sidebar="collapsed"] .sidebar-header .life-brand { background:#1a2d42; }
+
+html[data-life-theme="dark"] :is(.panel,.metric-card:not(.primary):not(.progress-primary),.auth-card,.activity-card,.template-card,.plan-summary,.calendar-insights,.calendar-board,.calendar-dialog,.scope-dialog,.activity-create-dialog,.block-popover,.progress-activity,.today-stat,.today-dashboard .panel,.daily-progress-item,.mobile-day-timeline) { color:#edf6f7; border-color:#304456; background:#142437; box-shadow:0 10px 28px #030b1580; }
+html[data-life-theme="dark"] :is(.actual-entry,.view-switcher,.calendar-today,.calendar-arrow,.calendar-day-tabs a,.mobile-day-tabs a,.selection-action,.icon-option-face,.appearance-preview,.outcome-choice,.progress-number-grid div,.today-week-day,.today-empty-inline,.ai-slot) { color:#e0edf0; border-color:#344d61; background:#1b3045; }
+html[data-life-theme="dark"] :is(.activity-appearance,.ai-prompt-box,.ai-apply-bar,.setup-selection-bar,.progress-insight,.tracking-card,.today-week-progress,.ai-count,.progress-number-grid div,.report-note,.outcome-summary-list .unrecorded) { color:#e0edf0; border-color:#345667; background:#1c3447; }
+html[data-life-theme="dark"] :is(.field input,.field select,.goal-input input,.tracking-card .field input,.ai-upload-form textarea) { color:#f2faf9; border-color:#466175; background:#101f30; }
+html[data-life-theme="dark"] :is(.field input,.field select,.goal-input input,.ai-upload-form textarea)::placeholder { color:#93a9b5; opacity:1; }
+html[data-life-theme="dark"] :is(.field,.appearance-heading h3,.appearance-fieldset legend,.activity-title-row h2,.progress-number-grid dd,.today-stat strong,.today-section-heading h2,.today-agenda-copy strong,.today-week-day strong,.today-progress-row strong,.today-hero h1,.ai-prompt-box pre) { color:#edf6f7; }
+html[data-life-theme="dark"] :is(.page-head p:not(.eyebrow),.auth-card p,.setup-card>p:not(.eyebrow),.setup-list-head p:not(.eyebrow),.setup-benefits li,.empty-state p,.empty-activity-list p,.progress-empty p,.schedule-prerequisite p,.section-heading p,.panel-head small,.metric-card span,.metric-card small,.activity-summary p,.activity-actions summary,.template-choice small,.goal-input,.plan-summary>div span,.form-hint,.calendar-insights>summary,.calendar-range,.appearance-heading p,.appearance-preview small,.color-option-name,.field span small,.progress-activity-title small,.remaining-note,.outcome-summary-list dt,.report-note,.manual-source,.ai-privacy,.ai-activity-toggle small,.ai-or,.today-hero p,.today-section-heading p,.today-agenda-copy small,.today-week-day,.today-progress-row,.today-progress-foot,.today-empty-inline p,.calendar-reminder-help) { color:#aec0c9; }
+html[data-life-theme="dark"] :is(.text-link,.text-button,.calendar-insights>summary strong,.setup-selection-bar strong,.today-panel-link,.today-section-heading>a,.today-progress-foot a,.calendar-export-link) { color:#79e5d6; }
+html[data-life-theme="dark"] :is(.button.secondary,.button.disabled,.week-chip,.status-dot,.tag,.duration-pill,.activity-state,.selected-day-head>span,.mobile-empty>span,.empty-mark,.placeholder-icon,.section-icon,.dialog-icon,.ai-step-number,.today-kicker) { color:#9af5e6; border-color:#34746d; background:#1a4549; }
+html[data-life-theme="dark"] :is(.button.primary,.view-switcher a.active,.calendar-days-header a.today span) { color:#fff; background:#0f8078; }
+html[data-life-theme="dark"] :is(.notice.success,.ai-apply-bar) { color:#baf9ed; border-color:#28766c; background:#153d3c; }
+html[data-life-theme="dark"] .notice.error { color:#ffc0b7; border-color:#8e403d; background:#402529; }
+html[data-life-theme="dark"] :is(.dialog-close,.appearance-preview,.color-option-face,.icon-option input:checked+.icon-option-face,.template-check,.stepper span,.setup-hero-icon,.today-heading-icon,.today-agenda-icon) { border-color:#3b6067; background:#254758; }
+html[data-life-theme="dark"] :is(.appearance-preview strong,.color-option input:checked~.color-option-name,.selected-day-head small) { color:#dfefef; }
+html[data-life-theme="dark"] .stepper .active span { color:#0b282b; background:#44d6c2; }
+html[data-life-theme="dark"] .stepper .complete span { color:#8ef1df; background:#24534e; }
+html[data-life-theme="dark"] .setup-selection-bar p { color:#c4d5d6; }
+html[data-life-theme="dark"] .template-card.selected { background:#1c3546; }
+html[data-life-theme="dark"] .activity-icon { color:color-mix(in srgb,var(--activity-color) 64%,white); background:color-mix(in srgb,var(--activity-color) 22%,#1b3045); }
+html[data-life-theme="dark"] :is(.progress-percent,.coverage-badge,.block-reminder,.ai-copy-status) { color:color-mix(in srgb,var(--activity-color,var(--life)) 65%,white); }
+html[data-life-theme="dark"] .readiness-list li>span { color:#ffc5b8; background:#482e33; }
+html[data-life-theme="dark"] :is(.actual-entry[open]>summary,.activity-actions[open] summary,.progress-activity[open]>summary,.calendar-days-header>a:hover) { color:#e5f2f2; background:#1d3549; }
+html[data-life-theme="dark"] :is(.actual-entry-main small,.actual-note,.readiness-list small,.progress-insight p,.section-heading p,.daily-progress-item dt,.today-stat span,.today-stat small,.today-agenda-time small,.today-capture-more summary) { color:#acc0ca; }
+html[data-life-theme="dark"] :is(.progress-insight>span,.today-heading-icon.mint,.today-heading-icon.blue,.today-heading-icon.violet,.today-heading-icon.coral) { color:#91f0df; background:#245566; }
+html[data-life-theme="dark"] :is(.progress-primary,.metric-card.primary) { color:#f2fffd; border-color:#33897e; background:linear-gradient(145deg,#087b76,#145f68); }
+
+html[data-life-theme="dark"] :is(.calendar-corner,.calendar-days-header,.calendar-time-gutter,.calendar-day-column) { color:#e5f0f1; border-color:#304456; background:#17283b; }
+html[data-life-theme="dark"] .calendar-day-column.friday { background:#211f32; }
+html[data-life-theme="dark"] :is(.calendar-days-header>a,.calendar-slot) { border-color:#304456; }
+html[data-life-theme="dark"] .calendar-slot.half-hour { border-color:#23384a; }
+html[data-life-theme="dark"] :is(.calendar-days-header>a,.calendar-time-gutter span,.calendar-days-header small) { color:#b6cbd3; }
+html[data-life-theme="dark"] .calendar-days-header span { color:#d9e8ed; background:#294358; }
+html[data-life-theme="dark"] :is(.calendar-days-header>a.today,.calendar-day-tabs a.today,.mobile-day-tabs a.active) { color:#b6fff2; border-color:#359b8d; background:#194b4b; }
+html[data-life-theme="dark"] .calendar-days-header>a.friday { color:#ffb9aa; background:#2d2532; }
+html[data-life-theme="dark"] .calendar-days-header a.today small { color:#b6fff2; }
+html[data-life-theme="dark"] .calendar-day-tabs a.active:not(.today) { color:#bdd4ff; background:#253754; border-color:#5876a8; }
+html[data-life-theme="dark"] .calendar-slot.drop-target,html[data-life-theme="dark"] .calendar-slot.selected { background:#20514f; }
+html[data-life-theme="dark"] .schedule-block { border-color:color-mix(in srgb,var(--activity-color) 52%,#263d4c); border-right-color:var(--activity-color); background:linear-gradient(125deg,color-mix(in srgb,var(--activity-color) 26%,#17283b),color-mix(in srgb,var(--activity-color) 13%,#17283b)); box-shadow:inset 0 1px #ffffff25,0 5px 15px #030b1580; }
+html[data-life-theme="dark"] .schedule-block :is(.block-main strong,.block-time,.block-main small) { color:#f3faf9; }
+html[data-life-theme="dark"] :is(.block-icon,.block-actions) { color:#d8f7ef; border-color:#4d6874; background:#20384a; }
+html[data-life-theme="dark"] .outcome-choice span { background:#294358; }
+html[data-life-theme="dark"] .outcome-completed { color:#9cf2ce; background:#174637; }
+html[data-life-theme="dark"] .outcome-missed { color:#ffb7ab; background:#4d2b30; }
+html[data-life-theme="dark"] .outcome-partial { color:#ffdf9c; background:#4a3c28; }
+html[data-life-theme="dark"] .outcome-moved { color:#b5cbff; background:#26395b; }
+html[data-life-theme="dark"] .daily-progress-item.today { background:#20504b; border-color:#319e8e; }
+html[data-life-theme="dark"] .daily-progress-item header small { color:#b3c6cf; }
+html[data-life-theme="dark"] .daily-progress-item header>span { color:#9df0da; background:#24544e; }
+html[data-life-theme="dark"] .progress-number-grid dt { color:#a6bac5; }
+html[data-life-theme="dark"] :is(.calendar-dialog,.scope-dialog,.activity-create-dialog) { color:#edf6f7; }
+html[data-life-theme="dark"] .dialog-heading p,html[data-life-theme="dark"] .scope-dialog p { color:#afc2c9; }
+html[data-life-theme="dark"] .auth-card>.auth-life-logo { background:#f8fbff; border-radius:1.1rem; padding:.3rem; }
+
+html[data-life-theme="dark"] .today-hero { border-color:#33546a; background-image:linear-gradient(90deg,#0b1928d9 0%,#0e2235d9 72%,#102638e6 100%),url('/images/today-mountains.webp'); }
+html[data-life-theme="dark"] .today-agenda-item { border-color:color-mix(in srgb,var(--activity-color) 40%,#294457); border-right-color:var(--activity-color); background:color-mix(in srgb,var(--activity-color) 14%,#17283b); }
+html[data-life-theme="dark"] .today-agenda-time { color:#e2f0f2; }
+html[data-life-theme="dark"] .today-week-day.today { color:#abfff0; border-color:#329f91; background:#1d5150; }
+html[data-life-theme="dark"] .today-week-day.today strong { color:#d7fff6; }
+html[data-life-theme="dark"] .today-ring-track { stroke:#325262; }
+html[data-life-theme="dark"] .today-week-progress progress,html[data-life-theme="dark"] .today-week-progress progress::-webkit-progress-bar { background:#2b4855; }
+html[data-life-theme="dark"] :is(.today-stat-progress strong,.today-progress-foot a) { color:#78e8d5; }
+html[data-life-theme="dark"] .life-reminder-toast { color:#e6f7f3; border-color:#398579; background:#173f42; }
+html[data-life-theme="dark"] .life-reminder-toast span { color:#c0d7d4; }
+html[data-life-theme="dark"] .ai-prompt-box pre { color:#e6f3f1; }
+html[data-life-theme="dark"] .ai-count { color:#a2f3de; }
+html[data-life-theme="dark"] .ai-step-number { color:#a2f3de; }

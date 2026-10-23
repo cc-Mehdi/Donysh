@@ -62,7 +62,10 @@ using (var response = await client.GetAsync("/Account/Login"))
         && html.Contains("lang=\"fa\"", StringComparison.Ordinal)
         && html.Contains("dir=\"rtl\"", StringComparison.Ordinal)
         && html.Contains("همان حسابی که در دُنیش مالی داری", StringComparison.Ordinal)
-        && html.Contains("rel=\"icon\" type=\"image/png\" href=\"/images/donysh-life-logo.png\"", StringComparison.Ordinal)
+        && html.Contains("rel=\"icon\" type=\"image/png\" href=\"/images/donysh-life-icon.png\"", StringComparison.Ordinal)
+        && html.Contains("src=\"/images/donysh-life-logo.png\"", StringComparison.Ordinal)
+        && html.Contains("data-life-theme-toggle", StringComparison.Ordinal)
+        && html.Contains("life-theme.js", StringComparison.Ordinal)
         && html.Contains("rel=\"preload\"", StringComparison.Ordinal)
         && html.Contains("interaction-feedback", StringComparison.Ordinal));
     Check("Life security headers allow only same-origin scripts and block framing",
@@ -78,6 +81,17 @@ using (var response = await client.GetAsync("/Account/Login"))
         && resourcePolicy.Single() == "same-origin"
         && response.Headers.TryGetValues("X-Permitted-Cross-Domain-Policies", out var crossDomain)
         && crossDomain.Single() == "none");
+}
+
+foreach (var path in new[] { "/Account/SignedOut", "/Account/AccessDenied" })
+{
+    using var response = await client.GetAsync(path);
+    var html = await response.Content.ReadAsStringAsync();
+    Check($"Life account page shares the logo and theme control on {path}",
+        response.StatusCode == HttpStatusCode.OK
+        && html.Contains("/images/donysh-life-icon.png", StringComparison.Ordinal)
+        && html.Contains("life-theme.js", StringComparison.Ordinal)
+        && html.Contains("data-life-theme-toggle", StringComparison.Ordinal));
 }
 
 using (var response = await client.GetAsync("/Account/SessionStatus"))
@@ -140,13 +154,11 @@ using (var response = await client.GetAsync("/images/donysh-life-logo.png"))
         && response.Content.Headers.ContentType?.MediaType == "image/png");
 }
 
-using (var response = await client.GetAsync("/images/donysh-life-mark.svg"))
+using (var response = await client.GetAsync("/images/donysh-life-icon.png"))
 {
-    var mark = await response.Content.ReadAsStringAsync();
-    Check("Life serves the shared sidebar brand mark",
+    Check("Life serves the new Life symbol locally",
         response.StatusCode == HttpStatusCode.OK
-        && response.Content.Headers.ContentType?.MediaType == "image/svg+xml"
-        && mark.Contains("viewBox=\"0 0 256 256\"", StringComparison.Ordinal));
+        && response.Content.Headers.ContentType?.MediaType == "image/png");
 }
 
 using (var response = await client.GetAsync("/images/today-mountains.webp"))
@@ -174,6 +186,16 @@ using (var response = await client.GetAsync("/js/life-reminders.js"))
     Check("Life reminder runner is served locally",
         response.StatusCode == HttpStatusCode.OK
         && response.Content.Headers.ContentType?.MediaType is "text/javascript" or "application/javascript");
+}
+
+using (var response = await client.GetAsync("/js/life-theme.js"))
+{
+    var script = await response.Content.ReadAsStringAsync();
+    Check("Life theme preference script is served locally",
+        response.StatusCode == HttpStatusCode.OK
+        && response.Content.Headers.ContentType?.MediaType is "text/javascript" or "application/javascript"
+        && script.Contains("prefers-color-scheme: dark", StringComparison.Ordinal)
+        && script.Contains("donysh-life-theme", StringComparison.Ordinal));
 }
 
 using (var response = await client.GetAsync("/life-reminder-worker.js"))
@@ -234,8 +256,9 @@ using (var authenticatedClient = authenticatedFactory.CreateClient(new WebApplic
     var decodedHtml = WebUtility.HtmlDecode(html);
     Check("Authenticated Life dashboard renders its initial shell",
         response.StatusCode == HttpStatusCode.OK
-        && html.Contains("/images/donysh-life-logo.png", StringComparison.Ordinal)
-        && html.Contains("rel=\"icon\" type=\"image/png\" href=\"/images/donysh-life-logo.png\"", StringComparison.Ordinal)
+        && html.Contains("/images/donysh-life-icon.png", StringComparison.Ordinal)
+        && html.Contains("rel=\"icon\" type=\"image/png\" href=\"/images/donysh-life-icon.png\"", StringComparison.Ordinal)
+        && Regex.Matches(html, "data-life-theme-toggle", RegexOptions.CultureInvariant).Count == 2
         && html.Contains("id=\"today-title\"", StringComparison.Ordinal)
         && html.Contains("برنامهٔ هفته", StringComparison.Ordinal)
         && html.Contains("فعالیت‌های فعال", StringComparison.Ordinal)
@@ -252,6 +275,8 @@ using (var authenticatedClient = authenticatedFactory.CreateClient(new WebApplic
             && pageHtml.Contains("id=\"life-sidebar\"", StringComparison.Ordinal)
             && pageHtml.Contains("/icons/activities.svg#calendar-days", StringComparison.Ordinal)
             && pageHtml.Contains("data-life-sidebar-toggle", StringComparison.Ordinal)
+            && pageHtml.Contains("life-theme.js", StringComparison.Ordinal)
+            && Regex.Matches(pageHtml, "data-life-theme-toggle", RegexOptions.CultureInvariant).Count == 2
             && pageHtml.Contains("class=\"mobile-nav\"", StringComparison.Ordinal));
     }
     Check("Authenticated Life shell monitors cross-product logout",
@@ -322,7 +347,7 @@ using (var authenticatedClient = authenticatedFactory.CreateClient(new WebApplic
             && activitiesHtml.Contains("data-open-activity-dialog", StringComparison.Ordinal)
             && activitiesHtml.Contains("activity-dialog.js", StringComparison.Ordinal));
         Check("Life sidebar keeps one brand mark and visible local action icons",
-            Regex.Matches(activitiesHtml, "src=\"/images/donysh-life-mark.svg\"", RegexOptions.CultureInvariant).Count == 2
+            Regex.Matches(activitiesHtml, "src=\"/images/donysh-life-icon.png\"", RegexOptions.CultureInvariant).Count == 2
             && activitiesHtml.Contains("class=\"sidebar-toggle-collapse\" viewBox=\"0 0 24 24\"", StringComparison.Ordinal)
             && activitiesHtml.Contains("class=\"sidebar-toggle-expand\" viewBox=\"0 0 24 24\"", StringComparison.Ordinal)
             && activitiesHtml.Contains("aria-label=\"پیشرفت\"", StringComparison.Ordinal)

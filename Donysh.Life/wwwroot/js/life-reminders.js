@@ -64,10 +64,10 @@
             try {
                 const registration = await worker();
                 if (registration) {
-                    await registration.showNotification("یادآور دنیش زندگی", { body: message, tag: item.id, icon: "/images/donysh-life-logo.png" });
+                    await registration.showNotification("یادآور دنیش زندگی", { body: message, tag: item.id, icon: "/images/donysh-life-icon.png" });
                     return true;
                 }
-                const notification = new Notification("یادآور دنیش زندگی", { body: message, tag: item.id, icon: "/images/donysh-life-logo.png" });
+                const notification = new Notification("یادآور دنیش زندگی", { body: message, tag: item.id, icon: "/images/donysh-life-icon.png" });
                 notification.onclick = () => { window.focus(); window.location.href = "/Week"; };
                 return true;
             } catch { /* Some mobile browsers only support service-worker notifications. */ }

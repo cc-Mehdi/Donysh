@@ -6,6 +6,7 @@
     "build:css": "npm run build:icons && tailwindcss -i ./Styles/app.css -o ./wwwroot/css/app.css --minify",
     "build:icons": "node ./scripts/build-activity-icons.mjs",
     "test:sidebar": "node --test ./scripts/test-life-sidebar.mjs",
+    "test:theme": "node --test ./scripts/test-life-theme.mjs",
     "test:calendar": "node --test ./scripts/test-week-calendar.mjs"
   },
   "devDependencies": {

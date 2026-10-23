@@ -22,10 +22,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#0d9488" />
     <title>@ViewData["Title"] | دُنیش زندگی</title>
-    <link rel="icon" type="image/png" href="~/images/donysh-life-logo.png" />
-    <link rel="apple-touch-icon" href="~/images/donysh-life-logo.png" />
+    <link rel="icon" type="image/png" href="~/images/donysh-life-icon.png" />
+    <link rel="apple-touch-icon" href="~/images/donysh-life-icon.png" />
     <link rel="preload" href="~/fonts/YekanBakh-Regular.woff2" as="font" type="font/woff2" crossorigin />
     <script src="~/js/life-sidebar.js" asp-append-version="true"></script>
+    <script src="~/js/life-theme.js" asp-append-version="true"></script>
     <link rel="stylesheet" href="~/css/app.css" asp-append-version="true" />
 </head>
 <body>
@@ -34,7 +35,7 @@
         <aside id="life-sidebar" class="sidebar">
             <div class="sidebar-header">
                 <a class="brand life-brand" asp-page="/Index" aria-label="دُنیش زندگی، صفحهٔ اصلی" title="دُنیش زندگی">
-                    <img class="life-brand-logo" src="~/images/donysh-life-mark.svg" alt="" width="44" height="44" />
+                    <img class="life-brand-logo" src="~/images/donysh-life-icon.png" alt="" width="44" height="44" />
                     <strong class="life-brand-name">دُنیش زندگی</strong>
                 </a>
                 <button type="button" class="sidebar-toggle" data-life-sidebar-toggle aria-controls="life-sidebar" aria-expanded="true" aria-label="جمع‌کردن سایدبار" title="جمع‌کردن سایدبار">
@@ -70,6 +71,7 @@
                     <span class="product-switcher-copy"><small>بودجه و مخارج</small><strong>دُنیش مالی</strong></span>
                     <span class="product-switcher-arrow" aria-hidden="true">←</span>
                 </a>
+                <button type="button" class="theme-toggle" data-life-theme-toggle aria-label="فعال کردن حالت تیره" aria-pressed="false" title="حالت تیره"><svg class="theme-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.3A8.5 8.5 0 0 1 9.7 3.5 8.5 8.5 0 1 0 20.5 14.3Z"/></svg><svg class="theme-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg><span class="theme-toggle-label">حالت تیره</span></button>
                 <form method="post" asp-page="/Account/Logout" class="logout-form" data-native-submit data-logout-form>
                     <button type="submit" aria-label="خروج امن" title="خروج امن"><span class="logout-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m16 17 5-5-5-5M21 12H9M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></svg></span><span class="logout-label">خروج امن</span></button>
                 </form>
@@ -77,8 +79,9 @@
         </aside>
         <div class="page-column">
             <header class="mobile-header">
-                <a class="brand life-brand compact-brand" asp-page="/Index" aria-label="دُنیش زندگی، صفحهٔ اصلی"><img class="life-brand-logo" src="~/images/donysh-life-mark.svg" alt="" width="40" height="40" /><strong class="life-brand-name">دُنیش زندگی</strong></a>
+                <a class="brand life-brand compact-brand" asp-page="/Index" aria-label="دُنیش زندگی، صفحهٔ اصلی"><img class="life-brand-logo" src="~/images/donysh-life-icon.png" alt="" width="40" height="40" /><strong class="life-brand-name">دُنیش زندگی</strong></a>
                 <div class="mobile-header-actions">
+                    <button type="button" class="theme-toggle compact" data-life-theme-toggle aria-label="فعال کردن حالت تیره" aria-pressed="false" title="حالت تیره"><svg class="theme-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.3A8.5 8.5 0 0 1 9.7 3.5 8.5 8.5 0 1 0 20.5 14.3Z"/></svg><svg class="theme-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg></button>
                     <span class="mobile-account" title="حساب واردشده: @accountName">
                         <span class="account-avatar" aria-hidden="true">@accountInitial</span>
                         <strong>@accountName</strong>

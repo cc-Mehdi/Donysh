@@ -71,7 +71,7 @@ const chrome = [
     '/usr/bin/chromium'
 ].find((path) => path && existsSync(path));
 const css = pathToFileURL(fileURLToPath(new URL('../wwwroot/css/app.css', import.meta.url))).href;
-const mark = pathToFileURL(fileURLToPath(new URL('../wwwroot/images/donysh-life-mark.svg', import.meta.url))).href;
+const mark = pathToFileURL(fileURLToPath(new URL('../wwwroot/images/donysh-life-icon.png', import.meta.url))).href;
 const fixture = `<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><link rel="stylesheet" href="${css}"><script>
 document.documentElement.dataset.lifeSidebar = new URLSearchParams(location.search).get('state');</script></head><body>
 <div class="app-shell"><aside class="sidebar"><div class="sidebar-header"><a class="brand life-brand"><img class="life-brand-logo" src="${mark}" width="44" height="44"><strong class="life-brand-name">دُنیش زندگی</strong></a><button class="sidebar-toggle"><svg class="sidebar-toggle-collapse" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M15 3v18m-7-12 3 3-3 3"/></svg><svg class="sidebar-toggle-expand" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M15 3v18M10 9l-3 3 3 3"/></svg></button></div>
