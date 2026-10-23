@@ -155,7 +155,7 @@
 
                     @if (!row.IsPaid || row.Obligation.Type == RecurringObligationType.FixedMonthlyExpense)
                     {
-                        <div class="mt-3 rounded-2xl @(row.IsOverdue ? "bg-rose-50" : row.IsDueSoon ? "bg-amber-50" : "bg-indigo-50/60") p-4">
+                        <div class="finance-obligation-payment mt-3 rounded-2xl @(row.IsOverdue ? "bg-rose-50" : row.IsDueSoon ? "bg-amber-50" : "bg-indigo-50/60") p-4">
                             @if (row.IsOverdue)
                             {
                                 <p class="mb-3 text-sm font-bold text-rose-700">این پرداخت از سررسید گذشته و هنوز ثبت نشده است.</p>

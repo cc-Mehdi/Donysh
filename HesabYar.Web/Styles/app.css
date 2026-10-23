@@ -994,3 +994,41 @@ html[data-finance-theme="dark"] .obligation-dialog-heading { border-color:#35456
 html[data-finance-theme="dark"] .obligation-dialog-close { border-color:#40506b; color:#d5e0f6; background:#233653; }
 html[data-finance-theme="dark"] .obligation-dialog [data-obligation-duration] { background:#233653; }
 html[data-finance-theme="dark"] .obligation-dialog [data-obligation-duration] p { color:#becbff; }
+
+/* Keep Finance data, alerts, and forms legible on the dark surface. */
+.sidebar-workspace-label { display:block; margin:0 4px 3px; color:#7986a4; font-size:10px; font-weight:700; letter-spacing:.01em; }
+.finance-alert-button { transition:background-color .2s,border-color .2s,color .2s; }
+.finance-alert-button .lucide-icon { width:19px; height:19px; }
+.finance-alert-button:hover { background:#fef3c7; border-color:#fbbf24; color:#92400e; }
+.finance-expenses-table .table tbody tr:nth-child(even) { background:#f5f7fc; }
+.finance-expenses-table .table tbody tr:hover { background:#ebeffa; }
+html[data-finance-theme="dark"] .finance-sidebar .sidebar-workspace-label { color:#a8b9d8; }
+html[data-finance-theme="dark"] .finance-sidebar .nav-link:not(.nav-link-active):not(.sidebar-logout):hover { background:#233658; color:#f2f5ff; }
+html[data-finance-theme="dark"] .finance-sidebar .nav-link-active:hover { background:#4336a8; color:#fff; }
+html[data-finance-theme="dark"] .finance-shell:not(.finance-shell-dashboard) .finance-alert-button { background:#293149; border-color:#596078; color:#ffe0a0; }
+html[data-finance-theme="dark"] .finance-shell:not(.finance-shell-dashboard) .finance-alert-button:hover { background:#3a4261; border-color:#c49b4d; color:#fff0c7; }
+html[data-finance-theme="dark"] .finance-shell:not(.finance-shell-dashboard) .stat,
+html[data-finance-theme="dark"] .finance-shell:not(.finance-shell-dashboard) .table-wrap,
+html[data-finance-theme="dark"] .finance-shell:not(.finance-shell-dashboard) .empty { background:#14233c; border-color:#334663; color:#e7edfc; }
+html[data-finance-theme="dark"] .finance-shell:not(.finance-shell-dashboard) .stat-label { color:#b9c8e2; }
+html[data-finance-theme="dark"] .finance-shell:not(.finance-shell-dashboard) .stat-value:not(.text-rose-700):not(.text-emerald-700):not(.text-amber-700) { color:#f4f7ff; }
+html[data-finance-theme="dark"] .finance-shell:not(.finance-shell-dashboard) .table th { background:#20314d; color:#c5d1e8; }
+html[data-finance-theme="dark"] .finance-shell:not(.finance-shell-dashboard) .table td { border-color:#334663; }
+html[data-finance-theme="dark"] .finance-shell:not(.finance-shell-dashboard) .table tbody tr { background:#14233c; color:#e7edfc; }
+html[data-finance-theme="dark"] .finance-shell:not(.finance-shell-dashboard) .table tbody tr:nth-child(even) { background:#1b2d49; }
+html[data-finance-theme="dark"] .finance-shell:not(.finance-shell-dashboard) .table tbody tr:hover { background:#273b5b; }
+html[data-finance-theme="dark"] .finance-shell:not(.finance-shell-dashboard) .badge { background:#282b5a; color:#d8d2ff; box-shadow:inset 0 0 0 1px #595a9a; }
+html[data-finance-theme="dark"] .finance-shell:not(.finance-shell-dashboard) :is(.text-rose-600,.text-rose-700,.text-rose-800) { color:#ff91a9; }
+html[data-finance-theme="dark"] .finance-shell:not(.finance-shell-dashboard) .text-amber-700 { color:#ffd18a; }
+html[data-finance-theme="dark"] .finance-shell:not(.finance-shell-dashboard) .text-emerald-700 { color:#6fe3bb; }
+html[data-finance-theme="dark"] .finance-shell:not(.finance-shell-dashboard) .finance-budget-transfer,
+html[data-finance-theme="dark"] .finance-shell:not(.finance-shell-dashboard) .finance-budget-warning { background:#39243d; border-color:#7b4661; color:#ffe4ec; }
+html[data-finance-theme="dark"] .finance-shell:not(.finance-shell-dashboard) .finance-budget-transfer .text-slate-600 { color:#d4bfd0; }
+html[data-finance-theme="dark"] .finance-shell:not(.finance-shell-dashboard) .finance-obligation-payment { background:#262a49; border:1px solid #495077; color:#e7edfc; }
+html[data-finance-theme="dark"] .finance-shell:not(.finance-shell-dashboard) .finance-obligation-payment.bg-rose-50 { background:#39243d; border-color:#75415b; }
+html[data-finance-theme="dark"] .finance-shell:not(.finance-shell-dashboard) .finance-obligation-payment.bg-amber-50 { background:#3d312d; border-color:#806048; }
+html[data-finance-theme="dark"] .finance-shell:not(.finance-shell-dashboard) .finance-expense-transfer-dialog { background:#14233c; color:#e7edfc; }
+html[data-finance-theme="dark"] .finance-shell:not(.finance-shell-dashboard) .finance-expense-transfer-dialog > header { background:#182842; border-color:#334663; }
+html[data-finance-theme="dark"] .finance-shell:not(.finance-shell-dashboard) .finance-expense-transfer-dialog .bg-amber-50 { background:#3d312d; border-color:#806048; color:#ffe1ad; }
+html[data-finance-theme="dark"] .finance-shell:not(.finance-shell-dashboard) .finance-expense-transfer-dialog .text-indigo-600 { color:#bbb5ff; }
+html[data-finance-theme="dark"] .finance-shell:not(.finance-shell-dashboard) :is(input,textarea)::placeholder { color:#9bacca; opacity:1; }

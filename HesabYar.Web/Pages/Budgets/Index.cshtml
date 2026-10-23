@@ -154,7 +154,7 @@
 
                         @if (row.IsExceeded && row.Budget.CategoryId.HasValue)
                         {
-                            <details class="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-4">
+                            <details class="finance-budget-transfer mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-4">
                                 <summary class="cursor-pointer text-sm font-black text-rose-700">↔ جبران کسری از بودجه یک دسته دیگر</summary>
                                 @if (row.TransferSources.Count == 0)
                                 {
@@ -199,7 +199,7 @@
 
                         @if (row.NextMonthCarryover > 0)
                         {
-                            <div class="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
+                            <div class="finance-budget-warning mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
                                 @if (row.Budget.CarryOverOverspend)
                                 {
                                     <strong>@Formatters.Money(row.NextMonthCarryover)</strong><span> کسری این بودجه در صورت باقی‌ماندن، از سقف مؤثر ماه بعد کم خواهد شد.</span>
