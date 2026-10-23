@@ -1,4 +1,14 @@
 (() => {
+    document.querySelectorAll('[data-finance-theme-toggle]').forEach((button) => {
+        const refresh = () => button.setAttribute('aria-pressed', String(document.documentElement.dataset.financeTheme === 'dark'));
+        refresh();
+        button.addEventListener('click', () => {
+            const dark = document.documentElement.dataset.financeTheme !== 'dark';
+            document.documentElement.dataset.financeTheme = dark ? 'dark' : 'light';
+            try { localStorage.setItem('donysh-finance-theme', dark ? 'dark' : 'light'); } catch { /* Theme still changes for this visit. */ }
+            refresh();
+        });
+    });
     const toLatinDigits = (value) => String(value ?? '')
         .replace(/[۰-۹]/g, (digit) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit)))
         .replace(/[٠-٩]/g, (digit) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit)));

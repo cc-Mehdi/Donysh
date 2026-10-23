@@ -19,6 +19,9 @@ public sealed class IndexModel(
     public decimal MonthObligationTotal { get; private set; }
     public decimal MonthObligationUnpaid { get; private set; }
     public int MonthExpenseCount { get; private set; }
+    public decimal BudgetRemaining { get; private set; }
+    public IReadOnlyList<TrendPoint> ExpenseTrend { get; private set; } = [];
+    public IReadOnlyList<CategorySlice> CategoryBreakdown { get; private set; } = [];
     public IReadOnlyList<Expense> RecentExpenses { get; private set; } = [];
     public IReadOnlyList<BudgetCard> BudgetCards { get; private set; } = [];
     public IReadOnlyList<SavingsCard> SavingsCards { get; private set; } = [];
@@ -43,6 +46,22 @@ public sealed class IndexModel(
         MonthTotal = monthExpenses.Sum(x => x.Amount);
         WeekTotal = monthExpenses.Where(x => x.ExpenseDate >= weekStart).Sum(x => x.Amount);
         MonthExpenseCount = monthExpenses.Count;
+        var daysInMonth = monthEnd.DayNumber - monthStart.DayNumber;
+        var totalsByDay = monthExpenses.GroupBy(x => x.ExpenseDate.DayNumber - monthStart.DayNumber + 1)
+            .ToDictionary(x => x.Key, x => x.Sum(y => y.Amount));
+        var maxDayTotal = Math.Max(1, totalsByDay.Values.DefaultIfEmpty(0).Max());
+        ExpenseTrend = Enumerable.Range(1, daysInMonth).Select(day =>
+        {
+            var amount = totalsByDay.GetValueOrDefault(day);
+            return new TrendPoint(day, amount, amount == 0 ? 0 : Math.Max(5, Math.Round(amount / maxDayTotal * 100, 1)));
+        }).ToList();
+        var categoryColors = new[] { "#6955f5", "#18c79b", "#ffad4d", "#2da8ed", "#ed5a95" };
+        CategoryBreakdown = monthExpenses.GroupBy(x => new { x.CategoryId, x.Category.Name })
+            .Select(group => new { group.Key.Name, Amount = group.Sum(x => x.Amount) })
+            .OrderByDescending(x => x.Amount).Take(5)
+            .Select((item, index) => new CategorySlice(item.Name, item.Amount,
+                MonthTotal == 0 ? 0 : Math.Round(item.Amount / MonthTotal * 100, 1), categoryColors[index]))
+            .ToList();
 
         RecentExpenses = await db.Expenses
             .Where(x => x.WorkspaceId == CurrentWorkspace.Id)
@@ -66,6 +85,7 @@ public sealed class IndexModel(
             state.CarryoverDeduction,
             state.Remaining < 0,
             state.Percent >= state.Budget.WarningPercent)).ToList();
+        BudgetRemaining = BudgetCards.Sum(x => Math.Max(0, x.Remaining));
 
         var goals = await db.SavingsGoals
             .Where(x => x.WorkspaceId == CurrentWorkspace.Id && !x.IsCompleted && !x.IsCancelled)
@@ -126,6 +146,9 @@ public sealed class IndexModel(
 
     public sealed record BudgetCard(Guid Id, string Name, string Icon, decimal Amount, decimal Spent, decimal Remaining,
         decimal Percent, decimal CarryoverDeduction, bool IsExceeded, bool IsWarning);
+
+    public sealed record TrendPoint(int Day, decimal Amount, decimal Height);
+    public sealed record CategorySlice(string Name, decimal Amount, decimal Percent, string Color);
 
     public sealed record SavingsCard(Guid Id, string Name, decimal Target, decimal MonthlyTarget, decimal Saved, decimal MonthlySaved, decimal Percent);
 
