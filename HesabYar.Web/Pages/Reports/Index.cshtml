@@ -58,7 +58,7 @@
         </div>
         <form method="get" class="report-filter" aria-label="بازه گزارش">
             <div><label asp-for="Period">بازه</label><select asp-for="Period"><option value="daily">روزانه</option><option value="weekly">هفتگی</option><option value="monthly">ماهانه</option><option value="yearly">سالانه</option></select></div>
-            <div><label asp-for="Anchor">تاریخ مبنا</label><input id="Anchor" name="Anchor" value="@anchorValue" type="text" inputmode="numeric" autocomplete="off" data-persian-date placeholder="۱۴۰۵/۰۱/۰۱" /></div>
+            <div class="report-date-field"><label asp-for="Anchor">تاریخ مبنا</label><input id="Anchor" name="Anchor" value="@anchorValue" type="text" inputmode="numeric" autocomplete="off" data-persian-date placeholder="۱۴۰۵/۰۱/۰۱" /></div>
             <button type="submit">نمایش گزارش</button>
         </form>
     </header>

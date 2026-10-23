@@ -219,12 +219,12 @@
         popover.setAttribute('aria-label', 'تقویم شمسی');
         popover.innerHTML = `
       <div class="persian-datepicker-header">
-        <button type="button" class="persian-datepicker-nav" data-pdp-prev aria-label="ماه قبل">›</button>
+        <button type="button" class="persian-datepicker-nav" data-pdp-prev aria-label="ماه قبل"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg></button>
         <div class="persian-datepicker-selects">
           <select class="persian-datepicker-select" data-pdp-month aria-label="ماه"></select>
           <select class="persian-datepicker-select" data-pdp-year aria-label="سال"></select>
         </div>
-        <button type="button" class="persian-datepicker-nav" data-pdp-next aria-label="ماه بعد">‹</button>
+        <button type="button" class="persian-datepicker-nav" data-pdp-next aria-label="ماه بعد"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg></button>
       </div>
       <div class="persian-datepicker-weekdays" data-pdp-weekdays></div>
       <div class="persian-datepicker-days" data-pdp-days></div>

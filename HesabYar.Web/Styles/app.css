@@ -396,16 +396,32 @@
         width: 2.25rem;
         height: 2.25rem;
         place-items: center;
+        border: 1px solid rgb(226 232 240);
         border-radius: 0.75rem;
+        background: rgb(248 250 252);
         color: rgb(71 85 105);
-        font-size: 1.45rem;
-        line-height: 1;
-        transition: background-color 150ms ease, color 150ms ease;
+        transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
     }
 
+        .persian-datepicker-nav svg {
+            width: 1.15rem;
+            height: 1.15rem;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2.2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
         .persian-datepicker-nav:hover {
-            background: rgb(241 245 249);
-            color: rgb(15 23 42);
+            border-color: rgb(165 180 252);
+            background: rgb(238 242 255);
+            color: rgb(67 56 202);
+        }
+
+        .persian-datepicker-nav:focus-visible {
+            outline: 2px solid rgb(99 102 241);
+            outline-offset: 2px;
         }
 
         .persian-datepicker-nav:disabled {
@@ -1104,9 +1120,10 @@ html[data-finance-theme="dark"] .mobile-privacy-note { color:#b4c3dd; }
 .report-filter > div { min-width:110px; }
 .report-filter label { display:block; margin-bottom:5px; color:#4d5d7c; font-size:11px; font-weight:800; }
 .report-filter :is(input,select) { width:100%; height:43px; border:1px solid #bbc9e6; border-radius:10px; padding:0 11px; background:#ffffffdb; color:#142347; font-size:13px; font-weight:750; }
-.report-filter input { width:145px; direction:ltr; text-align:center; }
-.report-filter button { min-height:43px; border-radius:10px; padding:0 18px; background:#523af0; color:#fff; font-size:13px; font-weight:850; box-shadow:0 5px 15px #4e3cf54d; }
-.report-filter button:hover { background:#412ad4; }
+.report-filter .report-date-field { flex:0 0 170px; min-width:170px; }
+.report-filter .report-date-field input { width:100%; padding-left:3rem; direction:ltr; text-align:right; font-variant-numeric:tabular-nums; }
+.report-filter > button[type="submit"] { min-height:43px; border-radius:10px; padding:0 18px; background:#523af0; color:#fff; font-size:13px; font-weight:850; box-shadow:0 5px 15px #4e3cf54d; }
+.report-filter > button[type="submit"]:hover { background:#412ad4; }
 .report-toolbar { display:flex; align-items:center; justify-content:space-between; gap:14px; }
 .report-period-nav { display:flex; align-items:center; gap:7px; }
 .report-period-nav a { display:grid; place-items:center; width:40px; height:40px; flex:none; border:1px solid var(--report-line); border-radius:11px; background:var(--report-bg); color:var(--report-text); font-size:18px; }
@@ -1210,7 +1227,7 @@ html[data-finance-theme="dark"] .report-calendar-days .is-overdue { background:#
 html[data-finance-theme="dark"] .report-bar-track { background:#273d63; }
 @media (max-width:1250px) { .report-obligation-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }.report-obligation-grid > :last-child { grid-column:1/-1; }.report-members-grid { grid-template-columns:1fr; } }
 @media (max-width:900px) { .report-hero { align-items:start; flex-direction:column; }.report-toolbar { align-items:start; flex-direction:column; }.report-primary-grid { grid-template-columns:1fr; }.report-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); }.report-obligation-grid { grid-template-columns:1fr; }.report-obligation-grid > :last-child { grid-column:auto; } }
-@media (max-width:580px) { .finance-reports { gap:13px; }.report-hero { border-radius:16px; padding:20px; }.report-filter { width:100%; }.report-filter > div { flex:1; }.report-filter :is(input,select) { width:100%; }.report-filter button { width:100%; }.report-tabs { width:100%; display:grid; grid-template-columns:repeat(2,1fr); text-align:center; }.report-tabs a { padding:8px; }.report-metrics { gap:9px; }.report-metric { min-height:125px; padding:13px; }.report-metric strong { font-size:19px; }.report-metric-icon { width:34px; height:34px; left:12px; top:12px; }.report-metric-icon .lucide-icon { width:18px; height:18px; }.report-metric > span:not(.report-metric-icon) { padding-inline-start:30px; font-size:11px; }.report-panel { padding:15px; }.report-category-content { flex-direction:column; }.report-category-list { width:100%; max-width:none; }.report-obligation-summary-body { flex-wrap:wrap; justify-content:center; }.report-obligation-totals { flex-basis:100%; }.report-obligation-all > div { grid-template-columns:1fr 1fr; }.report-member-bar { grid-template-columns:29px 70px minmax(60px,1fr) 40px; gap:5px; }.report-section-title { align-items:start; flex-direction:column; } }
+@media (max-width:580px) { .finance-reports { gap:13px; }.report-hero { border-radius:16px; padding:20px; }.report-filter { width:100%; }.report-filter > div { flex:1; }.report-filter .report-date-field { flex:1 1 170px; }.report-filter :is(input,select) { width:100%; }.report-filter > button[type="submit"] { width:100%; }.report-tabs { width:100%; display:grid; grid-template-columns:repeat(2,1fr); text-align:center; }.report-tabs a { padding:8px; }.report-metrics { gap:9px; }.report-metric { min-height:125px; padding:13px; }.report-metric strong { font-size:19px; }.report-metric-icon { width:34px; height:34px; left:12px; top:12px; }.report-metric-icon .lucide-icon { width:18px; height:18px; }.report-metric > span:not(.report-metric-icon) { padding-inline-start:30px; font-size:11px; }.report-panel { padding:15px; }.report-category-content { flex-direction:column; }.report-category-list { width:100%; max-width:none; }.report-obligation-summary-body { flex-wrap:wrap; justify-content:center; }.report-obligation-totals { flex-basis:100%; }.report-obligation-all > div { grid-template-columns:1fr 1fr; }.report-member-bar { grid-template-columns:29px 70px minmax(60px,1fr) 40px; gap:5px; }.report-section-title { align-items:start; flex-direction:column; } }
 @container (max-width:1050px) { .report-primary-grid { grid-template-columns:1fr; }.report-category-content { justify-content:flex-start; }.report-members-grid { grid-template-columns:1fr; } }
 @container (max-width:780px) { .report-hero { align-items:start; flex-direction:column; }.report-toolbar { align-items:start; flex-direction:column; }.report-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); }.report-obligation-grid { grid-template-columns:1fr; }.report-obligation-grid > :last-child { grid-column:auto; } }
 
@@ -1252,3 +1269,5 @@ html[data-finance-theme="dark"] .finance-savings .persian-datepicker-footer { bo
 html[data-finance-theme="dark"] .finance-savings .persian-datepicker-action { color:#cfc7ff; }
 html[data-finance-theme="dark"] .finance-savings .persian-datepicker-clear { color:#ffb4c4; }
 .finance-sidebar .product-switcher-life-logo { width:44px; height:44px; }
+html[data-finance-theme="dark"] .persian-datepicker-nav { border-color:#425b7c; background:#223650; color:#e3ebfb; }
+html[data-finance-theme="dark"] .persian-datepicker-nav:hover { border-color:#8079d8; background:#2b4262; color:#fff; }
