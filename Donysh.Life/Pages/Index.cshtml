@@ -1,5 +1,6 @@
 @page
 @model IndexModel
+@using Donysh.Life.Features.Activities
 @{
     ViewData["Title"] = "امروز";
 }
@@ -58,7 +59,7 @@
                 {
                     <details class="actual-entry @entry.ColorClass">
                         <summary>
-                            <span class="activity-icon">@entry.IconGlyph</span>
+                            <span class="activity-icon" aria-hidden="true"><svg><use href="/icons/activities.svg#@ActivityCatalog.IconSymbol(entry.IconKey)"></use></svg></span>
                             <span class="actual-entry-main"><strong>@entry.ActivityTitle</strong><small>@entry.PersianDate@(entry.StartLabel is null ? "" : $"، ساعت {entry.StartLabel}")</small></span>
                             <span class="duration-pill">@entry.DurationLabel</span>
                             <span class="expand-mark" aria-hidden="true">⌄</span>

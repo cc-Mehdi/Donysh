@@ -43,7 +43,7 @@
                 var activity = Model.Preview.Activities[i];
                 <article class="panel ai-activity @ActivityCatalog.ColorClass(activity.Color!)">
                     <div class="ai-activity-heading">
-                        <label class="ai-activity-toggle"><input asp-for="Selections[i].Included" /><span class="activity-icon" aria-hidden="true">@ActivityCatalog.IconGlyph(activity.Icon!)</span><span><strong>@activity.Title</strong><small>@activity.Category · هدف @activity.WeeklyHours.ToString("0.#") ساعت در هفته</small></span></label>
+                        <label class="ai-activity-toggle"><input asp-for="Selections[i].Included" /><span class="activity-icon" aria-hidden="true"><svg><use href="/icons/activities.svg#@ActivityCatalog.IconSymbol(activity.Icon!)"></use></svg></span><span><strong>@activity.Title</strong><small>@activity.Category · هدف @activity.WeeklyHours.ToString("0.#") ساعت در هفته</small></span></label>
                     </div>
                     <div class="ai-slot-list">
                         @for (var j = 0; j < activity.Slots!.Count; j++)

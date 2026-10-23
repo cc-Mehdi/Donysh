@@ -22,6 +22,8 @@ public sealed class ActivityForm
     public decimal WeeklyHours { get; set; } = 5;
 }
 
+public sealed record ActivityAppearancePickerModel(string Title, string ColorHex, string IconKey);
+
 public sealed class SetupActivityInput
 {
     public string TemplateKey { get; set; } = string.Empty;

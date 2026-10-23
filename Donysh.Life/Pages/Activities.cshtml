@@ -35,7 +35,7 @@
         {
             <article class="activity-card @ActivityCatalog.ColorClass(item.ColorHex) @(item.IsActive ? "" : "inactive")">
                 <div class="activity-summary">
-                    <span class="activity-icon" aria-hidden="true">@item.IconGlyph</span>
+                    <span class="activity-icon" aria-hidden="true"><svg><use href="/icons/activities.svg#@ActivityCatalog.IconSymbol(item.IconKey)"></use></svg></span>
                     <div><div class="activity-title-row"><h2>@item.Title</h2><span class="activity-state">@(item.IsActive ? "فعال" : "غیرفعال")</span></div><p>@(string.IsNullOrWhiteSpace(item.Category) ? "بدون دسته‌بندی" : item.Category) · هدف @item.TargetHours.ToString("0.#") ساعت در هفته</p></div>
                 </div>
                 <details class="activity-actions">
@@ -46,8 +46,7 @@
                             <label class="field"><span>عنوان</span><input name="Input.Title" value="@item.Title" maxlength="80" required /></label>
                             <label class="field"><span>دسته‌بندی</span><input name="Input.Category" value="@item.Category" maxlength="60" /></label>
                             <label class="field"><span>هدف هفتگی (ساعت)</span><input name="Input.WeeklyHours" value="@item.TargetHours.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)" type="number" min="0.5" max="168" step="0.5" inputmode="decimal" required /></label>
-                            <label class="field"><span>رنگ</span><select name="Input.ColorHex" required>@foreach (var color in ActivityCatalog.Colors) { <option value="@color.Key" selected="@(color.Key == item.ColorHex ? "selected" : null)">@color.Value</option> }</select></label>
-                            <label class="field"><span>نماد</span><select name="Input.IconKey" required>@foreach (var icon in ActivityCatalog.Icons) { <option value="@icon.Key" selected="@(icon.Key == item.IconKey ? "selected" : null)">@icon.Value @ActivityCatalog.IconLabel(icon.Key)</option> }</select></label>
+                            <partial name="Shared/_ActivityAppearance" model="@(new ActivityAppearancePickerModel(item.Title, item.ColorHex, item.IconKey))" />
                         </div>
                         <button class="button primary" type="submit">ذخیرهٔ تغییرات</button>
                     </form>
@@ -60,3 +59,5 @@
         }
     </section>
 </section>
+
+@section Scripts { <script src="~/js/activity-appearance.js" asp-append-version="true" defer></script> }

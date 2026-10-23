@@ -47,7 +47,7 @@
                     if (template is null) { continue; }
                     <article class="template-card @(suggestion.IsSelected ? "selected" : "") @ActivityCatalog.ColorClass(template.ColorHex)" data-template-card>
                         <input type="hidden" asp-for="Suggestions[index].TemplateKey" />
-                        <label class="template-choice"><input asp-for="Suggestions[index].IsSelected" data-template-toggle /><span class="template-check" aria-hidden="true">✓</span><span class="activity-icon">@ActivityCatalog.IconGlyph(template.IconKey)</span><span><strong>@template.Title</strong><small>@template.Category</small></span></label>
+                        <label class="template-choice"><input asp-for="Suggestions[index].IsSelected" data-template-toggle /><span class="template-check" aria-hidden="true">✓</span><span class="activity-icon" aria-hidden="true"><svg><use href="/icons/activities.svg#@ActivityCatalog.IconSymbol(template.IconKey)"></use></svg></span><span><strong>@template.Title</strong><small>@template.Category</small></span></label>
                         <label class="goal-input" hidden="@(!suggestion.IsSelected ? "hidden" : null)"><span>هدف در هفته</span><span><input asp-for="Suggestions[index].WeeklyHours" data-weekly-hours type="number" min="0.5" max="168" step="0.5" inputmode="decimal" /> ساعت</span></label>
                         <span asp-validation-for="Suggestions[index].WeeklyHours" class="field-error"></span>
                     </article>

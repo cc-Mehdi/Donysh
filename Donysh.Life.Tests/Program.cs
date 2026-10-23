@@ -124,6 +124,16 @@ using (var response = await client.GetAsync("/css/app.css"))
         && response.Headers.CacheControl?.MaxAge == TimeSpan.FromDays(7));
 }
 
+using (var response = await client.GetAsync("/icons/activities.svg"))
+{
+    var sprite = await response.Content.ReadAsStringAsync();
+    Check("Life serves expanded local activity icons",
+        response.StatusCode == HttpStatusCode.OK
+        && sprite.Contains("id=\"graduation-cap\"", StringComparison.Ordinal)
+        && sprite.Contains("id=\"dumbbell\"", StringComparison.Ordinal)
+        && sprite.Contains("id=\"palette\"", StringComparison.Ordinal));
+}
+
 using (var response = await client.GetAsync("/images/donysh-life-logo.png"))
 {
     Check("Life brand logo is served", response.StatusCode == HttpStatusCode.OK
@@ -252,6 +262,14 @@ using (var authenticatedClient = authenticatedFactory.CreateClient(new WebApplic
             activitiesResponse.StatusCode == HttpStatusCode.OK
             && activitiesHtml.Contains("فعالیت تازه", StringComparison.Ordinal)
             && activitiesHtml.Contains("هنوز فعالیتی نداری", StringComparison.Ordinal));
+        Check("Life activity creation offers visual color and icon choices",
+            activitiesHtml.Contains("data-activity-appearance", StringComparison.Ordinal)
+            && activitiesHtml.Contains("data-appearance-preview", StringComparison.Ordinal)
+            && activitiesHtml.Contains("value=\"#059669\"", StringComparison.Ordinal)
+            && activitiesHtml.Contains("value=\"fitness\"", StringComparison.Ordinal)
+            && activitiesHtml.Contains("/icons/activities.svg#dumbbell", StringComparison.Ordinal)
+            && activitiesHtml.Contains("activity-appearance.js", StringComparison.Ordinal)
+            && !activitiesHtml.Contains("style=", StringComparison.OrdinalIgnoreCase));
     }
 
     using (var weekResponse = await authenticatedClient.GetAsync("/Week?day=Monday"))
@@ -323,6 +341,17 @@ using (var authenticatedClient = authenticatedFactory.CreateClient(new WebApplic
             UpdatedAtUtc = now
         });
         await db.SaveChangesAsync();
+    }
+
+    using (var activityEditResponse = await authenticatedClient.GetAsync("/Activities"))
+    {
+        var activityEditHtml = await activityEditResponse.Content.ReadAsStringAsync();
+        Check("Life activity editing keeps the visual choices and selected icon",
+            activityEditResponse.StatusCode == HttpStatusCode.OK
+            && activityEditHtml.Contains("/icons/activities.svg#book-open", StringComparison.Ordinal)
+            && activityEditHtml.Contains("data-preview-title", StringComparison.Ordinal)
+            && Regex.Matches(activityEditHtml, "data-activity-appearance", RegexOptions.CultureInvariant).Count == 3
+            && !activityEditHtml.Contains("style=", StringComparison.OrdinalIgnoreCase));
     }
 
     using (var calendarWeekResponse = await authenticatedClient.GetAsync("/Week?day=Wednesday&view=week"))
@@ -539,7 +568,13 @@ Check("Life login avoids a redundant UserInfo network request",
     lifeProgramSource.Contains("GetClaimsFromUserInfoEndpoint = false", StringComparison.Ordinal));
 
 var aiJson = """{"version":1,"activities":[{"title":"مطالعهٔ AI","category":"یادگیری","color":"#2563EB","icon":"book","weeklyHours":2,"slots":[{"day":"Saturday","start":"09:00","durationMinutes":60}]},{"title":"ورزش AI","category":"سلامت","color":"#EA580C","icon":"activity","weeklyHours":1,"slots":[{"day":"Sunday","start":"10:00","durationMinutes":60}]}]}""";
+Check("Life AI guide includes newly available appearance choices",
+    LifeAiPlanService.Prompt.Contains("#059669", StringComparison.Ordinal)
+    && LifeAiPlanService.Prompt.Contains("fitness", StringComparison.Ordinal));
 Check("Life AI parser accepts a valid weekly plan", LifeAiPlanService.Parse(aiJson).Plan?.Activities?.Count == 2);
+var expandedAiJson = aiJson.Replace("\"color\":\"#2563EB\",\"icon\":\"book\"", "\"color\":\"#059669\",\"icon\":\"fitness\"", StringComparison.Ordinal);
+Check("Life AI parser accepts expanded activity colors and icons",
+    LifeAiPlanService.Parse(expandedAiJson).Plan?.Activities?.FirstOrDefault()?.Icon == "fitness");
 Check("Life AI parser lets users repair overlapping suggestions in preview",
     LifeAiPlanService.Parse(aiJson.Replace("Sunday", "Saturday").Replace("10:00", "09:30")).Plan is not null);
 Check("Life AI parser rejects unsupported colors and malformed days",

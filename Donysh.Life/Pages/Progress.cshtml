@@ -1,6 +1,7 @@
 @page
 @model ProgressModel
 @using Donysh.Life.Features.Scheduling
+@using Donysh.Life.Features.Activities
 @{
     ViewData["Title"] = "پیشرفت";
 }
@@ -32,7 +33,7 @@ else
                 @foreach (var item in Model.Report.Activities)
                 {
                     <details class="progress-activity @item.ColorClass" open="@(Model.Report.Activities.Count <= 3 ? "open" : null)">
-                        <summary><span class="activity-icon">@item.IconGlyph</span><span class="progress-activity-title"><strong>@item.Title</strong><small>@item.ActualLabel از @item.TargetLabel</small></span><span class="progress-percent">@(item.TargetMinutes == 0 ? "—" : $"{item.GoalPercent}٪")</span><span class="expand-mark" aria-hidden="true">⌄</span><progress max="100" value="@item.GoalProgressValue">@item.GoalPercent٪</progress></summary>
+                        <summary><span class="activity-icon" aria-hidden="true"><svg><use href="/icons/activities.svg#@ActivityCatalog.IconSymbol(item.IconKey)"></use></svg></span><span class="progress-activity-title"><strong>@item.Title</strong><small>@item.ActualLabel از @item.TargetLabel</small></span><span class="progress-percent">@(item.TargetMinutes == 0 ? "—" : $"{item.GoalPercent}٪")</span><span class="expand-mark" aria-hidden="true">⌄</span><progress max="100" value="@item.GoalProgressValue">@item.GoalPercent٪</progress></summary>
                         <div class="progress-activity-detail">
                             <dl class="progress-number-grid"><div><dt>هدف</dt><dd>@item.TargetLabel</dd></div><div><dt>برنامه</dt><dd>@item.PlannedLabel</dd></div><div><dt>نتیجهٔ برنامه‌ها</dt><dd>@WeekCalendar.DurationName(item.ScheduledActualMinutes)</dd></div><div><dt>ثبت دستی</dt><dd>@WeekCalendar.DurationName(item.ManualActualMinutes)</dd></div></dl>
                             @if (item.TargetMinutes > 0) { <p class="remaining-note">@(item.RemainingMinutes == 0 ? "هدف این هفته پوشش داده شده است." : $"تا هدف این هفته {WeekCalendar.DurationName(item.RemainingMinutes)} باقی مانده است.")</p> }

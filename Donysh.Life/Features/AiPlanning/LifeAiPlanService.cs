@@ -14,7 +14,7 @@ public sealed class LifeAiPlanService(LifeDbContext db, IHttpContextAccessor con
     public const int MaxActivities = 20;
     public const int MaxSlots = 80;
 
-    public static readonly string Prompt = """
+    public static readonly string Prompt = $$"""
         تو دستیار برنامه‌ریزی زندگی من هستی. روتینی را که در همین گفتگو برایت توضیح داده‌ام به فعالیت‌ها و برنامهٔ هفتگی واقع‌بینانه تبدیل کن. فقط یک فایل JSON معتبر، بدون Markdown یا توضیح اضافی، با ساختار زیر بساز:
         {
           "version": 1,
@@ -31,7 +31,7 @@ public sealed class LifeAiPlanService(LifeDbContext db, IHttpContextAccessor con
             }
           ]
         }
-        روزها فقط Saturday, Sunday, Monday, Tuesday, Wednesday, Thursday, Friday باشند. ساعت با قالب 24 ساعته HH:mm و روی نیم‌ساعت (00 یا 30) باشد. مدت هر بازه مضرب 30 دقیقه و حداقل 30 دقیقه باشد. بازه‌ها از نیمه‌شب عبور نکنند و با هم تداخل نداشته باشند. برای هر فعالیت حداکثر 10 بازه، در مجموع حداکثر 20 فعالیت و 80 بازه بساز. weeklyHours بین 0.5 و 168 باشد. رنگ را فقط از #0D9488, #2563EB, #7C3AED, #EA580C, #DB2777, #475569 و نماد را فقط از circle, briefcase, book, graduation, activity, spark, moon, music, heart انتخاب کن. هر فعالیت عنوان یکتا داشته باشد. اگر اطلاعات زمان‌بندی کافی ندارم، پیش از تولید JSON از من بپرس؛ زمان یا تعهدی را حدس نزن. خروجی را به صورت فایل .json قابل دانلود بده.
+        روزها فقط Saturday, Sunday, Monday, Tuesday, Wednesday, Thursday, Friday باشند. ساعت با قالب 24 ساعته HH:mm و روی نیم‌ساعت (00 یا 30) باشد. مدت هر بازه مضرب 30 دقیقه و حداقل 30 دقیقه باشد. بازه‌ها از نیمه‌شب عبور نکنند و با هم تداخل نداشته باشند. برای هر فعالیت حداکثر 10 بازه، در مجموع حداکثر 20 فعالیت و 80 بازه بساز. weeklyHours بین 0.5 و 168 باشد. رنگ را فقط از {{string.Join(", ", ActivityCatalog.Colors.Keys)}} و نماد را فقط از {{string.Join(", ", ActivityCatalog.Icons.Keys)}} انتخاب کن. هر فعالیت عنوان یکتا داشته باشد. اگر اطلاعات زمان‌بندی کافی ندارم، پیش از تولید JSON از من بپرس؛ زمان یا تعهدی را حدس نزن. خروجی را به صورت فایل .json قابل دانلود بده.
         """;
 
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true, MaxDepth = 12 };

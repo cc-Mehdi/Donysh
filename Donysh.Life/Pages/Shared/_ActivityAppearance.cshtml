@@ -1,0 +1,40 @@
+@model Donysh.Life.Features.Activities.ActivityAppearancePickerModel
+@using Donysh.Life.Features.Activities
+
+<div class="activity-appearance field-wide" data-activity-appearance>
+    <div class="appearance-heading">
+        <div>
+            <h3>رنگ و نماد فعالیت</h3>
+            <p>پیش‌نمایش را ببین و گزینه‌ای انتخاب کن که در برنامهٔ هفته راحت پیدا شود.</p>
+        </div>
+        <div class="appearance-preview @ActivityCatalog.ColorClass(Model.ColorHex)" data-appearance-preview data-color-class="@ActivityCatalog.ColorClass(Model.ColorHex)" aria-label="پیش‌نمایش فعالیت">
+            <span class="activity-icon" aria-hidden="true"><svg><use href="/icons/activities.svg#@ActivityCatalog.IconSymbol(Model.IconKey)"></use></svg></span>
+            <span><small>نمایش در برنامه</small><strong data-preview-title>@(string.IsNullOrWhiteSpace(Model.Title) ? "فعالیت من" : Model.Title)</strong></span>
+        </div>
+    </div>
+    <fieldset class="appearance-fieldset">
+        <legend>رنگ فعالیت</legend>
+        <div class="color-options">
+            @foreach (var color in ActivityCatalog.Colors)
+            {
+                <label class="color-option" title="@color.Value">
+                    <input type="radio" name="Input.ColorHex" value="@color.Key" data-color-class="@ActivityCatalog.ColorClass(color.Key)" checked="@(color.Key == Model.ColorHex ? "checked" : null)" required />
+                    <span class="color-option-face @ActivityCatalog.ColorClass(color.Key)"><span class="color-option-check" aria-hidden="true">✓</span></span>
+                    <span class="color-option-name">@color.Value</span>
+                </label>
+            }
+        </div>
+    </fieldset>
+    <fieldset class="appearance-fieldset">
+        <legend>نماد فعالیت</legend>
+        <div class="icon-options">
+            @foreach (var icon in ActivityCatalog.Icons)
+            {
+                <label class="icon-option" title="@ActivityCatalog.IconLabel(icon.Key)">
+                    <input type="radio" name="Input.IconKey" value="@icon.Key" checked="@(icon.Key == Model.IconKey ? "checked" : null)" required />
+                    <span class="icon-option-face"><svg aria-hidden="true"><use href="/icons/activities.svg#@ActivityCatalog.IconSymbol(icon.Key)"></use></svg><small>@ActivityCatalog.IconLabel(icon.Key)</small></span>
+                </label>
+            }
+        </div>
+    </fieldset>
+</div>

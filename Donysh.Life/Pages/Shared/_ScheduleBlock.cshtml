@@ -1,12 +1,13 @@
 @model Donysh.Life.Features.Scheduling.ScheduleBlockCardModel
 @using Donysh.Life.Features.Scheduling
+@using Donysh.Life.Features.Activities
 @{
     var block = Model.Block;
 }
 <article class="schedule-block calendar-event @block.ColorClass @(block.IsActive ? "" : "inactive")" draggable="true"
          data-pattern-id="@block.Id" data-original-date="@block.OriginalDate.ToString("yyyy-MM-dd")"
          data-scheduled-date="@block.ScheduledDate.ToString("yyyy-MM-dd")" data-start-minute="@block.StartMinute" data-duration="@block.DurationMinutes">
-    <div class="block-main"><span class="block-icon">@block.IconGlyph</span><div><strong>@block.ActivityTitle</strong><span class="block-time"><bdi dir="ltr">@block.StartLabel</bdi> تا <bdi dir="ltr">@block.EndLabel</bdi></span>@if (!string.IsNullOrWhiteSpace(block.Note)) { <small>@block.Note</small> }</div></div>
+    <div class="block-main"><span class="block-icon" aria-hidden="true"><svg><use href="/icons/activities.svg#@ActivityCatalog.IconSymbol(block.IconKey)"></use></svg></span><div><strong>@block.ActivityTitle</strong><span class="block-time"><bdi dir="ltr">@block.StartLabel</bdi> تا <bdi dir="ltr">@block.EndLabel</bdi></span>@if (!string.IsNullOrWhiteSpace(block.Note)) { <small>@block.Note</small> }</div></div>
     @if (block.OutcomeStatus is not null)
     {
         <span class="outcome-badge @block.OutcomeClass">@block.OutcomeLabel@if (block.ActualMinutes > 0) { <small> · @block.ActualMinutes دقیقه</small> }</span>
@@ -14,7 +15,7 @@
     <button type="button" class="block-actions" data-open-edit="@block.Id" aria-label="ویرایش @block.ActivityTitle">•••</button>
     <dialog id="schedule-edit-@block.Id" class="calendar-dialog schedule-edit-dialog" aria-labelledby="edit-title-@block.Id">
         <div class="dialog-heading">
-            <div><span class="section-icon">@block.IconGlyph</span><div><h2 id="edit-title-@block.Id">ویرایش @block.ActivityTitle</h2><p><bdi dir="ltr">@block.StartLabel</bdi> تا <bdi dir="ltr">@block.EndLabel</bdi> · @block.DurationLabel</p></div></div>
+            <div><span class="section-icon" aria-hidden="true"><svg><use href="/icons/activities.svg#@ActivityCatalog.IconSymbol(block.IconKey)"></use></svg></span><div><h2 id="edit-title-@block.Id">ویرایش @block.ActivityTitle</h2><p><bdi dir="ltr">@block.StartLabel</bdi> تا <bdi dir="ltr">@block.EndLabel</bdi> · @block.DurationLabel</p></div></div>
             <button type="button" class="dialog-close" data-close-edit aria-label="بستن">×</button>
         </div>
         <div class="schedule-edit-content">
