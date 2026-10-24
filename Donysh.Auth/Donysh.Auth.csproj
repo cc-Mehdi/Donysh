@@ -24,4 +24,5 @@
     <Content Include="../HesabYar.Web/wwwroot/fonts/YekanBakh-Regular.woff2" Link="wwwroot/fonts/YekanBakh-Regular.woff2" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="../HesabYar.Web/wwwroot/fonts/YekanBakh-Bold.woff2" Link="wwwroot/fonts/YekanBakh-Bold.woff2" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+  <ItemGroup><Compile Include="../Shared/MobileSignInTicket.cs" Link="Shared/MobileSignInTicket.cs" /></ItemGroup>
 </Project>

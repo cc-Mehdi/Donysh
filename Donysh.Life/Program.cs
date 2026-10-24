@@ -55,7 +55,7 @@ builder.Services.AddScoped<ReminderScheduleService>();
 builder.Services.AddScoped<OccurrenceTrackingService>();
 builder.Services.AddScoped<ActualActivityService>();
 builder.Services.AddScoped<ProgressReportService>();
-builder.Services.AddRateLimiter(options => options.AddPolicy("life-mobile-pair", context =>
+builder.Services.AddRateLimiter(options => options.AddPolicy("life-mobile-session", context =>
     RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString() ?? "unknown", _ => new()
     {
         PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0

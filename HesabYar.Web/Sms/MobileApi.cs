@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.RateLimiting;
 using Donysh.Sms;
+using Donysh.Shared;
 using HesabYar.Web.Data;
 using HesabYar.Web.Domain;
 using Microsoft.AspNetCore.Http.Features;
@@ -55,7 +56,6 @@ public static class MobileApi
     public static void MapMobileApi(this WebApplication app)
     {
         var group = app.MapGroup("/api/mobile").RequireRateLimiting("mobile");
-        group.MapPost("/pair", PairAsync);
         group.MapPost("/sms", ImportAsync);
         group.MapGet("/workspaces", WorkspacesAsync);
         group.MapPut("/destination", ChangeDestinationAsync);
@@ -72,30 +72,25 @@ public static class MobileApi
     {
         ctx.Response.Headers.CacheControl = "no-store";
         if (!ctx.Request.IsHttps) return Results.BadRequest(new { error = "HTTPS required" });
-        var input = await ReadAsync<MobileLoginRequest>(ctx, ct);
-        var email = input?.Email?.Trim();
-        var password = input?.Password;
+        var input = await ReadAsync<MobileTicketRequest>(ctx, ct);
         var deviceName = input?.DeviceName?.Trim();
-        if (string.IsNullOrWhiteSpace(email) || email.Length > 254
-            || email.Any(char.IsControl)
-            || string.IsNullOrEmpty(password) || password.Length > 256
-            || !IsHexSecret(input?.InstallationId, 64)
+        if (!IsHexSecret(input?.InstallationId, 64)
             || input?.PreviousToken is { } previousToken && !IsHexSecret(previousToken, 64)
             || string.IsNullOrWhiteSpace(deviceName) || deviceName.Length > 80 || deviceName.Any(char.IsControl))
             return Results.BadRequest(new { error = "Invalid login" });
-
-        var users = ctx.RequestServices.GetRequiredService<UserManager<ApplicationUser>>();
-        var signIn = ctx.RequestServices.GetRequiredService<SignInManager<ApplicationUser>>();
-        var user = await users.FindByEmailAsync(email);
-        // Use the same Identity password and lockout rules as the website. The response is
-        // deliberately identical for unknown users and wrong passwords.
-        if (user is null || !(await signIn.CheckPasswordSignInAsync(user, password, lockoutOnFailure: true)).Succeeded)
+        var secret = ctx.RequestServices.GetRequiredService<IConfiguration>()["CrossAppLogout:Secret"];
+        if (!MobileSignInTicket.TryValidate(input?.Ticket, secret, input!.InstallationId, out var claims))
             return Results.Unauthorized();
+        var normalizedEmail = claims!.Email.ToUpperInvariant();
+        var user = await db.Users.Where(x => x.Id == claims.Subject
+                || claims.EmailVerified && x.NormalizedEmail == normalizedEmail)
+            .OrderByDescending(x => x.Id == claims.Subject).FirstOrDefaultAsync(ct);
+        if (user is null) return Results.Unauthorized();
 
         var workspaces = await AccessibleWorkspacesAsync(db, user.Id, ct);
-        if (workspaces.Count == 0) return Results.Conflict(new { error = "No workspace" });
+        if (workspaces.Count == 0) return Results.StatusCode(StatusCodes.Status403Forbidden);
 
-        var instanceHash = Hash(input!.InstallationId.ToUpperInvariant());
+        var instanceHash = Hash(input.InstallationId.ToUpperInvariant());
         var previousTokenHash = input.PreviousToken is null ? null : Hash(input.PreviousToken.ToUpperInvariant());
         var token = NewSecret();
         return await db.Database.CreateExecutionStrategy().ExecuteAsync<IResult>(async () =>
@@ -370,53 +365,6 @@ public static class MobileApi
             if (ctx.Request.Protocol == "HTTP/1.1") ctx.Response.Headers.Connection = "close";
             return default;
         }
-    }
-
-    private static async Task<IResult> PairAsync(HttpContext ctx, ApplicationDbContext db, CancellationToken ct)
-    {
-        ctx.Response.Headers.CacheControl = "no-store";
-        if (!ctx.Request.IsHttps) return Results.BadRequest(new { error = "HTTPS required" });
-        var input = await ReadAsync<PairRequest>(ctx, ct);
-        if (!IsHexSecret(input?.Code, 32)) return Results.BadRequest(new { error = "Invalid pairing code" });
-        if (input!.InstallationId is not null && !IsHexSecret(input.InstallationId, 64)
-            || input.PreviousToken is not null && !IsHexSecret(input.PreviousToken, 64))
-            return Results.BadRequest(new { error = "Invalid device identity" });
-        var hash = Hash(input!.Code.ToUpperInvariant());
-        var instanceHash = input.InstallationId is null ? null : Hash(input.InstallationId.ToUpperInvariant());
-        var previousTokenHash = input.PreviousToken is null ? null : Hash(input.PreviousToken.ToUpperInvariant());
-        var token = NewSecret();
-        return await db.Database.CreateExecutionStrategy().ExecuteAsync<IResult>(async () =>
-        {
-            db.ChangeTracker.Clear();
-            await using var tx = await db.Database.BeginTransactionAsync(ct);
-            var now = DateTime.UtcNow;
-            var device = await db.MobileDevices.AsNoTracking().Include(x => x.Workspace).Include(x => x.Category)
-                .SingleOrDefaultAsync(x => x.PairCodeHash == hash && !x.Revoked
-                    && x.PairExpiresAtUtc > now && x.TokenHash == null, ct);
-            if (device is null) return Results.Unauthorized();
-            await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({device.UserId}, 0))", ct);
-            // Pairing by an older app still works, but a current app identifies its installation.
-            // Retire its previous token (including a legacy token without an installation ID).
-            if (instanceHash is not null || previousTokenHash is not null)
-                await db.MobileDevices.Where(x => x.UserId == device.UserId && x.Id != device.Id
-                    && ((instanceHash != null && x.ClientInstanceHash == instanceHash)
-                        || (previousTokenHash != null && x.TokenHash == previousTokenHash)))
-                    .ExecuteUpdateAsync(s => s.SetProperty(x => x.Revoked, true)
-                        .SetProperty(x => x.TokenHash, (string?)null)
-                        .SetProperty(x => x.PairCodeHash, (string?)null)
-                        .SetProperty(x => x.ClientInstanceHash, (string?)null), ct);
-            now = DateTime.UtcNow;
-            var changed = await db.MobileDevices.Where(x => x.Id == device.Id && x.PairCodeHash == hash && !x.Revoked
-                    && x.TokenHash == null && x.PairExpiresAtUtc > now
-                    && db.WorkspaceMembers.Any(m => m.UserId == x.UserId && m.WorkspaceId == x.WorkspaceId)
-                    && db.ExpenseCategories.Any(c => c.Id == x.CategoryId && c.WorkspaceId == x.WorkspaceId && !c.IsArchived))
-                .ExecuteUpdateAsync(s => s.SetProperty(x => x.TokenHash, Hash(token))
-                    .SetProperty(x => x.PairCodeHash, (string?)null)
-                    .SetProperty(x => x.ClientInstanceHash, instanceHash), ct);
-            if (changed != 1) return Results.Unauthorized();
-            await tx.CommitAsync(ct);
-            return Results.Ok(new PairResult(token, device.Workspace.Name, device.Category.Name, device.UserId));
-        });
     }
 
     private static Task<bool> HasAccessAsync(ApplicationDbContext db, MobileDevice device, CancellationToken ct) =>

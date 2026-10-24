@@ -6,6 +6,7 @@ using Donysh.Life.Data;
 using Donysh.Life.Domain;
 using Donysh.Life.Features.Scheduling;
 using Donysh.Life.Features.Tracking;
+using Donysh.Shared;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -20,7 +21,7 @@ public static class LifeMobileApi
 
     public static void MapLifeMobileApi(this WebApplication app)
     {
-        app.MapPost("/api/life-mobile/pair", PairAsync).AllowAnonymous().RequireRateLimiting("life-mobile-pair");
+        app.MapPost("/api/life-mobile/session", SessionAsync).AllowAnonymous().RequireRateLimiting("life-mobile-session");
         var group = app.MapGroup("/api/life-mobile").AddEndpointFilter(async (context, next) =>
         {
             var http = context.HttpContext;
@@ -96,24 +97,48 @@ public static class LifeMobileApi
         });
     }
 
-    private static async Task<IResult> PairAsync(HttpContext http, LifeDbContext db, [FromBody] LifePairRequest input, CancellationToken ct)
+    private static async Task<IResult> SessionAsync(HttpContext http, LifeDbContext db,
+        IConfiguration configuration, [FromBody] LifeSessionRequest? input, CancellationToken ct)
     {
         http.Response.Headers.CacheControl = "no-store";
-        if (!http.Request.IsHttps || !IsHex(input.Code, 32)) return Results.BadRequest();
-        var codeHash = Hash(input.Code.ToUpperInvariant());
+        if (!http.Request.IsHttps || input is null || !IsHex(input.InstallationId, 64)
+            || string.IsNullOrWhiteSpace(input.DeviceName) || input.DeviceName.Length > 80
+            || input.DeviceName.Any(char.IsControl)
+            || input.PreviousToken is not null && !IsHex(input.PreviousToken, 64)) return Results.BadRequest();
+        if (!MobileSignInTicket.TryValidate(input.Ticket, configuration["CrossAppLogout:Secret"],
+                input.InstallationId, out var claims)) return Results.Unauthorized();
+        if (!claims!.LifeEnabled) return Results.StatusCode(StatusCodes.Status403Forbidden);
         var token = NewSecret(32);
-        var now = DateTimeOffset.UtcNow;
-        var changed = await db.MobileDevices.Where(item => item.PairCodeHash == codeHash
-                && item.TokenHash == null && !item.Revoked && item.PairExpiresAtUtc > now)
-            .ExecuteUpdateAsync(setters => setters.SetProperty(item => item.PairCodeHash, (string?)null)
-                .SetProperty(item => item.TokenHash, Hash(token)).SetProperty(item => item.LastSeenAtUtc, now), ct);
-        return changed == 1 ? Results.Ok(new { token }) : Results.Unauthorized();
+        return await db.Database.CreateExecutionStrategy().ExecuteAsync<IResult>(async () =>
+        {
+            db.ChangeTracker.Clear();
+            await using var transaction = await db.Database.BeginTransactionAsync(ct);
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"SELECT pg_advisory_xact_lock(hashtextextended({claims.Subject}, 0))", ct);
+            var previousHash = input.PreviousToken is null ? null : Hash(input.PreviousToken.ToUpperInvariant());
+            var device = previousHash is null ? null : await db.MobileDevices.SingleOrDefaultAsync(
+                item => item.UserSubject == claims.Subject && item.TokenHash == previousHash && !item.Revoked, ct);
+            if (device is null)
+            {
+                if (await db.MobileDevices.CountAsync(item => item.UserSubject == claims.Subject
+                    && item.TokenHash != null && !item.Revoked, ct) >= 3)
+                    return Results.Conflict(new { error = "Device limit" });
+                device = new LifeMobileDevice { UserSubject = claims.Subject };
+                db.MobileDevices.Add(device);
+            }
+            device.Name = input.DeviceName.Trim();
+            device.TokenHash = Hash(token);
+            device.PairCodeHash = null;
+            device.Revoked = false;
+            device.LastSeenAtUtc = DateTimeOffset.UtcNow;
+            await db.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
+            return Results.Ok(new { token, userSubject = claims.Subject });
+        });
     }
-
-    public static string CreatePairCode() => NewSecret(16);
-    public static string HashPairCode(string code) => Hash(code);
 }
 
-public sealed record LifePairRequest(string Code);
+public sealed record LifeSessionRequest(string Ticket, string InstallationId, string DeviceName,
+    string? PreviousToken = null);
 public sealed record LifeOccurrenceRequest(string Status, int? ActualMinutes, string? Note);
 public sealed record LifeActualRequest(Guid ActivityId, string Date, string? StartTime, int ActualMinutes, string? Note);

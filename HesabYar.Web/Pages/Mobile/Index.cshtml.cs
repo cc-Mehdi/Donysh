@@ -1,5 +1,3 @@
-using System.ComponentModel.DataAnnotations;
-using System.Security.Cryptography;
 using HesabYar.Web.Data;
 using HesabYar.Web.Domain;
 using HesabYar.Web.Helpers;
@@ -15,13 +13,7 @@ namespace HesabYar.Web.Pages.Mobile;
 [EnableRateLimiting("account")]
 public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext workspaceContext) : PageModel
 {
-    [BindProperty, Required, StringLength(80)] public string DeviceName { get; set; } = "";
-    [BindProperty] public Guid CategoryId { get; set; }
-    public string? PairCode { get; private set; }
-    public Workspace Workspace { get; private set; } = null!;
-    public List<ExpenseCategory> Categories { get; private set; } = [];
     public List<MobileDevice> ActiveDevices { get; private set; } = [];
-    public List<MobileDevice> PendingDevices { get; private set; } = [];
     public List<MobileDevice> HistoryDevices { get; private set; } = [];
     public int HistoryCount { get; private set; }
     public List<string> DuplicateNames { get; private set; } = [];
@@ -32,46 +24,6 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
         return $"{Formatters.PersianDate(DateOnly.FromDateTime(local))}، {local:HH:mm}";
     }
     public async Task OnGetAsync(CancellationToken ct) => await LoadAsync(ct);
-
-    public async Task<IActionResult> OnPostAsync(CancellationToken ct)
-    {
-        await LoadAsync(ct);
-        if (!Categories.Any(x => x.Id == CategoryId)) ModelState.AddModelError(nameof(CategoryId), "دسته معتبر انتخاب کنید.");
-        if (DeviceName?.Any(char.IsControl) == true) ModelState.AddModelError(nameof(DeviceName), "نام اتصال نباید شامل نویسه‌های کنترلی باشد.");
-        if (!ModelState.IsValid) return Page();
-        var code = Convert.ToHexString(RandomNumberGenerator.GetBytes(16));
-        var device = new MobileDevice {
-            UserId = workspaceContext.UserId!, WorkspaceId = Workspace.Id, CategoryId = CategoryId,
-            Name = DeviceName!.Trim(), PairCodeHash = MobileApi.Hash(code), PairExpiresAtUtc = DateTime.UtcNow.AddMinutes(10)
-        };
-        var created = await db.Database.CreateExecutionStrategy().ExecuteAsync(async () => {
-            db.ChangeTracker.Clear();
-            await using var tx = await db.Database.BeginTransactionAsync(ct);
-            // The same per-user lock as imports serializes concurrent pairing submissions.
-            await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({device.UserId}, 0))", ct);
-            if (!await db.WorkspaceMembers.AnyAsync(x => x.WorkspaceId == device.WorkspaceId && x.UserId == device.UserId, ct)
-                || !await db.ExpenseCategories.AnyAsync(x => x.Id == device.CategoryId && x.WorkspaceId == device.WorkspaceId && !x.IsArchived, ct))
-            {
-                ModelState.AddModelError("", "دسترسی به فضای مالی یا دسته تغییر کرده است؛ صفحه را تازه کنید.");
-                return false;
-            }
-            // A commit whose acknowledgement was lost must not create another connection on retry.
-            if (await db.MobileDevices.AnyAsync(x => x.Id == device.Id, ct)) return true;
-            var now = DateTime.UtcNow;
-            if (await db.MobileDevices.CountAsync(x => x.UserId == device.UserId && !x.Revoked && (x.TokenHash != null || x.PairExpiresAtUtc > now), ct) >= MobileApi.MaxActiveConnections)
-            {
-                ModelState.AddModelError("", "حداکثر ۳ اتصال فعال یا کد منتظر مجاز است؛ یکی را لغو کنید.");
-                return false;
-            }
-            db.MobileDevices.Add(device);
-            await db.SaveChangesAsync(ct);
-            await tx.CommitAsync(ct);
-            return true;
-        });
-        if (created) PairCode = code;
-        await LoadAsync(ct);
-        return Page();
-    }
 
     public async Task<IActionResult> OnPostRevokeAsync(Guid id, CancellationToken ct)
     {
@@ -85,15 +37,11 @@ public sealed class IndexModel(ApplicationDbContext db, IWorkspaceContext worksp
     private async Task LoadAsync(CancellationToken ct)
     {
         Response.Headers.CacheControl = "no-store";
-        Workspace = await workspaceContext.RequireCurrentAsync(ct);
-        Categories = await db.ExpenseCategories.AsNoTracking().Where(x => x.WorkspaceId == Workspace.Id && !x.IsArchived).OrderBy(x => x.Name).ToListAsync(ct);
+        await workspaceContext.RequireCurrentAsync(ct);
         var now = DateTime.UtcNow;
         var devices = db.MobileDevices.AsNoTracking().Include(x => x.Workspace).Include(x => x.Category)
             .Where(x => x.UserId == workspaceContext.UserId);
         ActiveDevices = await devices.Where(x => !x.Revoked && x.TokenHash != null)
-            .OrderByDescending(x => x.CreatedAtUtc).ToListAsync(ct);
-        PendingDevices = await devices.Where(x => !x.Revoked && x.TokenHash == null
-                && x.PairCodeHash != null && x.PairExpiresAtUtc > now)
             .OrderByDescending(x => x.CreatedAtUtc).ToListAsync(ct);
         var history = devices.Where(x => x.Revoked || x.TokenHash == null
             && (x.PairCodeHash == null || x.PairExpiresAtUtc <= now));

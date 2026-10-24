@@ -938,7 +938,7 @@ html[data-finance-theme="dark"] .finance-shell:not(.finance-shell-dashboard) :is
 .mobile-page-head h1 { margin:.15rem 0 .3rem; color:#172348; font-size:clamp(1.55rem,3vw,2.1rem); font-weight:900; }
 .mobile-page-head p:last-child,.mobile-setup > div:first-child > p:last-child { color:#64748b; font-size:.9rem; line-height:1.8; }
 .mobile-eyebrow { color:#6254e8; font-size:.72rem; font-weight:800; }
-.mobile-summary { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.8rem; }
+.mobile-summary { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.8rem; }
 .mobile-summary > div { display:flex; align-items:center; gap:.8rem; padding:1rem 1.2rem; border:1px solid #e3e9f4; border-radius:1rem; background:#fff; }
 .mobile-summary strong { display:grid; place-items:center; min-width:2.6rem; height:2.6rem; border-radius:.75rem; background:#f0efff; color:#4839c5; font-size:1.2rem; }
 .mobile-summary span { color:#51617d; font-size:.9rem; font-weight:700; }

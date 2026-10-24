@@ -20,6 +20,7 @@
     <Compile Include="..\DonyshMobile\Core\SmsTemplatePresets.cs" Link="Core\SmsTemplatePresets.cs" />
     <Compile Include="..\DonyshMobile\Core\MobileApiContracts.cs" Link="Core\MobileApiContracts.cs" />
     <Compile Include="..\DonyshMobile\Core\MobileApiClient.cs" Link="Core\MobileApiClient.cs" />
+    <Compile Include="..\DonyshMobile\Core\DonyshAccountClient.cs" Link="Core\DonyshAccountClient.cs" />
     <Compile Include="..\DonyshMobile\Core\SmsPrivacy.cs" Link="Core\SmsPrivacy.cs" />
     <Compile Include="..\DonyshMobile\Core\SetupFlow.cs" Link="Core\SetupFlow.cs" />
     <Compile Include="..\DonyshMobile\Core\StartupFlow.cs" Link="Core\StartupFlow.cs" />

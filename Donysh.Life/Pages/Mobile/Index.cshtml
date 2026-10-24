@@ -7,19 +7,10 @@
         <div><p>زندگی، همیشه همراه شما</p><h1>همراه دُنیش</h1><p>برنامهٔ امروز و هفته، ثبت وضعیت فعالیت‌ها و یادآورها را در گوشی ببینید.</p></div>
     </header>
     @if (TempData["MobileMessage"] is string message) { <p class="life-mobile-message" role="status">@message</p> }
-    @if (Model.PairCode is not null) {
-        <section class="life-mobile-code" role="status"><h2>کد اتصال آماده است</h2><p>این کد فقط ده دقیقه اعتبار دارد. در بخش «زندگی» اپ دُنیش وارد کنید.</p><input value="@Model.PairCode" readonly dir="ltr" aria-label="کد اتصال یک‌بارمصرف" /></section>
-    }
     <div class="life-mobile-grid">
         <section class="life-mobile-panel">
-            <h2>اتصال گوشی تازه</h2>
-            <p>برای هر گوشی نامی انتخاب کنید تا بتوانید بعداً دسترسی آن را مدیریت کنید.</p>
-            <form method="post">
-                <div asp-validation-summary="All" class="life-mobile-error"></div>
-                <label asp-for="DeviceName">نام گوشی</label>
-                <input asp-for="DeviceName" maxlength="80" placeholder="مثلاً گوشی من" autocomplete="off" />
-                <button type="submit">ساخت کد اتصال</button>
-            </form>
+            <h2>ورود در اپ</h2>
+            <p>اپ دُنیش را باز کنید و با ایمیل یا نام کاربری و گذرواژهٔ حساب خود وارد شوید. دسترسی این گوشی پس از ورود، اینجا نمایش داده می‌شود.</p>
             <a href="https://donysh.ir/downloads/donysh-mobile.apk" download>دریافت اپ اندروید</a>
         </section>
         <section class="life-mobile-panel">
@@ -30,15 +21,9 @@
             }
         </section>
     </div>
-    @if (Model.PendingDevices.Count > 0) {
-        <section class="life-mobile-panel"><h2>در انتظار اتصال</h2>
-        @foreach (var device in Model.PendingDevices) {
-            <div class="life-mobile-device"><div><strong>@device.Name</strong><small>اعتبار تا @Donysh.Life.Pages.Mobile.IndexModel.TehranDate(device.PairExpiresAtUtc)</small></div><form method="post" asp-page-handler="Revoke"><input type="hidden" name="id" value="@device.Id" /><button type="submit">لغو کد</button></form></div>
-        }</section>
-    }
     @if (Model.HistoryDevices.Count > 0) {
         <details class="life-mobile-panel"><summary>اتصال‌های پیشین</summary>
-        @foreach (var device in Model.HistoryDevices) { <p>@device.Name · @(device.Revoked ? "لغوشده" : "کد منقضی‌شده")</p> }
+        @foreach (var device in Model.HistoryDevices) { <p>@device.Name · @(device.Revoked ? "لغوشده" : "اتصال ناتمام")</p> }
         </details>
     }
 </main>

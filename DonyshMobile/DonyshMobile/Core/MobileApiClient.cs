@@ -23,43 +23,23 @@ public sealed class MobileApiClient
         return uri.GetLeftPart(UriPartial.Authority);
     }
 
-    public async Task<PairResult?> PairAsync(string server, string code, string installationId,
-        string? previousToken = null, CancellationToken cancellationToken = default)
-    {
-        server = NormalizeServer(server) ?? throw new ArgumentException("آدرس سرور باید یک نشانی امن و معتبر باشد.", nameof(server));
-        var normalizedCode = NormalizePairingCode(code)
-            ?? throw new ArgumentException("کد اتصال باید همان کد ۳۲ نویسه‌ای نمایش‌داده‌شده در سامانه باشد.", nameof(code));
-        if (installationId.Length != 64 || !installationId.All(Uri.IsHexDigit))
-            throw new ArgumentException("شناسهٔ نصب گوشی معتبر نیست.", nameof(installationId));
-        using var client = _clientFactory();
-        using var response = await client.PostAsJsonAsync(server + "/api/mobile/pair",
-            new PairRequest(normalizedCode, installationId, previousToken), JsonOptions, cancellationToken);
-        if (response.StatusCode == HttpStatusCode.Unauthorized) return null;
-        response.EnsureSuccessStatusCode();
-        var result = await response.Content.ReadFromJsonAsync<PairResult>(JsonOptions, cancellationToken);
-        return result is { Token.Length: 64, WorkspaceName.Length: > 0 and <= 160, CategoryName.Length: > 0 and <= 160 }
-            && result.Token.All(Uri.IsHexDigit)
-            ? result
-            : throw new InvalidDataException("پاسخ اتصال سامانه معتبر نیست.");
-    }
-
-    public async Task<MobileSessionResult?> LoginAsync(string server, string email, string password,
+    public async Task<MobileSessionResult?> LoginAsync(string server, string ticket,
         string installationId, string deviceName, string? previousToken = null,
         CancellationToken cancellationToken = default)
     {
         server = NormalizeServer(server) ?? throw new ArgumentException("آدرس سامانه معتبر نیست.", nameof(server));
-        email = email.Trim();
         deviceName = deviceName.Trim();
-        if (email.Length is < 3 or > 254 || string.IsNullOrEmpty(password) || password.Length > 256
-            || installationId.Length != 64 || !installationId.All(Uri.IsHexDigit)
+        if (ticket.Length is < 20 or > 2048 || installationId.Length != 64 || !installationId.All(Uri.IsHexDigit)
             || deviceName.Length is < 1 or > 80)
             throw new ArgumentException("اطلاعات ورود کامل یا معتبر نیست.");
         using var client = _clientFactory();
         using var response = await client.PostAsJsonAsync(server + "/api/mobile/login",
-            new MobileLoginRequest(email, password, installationId, deviceName, previousToken), JsonOptions, cancellationToken);
-        if (response.StatusCode == HttpStatusCode.Unauthorized) return null;
+            new { ticket, installationId, deviceName, previousToken }, JsonOptions, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.Unauthorized)
+            throw new UnauthorizedAccessException("مجوز ورود مالی معتبر نیست؛ دوباره تلاش کنید.");
+        if (response.StatusCode == HttpStatusCode.Forbidden) return null;
         if (response.StatusCode == HttpStatusCode.Conflict)
-            throw new InvalidOperationException("حساب یا فضای مالی برای اتصال این گوشی آماده نیست.");
+            throw new InvalidOperationException("حداکثر تعداد گوشی‌های متصل به حساب مالی تکمیل شده است.");
         response.EnsureSuccessStatusCode();
         var result = await response.Content.ReadFromJsonAsync<MobileSessionResult>(JsonOptions, cancellationToken);
         return ValidSession(result) ? result : throw new InvalidDataException("پاسخ ورود سامانه معتبر نیست.");
@@ -155,25 +135,6 @@ public sealed class MobileApiClient
         return request;
     }
 
-    public static string? NormalizePairingCode(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value) || value.Length > 256) return null;
-        var result = new System.Text.StringBuilder(32);
-        foreach (var input in value)
-        {
-            var character = input switch
-            {
-                >= '۰' and <= '۹' => (char)('0' + input - '۰'),
-                >= '٠' and <= '٩' => (char)('0' + input - '٠'),
-                _ => input
-            };
-            if (char.IsWhiteSpace(character) || character == '-') continue;
-            if (!Uri.IsHexDigit(character) || result.Length >= 32) return null;
-            result.Append(char.ToUpperInvariant(character));
-        }
-        return result.Length == 32 ? result.ToString() : null;
-    }
-
     /// <summary>Serializes destination changes with sending, including credential loading and receipts.</summary>
     public static async Task RunWithSyncLockAsync(Func<Task> action, CancellationToken cancellationToken = default)
     {
@@ -251,7 +212,7 @@ public sealed class MobileApiClient
                 var retryAfter = response.Headers.RetryAfter?.Delta
                     ?? response.Headers.RetryAfter?.Date - nowUtc;
                 var message = response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden
-                    ? "اتصال سامانه معتبر نیست؛ کد اتصال جدید بسازید. پیام‌ها در صف محفوظ‌اند."
+                    ? "نشست مالی معتبر نیست؛ دوباره با حساب دُنیش وارد شوید. پیام‌ها در صف محفوظ‌اند."
                     : response.StatusCode == HttpStatusCode.TooManyRequests
                         ? "سرور فعلاً درخواست بیشتری نمی‌پذیرد؛ بعداً خودکار تلاش می‌شود."
                         : "ارسال کامل نشد؛ پیام‌ها محفوظ‌اند و بعداً دوباره تلاش می‌شود.";

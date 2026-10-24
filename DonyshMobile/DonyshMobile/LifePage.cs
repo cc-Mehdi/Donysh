@@ -1,4 +1,5 @@
 using DonyshMobile.Core;
+using DonyshMobile.UI;
 
 namespace DonyshMobile;
 
@@ -12,6 +13,7 @@ public sealed class LifePage : ContentPage
     private LifeConnection? _connection;
     private LifeWeek? _week;
     private bool _busy;
+    private bool _signingIn;
     private bool _showWeek;
 
     public LifePage()
@@ -45,7 +47,7 @@ public sealed class LifePage : ContentPage
         try
         {
             _connection = await LifeConnectionStore.LoadAsync();
-            if (_connection is null) { RenderConnect(); return; }
+            if (_connection is null) { RenderConnect(await DonyshAccountStatusStore.LoadAsync()); return; }
             _week = await _api.WeekAsync(_connection);
             RenderDashboard();
 #if ANDROID
@@ -63,8 +65,8 @@ public sealed class LifePage : ContentPage
         {
             LifeConnectionStore.Remove();
             _connection = null;
-            RenderConnect();
-            await DisplayAlert("اتصال پایان یافت", "دسترسی این گوشی در دنیش لایف لغو شده است. کد تازه‌ای بسازید.", "باشه");
+            RenderConnect(await DonyshAccountStatusStore.LoadAsync());
+            await DisplayAlert("ورود دوباره لازم است", "نشست این گوشی در دُنیش زندگی پایان یافته است. دوباره با حساب خود وارد شوید.", "باشه");
         }
         catch (Exception)
         {
@@ -84,7 +86,8 @@ public sealed class LifePage : ContentPage
         }, ColumnSpacing = 8, Padding = new Thickness(0, 14, 0, 6) };
         var label = new VerticalStackLayout { Spacing = 0 };
         label.Children.Add(Text("دُنیش زندگی", 24, Ink, true));
-        label.Children.Add(Text("زندگی، در لحظهٔ اکنون", 12, Muted));
+        label.Children.Add(Text(_connection?.AccountLabel is { Length: > 0 } account
+            ? $"حساب: {account}" : "زندگی، در لحظهٔ اکنون", 12, Muted));
         row.Children.Add(label);
         var finance = Button("مالی", () => App.OpenService(DonyshService.Finance), Color.FromArgb("#E9E7F9"), Color.FromArgb("#473592"));
         Grid.SetColumn(finance, 1); row.Children.Add(finance);
@@ -93,29 +96,122 @@ public sealed class LifePage : ContentPage
         return row;
     }
 
-    private void RenderConnect()
+    private void RenderConnect(DonyshAccountStatus? accountStatus = null)
     {
         _body.Children.Clear();
         _body.Children.Add(Header());
         var card = new VerticalStackLayout { Spacing = 14, Padding = 20 };
         card.Children.Add(Text("برنامه‌ات را به گوشی بیاور", 22, Ink, true));
-        card.Children.Add(Text("در سایت life.donysh.ir، از «همراه دُنیش» یک کد اتصال بسازید. ورود لایف از سرویس مالی مستقل است.", 14, Muted));
-        var code = new Entry { Placeholder = "کد اتصال ۳۲ نویسه‌ای", MaxLength = 32, IsPassword = true,
-            FlowDirection = FlowDirection.LeftToRight, BackgroundColor = Colors.White };
-        card.Children.Add(code);
-        card.Children.Add(Button("اتصال به دنیش زندگی", async () =>
+        if (accountStatus is { LifeAvailable: false, FinanceAvailable: true })
+            card.Children.Add(Text($"حساب «{accountStatus.Label}» فقط دُنیش مالی دارد. اگر دُنیش زندگی شما روی حساب دیگری است، با آن حساب وارد شوید.", 14, Color.FromArgb("#8F4C16")));
+        else
+            card.Children.Add(Text("با ایمیل یا نام کاربری و گذرواژهٔ حساب دُنیش وارد شوید. دسترسی مالی و زندگی جداگانه بررسی می‌شود.", 14, Muted));
+        card.Children.Add(Text("ایمیل یا نام کاربری", 14, Ink, true));
+        var identifier = new Entry { Placeholder = "ایمیل یا نام کاربری", MaxLength = 254,
+            FlowDirection = FlowDirection.LeftToRight, TextColor = Ink, PlaceholderColor = Muted,
+            BackgroundColor = Colors.White };
+        card.Children.Add(identifier);
+        card.Children.Add(Text("گذرواژه", 14, Ink, true));
+        var password = new Entry { Placeholder = "گذرواژهٔ حساب دُنیش", MaxLength = 256, IsPassword = true,
+            FlowDirection = FlowDirection.LeftToRight, TextColor = Ink, PlaceholderColor = Muted,
+            BackgroundColor = Colors.White };
+        var passwordRow = new Grid { ColumnDefinitions = new ColumnDefinitionCollection
         {
-            if (_busy) return;
+            new(GridLength.Star), new(GridLength.Auto)
+        }, ColumnSpacing = 8 };
+        passwordRow.Children.Add(password);
+        Button eye = null!;
+        eye = Button(AppIcons.Visibility, () =>
+        {
+            password.IsPassword = !password.IsPassword;
+            eye.Text = password.IsPassword ? AppIcons.Visibility : AppIcons.VisibilityOff;
+            SemanticProperties.SetDescription(eye, password.IsPassword ? "نمایش گذرواژه" : "پنهان‌کردن گذرواژه");
+        }, Color.FromArgb("#E4F4F0"), Teal);
+        eye.FontFamily = "MaterialIconsRound";
+        eye.MinimumWidthRequest = 48;
+        SemanticProperties.SetDescription(eye, "نمایش گذرواژه");
+        Grid.SetColumn(eye, 1); passwordRow.Children.Add(eye);
+        card.Children.Add(passwordRow);
+        card.Children.Add(Button("ورود به دُنیش", async () =>
+        {
+            if (_signingIn) return;
+            _signingIn = true;
             try
             {
-                var connection = await _api.PairAsync(code.Text ?? "");
-                if (connection is null) { await DisplayAlert("کد پذیرفته نشد", "کد نامعتبر یا منقضی شده است.", "باشه"); return; }
-                await LifeConnectionStore.SaveAsync(connection);
-                code.Text = string.Empty;
-                await RefreshAsync();
+                var installationId = await MobileConnectionStore.GetInstallationIdAsync();
+                var account = await new DonyshAccountClient().SignInAsync(identifier.Text ?? "", password.Text ?? "", installationId);
+                password.Text = string.Empty;
+                if (account is null)
+                {
+                    await DisplayAlert("ورود انجام نشد", "ایمیل، نام کاربری یا گذرواژه درست نیست.", "باشه");
+                    return;
+                }
+                var deviceName = string.IsNullOrWhiteSpace(DeviceInfo.Name) ? "گوشی همراه" : DeviceInfo.Name;
+                LifeConnection? life = null;
+                Exception? lifeFailure = null;
+                if (account.LifeEnabled)
+                {
+                    try
+                    {
+                        var previous = await LifeConnectionStore.LoadAsync();
+                        life = await _api.SignInAsync(account.Ticket, installationId, deviceName,
+                            previous?.UserSubject == account.Subject ? previous.Token : null);
+                        if (life is not null) await LifeConnectionStore.SaveAsync(life with { AccountLabel = account.Email });
+                    }
+                    catch (Exception exception) { lifeFailure = exception; UiSafety.Log(exception); }
+                }
+                MobileSessionResult? finance = null;
+                Exception? financeFailure = null;
+                try
+                {
+                    var previousFinance = await MobileConnectionStore.LoadAsync();
+                    finance = await new MobileApiClient().LoginAsync(MobileConnectionStore.Server,
+                        account.Ticket, installationId, deviceName,
+                        previousFinance?.UserId == account.Subject ? previousFinance.Token : null);
+                    if (finance is not null)
+                    {
+                        var queue = await new SmsMonitorStore(FileSystem.AppDataDirectory).GetSyncSummaryAsync();
+                        var acceptFinance = queue.Pending == 0 || previousFinance?.UserId == account.Subject
+                            || await DisplayAlert("مقصد پیام‌های منتظر",
+                                $"{UiText.Digits(queue.Pending)} پیام منتظر پس از ورود به فضای مالی این حساب ارسال می‌شود. ادامه می‌دهید؟",
+                                "ادامه", "انصراف");
+                        if (acceptFinance)
+                            await MobileConnectionStore.SaveAsync(new MobileConnection(MobileConnectionStore.Server,
+                                finance.Token, $"{finance.WorkspaceName} / {finance.CategoryName}",
+                                finance.WorkspaceId, finance.DisplayName, finance.UserId));
+                        else
+                        {
+                            await new MobileApiClient().LogoutAsync(new MobileConnection(MobileConnectionStore.Server,
+                                finance.Token, string.Empty, finance.WorkspaceId, finance.DisplayName, finance.UserId));
+                            finance = null;
+                        }
+                    }
+                }
+                catch (Exception exception) { financeFailure = exception; UiSafety.Log(exception); }
+                await DonyshAccountStatusStore.SaveAsync(new DonyshAccountStatus(account.Subject, account.Email,
+                    financeFailure is null ? finance is not null : null, account.LifeEnabled));
+                if (life is null)
+                {
+                    RenderConnect(new DonyshAccountStatus(account.Subject, account.Email,
+                        financeFailure is null ? finance is not null : null, account.LifeEnabled));
+                    await DisplayAlert(account.LifeEnabled ? "ورود زندگی کامل نشد" : "دسترسی زندگی فعال نیست",
+                        lifeFailure is not null
+                            ? "ارتباط با دُنیش زندگی برقرار نشد. دسترسی مالی جداگانه بررسی شد؛ دوباره تلاش کنید."
+                            : account.LifeEnabled
+                                ? "دسترسی زندگی برای این حساب فعال است، ولی نشست گوشی ساخته نشد. دوباره تلاش کنید."
+                            : $"حساب «{account.Email}» فقط دُنیش مالی دارد. اگر دُنیش زندگی شما روی حساب دیگری است، با آن حساب وارد شوید.",
+                        "باشه");
+                    return;
+                }
+                await DisplayAlert("ورود انجام شد", finance is null
+                    ? financeFailure is null
+                        ? "دُنیش زندگی آماده است. دسترسی مالی برای این حساب پیدا نشد."
+                        : "دُنیش زندگی آماده است. بررسی مالی به دلیل مشکل ارتباطی کامل نشد."
+                    : "دُنیش زندگی و مالی برای این حساب بررسی شدند.", "باشه");
             }
-            catch (ArgumentException ex) { await DisplayAlert("کد معتبر نیست", ex.Message, "باشه"); }
-            catch (Exception) { await DisplayAlert("اتصال برقرار نشد", "اینترنت و کد اتصال را بررسی کنید.", "باشه"); }
+            catch (ArgumentException ex) { await DisplayAlert("اطلاعات معتبر نیست", ex.Message, "باشه"); }
+            catch (Exception) { await DisplayAlert("ورود برقرار نشد", "اتصال اینترنت و اطلاعات ورود را بررسی کنید.", "باشه"); }
+            finally { _signingIn = false; password.Text = string.Empty; await RefreshAsync(); }
         }, Teal));
         _body.Children.Add(Card(card));
     }

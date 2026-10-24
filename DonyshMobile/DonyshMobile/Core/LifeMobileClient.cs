@@ -5,7 +5,8 @@ using System.Text.Json;
 
 namespace DonyshMobile.Core;
 
-public sealed record LifeConnection(string Server, string Token);
+public sealed record LifeConnection(string Server, string Token, string? UserSubject = null,
+    string? AccountLabel = null);
 public sealed record LifeBlock(Guid PatternId, string OriginalDate, Guid ActivityId, string Title,
     string ColorHex, int StartMinute, int DurationMinutes, bool IsContinuation, string? Status);
 public sealed record LifeDay(string Date, string Name, string PersianDate, List<LifeBlock> Blocks);
@@ -37,18 +38,23 @@ public sealed class LifeMobileClient
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(20) };
 
-    public async Task<LifeConnection?> PairAsync(string code, CancellationToken ct = default)
+    public async Task<LifeConnection?> SignInAsync(string ticket, string installationId,
+        string deviceName, string? previousToken = null, CancellationToken ct = default)
     {
         var server = "https://life.donysh.ir";
-        code = code.Trim().ToUpperInvariant();
-        if (code.Length != 32 || !code.All(Uri.IsHexDigit)) throw new ArgumentException("کد اتصال باید ۳۲ نویسهٔ معتبر داشته باشد.");
-        using var response = await _http.PostAsJsonAsync(server + "/api/life-mobile/pair", new { code }, Json, ct);
-        if (response.StatusCode == HttpStatusCode.Unauthorized) return null;
+        if (ticket.Length is < 20 or > 2048 || installationId.Length != 64 || !installationId.All(Uri.IsHexDigit)
+            || string.IsNullOrWhiteSpace(deviceName) || deviceName.Length > 80)
+            throw new ArgumentException("اطلاعات ورود معتبر نیست.");
+        using var response = await _http.PostAsJsonAsync(server + "/api/life-mobile/session",
+            new { ticket, installationId, deviceName, previousToken }, Json, ct);
+        if (response.StatusCode == HttpStatusCode.Unauthorized)
+            throw new UnauthorizedAccessException("مجوز ورود زندگی معتبر نیست؛ دوباره تلاش کنید.");
+        if (response.StatusCode == HttpStatusCode.Forbidden) return null;
         response.EnsureSuccessStatusCode();
-        var result = await response.Content.ReadFromJsonAsync<PairResponse>(Json, ct);
+        var result = await response.Content.ReadFromJsonAsync<SessionResponse>(Json, ct);
         if (result?.Token is not { Length: 64 } || !result.Token.All(Uri.IsHexDigit))
-            throw new InvalidDataException("پاسخ اتصال معتبر نیست.");
-        return new LifeConnection(server, result.Token);
+            throw new InvalidDataException("پاسخ ورود معتبر نیست.");
+        return new LifeConnection(server, result.Token, result.UserSubject);
     }
 
     public Task<LifeWeek> WeekAsync(LifeConnection connection, CancellationToken ct = default) =>
@@ -93,5 +99,5 @@ public sealed class LifeMobileClient
         if (response.StatusCode == HttpStatusCode.Unauthorized) throw new UnauthorizedAccessException("اتصال لایف منقضی یا لغو شده است.");
         response.EnsureSuccessStatusCode();
     }
-    private sealed record PairResponse(string Token);
+    private sealed record SessionResponse(string Token, string UserSubject);
 }

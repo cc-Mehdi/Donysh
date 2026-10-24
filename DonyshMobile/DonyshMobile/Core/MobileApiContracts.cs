@@ -4,10 +4,6 @@ using System.Text.Json.Serialization;
 
 namespace DonyshMobile.Core;
 
-public sealed record PairRequest(string Code, string? InstallationId = null, string? PreviousToken = null);
-public sealed record PairResult(string Token, string WorkspaceName, string CategoryName, string? UserId = null);
-public sealed record MobileLoginRequest(string Email, string Password, string InstallationId, string DeviceName,
-    string? PreviousToken = null);
 public sealed record MobileWorkspace(Guid Id, string Name, string Type);
 public sealed record MobileSessionResult(string Token, string DisplayName, Guid WorkspaceId,
     string WorkspaceName, string CategoryName, List<MobileWorkspace> Workspaces, string? UserId = null);

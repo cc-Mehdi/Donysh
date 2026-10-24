@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Security.Claims;
 using System.Text.Json;
@@ -11,6 +12,7 @@ using Donysh.Life.Features.Scheduling;
 using Donysh.Life.Features.Tracking;
 using Donysh.Life.Features.Reporting;
 using Donysh.Life.Security;
+using Donysh.Shared;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
@@ -274,12 +276,22 @@ using (var authenticatedClient = authenticatedFactory.CreateClient(new WebApplic
     using (var mobilePage = await authenticatedClient.GetAsync("/Mobile/Index"))
     {
         var mobileHtml = await mobilePage.Content.ReadAsStringAsync();
-        Check("Life mobile management offers pairing and device access",
+        Check("Life mobile management offers account sign-in and device access",
             mobilePage.StatusCode == HttpStatusCode.OK
-            && mobileHtml.Contains("ساخت کد اتصال", StringComparison.Ordinal)
+            && mobileHtml.Contains("ایمیل یا نام کاربری", StringComparison.Ordinal)
+            && !mobileHtml.Contains("ساخت کد اتصال", StringComparison.Ordinal)
             && mobileHtml.Contains("گوشی‌های متصل", StringComparison.Ordinal)
             && html.Contains("همراه دُنیش", StringComparison.Ordinal));
     }
+    using (var removedCodeRoute = await authenticatedClient.PostAsJsonAsync("/api/life-mobile/pair", new { code = new string('A', 32) }))
+        Check("Life code pairing endpoint is removed", removedCodeRoute.StatusCode == HttpStatusCode.NotFound);
+    var disabledInstallation = new string('A', 64);
+    var disabledTicket = MobileSignInTicket.Create("test-only-shared-logout-secret-0000000000000000",
+        "life-test-user", "life-user@example.test", "کاربر آزمایشی", disabledInstallation,
+        emailVerified: true, lifeEnabled: false);
+    using (var disabledLife = await authenticatedClient.PostAsJsonAsync("/api/life-mobile/session",
+        new { ticket = disabledTicket, installationId = disabledInstallation, deviceName = "phone" }))
+        Check("Life rejects a central account without Life access", disabledLife.StatusCode == HttpStatusCode.Forbidden);
     using (var responseWithWebSessionOnly = await authenticatedClient.GetAsync("/api/life-mobile/week"))
         Check("Life website session cannot replace a mobile bearer token",
             responseWithWebSessionOnly.StatusCode == HttpStatusCode.Unauthorized);

@@ -301,40 +301,40 @@ try
         "Remove balance values from supported bank SMS bodies");
 
     var loginWorkspaceId = Guid.NewGuid();
+    var accountApi = new DonyshAccountClient(() => new HttpClient(new StubHandler(request =>
+    {
+        Assert(request.RequestUri?.AbsoluteUri == "https://auth.donysh.ir/api/mobile/sign-in",
+            "Only central Auth receives account credentials");
+        var payload = request.Content!.ReadFromJsonAsync<JsonElement>().GetAwaiter().GetResult();
+        Assert(payload.GetProperty("identifier").GetString() == "myname"
+            && payload.GetProperty("password").GetString() == "Secret123",
+            "Central Auth accepts a username and password");
+        return new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = JsonContent.Create(new DonyshAccountSignIn(new string('T', 32), "user-1",
+                "کاربر", "user@example.com", true))
+        };
+    })));
+    var accountResult = await accountApi.SignInAsync(" myname ", "Secret123", new string('1', 64));
+    Assert(accountResult is { LifeEnabled: true, Subject: "user-1" }, "Central Auth returns service identity");
     var loginApi = new MobileApiClient(() => new HttpClient(new StubHandler(request =>
     {
         Assert(request.RequestUri?.AbsolutePath == "/api/mobile/login", "Use mobile login endpoint");
-        var payload = request.Content!.ReadFromJsonAsync<MobileLoginRequest>().GetAwaiter().GetResult();
-        Assert(payload is { Email: "user@example.com", Password: "Secret123", DeviceName: "گوشی من" }
-               && payload.InstallationId == new string('1', 64)
-               && payload.PreviousToken == new string('2', 64),
-            "Login sends the installation and previous token to replace old access");
+        var payload = request.Content!.ReadFromJsonAsync<JsonElement>().GetAwaiter().GetResult();
+        Assert(payload.GetProperty("ticket").GetString() == accountResult!.Ticket
+            && payload.GetProperty("installationId").GetString() == new string('1', 64)
+            && payload.GetProperty("previousToken").GetString() == new string('2', 64)
+            && !payload.TryGetProperty("password", out _),
+            "Finance receives a signed ticket, not the account password");
         return new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = JsonContent.Create(new MobileSessionResult(new string('A', 64), "کاربر",
                 loginWorkspaceId, "شخصی", "سایر", [new(loginWorkspaceId, "شخصی", "personal")]))
         };
     })));
-    var loginResult = await loginApi.LoginAsync("https://donysh.ir", " user@example.com ", "Secret123",
+    var loginResult = await loginApi.LoginAsync("https://donysh.ir", accountResult!.Ticket,
         new string('1', 64), "گوشی من", new string('2', 64));
     Assert(loginResult?.WorkspaceId == loginWorkspaceId, "Accept authenticated mobile session");
-
-    var pairingApi = new MobileApiClient(() => new HttpClient(new StubHandler(request =>
-    {
-        Assert(request.RequestUri?.AbsolutePath == "/api/mobile/pair", "Use mobile pairing endpoint");
-        var payload = request.Content!.ReadFromJsonAsync<PairRequest>().GetAwaiter().GetResult();
-        Assert(payload is { Code.Length: 32, InstallationId.Length: 64, PreviousToken.Length: 64 }
-               && payload.InstallationId == new string('1', 64)
-               && payload.PreviousToken == new string('2', 64),
-            "Pairing sends installation identity and the previous token");
-        return new HttpResponseMessage(HttpStatusCode.OK)
-        {
-            Content = JsonContent.Create(new PairResult(new string('A', 64), "شخصی", "سایر"))
-        };
-    })));
-    var pairingResult = await pairingApi.PairAsync("https://donysh.ir", new string('F', 32),
-        new string('1', 64), new string('2', 64));
-    Assert(pairingResult?.WorkspaceName == "شخصی", "Accept paired mobile session");
 
     var workspaceApi = new MobileApiClient(() => new HttpClient(new StubHandler(request =>
     {
@@ -541,11 +541,6 @@ try
     Assert(await inflightApi.SendNextBatchAsync(inflightStore, () => Task.FromResult<MobileConnection?>(selectedConnection), DateTimeOffset.UtcNow.AddMinutes(2))
         == SyncRunResult.ConnectionRequired, "A later worker observes disconnect without sending");
 
-    Assert(MobileApiClient.NormalizePairingCode(new string('a', 32)) == new string('A', 32), "Normalize pairing hex code");
-    Assert(MobileApiClient.NormalizePairingCode("ABCD-EF۰۱-۲۳۴۵-۶۷۸۹-ABCD-EF01-2345-6789") == "ABCDEF0123456789ABCDEF0123456789",
-        "Pairing accepts Persian digits and visual separators");
-    Assert(MobileApiClient.NormalizePairingCode(new string('A', 32) + " غیرمجاز") is null,
-        "Reject unexpected pairing text instead of silently deleting it");
     Assert(MobileApiClient.NormalizeServer("https://user:secret@donysh.ir") is null, "Reject credentials in server URLs");
     Assert(MobileApiClient.NormalizeServer("https://donysh.ir?token=value") is null, "Reject query-bearing API origins");
 

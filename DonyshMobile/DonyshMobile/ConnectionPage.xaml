@@ -47,19 +47,24 @@
                         <Label Text="{x:Static ui:AppIcons.Link}" Style="{StaticResource SectionIcon}" />
                         <Label Grid.Column="1" Text="وصل‌کردن گوشی به دُنیش" Style="{StaticResource SectionTitle}" />
                     </Grid>
-                    <Label Text="با همان رایانامه و گذرواژه‌ای که در سایت دُنیش استفاده می‌کنید وارد شوید. گذرواژه روی گوشی نگهداری نمی‌شود." Style="{StaticResource MutedText}" />
-                    <Label Text="رایانامه" FontAttributes="Bold" />
+                    <Label Text="با ایمیل یا نام کاربری و گذرواژهٔ حساب دُنیش وارد شوید. دسترسی مالی و زندگی جداگانه بررسی می‌شود. گذرواژه روی گوشی نگهداری نمی‌شود." Style="{StaticResource MutedText}" />
+                    <Label Text="ایمیل یا نام کاربری" FontAttributes="Bold" />
                     <Border Style="{StaticResource FieldCard}">
-                        <Entry x:Name="EmailEntry" Placeholder="نشانی رایانامه" MaxLength="254" Keyboard="Email"
+                        <Entry x:Name="EmailEntry" Placeholder="ایمیل یا نام کاربری" MaxLength="254" Keyboard="Text"
                                IsTextPredictionEnabled="False" IsSpellCheckEnabled="False" ReturnType="Done"
                                FlowDirection="LeftToRight" HorizontalTextAlignment="Start" />
                     </Border>
                     <Label Text="گذرواژه" FontAttributes="Bold" />
-                    <Border Style="{StaticResource FieldCard}">
-                        <Entry x:Name="PasswordEntry" Placeholder="گذرواژهٔ حساب دُنیش" MaxLength="256" IsPassword="True"
-                               IsTextPredictionEnabled="False" IsSpellCheckEnabled="False" ReturnType="Done"
-                               Completed="OnLoginClicked" FlowDirection="LeftToRight" HorizontalTextAlignment="Start" />
-                    </Border>
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                        <Border Style="{StaticResource FieldCard}">
+                            <Entry x:Name="PasswordEntry" Placeholder="گذرواژهٔ حساب دُنیش" MaxLength="256" IsPassword="True"
+                                   IsTextPredictionEnabled="False" IsSpellCheckEnabled="False" ReturnType="Done"
+                                   Completed="OnLoginClicked" FlowDirection="LeftToRight" HorizontalTextAlignment="Start" />
+                        </Border>
+                        <Button x:Name="PasswordVisibilityButton" Grid.Column="1" Text="{x:Static ui:AppIcons.Visibility}" FontFamily="MaterialIconsRound"
+                                Clicked="OnPasswordVisibilityClicked" Style="{StaticResource QuietAction}"
+                                SemanticProperties.Description="نمایش گذرواژه" MinimumWidthRequest="48" />
+                    </Grid>
                     <Button x:Name="CustomServerButton" Text="آدرس سایت متفاوت است؟" Clicked="OnToggleServerClicked" Style="{StaticResource QuietAction}" />
                     <VerticalStackLayout x:Name="ServerPanel" IsVisible="False" Spacing="6">
                         <Label Text="آدرس سایت مورد اعتماد شما" FontAttributes="Bold" />
@@ -69,16 +74,6 @@
                         </Border>
                     </VerticalStackLayout>
                     <ui:DonyshButton x:Name="LoginButton" Glyph="{x:Static ui:AppIcons.Security}" Text="ورود امن" Clicked="OnLoginClicked" Style="{StaticResource SuccessAction}" />
-                    <Button Text="اتصال با کد یک‌بارمصرف" Clicked="OnToggleLegacyPairingClicked" Style="{StaticResource QuietAction}" />
-                    <VerticalStackLayout x:Name="LegacyPairingPanel" IsVisible="False" Spacing="8">
-                        <Label Text="کد اتصال یک‌بارمصرف" FontAttributes="Bold" />
-                        <Border Style="{StaticResource FieldCard}">
-                            <Entry x:Name="PairCodeEntry" Placeholder="کد را از سایت کپی کنید" MaxLength="40" IsPassword="True"
-                                   IsTextPredictionEnabled="False" IsSpellCheckEnabled="False" ReturnType="Done"
-                                   Completed="OnConnectClicked" FlowDirection="LeftToRight" HorizontalTextAlignment="Start" />
-                        </Border>
-                        <Button x:Name="ConnectButton" Text="ثبت کد اتصال" Clicked="OnConnectClicked" Style="{StaticResource SecondaryAction}" />
-                    </VerticalStackLayout>
                 </VerticalStackLayout>
             </Border>
             <Border x:Name="BusyCard" IsVisible="False" Style="{StaticResource AccentCard}" Padding="15">

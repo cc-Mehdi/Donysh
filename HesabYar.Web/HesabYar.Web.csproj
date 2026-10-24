@@ -17,4 +17,5 @@
     <!-- Security override for a vulnerable transitive design-time dependency. -->
     <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
   </ItemGroup>
+  <ItemGroup><Compile Include="../Shared/MobileSignInTicket.cs" Link="Shared/MobileSignInTicket.cs" /></ItemGroup>
 </Project>

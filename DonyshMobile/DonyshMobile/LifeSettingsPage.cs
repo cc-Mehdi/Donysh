@@ -4,6 +4,8 @@ namespace DonyshMobile;
 
 public sealed class LifeSettingsPage : ContentPage
 {
+    internal Picker ServicePicker { get; }
+
     public LifeSettingsPage()
     {
         Title = "تنظیمات زندگی";
@@ -13,7 +15,13 @@ public sealed class LifeSettingsPage : ContentPage
         stack.Children.Add(LifePage.Text("تنظیمات دُنیش زندگی", 23, Color.FromArgb("#102A3A"), true));
         stack.Children.Add(LifePage.Text("ورود پیش‌فرض به اپ", 17, Color.FromArgb("#102A3A"), true));
         stack.Children.Add(LifePage.Text("اگر انتخاب نکنید، صفحهٔ انتخاب سرویس هر بار نمایش داده می‌شود.", 13, Color.FromArgb("#527478")));
-        var picker = new Picker { Title = "سرویس پیش‌فرض", Items = { "هر بار بپرس", "دُنیش مالی", "دُنیش زندگی" } };
+        var picker = new Picker
+        {
+            Title = "سرویس پیش‌فرض", TitleColor = Color.FromArgb("#527478"),
+            TextColor = Color.FromArgb("#102A3A"), BackgroundColor = Colors.White,
+            Items = { "هر بار بپرس", "دُنیش مالی", "دُنیش زندگی" }
+        };
+        ServicePicker = picker;
         picker.SelectedIndex = ServicePreference.Default switch
         {
             DonyshService.Finance => 1, DonyshService.Life => 2, _ => 0

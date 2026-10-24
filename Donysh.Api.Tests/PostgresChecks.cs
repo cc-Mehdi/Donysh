@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using Donysh.Sms;
+using Donysh.Shared;
 using HesabYar.Web.Data;
 using HesabYar.Web.Domain;
 using HesabYar.Web.Sms;
@@ -74,9 +75,9 @@ internal static class PostgresChecks
             var other = new Workspace { Name = "Other workspace", OwnerUserId = user.Id, Type = WorkspaceType.Personal };
             var category = new ExpenseCategory { Name = "Review", WorkspaceId = workspace.Id };
             var otherCategory = new ExpenseCategory { Name = "سایر", WorkspaceId = other.Id };
-            var code = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(16));
+            var initialToken = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
             var device = new MobileDevice { Name = "Test", UserId = user.Id, WorkspaceId = workspace.Id, CategoryId = category.Id,
-                PairCodeHash = MobileApi.Hash(code), PairExpiresAtUtc = DateTime.UtcNow.AddMinutes(10) };
+                TokenHash = MobileApi.Hash(initialToken) };
             db.AddRange(user, workspace, other, category, otherCategory, device,
                 new WorkspaceMember { UserId = user.Id, WorkspaceId = workspace.Id, Role = WorkspaceRole.Owner },
                 new WorkspaceMember { UserId = user.Id, WorkspaceId = other.Id, Role = WorkspaceRole.Owner },
@@ -199,6 +200,8 @@ internal static class PostgresChecks
             await db.SaveChangesAsync();
 
             var builder = WebApplication.CreateBuilder();
+            const string mobileTicketSecret = "donysh-postgres-mobile-ticket-test-secret-2026";
+            builder.Configuration["CrossAppLogout:Secret"] = mobileTicketSecret;
             builder.Logging.ClearProviders(); builder.WebHost.UseUrls("http://127.0.0.1:0");
             builder.Services.AddDbContext<ApplicationDbContext>(o => o.UseNpgsql(cs.ConnectionString, p => p.EnableRetryOnFailure()));
             // AddIdentityCore registers SignInManager's Identity dependencies, while the
@@ -289,52 +292,16 @@ internal static class PostgresChecks
                       && financePrincipal.FindFirstValue(stampType) == legacyUser.SecurityStamp,
                     "central login creates a framework-valid Finance Identity session");
             }
-            await db.ExpenseCategories.Where(x => x.Id == category.Id).ExecuteUpdateAsync(s => s.SetProperty(x => x.IsArchived, true));
-            using var archivedPair = await client.PostAsJsonAsync("/api/mobile/pair", new PairRequest(code));
-            Check(archivedPair.StatusCode == HttpStatusCode.Unauthorized
-                && await db.MobileDevices.AnyAsync(x => x.Id == device.Id && x.PairCodeHash != null && x.TokenHash == null),
-                "archived pairing destination rejected without consuming code");
-            await db.ExpenseCategories.Where(x => x.Id == category.Id).ExecuteUpdateAsync(s => s.SetProperty(x => x.IsArchived, false).SetProperty(x => x.WorkspaceId, other.Id));
-            using var wrongScopePair = await client.PostAsJsonAsync("/api/mobile/pair", new PairRequest(code));
-            Check(wrongScopePair.StatusCode == HttpStatusCode.Unauthorized, "pairing category cannot belong to another workspace");
-            await db.ExpenseCategories.Where(x => x.Id == category.Id).ExecuteUpdateAsync(s => s.SetProperty(x => x.WorkspaceId, workspace.Id));
-            await db.MobileDevices.Where(x => x.Id == device.Id).ExecuteUpdateAsync(s => s.SetProperty(x => x.PairExpiresAtUtc, DateTime.UtcNow.AddMinutes(-1)));
-            using var expiredPair = await client.PostAsJsonAsync("/api/mobile/pair", new PairRequest(code));
-            Check(expiredPair.StatusCode == HttpStatusCode.Unauthorized, "expired pairing code rejected");
-            await db.MobileDevices.Where(x => x.Id == device.Id).ExecuteUpdateAsync(s => s.SetProperty(x => x.PairExpiresAtUtc, DateTime.UtcNow.AddMinutes(10)));
-            using var paired = await client.PostAsJsonAsync("/api/mobile/pair", new PairRequest(code));
-            Check(paired.StatusCode == HttpStatusCode.OK, "pairing");
-            var pair = (await paired.Content.ReadFromJsonAsync<PairResult>())!;
-            using var replay = await client.PostAsJsonAsync("/api/mobile/pair", new PairRequest(code));
-            Check(replay.StatusCode == HttpStatusCode.Unauthorized, "pairing code is single-use");
-            var pendingPairings = await Task.WhenAll(Enumerable.Range(0, 6).Select(async i => {
-                await using var pairingDb = new ApplicationDbContext(options);
-                var http = new DefaultHttpContext {
-                    User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, user.Id)], "test"))
-                };
-                var context = new WorkspaceContext(pairingDb, new HttpContextAccessor { HttpContext = http });
-                var page = new HesabYar.Web.Pages.Mobile.IndexModel(pairingDb, context) {
-                    DeviceName = "Concurrent connection " + i, CategoryId = category.Id,
-                    PageContext = new PageContext { HttpContext = http }
-                };
-                await page.OnPostAsync(CancellationToken.None);
-                return page.PairCode;
-            }));
-            Check(pendingPairings.Count(x => x is not null) == 2 && await db.MobileDevices.CountAsync(x => x.UserId == user.Id) == 3,
-                "concurrent pairing submissions cannot bypass three-device limit");
-            // The concurrent-limit scenario deliberately leaves two pending devices behind.
-            // Remove only those fixtures so the following login scenario starts independently;
-            // the already paired device remains available for the SMS checks below.
-            await db.MobileDevices
-                .Where(x => x.UserId == user.Id && x.TokenHash == null && x.PairCodeHash != null)
-                .ExecuteDeleteAsync();
             var installationId = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
+            var ticket = MobileSignInTicket.Create(mobileTicketSecret, user.Id, user.Email!,
+                user.DisplayName, installationId, emailVerified: true);
+            using var legacyPassword = await client.PostAsJsonAsync("/api/mobile/login",
+                new { email = user.Email, password = "Secret123", installationId, deviceName = "Old client" });
+            Check(legacyPassword.StatusCode == HttpStatusCode.Unauthorized,
+                "Finance rejects account passwords and requires a central ticket");
             using var login = await client.PostAsJsonAsync("/api/mobile/login",
-                new MobileLoginRequest(user.Email!, "Secret123", installationId, "Login device"));
-            var loginFailure = login.StatusCode == HttpStatusCode.OK
-                ? string.Empty
-                : $" (HTTP {(int)login.StatusCode}: {await login.Content.ReadAsStringAsync()})";
-            Check(login.StatusCode == HttpStatusCode.OK, "website credentials create a mobile session" + loginFailure);
+                new MobileTicketRequest(ticket, installationId, "Login device"));
+            Check(login.StatusCode == HttpStatusCode.OK, "central ticket creates a Finance mobile session");
             var session = (await login.Content.ReadFromJsonAsync<MobileSessionResult>())!;
             Check(session.Workspaces.Count == 2 && session.Workspaces.All(x => x.Id == workspace.Id || x.Id == other.Id),
                 "mobile session only lists member workspaces");
@@ -347,49 +314,21 @@ internal static class PostgresChecks
             using var deniedDestination = await loginClient.PutAsJsonAsync("/api/mobile/destination", new MobileDestinationRequest(sharedWorkspace.Id));
             Check(deniedDestination.StatusCode == HttpStatusCode.Forbidden,
                 "device cannot change to another user's workspace");
-            var replacementCode = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(16));
-            var replacement = new MobileDevice { Name = "Replacement for same phone", UserId = user.Id,
-                WorkspaceId = workspace.Id, CategoryId = category.Id,
-                PairCodeHash = MobileApi.Hash(replacementCode), PairExpiresAtUtc = DateTime.UtcNow.AddMinutes(10) };
-            db.MobileDevices.Add(replacement);
-            await db.SaveChangesAsync();
-            using var replaced = await client.PostAsJsonAsync("/api/mobile/pair",
-                new PairRequest(replacementCode, installationId, session.Token));
-            Check(replaced.StatusCode == HttpStatusCode.OK, "pairing replaces the same installation's prior login");
-            var replacementToken = (await replaced.Content.ReadFromJsonAsync<PairResult>())!.Token;
-            var installationHash = MobileApi.Hash(installationId);
-            Check(await db.MobileDevices.CountAsync(x => x.UserId == user.Id && !x.Revoked
-                    && x.ClientInstanceHash == installationHash && x.TokenHash != null) == 1
-                && await db.MobileDevices.AnyAsync(x => x.Id == replacement.Id && x.ClientInstanceHash == installationHash)
-                && await db.MobileDevices.AnyAsync(x => x.UserId == user.Id && x.Revoked && x.TokenHash == null
-                    && x.Name == "Login device"),
-                "one active connection remains for a re-paired installation");
-            using var oldLoginToken = await loginClient.GetAsync("/api/mobile/workspaces");
-            Check(oldLoginToken.StatusCode == HttpStatusCode.Unauthorized,
-                "replaced token cannot access mobile data");
-            var anotherCode = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(16));
-            var anotherReplacement = new MobileDevice { Name = "Second replacement", UserId = user.Id,
-                WorkspaceId = workspace.Id, CategoryId = category.Id,
-                PairCodeHash = MobileApi.Hash(anotherCode), PairExpiresAtUtc = DateTime.UtcNow.AddMinutes(10) };
-            db.MobileDevices.Add(anotherReplacement);
-            await db.SaveChangesAsync();
-            using var replacedAgain = await client.PostAsJsonAsync("/api/mobile/pair",
-                new PairRequest(anotherCode, installationId, replacementToken));
-            Check(replacedAgain.StatusCode == HttpStatusCode.OK
-                && await db.MobileDevices.CountAsync(x => x.UserId == user.Id && !x.Revoked
-                    && x.ClientInstanceHash == installationHash && x.TokenHash != null) == 1
-                && await db.MobileDevices.AnyAsync(x => x.Id == replacement.Id && x.Revoked && x.TokenHash == null),
-                "repeated pairing does not accumulate active connections for one installation");
-            var latestPair = (await replacedAgain.Content.ReadFromJsonAsync<PairResult>())!;
-            var restoredInstallationId = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
-            using var restoredLogin = await client.PostAsJsonAsync("/api/mobile/login",
-                new MobileLoginRequest(user.Email!, "Secret123", restoredInstallationId, "Restored phone", latestPair.Token));
-            Check(restoredLogin.StatusCode == HttpStatusCode.OK
-                && await db.MobileDevices.AnyAsync(x => x.Id == anotherReplacement.Id && x.Revoked && x.TokenHash == null)
+            using var renewed = await client.PostAsJsonAsync("/api/mobile/login",
+                new MobileTicketRequest(ticket, installationId, "Login device", session.Token));
+            Check(renewed.StatusCode == HttpStatusCode.OK
                 && await db.MobileDevices.CountAsync(x => x.UserId == user.Id && !x.Revoked && x.TokenHash != null) == 2,
-                "login after reinstall retires the previous token without duplicating access");
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", pair.Token);
-            var sms = new SmsEnvelope("Mellat", "حساب5555555555\nبرداشت50,000,000\nمانده111,111,111\n05/06/15-12:14", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+                "signing in again rotates one installation session without adding a device");
+            using var retiredToken = await loginClient.GetAsync("/api/mobile/workspaces");
+            Check(retiredToken.StatusCode == HttpStatusCode.Unauthorized,
+                "rotated Finance token cannot access mobile data");
+            var unrelatedTicket = MobileSignInTicket.Create(mobileTicketSecret, outsider.Id,
+                "outsider@example.com", "Other user", installationId, emailVerified: false);
+            using var noFinance = await client.PostAsJsonAsync("/api/mobile/login",
+                new MobileTicketRequest(unrelatedTicket, installationId, "Other phone"));
+            Check(noFinance.StatusCode == HttpStatusCode.Forbidden,
+                "an Auth account without Finance membership cannot enter Finance");
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", initialToken);            var sms = new SmsEnvelope("Mellat", "حساب5555555555\nبرداشت50,000,000\nمانده111,111,111\n05/06/15-12:14", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
             using var oversized = await client.PostAsJsonAsync("/api/mobile/sms", new SmsBatch(Enumerable.Repeat(sms, 6).ToList()));
             Check(oversized.StatusCode == HttpStatusCode.BadRequest, "batch count cap");
             using var imported = await client.PostAsJsonAsync("/api/mobile/sms", new { workspaceId = other.Id, userId = "forged", messages = new[] { sms } });

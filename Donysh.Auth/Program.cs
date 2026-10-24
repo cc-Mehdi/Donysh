@@ -223,6 +223,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.MapRazorPages();
+app.MapMobileSignIn();
 
 app.MapGet("/health/live", () => Results.Ok(new { status = "ok", service = "donysh-auth" }))
     .AllowAnonymous();

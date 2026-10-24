@@ -10,6 +10,7 @@ public partial class ConnectionPage : DonyshPage
 {
     private readonly SmsMonitorStore _store;
     private readonly MobileApiClient _api;
+    private readonly DonyshAccountClient _accountClient = new();
     private readonly IConnectivity _connectivity;
     private readonly Func<Task<MobileConnection?>> _loadConnectionAsync;
     private readonly Func<string, string, string, Task> _showAlertAsync;
@@ -117,7 +118,6 @@ public partial class ConnectionPage : DonyshPage
             catch (Exception exception) { UiSafety.Log(exception); }
             _connectivitySubscribed = false;
         }
-        PairCodeEntry.Text = string.Empty;
         PasswordEntry.Text = string.Empty;
         base.OnDisappearing();
     }
@@ -132,8 +132,13 @@ public partial class ConnectionPage : DonyshPage
     }
     private void OnChangeConnectionClicked(object? sender, EventArgs e) { _showPairing = !_showPairing; PairingCard.IsVisible = _showPairing || !_connected; }
     private void OnToggleServerClicked(object? sender, EventArgs e) => ServerPanel.IsVisible = !ServerPanel.IsVisible;
-    private void OnToggleLegacyPairingClicked(object? sender, EventArgs e) =>
-        LegacyPairingPanel.IsVisible = !LegacyPairingPanel.IsVisible;
+    private void OnPasswordVisibilityClicked(object? sender, EventArgs e)
+    {
+        PasswordEntry.IsPassword = !PasswordEntry.IsPassword;
+        PasswordVisibilityButton.Text = PasswordEntry.IsPassword ? AppIcons.Visibility : AppIcons.VisibilityOff;
+        SemanticProperties.SetDescription(PasswordVisibilityButton,
+            PasswordEntry.IsPassword ? "نمایش گذرواژه" : "پنهان‌کردن گذرواژه");
+    }
     private async void OnPendingTitlesClicked(object? sender, EventArgs e)
     {
         if (_openingTitles) return;
@@ -253,12 +258,12 @@ public partial class ConnectionPage : DonyshPage
             var password = PasswordEntry.Text ?? string.Empty;
             if (string.IsNullOrWhiteSpace(email) || string.IsNullOrEmpty(password))
             {
-                await AlertAsync("اطلاعات ورود کامل نیست", "رایانامه و گذرواژهٔ حساب دُنیش را وارد کنید.", "باشه");
+                await AlertAsync("اطلاعات ورود کامل نیست", "ایمیل یا نام کاربری و گذرواژهٔ حساب دُنیش را وارد کنید.", "باشه");
                 return;
             }
             var host = new Uri(server).Host;
             if (!host.Equals("donysh.ir", StringComparison.OrdinalIgnoreCase)
-                && !await ConfirmAsync("بررسی مقصد ورود", $"اطلاعات ورود به «{host}» فرستاده می‌شود. این سایت مورد اعتماد شماست؟", "ورود", "انصراف")) return;
+                && !await ConfirmAsync("بررسی مقصد مالی", $"مجوز ورود مالی به «{host}» فرستاده می‌شود. این سایت مورد اعتماد شماست؟", "ورود", "انصراف")) return;
             await MobileApiClient.RunWithSyncLockAsync(async () =>
             {
                 var queue = await _store.GetSyncSummaryAsync();
@@ -266,17 +271,54 @@ public partial class ConnectionPage : DonyshPage
                         $"{UiText.Digits(queue.Pending)} پیام منتظر دارید. پس از ورود، این پیام‌ها به فضای مالی انتخاب‌شده فرستاده می‌شوند. ادامه می‌دهید؟",
                         "ادامه", "انصراف")) return;
                 var installationId = await MobileConnectionStore.GetInstallationIdAsync();
+                var account = await _accountClient.SignInAsync(email, password, installationId);
+                PasswordEntry.Text = string.Empty;
+                if (account is null)
+                {
+                    await AlertAsync("ورود انجام نشد", "ایمیل، نام کاربری یا گذرواژه درست نیست؛ اگر چند بار تلاش کرده‌اید کمی صبر کنید.", "باشه");
+                    return;
+                }
                 var previousConnection = await _loadConnectionAsync();
                 var previousToken = previousConnection is not null
                     && MobileApiClient.NormalizeServer(previousConnection.Server) == server
                     ? previousConnection.Token : null;
-                var result = await _api.LoginAsync(server, email, password, installationId,
-                    string.IsNullOrWhiteSpace(DeviceInfo.Name) ? "گوشی همراه" : DeviceInfo.Name,
-                    previousToken);
-                PasswordEntry.Text = string.Empty;
+                MobileSessionResult? result = null;
+                Exception? financeFailure = null;
+                try
+                {
+                    result = await _api.LoginAsync(server, account.Ticket, installationId,
+                        string.IsNullOrWhiteSpace(DeviceInfo.Name) ? "گوشی همراه" : DeviceInfo.Name,
+                        previousToken);
+                }
+                catch (Exception exception) when (exception is HttpRequestException or InvalidDataException
+                    or UnauthorizedAccessException or InvalidOperationException or OperationCanceledException)
+                {
+                    financeFailure = exception;
+                    UiSafety.Log(exception);
+                }
+                LifeConnection? lifeConnection = null;
+                if (account.LifeEnabled)
+                {
+                    try
+                    {
+                        var previousLife = await LifeConnectionStore.LoadAsync();
+                        lifeConnection = await new LifeMobileClient().SignInAsync(account.Ticket,
+                            installationId, string.IsNullOrWhiteSpace(DeviceInfo.Name) ? "گوشی همراه" : DeviceInfo.Name,
+                            previousLife?.UserSubject == account.Subject ? previousLife.Token : null);
+                        if (lifeConnection is not null)
+                            await LifeConnectionStore.SaveAsync(lifeConnection with { AccountLabel = account.Email });
+                    }
+                    catch (Exception exception) { UiSafety.Log(exception); }
+                }
+                await DonyshAccountStatusStore.SaveAsync(new DonyshAccountStatus(account.Subject, account.Email,
+                    financeFailure is null ? result is not null : null, account.LifeEnabled));
                 if (result is null)
                 {
-                    await AlertAsync("ورود انجام نشد", "رایانامه یا گذرواژه درست نیست؛ اگر چند بار تلاش کرده‌اید کمی صبر کنید.", "باشه");
+                    await AlertAsync(financeFailure is null ? "دسترسی مالی فعال نیست" : "بررسی مالی کامل نشد",
+                        financeFailure is null
+                            ? $"حساب «{account.Email}» به دُنیش مالی دسترسی ندارد. اگر مالی شما روی حساب دیگری است، با آن حساب وارد شوید."
+                            : "ارتباط با دُنیش مالی برقرار نشد. دسترسی زندگی جداگانه بررسی شد؛ بعداً دوباره تلاش کنید.",
+                        "باشه");
                     return;
                 }
                 var workspaceId = result.WorkspaceId;
@@ -355,72 +397,6 @@ public partial class ConnectionPage : DonyshPage
         UiMotion.Feedback();
     }
 
-    private async void OnConnectClicked(object? sender, EventArgs e)
-    {
-        if (_busy) return;
-        var paired = false;
-        await RunBusyAsync(async () =>
-        {
-            var server = MobileApiClient.NormalizeServer(ServerEntry.Text);
-            if (server is null)
-            {
-                await AlertAsync("آدرس معتبر نیست", "یک نشانی معتبر و امن برای سایت وارد کنید؛ مانند https://donysh.ir", "باشه");
-                return;
-            }
-            var host = new Uri(server).Host;
-            if (!host.Equals("donysh.ir", StringComparison.OrdinalIgnoreCase)
-                && !await ConfirmAsync("بررسی مقصد اتصال", $"کد اتصال و پیام‌های انتخاب‌شده به «{host}» فرستاده می‌شوند. این سایت مورد اعتماد شماست؟", "اتصال", "انصراف")) return;
-            await MobileApiClient.RunWithSyncLockAsync(async () =>
-            {
-            var queue = await _store.GetSyncSummaryAsync();
-            if (queue.Pending > 0 && !await ConfirmAsync("مقصد پیام‌های منتظر",
-                    $"{UiText.Digits(queue.Pending)} پیام هنوز روی گوشی منتظر ارسال است. با اتصال جدید، این پیام‌ها به فضای مالیِ کد جدید ارسال می‌شوند. ادامه می‌دهید؟", "ادامهٔ اتصال", "انصراف")) return;
-            try
-            {
-                var installationId = await MobileConnectionStore.GetInstallationIdAsync();
-                var previousConnection = await _loadConnectionAsync();
-                var previousToken = previousConnection is not null
-                    && MobileApiClient.NormalizeServer(previousConnection.Server) == server
-                    ? previousConnection.Token : null;
-                var result = await _api.PairAsync(server, PairCodeEntry.Text ?? string.Empty,
-                    installationId, previousToken);
-                if (result is null)
-                {
-                    await AlertAsync("کد پذیرفته نشد", "کد اتصال نامعتبر یا منقضی شده است. در سایت یک کد تازه بسازید.", "باشه");
-                    return;
-                }
-                await MobileConnectionStore.SaveAsync(new MobileConnection(server, result.Token,
-                    $"{result.WorkspaceName} / {result.CategoryName}", UserId: result.UserId));
-                var restored = false;
-                try { restored = await SmsConfigurationSync.TrySyncAsync(_store); }
-                catch (Exception exception) { UiSafety.Log(exception); }
-                PairCodeEntry.Text = string.Empty;
-                _showPairing = false;
-                UiMotion.Feedback();
-                SyncPlatform.Schedule();
-                if (!_setupMode)
-                    await AlertAsync("گوشی متصل شد", restored
-                        ? $"فرستنده‌ها و قالب‌ها بازیابی شدند. مقصد پیام‌ها: {result.WorkspaceName} / {result.CategoryName}"
-                        : $"مقصد پیام‌ها: {result.WorkspaceName} / {result.CategoryName}", "باشه");
-                paired = true;
-            }
-            catch (ArgumentException)
-            {
-                await AlertAsync("کد را بررسی کنید", "کد اتصال ۳۲ نویسه دارد. آن را کامل از سایت کپی کنید.", "باشه");
-            }
-            catch (Exception exception) when (exception is HttpRequestException or InvalidDataException or System.Text.Json.JsonException or OperationCanceledException)
-            {
-                await AlertAsync("اتصال کامل نشد", "اینترنت، آدرس سایت و کد اتصال را بررسی کنید و دوباره تلاش کنید.", "باشه");
-            }
-            });
-        });
-        if (paired && _setupMode)
-        {
-            try { await Navigation.PopAsync(); }
-            catch (Exception exception) { UiSafety.Log(exception); }
-        }
-    }
-
     private async void OnSyncClicked(object? sender, EventArgs e)
     {
         if (_busy) return;
@@ -480,7 +456,7 @@ public partial class ConnectionPage : DonyshPage
     private void UpdateActions()
     {
         BusyCard.IsVisible = BusyIndicator.IsRunning = _busy;
-        ConnectButton.IsEnabled = LoginButton.IsEnabled = PairCodeEntry.IsEnabled = ServerEntry.IsEnabled = !_busy;
+        LoginButton.IsEnabled = ServerEntry.IsEnabled = PasswordVisibilityButton.IsEnabled = !_busy;
         EmailEntry.IsEnabled = PasswordEntry.IsEnabled = !_busy;
         ManualSyncButton.IsEnabled = !_busy && _connected;
         DisconnectButton.IsEnabled = ChangeConnectionButton.IsEnabled = WorkspaceButton.IsEnabled = !_busy && _connected;
@@ -493,6 +469,12 @@ public partial class ConnectionPage : DonyshPage
         {
             var connection = await _loadConnectionAsync();
             var summary = await _store.GetSyncSummaryAsync();
+            if (_setupMode && connection is null)
+            {
+                var account = await DonyshAccountStatusStore.LoadAsync();
+                if (account is { FinanceAvailable: false, LifeAvailable: true })
+                    PageDescriptionLabel.Text = $"حساب «{account.Label}» فقط دُنیش زندگی دارد. اگر دُنیش مالی شما روی حساب دیگری است، با آن حساب وارد شوید.";
+            }
             _connected = connection is not null;
             PairingCard.IsVisible = _setupMode || !_connected || _showPairing;
             ConnectionStatusLabel.Text = connection is null ? "گوشی هنوز متصل نشده است" : $"مقصد: {connection.Destination}";

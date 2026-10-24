@@ -201,6 +201,14 @@ internal static class StartupSmokeCheck
         });
 
         await ExerciseConnectionButtonsAsync(shell, home, store, address, preset.SampleMessage);
+        await VisitAsync(shell, new LifeSettingsPage(), page =>
+        {
+            var textColor = page.ServicePicker.TextColor?.ToArgbHex();
+            var fieldColor = page.ServicePicker.BackgroundColor?.ToArgbHex();
+            Check(textColor == "#102A3A" && fieldColor == "#FFFFFF",
+                $"Life settings keeps dark picker text readable on a light field ({textColor} on {fieldColor})");
+            return Task.CompletedTask;
+        });
         Check(await store.AddSenderAsync("BANK-SECOND") == AddSenderResult.Added,
             "Second monitored sender registered");
         SmsReceivedNotifier.Notify();
@@ -298,7 +306,7 @@ internal static class StartupSmokeCheck
         {
             Check(page.IsConnectionStep && page.FindByName<Border>("ConnectionStepCard").IsVisible
                 && !page.FindByName<Border>("SenderStepCard").IsVisible,
-                "Guided setup starts with the pairing-code step");
+                "Guided setup starts with the account connection step");
             return Task.CompletedTask;
         });
 
@@ -306,7 +314,7 @@ internal static class StartupSmokeCheck
             () => Task.FromResult<MobileConnection?>(connected), () => Task.FromResult(false)), page =>
         {
             Check(page.IsSenderStep && page.FindByName<Border>("SenderStepCard").IsVisible,
-                "Guided setup advances to sender selection after pairing");
+                "Guided setup advances to sender selection after account connection");
             return Task.CompletedTask;
         });
 
@@ -379,8 +387,14 @@ internal static class StartupSmokeCheck
         await Task.Delay(100);
         Check(shell.Navigation.NavigationStack.Count == previousDepth + 1,
             "Rapid Settings taps produce one navigation");
-        Check(page.FindByName<Entry>("PairCodeEntry").FontFamily == "YekanBakh",
+        Check(page.FindByName<Entry>("EmailEntry").FontFamily == "YekanBakh",
             "Settings input uses the registered Persian font");
+        var password = page.FindByName<Entry>("PasswordEntry");
+        var visibility = page.FindByName<Button>("PasswordVisibilityButton");
+        visibility.SendClicked();
+        Check(!password.IsPassword, "Password visibility button reveals the password");
+        visibility.SendClicked();
+        Check(password.IsPassword, "Password visibility button hides the password again");
         var savedTheme = UiPreferences.Theme;
         try
         {
@@ -428,15 +442,15 @@ internal static class StartupSmokeCheck
 
         page.FindByName<Button>("ChangeConnectionButton").SendClicked();
         page.FindByName<Entry>("ServerEntry").Text = "https://donysh.ir";
-        page.FindByName<Entry>("PairCodeEntry").Text = new string('A', 32);
-        var connect = page.FindByName<Button>("ConnectButton");
+        page.FindByName<Entry>("EmailEntry").Text = string.Empty;
+        var connect = page.FindByName<Button>("LoginButton");
         alertsBefore = scenario.AlertTitles.Count;
         connect.SendClicked();
         connect.SendClicked();
-        await WaitUntilAsync(() => scenario.RequestCount == 2 && scenario.AlertTitles.Count > alertsBefore
+        await WaitUntilAsync(() => scenario.RequestCount == 1 && scenario.AlertTitles.Count > alertsBefore
             && connect.IsEnabled && !page.FindByName<ActivityIndicator>("BusyIndicator").IsRunning,
-            "Offline pairing did not recover the connection form.");
-        Check(scenario.AlertTitles.Last() == "اتصال کامل نشد", "Pairing transport failure is shown without saving credentials");
+            "Incomplete account login did not recover the connection form.");
+        Check(scenario.AlertTitles.Last() == "اطلاعات ورود کامل نیست", "Incomplete account login does not send credentials");
         await shell.Navigation.PopAsync(animated: false);
 
         // The CTA has its own handler; exercising it catches a route regression that
@@ -538,12 +552,13 @@ internal static class StartupSmokeCheck
                 "Confirmation-failure settings did not finish loading.");
             page.FindByName<Button>("ChangeConnectionButton").SendClicked();
             page.FindByName<Entry>("ServerEntry").Text = "https://donysh.ir";
-            page.FindByName<Entry>("PairCodeEntry").Text = new string('A', 32);
-            var connect = page.FindByName<Button>("ConnectButton");
+            page.FindByName<Entry>("EmailEntry").Text = "user@example.com";
+            page.FindByName<Entry>("PasswordEntry").Text = "Secret123";
+            var connect = page.FindByName<Button>("LoginButton");
             connect.SendClicked();
             await WaitUntilAsync(() => unavailableConfirmation.ConfirmationAttempts == 1 && connect.IsEnabled
                 && !page.FindByName<ActivityIndicator>("BusyIndicator").IsRunning,
-                "A failing native confirmation escaped the actual Connect handler.");
+                "A failing native confirmation escaped the actual Login handler.");
             Check(unavailableConfirmation.RequestCount == 0 && (await store.GetSyncSummaryAsync()).Pending == 1,
                 "Connection changes fail closed when the destination confirmation cannot open");
         });
@@ -674,7 +689,7 @@ internal static class StartupSmokeCheck
             scenario.RequestCount++;
             if (!scenario.AcknowledgeMessages) throw new HttpRequestException("Simulated offline transport; no real network request was made.");
             if (request.RequestUri?.AbsolutePath != "/api/mobile/sms")
-                throw new InvalidOperationException("The runtime test never permits successful pairing or credential writes.");
+                throw new InvalidOperationException("The runtime test never permits successful account login or credential writes.");
             var batch = await request.Content!.ReadFromJsonAsync<SmsBatch>(cancellationToken);
             return new HttpResponseMessage(HttpStatusCode.OK)
             {

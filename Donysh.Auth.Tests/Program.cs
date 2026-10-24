@@ -8,6 +8,7 @@ using Donysh.Auth.Security;
 using Donysh.Auth.Configuration;
 using Donysh.Auth.Controllers;
 using Donysh.Auth.Services;
+using Donysh.Shared;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -30,6 +31,23 @@ void Check(string name, bool condition)
         Console.WriteLine($"FAIL {name}");
     }
 }
+
+const string mobileTicketSecret = "auth-mobile-ticket-test-secret-2026-secure";
+var mobileInstallation = new string('A', 64);
+var issuedAt = DateTimeOffset.UtcNow;
+var mobileTicket = MobileSignInTicket.Create(mobileTicketSecret, "account-1", "member@example.com",
+    "کاربر", mobileInstallation, emailVerified: true, lifeEnabled: false, now: issuedAt);
+Check("Central mobile ticket carries account and service access",
+    MobileSignInTicket.TryValidate(mobileTicket, mobileTicketSecret, mobileInstallation,
+        out var mobileClaims, issuedAt)
+    && mobileClaims is { Subject: "account-1", EmailVerified: true, LifeEnabled: false });
+Check("Central mobile ticket is bound to one installation and expires",
+    !MobileSignInTicket.TryValidate(mobileTicket, mobileTicketSecret, new string('B', 64), out _, issuedAt)
+    && !MobileSignInTicket.TryValidate(mobileTicket, mobileTicketSecret, mobileInstallation,
+        out _, issuedAt.AddMinutes(3)));
+Check("Tampered mobile ticket is rejected",
+    !MobileSignInTicket.TryValidate((mobileTicket[0] == 'A' ? 'B' : 'A') + mobileTicket[1..],
+        mobileTicketSecret, mobileInstallation, out _, issuedAt));
 
 var emptyRegistration = new Donysh.Auth.Pages.Account.RegisterModel.InputModel();
 var registrationErrors = new List<ValidationResult>();

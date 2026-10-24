@@ -33,6 +33,8 @@ public static class AppIcons
     public const string Sync = "\ue627";
     public const string Template = "\uf1c2";
     public const string Title = "\ue264";
+    public const string Visibility = "\ue8f4";
+    public const string VisibilityOff = "\ue8f5";
     public const string Tune = "\ue429";
     public const string Workspace = "\ue850";
 }

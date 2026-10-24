@@ -4,7 +4,7 @@ internal static class UiSafety
 {
     public static void Log(Exception exception)
     {
-        // Never include SMS text, pairing codes or connection tokens in diagnostics.
+        // Never include SMS text, account passwords or connection tokens in diagnostics.
 #if ANDROID
         global::Android.Util.Log.Warn("DonyshUi", $"Page operation failed: {exception.GetType().Name}");
 #else
