@@ -1,4 +1,5 @@
 using DonyshMobile.Core;
+using DonyshMobile.UI;
 
 namespace DonyshMobile;
 
@@ -9,16 +10,21 @@ public sealed class LifeActualPage : ContentPage
     {
         Title = "ثبت فعالیت";
         FlowDirection = FlowDirection.RightToLeft;
-        BackgroundColor = Color.FromArgb("#F4F8F7");
+        LifeTheme.Set(this, BackgroundColorProperty, LifeTheme.Canvas);
         var stack = new VerticalStackLayout { Padding = 20, Spacing = 12 };
-        stack.Children.Add(LifePage.Text("چه کاری انجام دادی؟", 22, Color.FromArgb("#102A3A"), true));
+        stack.Children.Add(LifePage.Text("چه کاری انجام دادی؟", 22, LifeTheme.Ink, true));
         var picker = new Picker { Title = "فعالیت" };
+        LifeTheme.Set(picker, Picker.TextColorProperty, LifeTheme.Ink);
+        LifeTheme.Set(picker, Picker.TitleColorProperty, LifeTheme.Muted);
+        LifeTheme.Set(picker, BackgroundColorProperty, LifeTheme.Field);
         foreach (var activity in activities) picker.Items.Add(activity.Title);
         if (activities.Count > 0) picker.SelectedIndex = 0;
         stack.Children.Add(picker);
         var minutes = new Entry { Placeholder = "مدت به دقیقه، مثلاً ۳۰", Keyboard = Keyboard.Numeric, Text = "30", MaxLength = 4 };
+        LifePage.ApplyField(minutes);
         stack.Children.Add(minutes);
         var note = new Editor { Placeholder = "یادداشت کوتاه (اختیاری)", AutoSize = EditorAutoSizeOption.TextChanges, MaxLength = 160 };
+        LifePage.ApplyField(note);
         stack.Children.Add(note);
         stack.Children.Add(LifePage.Button("ثبت فعالیت امروز", async () =>
         {
@@ -37,7 +43,7 @@ public sealed class LifeActualPage : ContentPage
                 await saved();
             }
             catch (Exception) { await DisplayAlert("ثبت نشد", "فعالیت ذخیره نشد. دوباره تلاش کنید.", "باشه"); }
-        }, Color.FromArgb("#087E78")));
+        }, LifeTheme.Primary));
         Content = new ScrollView { Content = stack };
     }
     private static TimeZoneInfo TehranZone()

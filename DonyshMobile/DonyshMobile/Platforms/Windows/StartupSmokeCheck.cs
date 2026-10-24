@@ -201,13 +201,64 @@ internal static class StartupSmokeCheck
         });
 
         await ExerciseConnectionButtonsAsync(shell, home, store, address, preset.SampleMessage);
-        await VisitAsync(shell, new LifeSettingsPage(), page =>
+        await VisitAsync(shell, new LifeSettingsPage(), async page =>
         {
-            var textColor = page.ServicePicker.TextColor?.ToArgbHex();
-            var fieldColor = page.ServicePicker.BackgroundColor?.ToArgbHex();
-            Check(textColor == "#102A3A" && fieldColor == "#FFFFFF",
-                $"Life settings keeps dark picker text readable on a light field ({textColor} on {fieldColor})");
-            return Task.CompletedTask;
+            var app = MauiApplication.Current!;
+            var previous = app.UserAppTheme;
+            var stack = (VerticalStackLayout)((ScrollView)page.Content).Content;
+            var heading = (Label)stack.Children[0];
+            var card = (Border)stack.Children[3];
+            var financeButton = (Button)stack.Children[4];
+            try
+            {
+                foreach (var (theme, canvas, text, field, surface, border, financeText) in new[]
+                {
+                    (AppTheme.Light, "#F4F7F6", "#102A3A", "#FFFFFF", "#FFFFFF", "#DCE8E5", "#473592"),
+                    (AppTheme.Dark, "#0B1928", "#EDF6F7", "#20384A", "#17283B", "#304456", "#D8CCFF")
+                })
+                {
+                    app.UserAppTheme = theme;
+                    await WaitUntilAsync(() => page.ServicePicker.TextColor?.ToArgbHex() == text,
+                        "Life settings did not apply the selected color theme.");
+                    Check(page.BackgroundColor?.ToArgbHex() == canvas
+                        && page.ServicePicker.BackgroundColor?.ToArgbHex() == field
+                        && heading.TextColor?.ToArgbHex() == text
+                        && card.BackgroundColor?.ToArgbHex() == surface
+                        && (card.Stroke as SolidColorBrush)?.Color.ToArgbHex() == border
+                        && financeButton.TextColor?.ToArgbHex() == financeText,
+                        $"Life settings uses readable {theme} text, card, button and input colors");
+                }
+            }
+            finally { app.UserAppTheme = previous; }
+        });
+        await VisitAsync(shell, new LifeActualPage([], () => Task.CompletedTask), async page =>
+        {
+            var stack = (VerticalStackLayout)((ScrollView)page.Content).Content;
+            var activity = (Picker)stack.Children[1];
+            var minutes = (Entry)stack.Children[2];
+            var note = (Editor)stack.Children[3];
+            var app = MauiApplication.Current!;
+            var previous = app.UserAppTheme;
+            try
+            {
+                foreach (var (theme, text, field) in new[]
+                {
+                    (AppTheme.Light, "#102A3A", "#FFFFFF"),
+                    (AppTheme.Dark, "#EDF6F7", "#20384A")
+                })
+                {
+                    app.UserAppTheme = theme;
+                    await WaitUntilAsync(() => activity.TextColor?.ToArgbHex() == text,
+                        "Life activity form did not apply the selected color theme.");
+                    Check(activity.BackgroundColor?.ToArgbHex() == field
+                        && minutes.TextColor?.ToArgbHex() == text
+                        && minutes.BackgroundColor?.ToArgbHex() == field
+                        && note.TextColor?.ToArgbHex() == text
+                        && note.BackgroundColor?.ToArgbHex() == field,
+                        $"Life activity form keeps {theme} fields readable");
+                }
+            }
+            finally { app.UserAppTheme = previous; }
         });
         Check(await store.AddSenderAsync("BANK-SECOND") == AddSenderResult.Added,
             "Second monitored sender registered");
