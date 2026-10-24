@@ -1,6 +1,9 @@
+using System.Security.Claims;
 using Donysh.Life.Data;
 using Donysh.Life.Domain;
+using Donysh.Life.Features.AiPlanning;
 using Donysh.Life.Features.Scheduling;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
@@ -163,6 +166,38 @@ internal static class PostgresChecks
             if (await db.ActualActivityEntries.CountAsync(item => item.UserSubject == "owner-a" && item.ActivityId == ownerAActivity.Id) != 1)
                 throw new Exception("FAIL PostgreSQL Life did not preserve manual actual activity ownership");
 
+            db.ChangeTracker.Clear();
+            var aiContext = new HttpContextAccessor
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "owner-a")], "test"))
+                }
+            };
+            var aiPlan = new AiPlan
+            {
+                Version = 1,
+                Activities = [new AiActivity
+                {
+                    ExistingActivityId = ownerAActivity.Id, Title = "مطالعه", Color = "#059669", Icon = "book",
+                    WeeklyHours = 8, Slots = [new AiSlot { Day = "Saturday", Start = "10:00", DurationMinutes = 60 }]
+                }]
+            };
+            var aiSelections = new List<AiActivitySelection>
+            {
+                new() { Included = true, Slots = [new AiSlotSelection
+                { Included = true, Day = "Saturday", Start = "10:00", DurationMinutes = 60 }] }
+            };
+            var aiError = await new LifeAiPlanService(db, aiContext).ValidateAndApplyAsync(aiPlan, aiSelections, CancellationToken.None);
+            if (aiError is not null
+                || await db.SchedulePatterns.AsNoTracking().CountAsync(item => item.UserSubject == "owner-a"
+                    && item.ActivityId == ownerAActivity.Id && item.IsActive) != 1
+                || !await db.SchedulePatterns.AsNoTracking().AnyAsync(item => item.UserSubject == "owner-a"
+                    && item.ActivityId == ownerAActivity.Id && item.IsActive && item.StartMinute == 600)
+                || !await db.ScheduleOccurrenceRecords.AsNoTracking().AnyAsync(item => item.PatternId == ownerAPattern.Id)
+                || !await db.SchedulePatterns.AsNoTracking().AnyAsync(item => item.Id == ownerBPattern.Id && item.IsActive))
+                throw new Exception($"FAIL PostgreSQL Life AI improvement did not preserve the owner's history: {aiError}");
+
             await using var verify = new NpgsqlConnection(connection.ConnectionString);
             await verify.OpenAsync();
             await using var command = new NpgsqlCommand("""
@@ -192,6 +227,7 @@ internal static class PostgresChecks
             Console.WriteLine("PASS PostgreSQL Life stores one actual result per recurring occurrence");
             Console.WriteLine("PASS PostgreSQL Life stores owned manual actual activities");
             Console.WriteLine("PASS PostgreSQL Life reporting index supports moved occurrence date queries");
+            Console.WriteLine("PASS PostgreSQL Life AI improvement updates owned schedules and keeps historical outcomes");
         }
         finally
         {

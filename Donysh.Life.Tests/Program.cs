@@ -686,6 +686,9 @@ var aiJson = """{"version":1,"activities":[{"title":"مطالعهٔ AI","categor
 Check("Life AI guide includes newly available appearance choices",
     LifeAiPlanService.Prompt.Contains("#059669", StringComparison.Ordinal)
     && LifeAiPlanService.Prompt.Contains("fitness", StringComparison.Ordinal));
+Check("Life AI improvement guide keeps existing activity IDs and untouched activities",
+    LifeAiPlanService.ImprovementPrompt.Contains("existingActivityId", StringComparison.Ordinal)
+    && LifeAiPlanService.ImprovementPrompt.Contains("بدون تغییر می‌مانند", StringComparison.Ordinal));
 Check("Life AI parser accepts a valid weekly plan", LifeAiPlanService.Parse(aiJson).Plan?.Activities?.Count == 2);
 var expandedAiJson = aiJson.Replace("\"color\":\"#2563EB\",\"icon\":\"book\"", "\"color\":\"#059669\",\"icon\":\"fitness\"", StringComparison.Ordinal);
 Check("Life AI parser accepts expanded activity colors and icons",
@@ -698,6 +701,11 @@ Check("Life AI parser accepts an overnight schedule as one slot",
 Check("Life AI parser rejects unsupported colors and malformed days",
     LifeAiPlanService.Parse(aiJson.Replace("#2563EB", "#FFFFFF")).Error is not null
     && LifeAiPlanService.Parse(aiJson.Replace("Saturday", "Funday")).Error is not null);
+Check("Life AI parser rejects duplicate slots for one activity",
+    LifeAiPlanService.Parse(aiJson.Replace(
+        "\"start\":\"09:00\",\"durationMinutes\":60}]",
+        "\"start\":\"09:00\",\"durationMinutes\":60},{\"day\":\"Saturday\",\"start\":\"09:00\",\"durationMinutes\":60}]",
+        StringComparison.Ordinal)).Error?.Contains("تکرار", StringComparison.Ordinal) == true);
 
 await using (var aiFactory = new AuthenticatedLifeApplicationFactory())
 using (var aiClient = aiFactory.CreateClient(new WebApplicationFactoryClientOptions
@@ -712,6 +720,9 @@ using (var aiClient = aiFactory.CreateClient(new WebApplicationFactoryClientOpti
     Check("Life AI page exposes prompt, upload, paste and mobile navigation",
         aiPage.StatusCode == HttpStatusCode.OK && aiHtml.Contains("فایل JSON", StringComparison.Ordinal)
         && aiHtml.Contains("متن JSON", StringComparison.Ordinal) && aiHtml.Contains("Saturday", StringComparison.Ordinal)
+        && aiHtml.Contains("ساخت برنامهٔ نخستین", StringComparison.Ordinal)
+        && aiHtml.Contains("بهبود برنامهٔ فعلی", StringComparison.Ordinal)
+        && aiHtml.Contains("/Ai?handler=Export", StringComparison.Ordinal)
         && aiHtml.Contains("asp-page=\"/Ai\"", StringComparison.Ordinal) == false
         && aiHtml.Contains("href=\"/Ai\"", StringComparison.Ordinal));
     using var previewContent = new FormUrlEncodedContent(new Dictionary<string, string>
@@ -727,7 +738,7 @@ using (var aiClient = aiFactory.CreateClient(new WebApplicationFactoryClientOpti
         previewResponse.StatusCode == HttpStatusCode.OK && !string.IsNullOrWhiteSpace(token)
         && decodedPreviewHtml.Contains("مطالعهٔ AI", StringComparison.Ordinal)
         && previewHtml.Contains("Selections[0].Slots[0].Day", StringComparison.Ordinal)
-        && decodedPreviewHtml.Contains("ساخت برنامهٔ انتخاب‌شده", StringComparison.Ordinal));
+        && decodedPreviewHtml.Contains("ثبت تغییرات انتخاب‌شده", StringComparison.Ordinal));
     var applyValues = new Dictionary<string, string>
     {
         ["__RequestVerificationToken"] = applyCsrf, ["PreviewToken"] = token,
@@ -773,6 +784,123 @@ using (var aiClient = aiFactory.CreateClient(new WebApplicationFactoryClientOpti
         && repeatedHtml.Contains("از قبل وجود دارد", StringComparison.Ordinal)
         && await aiDb.Activities.CountAsync(x => x.Title == "مطالعهٔ AI") == 1
         && await aiDb.SchedulePatterns.CountAsync(x => x.ActivityId == importedActivities[0].Id) == 1);
+
+    var ownedActivityId = importedActivities[0].Id;
+    var originalPatternId = importedSlots[0].Id;
+    var otherOwnerId = Guid.NewGuid();
+    var untouchedId = Guid.NewGuid();
+    aiDb.Activities.Add(new Donysh.Life.Domain.LifeActivity
+    {
+        Id = untouchedId, UserSubject = "life-test-user", Title = "فعالیت بدون تغییر",
+        NormalizedTitle = "فعالیت بدون تغییر", ColorHex = "#2563EB", IconKey = "book",
+        CreatedAtUtc = DateTimeOffset.UtcNow, UpdatedAtUtc = DateTimeOffset.UtcNow
+    });
+    aiDb.SchedulePatterns.Add(new Donysh.Life.Domain.RecurringSchedulePattern
+    {
+        Id = Guid.NewGuid(), ActivityId = untouchedId, UserSubject = "life-test-user",
+        DayOfWeek = DayOfWeek.Friday, StartMinute = 600, DurationMinutes = 60,
+        CreatedAtUtc = DateTimeOffset.UtcNow, UpdatedAtUtc = DateTimeOffset.UtcNow
+    });
+    aiDb.Activities.Add(new Donysh.Life.Domain.LifeActivity
+    {
+        Id = otherOwnerId, UserSubject = "another-life-user", Title = "برنامهٔ خصوصی دیگران",
+        NormalizedTitle = "برنامهٔ خصوصی دیگران", ColorHex = "#2563EB", IconKey = "book",
+        CreatedAtUtc = DateTimeOffset.UtcNow, UpdatedAtUtc = DateTimeOffset.UtcNow
+    });
+    aiDb.ScheduleOccurrenceRecords.Add(new Donysh.Life.Domain.ScheduleOccurrenceRecord
+    {
+        Id = Guid.NewGuid(), PatternId = originalPatternId, UserSubject = "life-test-user",
+        OriginalDate = WeekCalendar.CurrentSaturday().AddDays(2),
+        ScheduledDate = WeekCalendar.CurrentSaturday().AddDays(2),
+        Status = Donysh.Life.Domain.OccurrenceOutcomeStatus.Completed,
+        PlannedMinutes = 90, ActualMinutes = 60,
+        CreatedAtUtc = DateTimeOffset.UtcNow, UpdatedAtUtc = DateTimeOffset.UtcNow
+    });
+    await aiDb.SaveChangesAsync();
+
+    using (var exportResponse = await aiClient.GetAsync("/Ai?handler=Export"))
+    {
+        using var document = JsonDocument.Parse(await exportResponse.Content.ReadAsStringAsync());
+        var root = document.RootElement;
+        var exported = root.GetProperty("activities").EnumerateArray().ToList();
+        Check("Life AI export is a private downloadable snapshot of the current plan and progress",
+            exportResponse.StatusCode == HttpStatusCode.OK
+            && exportResponse.Headers.CacheControl?.NoStore == true
+            && exportResponse.Content.Headers.ContentType?.MediaType == "application/json"
+            && root.GetProperty("version").GetInt32() == 1
+            && exported.Any(item => item.GetProperty("existingActivityId").GetGuid() == ownedActivityId
+                && item.GetProperty("slots").EnumerateArray().Any())
+            && root.GetProperty("currentWeek").EnumerateArray().Any()
+            && root.GetProperty("progress").GetProperty("actualMinutes").GetInt32() >= 60
+            && exported.All(item => item.GetProperty("existingActivityId").GetGuid() != otherOwnerId));
+    }
+
+    var improvedJson = JsonSerializer.Serialize(new
+    {
+        version = 1,
+        activities = new[]
+        {
+            new
+            {
+                existingActivityId = ownedActivityId, title = "مطالعهٔ AI", category = "یادگیری",
+                color = "#059669", icon = "book", weeklyHours = 3,
+                slots = new[] { new { day = "Tuesday", start = "08:00", durationMinutes = 60, reminderMinutesBefore = 15 } }
+            }
+        }
+    });
+    using var improvedPreviewContent = new FormUrlEncodedContent(new Dictionary<string, string>
+    {
+        ["__RequestVerificationToken"] = aiCsrf, ["Mode"] = "improve", ["JsonText"] = improvedJson
+    });
+    using var improvedPreviewResponse = await aiClient.PostAsync("/Ai?handler=Preview", improvedPreviewContent);
+    var improvedPreviewHtml = await improvedPreviewResponse.Content.ReadAsStringAsync();
+    var improvedToken = WebUtility.HtmlDecode(Regex.Match(improvedPreviewHtml, "name=\"PreviewToken\" value=\"([^\"]+)\"").Groups[1].Value);
+    var improvedCsrf = WebUtility.HtmlDecode(Regex.Match(improvedPreviewHtml, "name=\"__RequestVerificationToken\" type=\"hidden\" value=\"([^\"]+)\"").Groups[1].Value);
+    Check("Life AI improvement previews an update to an owned activity",
+        improvedPreviewResponse.StatusCode == HttpStatusCode.OK
+        && WebUtility.HtmlDecode(improvedPreviewHtml).Contains("به‌روزرسانی فعالیت موجود", StringComparison.Ordinal)
+        && !string.IsNullOrWhiteSpace(improvedToken));
+    var improvedValues = new Dictionary<string, string>
+    {
+        ["__RequestVerificationToken"] = improvedCsrf, ["PreviewToken"] = improvedToken,
+        ["Selections[0].Included"] = "true", ["Selections[0].Slots[0].Included"] = "true",
+        ["Selections[0].Slots[0].Day"] = "Tuesday", ["Selections[0].Slots[0].Start"] = "08:00",
+        ["Selections[0].Slots[0].DurationMinutes"] = "60",
+        ["Selections[0].Slots[0].ReminderMinutesBefore"] = "15"
+    };
+    using var improvedApplyContent = new FormUrlEncodedContent(improvedValues);
+    using var improvedApplyResponse = await aiClient.PostAsync("/Ai?handler=Apply", improvedApplyContent);
+    aiDb.ChangeTracker.Clear();
+    var updatedActivity = await aiDb.Activities.Include(item => item.WeeklyGoal)
+        .SingleAsync(item => item.Id == ownedActivityId);
+    var updatedPatterns = await aiDb.SchedulePatterns.Where(item => item.ActivityId == ownedActivityId).ToListAsync();
+    Check("Life AI improvement updates the chosen activity and preserves recorded history",
+        improvedApplyResponse.StatusCode == HttpStatusCode.Redirect
+        && updatedActivity.WeeklyGoal?.TargetMinutes == 180
+        && updatedActivity.ColorHex == "#059669"
+        && updatedPatterns.Count(item => item.IsActive) == 1
+        && updatedPatterns.Single(item => item.IsActive).DayOfWeek == DayOfWeek.Tuesday
+        && updatedPatterns.Single(item => item.IsActive).ReminderMinutesBefore == 15
+        && updatedPatterns.Single(item => item.Id == originalPatternId).IsActive == false
+        && await aiDb.ScheduleOccurrenceRecords.AnyAsync(item => item.PatternId == originalPatternId)
+        && await aiDb.SchedulePatterns.AnyAsync(item => item.ActivityId == untouchedId && item.IsActive
+            && item.DayOfWeek == DayOfWeek.Friday));
+    using var repeatImprovementContent = new FormUrlEncodedContent(improvedValues);
+    using var repeatImprovementResponse = await aiClient.PostAsync("/Ai?handler=Apply", repeatImprovementContent);
+    Check("Life AI repeated improvement does not duplicate a matching schedule",
+        repeatImprovementResponse.StatusCode == HttpStatusCode.Redirect
+        && await aiDb.SchedulePatterns.CountAsync(item => item.ActivityId == ownedActivityId && item.IsActive) == 1);
+
+    using var foreignPreviewContent = new FormUrlEncodedContent(new Dictionary<string, string>
+    {
+        ["__RequestVerificationToken"] = aiCsrf, ["Mode"] = "improve",
+        ["JsonText"] = improvedJson.Replace(ownedActivityId.ToString(), otherOwnerId.ToString(), StringComparison.Ordinal)
+    });
+    using var foreignPreviewResponse = await aiClient.PostAsync("/Ai?handler=Preview", foreignPreviewContent);
+    Check("Life AI rejects a proposed update to another user's activity",
+        foreignPreviewResponse.StatusCode == HttpStatusCode.OK
+        && WebUtility.HtmlDecode(await foreignPreviewResponse.Content.ReadAsStringAsync())
+            .Contains("به حساب شما تعلق ندارد", StringComparison.Ordinal));
 }
 
 await using (var federatedFactory = new AuthenticatedLifeApplicationFactory())

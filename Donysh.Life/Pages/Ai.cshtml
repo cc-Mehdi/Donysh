@@ -7,23 +7,43 @@
 }
 
 <section class="page-head compact ai-head">
-    <div><p class="eyebrow">از روتین تو تا برنامهٔ واقعی</p><h1>دستیار هوشمند</h1><p>با هوش مصنوعی دلخواهت برنامه بساز؛ اینجا قبل از ثبت، هر فعالیت و زمان را خودت انتخاب و ویرایش کن.</p></div>
+    <div><p class="eyebrow">برنامه‌ریزی با انتخاب خودت</p><h1>دستیار هوشمند</h1><p>برنامهٔ نخستین بساز یا با کمک وضعیت فعلی‌ات آن را بهتر کن. پیش از ذخیره، پیشنهادها را همین‌جا بررسی و ویرایش کن.</p></div>
 </section>
 
 @if (!string.IsNullOrWhiteSpace(Model.Error)) { <div class="notice error" role="alert">@Model.Error</div> }
 
+<fieldset class="ai-mode-switch" aria-label="روش استفاده از دستیار هوشمند">
+    <legend>از کجا شروع می‌کنی؟</legend>
+    <label class="ai-mode-choice"><input type="radio" name="ai-mode-choice" value="new" data-ai-mode @(Model.Mode == "new" ? "checked" : null) /><span><strong>ساخت برنامهٔ نخستین</strong><small>روتین و هدف‌هایت را به AI بگو</small></span></label>
+    <label class="ai-mode-choice"><input type="radio" name="ai-mode-choice" value="improve" data-ai-mode @(Model.Mode == "improve" ? "checked" : null) /><span><strong>بهبود برنامهٔ فعلی</strong><small>وضعیت برنامه و پیشرفتت را دانلود کن</small></span></label>
+</fieldset>
+
 <div class="ai-flow">
     <section class="panel ai-step" aria-labelledby="ai-prompt-title">
-        <div class="ai-step-heading"><span class="ai-step-number">۱</span><div><h2 id="ai-prompt-title">روتینت را به AI خودت بگو</h2><p>زمان‌های ثابت، کارها، استراحت و ترجیحاتت را توضیح بده. سپس این راهنما را برای همان گفتگو بفرست و فایل JSON خروجی را بگیر.</p></div></div>
-        <div class="ai-prompt-box"><pre id="ai-prompt">@Model.SuggestedPrompt</pre></div>
-        <button type="button" class="button secondary" data-copy-ai-prompt>کپی راهنمای ساخت برنامه</button>
-        <span class="ai-copy-status" data-copy-status role="status" aria-live="polite"></span>
-        <p class="ai-privacy">روتینت به سرور هوش مصنوعیِ دنیش ارسال نمی‌شود؛ فقط فایلی که خودت اینجا می‌آوری بررسی می‌شود.</p>
+        <div class="ai-step-heading"><span class="ai-step-number">۱</span><div><h2 id="ai-prompt-title">داده و راهنما را به AI بده</h2><p>با توجه به انتخابت، راهنمای مناسب را کپی کن و خروجی JSON پیشنهادی را بگیر.</p></div></div>
+        <div data-ai-mode-panel="new" hidden="@(Model.Mode != "new")">
+            <p class="ai-instruction">روتین، زمان‌های ثابت، کارها، استراحت و ترجیحاتت را در گفتگوی AI توضیح بده؛ سپس راهنمای زیر را بفرست.</p>
+            <div class="ai-prompt-box"><pre id="ai-prompt-new">@Model.SuggestedPrompt</pre></div>
+            <button type="button" class="button secondary" data-copy-ai-prompt data-copy-target="ai-prompt-new">کپی راهنمای ساخت برنامه</button>
+            <span class="ai-copy-status" data-copy-status role="status" aria-live="polite"></span>
+        </div>
+        <div data-ai-mode-panel="improve" hidden="@(Model.Mode != "improve")">
+            <div class="ai-export-card">
+                <div><strong>وضعیت فعلی برنامه</strong><p>فعالیت‌ها، برنامهٔ هفته و پیشرفت همین هفته در یک فایل JSON قرار می‌گیرند.</p></div>
+                <a class="button secondary" asp-page-handler="Export" download="donysh-life-current-plan.json">دانلود وضعیت فعلی</a>
+            </div>
+            <p class="ai-instruction">فایل وضعیت فعلی را همراه با خواسته‌ات به AI بده، سپس این راهنما را در همان گفتگو بفرست.</p>
+            <div class="ai-prompt-box"><pre id="ai-prompt-improve">@Model.ImprovementPrompt</pre></div>
+            <button type="button" class="button secondary" data-copy-ai-prompt data-copy-target="ai-prompt-improve">کپی راهنمای بهبود برنامه</button>
+            <span class="ai-copy-status" data-copy-status role="status" aria-live="polite"></span>
+        </div>
+        <p class="ai-privacy">دنیش داده‌ها را به AI نمی‌فرستد. فایل وضعیت فعلی شامل برنامه و عملکرد شخصی توست؛ فقط با سرویس دلخواه و مورد اعتمادت به اشتراک بگذار.</p>
     </section>
 
     <section class="panel ai-step" aria-labelledby="ai-upload-title">
         <div class="ai-step-heading"><span class="ai-step-number">۲</span><div><h2 id="ai-upload-title">خروجی را پیش‌نمایش کن</h2><p>فایل .json را انتخاب کن یا محتوایش را بچسبان. تا تأیید نهایی چیزی در برنامه‌ات ثبت نمی‌شود.</p></div></div>
         <form method="post" asp-page-handler="Preview" asp-fragment="preview" enctype="multipart/form-data" class="ai-upload-form">
+            <input asp-for="Mode" type="hidden" data-ai-mode-value />
             <label class="field"><span>فایل JSON</span><input asp-for="JsonFile" type="file" accept=".json,application/json" /></label>
             <span class="ai-or">یا</span>
             <label class="field"><span>متن JSON</span><textarea asp-for="JsonText" rows="5" maxlength="48000" dir="ltr" placeholder="{ &quot;version&quot;: 1, &quot;activities&quot;: [...] }"></textarea></label>
@@ -35,7 +55,7 @@
 @if (Model.Preview is not null)
 {
     <section class="ai-preview" id="preview" aria-labelledby="ai-preview-title">
-        <div class="ai-preview-head"><div><p class="eyebrow">پیش‌نمایش قابل ویرایش</p><h2 id="ai-preview-title">انتخاب و زمان‌بندی نهایی</h2><p>فعالیت‌های دلخواهت را نگه دار. برای هر بازه، روز، ساعت و مدت را تغییر بده یا آن بازه را کنار بگذار.</p></div><span class="ai-count">@Model.Preview.Activities!.Count فعالیت</span></div>
+        <div class="ai-preview-head"><div><p class="eyebrow">پیش‌نمایش قابل ویرایش</p><h2 id="ai-preview-title">انتخاب و زمان‌بندی نهایی</h2><p>فقط موردهای انتخاب‌شده ذخیره می‌شوند. برای هر بازه، روز، ساعت، مدت و یادآور را بررسی کن؛ فعالیت‌های جاافتاده از فایل تغییری نمی‌کنند.</p></div><span class="ai-count">@Model.Preview.Activities!.Count فعالیت</span></div>
         <form method="post" asp-page-handler="Apply" class="ai-apply-form">
             <input type="hidden" asp-for="PreviewToken" />
             @for (var i = 0; i < Model.Preview.Activities.Count; i++)
@@ -43,7 +63,7 @@
                 var activity = Model.Preview.Activities[i];
                 <article class="panel ai-activity @ActivityCatalog.ColorClass(activity.Color!)">
                     <div class="ai-activity-heading">
-                        <label class="ai-activity-toggle"><input asp-for="Selections[i].Included" /><span class="activity-icon" aria-hidden="true"><svg><use href="/icons/activities.svg#@ActivityCatalog.IconSymbol(activity.Icon!)"></use></svg></span><span><strong>@activity.Title</strong><small>@activity.Category · هدف @activity.WeeklyHours.ToString("0.#") ساعت در هفته</small></span></label>
+                        <label class="ai-activity-toggle"><input asp-for="Selections[i].Included" /><span class="activity-icon" aria-hidden="true"><svg><use href="/icons/activities.svg#@ActivityCatalog.IconSymbol(activity.Icon!)"></use></svg></span><span><strong>@activity.Title</strong><small>@(activity.ExistingActivityId.HasValue ? "به‌روزرسانی فعالیت موجود" : "افزودن فعالیت تازه") · هدف @activity.WeeklyHours.ToString("0.#") ساعت در هفته</small></span></label>
                     </div>
                     <div class="ai-slot-list">
                         @for (var j = 0; j < activity.Slots!.Count; j++)
@@ -53,12 +73,13 @@
                                 <label class="field"><span>روز هفته</span><select asp-for="Selections[i].Slots[j].Day">@foreach (var day in AiModel.Days) { <option value="@day">@WeekCalendar.DayName(day)</option> }</select></label>
                                 <label class="field"><span>ساعت شروع</span><input asp-for="Selections[i].Slots[j].Start" type="time" step="1800" required /></label>
                                 <label class="field"><span>مدت (دقیقه)</span><input asp-for="Selections[i].Slots[j].DurationMinutes" type="number" min="30" max="1440" step="30" required /></label>
+                                <label class="field"><span>یادآوری پیش از شروع</span><select asp-for="Selections[i].Slots[j].ReminderMinutesBefore"><option value="">بدون یادآوری</option><option value="0">هنگام شروع</option><option value="5">۵ دقیقه</option><option value="10">۱۰ دقیقه</option><option value="15">۱۵ دقیقه</option><option value="30">۳۰ دقیقه</option><option value="60">۱ ساعت</option><option value="120">۲ ساعت</option></select></label>
                             </div>
                         }
                     </div>
                 </article>
             }
-            <div class="ai-apply-bar"><p>با تأیید، فقط فعالیت‌ها و زمان‌های انتخاب‌شده در برنامهٔ هفته ثبت می‌شوند.</p><button type="submit" class="button primary">ساخت برنامهٔ انتخاب‌شده</button></div>
+            <div class="ai-apply-bar"><p>با تأیید، فقط فعالیت‌ها و زمان‌های انتخاب‌شده ثبت یا به‌روزرسانی می‌شوند. عملکرد گذشته حفظ می‌شود.</p><button type="submit" class="button primary">ثبت تغییرات انتخاب‌شده</button></div>
         </form>
     </section>
 }

@@ -602,6 +602,15 @@ progress::-moz-progress-bar { border-radius:999px; background:var(--progress-val
 @media (prefers-reduced-motion:reduce) { *,*:before,*:after { scroll-behavior:auto!important; transition:none!important; animation:none!important; } }
 
 .ai-head { margin-bottom:1.4rem; }
+.ai-mode-switch { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.8rem; margin:0 0 1.2rem; padding:0; border:0; }
+.ai-mode-switch legend { margin-bottom:.7rem; font-weight:800; }
+.ai-mode-choice { display:flex; align-items:center; gap:.8rem; min-height:4.5rem; padding:1rem; border:1px solid var(--line); border-radius:1rem; background:#fff; cursor:pointer; transition:border-color .18s,box-shadow .18s,background .18s; }
+.ai-mode-choice:has(input:checked) { border-color:#0d9488; background:#e9faf4; box-shadow:0 0 0 2px #0d948824; }
+.ai-mode-choice:focus-within { outline:3px solid #0d948844; outline-offset:2px; }
+.ai-mode-choice input { flex:none; width:1.1rem; height:1.1rem; accent-color:#0d9488; }
+.ai-mode-choice span { display:grid; gap:.2rem; }
+.ai-mode-choice strong { font-size:.96rem; }
+.ai-mode-choice small { color:#647b75; font-size:.8rem; }
 .ai-flow { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1.2rem; align-items:start; }
 .ai-step { min-width:0; padding:1.5rem; }
 .ai-step-heading { display:flex; gap:.9rem; align-items:flex-start; margin-bottom:1.2rem; }
@@ -610,6 +619,12 @@ progress::-moz-progress-bar { border-radius:999px; background:var(--progress-val
 .ai-step-number { display:grid; place-items:center; flex:none; width:2rem; height:2rem; border-radius:.7rem; color:#08695f; background:#e0f7ef; font-weight:800; }
 .ai-prompt-box { max-height:17rem; overflow:auto; padding:1rem; border:1px solid #cde5df; border-radius:1rem; background:#f5fbf8; }
 .ai-prompt-box pre { white-space:pre-wrap; overflow-wrap:anywhere; margin:0; color:#294b45; font:inherit; line-height:1.9; }
+.ai-instruction { margin:.2rem 0 1rem; color:#526f67; font-size:.88rem; line-height:1.8; }
+.ai-export-card { display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-bottom:1rem; padding:1rem; border:1px solid #b9dfd3; border-radius:1rem; background:#effbf5; }
+.ai-export-card strong { display:block; margin-bottom:.2rem; }
+.ai-export-card p { margin:0; color:#58766d; font-size:.82rem; line-height:1.7; }
+.ai-export-card .button { flex:none; }
+[data-ai-mode-panel][hidden] { display:none!important; }
 .ai-step>.button { margin-top:1rem; }
 .ai-copy-status { margin-inline-start:.7rem; color:#08776e; font-size:.85rem; }
 .ai-privacy { margin:1rem 0 0; color:#687a75; font-size:.82rem; line-height:1.8; }
@@ -629,7 +644,7 @@ progress::-moz-progress-bar { border-radius:999px; background:var(--progress-val
 .ai-activity-toggle strong { font-size:1.05rem; }
 .ai-activity-toggle small { color:#667c76; }
 .ai-slot-list { display:grid; gap:.6rem; margin-top:1rem; }
-.ai-slot { display:grid; grid-template-columns:1.15fr 1fr 1fr 1fr; gap:.7rem; align-items:end; padding:.8rem; border:1px solid var(--line); border-radius:.9rem; background:#fafdfb; }
+.ai-slot { display:grid; grid-template-columns:1.15fr 1fr 1fr 1fr 1fr; gap:.7rem; align-items:end; padding:.8rem; border:1px solid var(--line); border-radius:.9rem; background:#fafdfb; }
 .ai-slot-toggle { display:flex; align-items:center; gap:.45rem; min-height:2.8rem; cursor:pointer; font-size:.84rem; }
 .ai-slot .field { min-width:0; }
 .ai-slot .field span { font-size:.78rem; }
@@ -638,6 +653,8 @@ progress::-moz-progress-bar { border-radius:999px; background:var(--progress-val
 .ai-apply-bar .button { flex:none; }
 @media (max-width:1050px) { .ai-flow { grid-template-columns:1fr; } }
 @media (max-width:720px) {
+  .ai-mode-switch { grid-template-columns:1fr; }
+  .ai-export-card { align-items:stretch; flex-direction:column; }
   .ai-slot { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .ai-apply-bar,.ai-preview-head { align-items:stretch; flex-direction:column; }
   .ai-count { align-self:flex-start; }
@@ -943,6 +960,10 @@ html[data-life-theme="dark"] :is(.today-stat-progress strong,.today-progress-foo
 html[data-life-theme="dark"] .life-reminder-toast { color:#e6f7f3; border-color:#398579; background:#173f42; }
 html[data-life-theme="dark"] .life-reminder-toast span { color:#c0d7d4; }
 html[data-life-theme="dark"] .ai-prompt-box pre { color:#e6f3f1; }
+html[data-life-theme="dark"] .ai-mode-choice { color:#edf6f7; border-color:#345667; background:#172d40; }
+html[data-life-theme="dark"] .ai-mode-choice:has(input:checked) { border-color:#35baa8; background:#163e43; box-shadow:0 0 0 2px #35baa82b; }
+html[data-life-theme="dark"] .ai-mode-choice small,html[data-life-theme="dark"] .ai-instruction,html[data-life-theme="dark"] .ai-export-card p { color:#afc9c6; }
+html[data-life-theme="dark"] .ai-export-card { color:#edf6f7; border-color:#346a65; background:#183b43; }
 html[data-life-theme="dark"] .ai-count { color:#a2f3de; }
 html[data-life-theme="dark"] .ai-step-number { color:#a2f3de; }
 /* Complete the dark states shared by Today, setup, activities, week and progress. */
