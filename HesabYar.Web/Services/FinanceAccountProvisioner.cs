@@ -15,6 +15,7 @@ public sealed class FinanceAccountProvisioner(
     public async Task<FinanceAccountLink> EnsureAsync(
         string subject,
         string email,
+        bool emailVerified,
         string? displayName,
         CancellationToken cancellationToken)
     {
@@ -27,8 +28,11 @@ public sealed class FinanceAccountProvisioner(
         if (string.IsNullOrWhiteSpace(normalizedEmail))
             throw new InvalidOperationException("The central account email could not be normalized.");
 
-        var existing = await FindAsync(subject, normalizedEmail, cancellationToken);
+        var existing = await FindAsync(subject, normalizedEmail, emailVerified, cancellationToken);
         if (existing is not null) return existing;
+        if (!emailVerified && await db.Users.AsNoTracking()
+            .AnyAsync(user => user.NormalizedEmail == normalizedEmail, cancellationToken))
+            throw new InvalidOperationException("An unverified email cannot be linked to an existing Finance account.");
 
         var normalizedName = string.IsNullOrWhiteSpace(displayName)
             ? email.Split('@', 2)[0]
@@ -39,7 +43,7 @@ public sealed class FinanceAccountProvisioner(
         return await strategy.ExecuteAsync(async () =>
         {
             await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
-            var linked = await FindAsync(subject, normalizedEmail, cancellationToken);
+            var linked = await FindAsync(subject, normalizedEmail, emailVerified, cancellationToken);
             if (linked is not null)
             {
                 await transaction.CommitAsync(cancellationToken);
@@ -51,7 +55,7 @@ public sealed class FinanceAccountProvisioner(
                 Id = subject,
                 UserName = email,
                 Email = email,
-                EmailConfirmed = true,
+                EmailConfirmed = false,
                 DisplayName = normalizedName
             };
             var created = await users.CreateAsync(user);
@@ -84,12 +88,11 @@ public sealed class FinanceAccountProvisioner(
     private Task<FinanceAccountLink?> FindAsync(
         string subject,
         string normalizedEmail,
+        bool emailVerified,
         CancellationToken cancellationToken) =>
         db.Users.AsNoTracking()
-            // Imported Finance users normally retain the same identifier as the
-            // central account. The verified-email fallback also repairs older
-            // installations where the two stores were created independently.
-            .Where(user => user.Id == subject || user.NormalizedEmail == normalizedEmail)
+            // An unverified address must never grant access to a legacy Finance account.
+            .Where(user => user.Id == subject || (emailVerified && user.NormalizedEmail == normalizedEmail))
             .OrderByDescending(user => user.Id == subject)
             .Select(user => new FinanceAccountLink(user.Id, user.SecurityStamp))
             .FirstOrDefaultAsync(cancellationToken);

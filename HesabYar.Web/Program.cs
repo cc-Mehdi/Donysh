@@ -155,10 +155,9 @@ if (centralAuth.Enabled)
                     var emailVerified = context.Principal?.FindFirstValue("email_verified");
                     var email = context.Principal?.FindFirstValue(ClaimTypes.Email)
                         ?? context.Principal?.FindFirstValue("email");
-                    if (!string.Equals(emailVerified, "true", StringComparison.OrdinalIgnoreCase)
-                        || string.IsNullOrWhiteSpace(email))
+                    if (string.IsNullOrWhiteSpace(email))
                     {
-                        context.Fail("The central account email is not verified.");
+                        context.Fail("The central account email is unavailable.");
                         return;
                     }
 
@@ -169,6 +168,7 @@ if (centralAuth.Enabled)
                         localUser = await provisioner.EnsureAsync(
                             subject,
                             email,
+                            string.Equals(emailVerified, "true", StringComparison.OrdinalIgnoreCase),
                             context.Principal?.FindFirstValue("name"),
                             context.HttpContext.RequestAborted);
                     }

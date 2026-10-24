@@ -109,6 +109,7 @@
     .form-card > .text-link { @apply mt-6 inline-block; }
     .registration-card { @apply max-w-2xl; }
     .registration-card .panel-header { @apply mb-2 text-start; }
+    .registration-card .registration-verification-note { @apply mt-3 rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-2 text-xs leading-6 text-indigo-800; }
     .password-rules { @apply grid gap-2 rounded-2xl border border-slate-200 bg-white p-4 text-xs text-slate-600 sm:grid-cols-3; }
     .password-rules li { @apply flex items-center gap-2; }
     .password-rules span { @apply grid size-5 shrink-0 place-items-center rounded-full bg-slate-100 text-[.65rem] font-black text-slate-400; }
@@ -281,6 +282,17 @@
 .account-success { margin:0 0 1rem; padding:.9rem 1rem; border:1px solid #96d9c4; border-radius:.85rem; background:#ebfaf3; color:#116249; font-size:.84rem; font-weight:800; }
 .account-action-card > .brand { margin-bottom:1rem; }
 .account-action-card > .account-back { display:inline-block; margin-bottom:1.5rem; }
+.change-password-card .account-action-top { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding-bottom:1rem; border-bottom:1px solid #e4eaf3; }
+.change-password-card .account-action-top .brand { margin:0; }
+.change-password-card .account-action-top .account-back { flex:none; }
+.change-password-card .panel-header { margin-top:1.4rem; }
+.change-password-card .panel-header h1 { margin-top:.3rem; }
+.change-password-card .panel-header > p:last-child { margin-top:.35rem; }
+.change-password-card .auth-form { margin-top:1.5rem; }
+.change-password-card .password-toggle { left:.55rem; right:auto; width:2.25rem; height:2.25rem; font-size:inherit; }
+.change-password-card .password-field .password-input { padding-left:3.2rem; padding-right:1rem; text-align:left; }
+.change-password-card .password-toggle svg[hidden] { display:none; }
+@media (max-width:420px) { .change-password-card .account-action-top { align-items:flex-start; flex-direction:column; } }
 .account-close-options { display:grid; gap:1rem; margin-top:1.5rem; }
 .account-close-options > section { padding:1.2rem; border:1px solid #dce4ee; border-radius:1rem; background:#fff; }
 .account-close-options h2 { margin:0; font-size:1rem; font-weight:900; }

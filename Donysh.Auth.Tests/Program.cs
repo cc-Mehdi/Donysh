@@ -226,8 +226,10 @@ using (var response = await client.GetAsync(
 using (var response = await client.GetAsync("/Account/Register"))
 {
     var html = await response.Content.ReadAsStringAsync();
-    Check("Registration explains the account migration gate", response.StatusCode == HttpStatusCode.OK
-        && System.Net.WebUtility.HtmlDecode(html).Contains("ساخت حساب پس از تکمیل انتقال حساب‌های فعلی فعال می‌شود", StringComparison.Ordinal));
+    Check("Public registration renders without email delivery or migration completion", response.StatusCode == HttpStatusCode.OK
+        && html.Contains("name=\"Input.FirstName\"", StringComparison.Ordinal)
+        && html.Contains("name=\"Input.Password\"", StringComparison.Ordinal)
+        && !html.Contains("phase-notice", StringComparison.Ordinal));
 }
 
 await using (var unavailableRecoveryFactory = new RecoveryUnavailableAuthApplicationFactory())
@@ -255,7 +257,7 @@ using (var registrationClient = registrationFactory.CreateClient(new WebApplicat
         "/Account/Register?ReturnUrl=%2Fconnect%2Fauthorize%3Fclient_id%3Dfinance-web"))
     {
         var html = await response.Content.ReadAsStringAsync();
-        Check("Enabled registration renders a complete confirmation flow",
+        Check("Enabled registration renders the complete account form",
             response.StatusCode == HttpStatusCode.OK
             && html.Contains("ساخت حساب جدید", StringComparison.Ordinal)
             && html.Contains("name=\"Input.FirstName\"", StringComparison.Ordinal)
@@ -285,10 +287,11 @@ using (var registrationClient = registrationFactory.CreateClient(new WebApplicat
     using (var response = await registrationClient.GetAsync("/Account/ResendConfirmation"))
     {
         var html = await response.Content.ReadAsStringAsync();
-        Check("Registration can securely request a fresh confirmation link",
+        Check("Confirmation resends remain unavailable without email delivery",
             response.StatusCode == HttpStatusCode.OK
             && html.Contains("ارسال دوبارهٔ پیوند تأیید", StringComparison.Ordinal)
-            && html.Contains("وجود یا نبود حساب نمایش داده نمی‌شود", StringComparison.Ordinal));
+            && html.Contains("ارسال پیام تأیید موقتاً در دسترس نیست", StringComparison.Ordinal)
+            && !html.Contains("name=\"Email\"", StringComparison.Ordinal));
     }
 }
 
@@ -417,13 +420,8 @@ internal sealed class RegistrationAuthApplicationFactory : AuthApplicationFactor
             new Dictionary<string, string?>
             {
                 ["Features:PublicRegistration"] = "true",
-                ["Features:LegacyIdentityImportCompleted"] = "true"
+                ["Features:LegacyIdentityImportCompleted"] = "false"
             }));
-        builder.ConfigureServices(services =>
-        {
-            services.RemoveAll<IAuthEmailSender>();
-            services.AddSingleton<IAuthEmailSender, ConfiguredTestEmailSender>();
-        });
     }
 }
 

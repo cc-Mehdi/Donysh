@@ -1,15 +1,12 @@
 using System.ComponentModel.DataAnnotations;
-using System.Text;
 using Donysh.Auth.Configuration;
 using Donysh.Auth.Domain;
-using Donysh.Auth.Services;
 using Donysh.Auth.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Options;
 
 namespace Donysh.Auth.Pages.Account;
@@ -18,18 +15,14 @@ namespace Donysh.Auth.Pages.Account;
 [EnableRateLimiting("registration")]
 public sealed class RegisterModel(
     UserManager<AuthUser> users,
-    IAuthEmailSender emailSender,
+    SignInManager<AuthUser> signInManager,
     IOptions<AuthFeatureOptions> features,
     ILogger<RegisterModel> logger) : PageModel
 {
     [BindProperty] public InputModel Input { get; set; } = new();
     [BindProperty(SupportsGet = true)] public string? ReturnUrl { get; set; }
-    public bool Available => features.Value.CanRegister && emailSender.IsConfigured;
-    public string UnavailableReason => !features.Value.LegacyIdentityImportCompleted
-        ? "ساخت حساب پس از تکمیل انتقال حساب‌های فعلی فعال می‌شود."
-        : !features.Value.PublicRegistration
-            ? "ساخت حساب تازه فعلاً بسته است."
-            : "ساخت حساب پس از راه‌اندازی ارسال ایمیل تأیید فعال می‌شود.";
+    public bool Available => features.Value.CanRegister;
+    public string UnavailableReason => "ساخت حساب تازه فعلاً بسته است.";
 
     public sealed class InputModel
     {
@@ -80,7 +73,7 @@ public sealed class RegisterModel(
             : Page();
     }
 
-    public async Task<IActionResult> OnPostAsync(CancellationToken cancellationToken)
+    public async Task<IActionResult> OnPostAsync()
     {
         ReturnUrl = SafeReturnUrl.Normalize(ReturnUrl);
         if (!Available) return NotFound();
@@ -95,7 +88,8 @@ public sealed class RegisterModel(
             LastName = Input.LastName.Trim(),
             DisplayName = $"{Input.FirstName.Trim()} {Input.LastName.Trim()}",
             PhoneNumber = Input.PhoneNumber.Trim(),
-            EmailConfirmed = false
+            EmailConfirmed = false,
+            PhoneNumberConfirmed = false
         };
         var result = await users.CreateAsync(user, Input.Password);
         if (!result.Succeeded)
@@ -105,27 +99,9 @@ public sealed class RegisterModel(
             return Page();
         }
 
-        try
-        {
-            var token = await users.GenerateEmailConfirmationTokenAsync(user);
-            var code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
-            var callback = Url.Page("/Account/ConfirmEmail", null,
-                new { userId = user.Id, code, returnUrl = ReturnUrl }, Request.Scheme)
-                ?? throw new InvalidOperationException("Confirmation URL could not be created.");
-            await emailSender.SendAsync(normalizedEmail, "تأیید حساب دُنیش",
-                AuthEmailTemplates.ConfirmAccount(user.DisplayName, callback),
-                cancellationToken);
-        }
-        catch (Exception exception)
-        {
-            logger.LogWarning("Account confirmation delivery failed; the incomplete account is being removed.");
-            logger.LogDebug(exception, "Account confirmation delivery details.");
-            await users.DeleteAsync(user);
-            ModelState.AddModelError(string.Empty, "ارسال پیام تأیید انجام نشد؛ کمی بعد دوباره تلاش کنید.");
-            return Page();
-        }
-
-        return RedirectToPage("/Account/RegistrationSent", new { returnUrl = ReturnUrl });
+        await signInManager.SignInAsync(user, isPersistent: false);
+        logger.LogInformation("A new account was created without contact verification because verification is not available.");
+        return LocalRedirect(ReturnUrl);
     }
 
     private static string Translate(string code) => code switch

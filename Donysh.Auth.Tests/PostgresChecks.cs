@@ -1,11 +1,18 @@
 using Donysh.Auth.Data;
 using Donysh.Auth.Domain;
 using Donysh.IdentityMigration;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Npgsql;
+using System.Net;
+using System.Text.RegularExpressions;
 
 internal static class PostgresChecks
 {
@@ -81,16 +88,51 @@ internal static class PostgresChecks
             Console.WriteLine("PASS PostgreSQL accepts an imported compatible Identity hash");
 
             var targetConnection = connection.ConnectionString;
+            await using (var registrationFactory = new PostgresRegistrationFactory(targetConnection))
+            using (var client = registrationFactory.CreateClient(new WebApplicationFactoryClientOptions
+            {
+                BaseAddress = new Uri("https://auth.test"), AllowAutoRedirect = false
+            }))
+            {
+                using var page = await client.GetAsync("/Account/Register?ReturnUrl=%2F");
+                var html = await page.Content.ReadAsStringAsync();
+                var antiforgery = Regex.Match(html, "name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"").Groups[1].Value;
+                if (page.StatusCode != HttpStatusCode.OK || string.IsNullOrWhiteSpace(antiforgery))
+                    throw new Exception("FAIL PostgreSQL registration page did not expose a usable form");
+                using var form = new FormUrlEncodedContent(new Dictionary<string, string>
+                {
+                    ["__RequestVerificationToken"] = antiforgery,
+                    ["ReturnUrl"] = "/",
+                    ["Input.FirstName"] = "کاربر",
+                    ["Input.LastName"] = "تازه",
+                    ["Input.PhoneNumber"] = "09123456789",
+                    ["Input.Email"] = "self-signup@example.com",
+                    ["Input.UserName"] = "self_signup",
+                    ["Input.Password"] = "securepass1",
+                    ["Input.ConfirmPassword"] = "securepass1"
+                });
+                using var response = await client.PostAsync("/Account/Register", form);
+                var account = await db.Users.AsNoTracking().SingleOrDefaultAsync(user => user.Email == "self-signup@example.com");
+                if (response.StatusCode != HttpStatusCode.Redirect || response.Headers.Location?.OriginalString != "/"
+                    || !response.Headers.TryGetValues("Set-Cookie", out var cookies)
+                    || !cookies.Any(cookie => cookie.StartsWith(".Donysh.Auth.Session=", StringComparison.Ordinal))
+                    || account is null || account.EmailConfirmed || account.PhoneNumberConfirmed)
+                    throw new Exception("FAIL PostgreSQL registration did not create and sign in an unverified account");
+                Console.WriteLine("PASS PostgreSQL registration form creates and signs in an unverified account without email delivery");
+            }
+
             var registrationServices = new ServiceCollection();
             registrationServices.AddLogging(builder => builder.SetMinimumLevel(LogLevel.Warning));
             registrationServices.AddDataProtection();
+            registrationServices.AddAuthentication();
+            registrationServices.AddHttpContextAccessor();
             registrationServices.AddDbContext<AuthDbContext>(builder => builder
                 .UseNpgsql(targetConnection)
                 .UseOpenIddict());
             registrationServices.AddIdentityCore<AuthUser>(identity =>
                 {
                     identity.User.RequireUniqueEmail = true;
-                    identity.SignIn.RequireConfirmedEmail = true;
+                    identity.SignIn.RequireConfirmedEmail = false;
                     identity.Password.RequiredLength = 8;
                     identity.Password.RequireDigit = true;
                     identity.Password.RequireLowercase = true;
@@ -99,6 +141,7 @@ internal static class PostgresChecks
                 })
                 .AddRoles<IdentityRole>()
                 .AddEntityFrameworkStores<AuthDbContext>()
+                .AddSignInManager()
                 .AddDefaultTokenProviders();
 
             await using (var registrationProvider = registrationServices.BuildServiceProvider())
@@ -113,6 +156,12 @@ internal static class PostgresChecks
                     EmailConfirmed = false
                 };
                 var created = await userManager.CreateAsync(registered, "securepass1");
+                var canSignInWithoutConfirmation = created.Succeeded
+                    && await registrationScope.ServiceProvider.GetRequiredService<SignInManager<AuthUser>>()
+                        .CanSignInAsync(registered);
+                if (!canSignInWithoutConfirmation || registered.EmailConfirmed || registered.PhoneNumberConfirmed)
+                    throw new Exception("FAIL PostgreSQL registration: unverified account cannot sign in immediately");
+                Console.WriteLine("PASS PostgreSQL registration permits immediate sign-in without marking contacts verified");
                 var confirmationToken = created.Succeeded
                     ? await userManager.GenerateEmailConfirmationTokenAsync(registered)
                     : string.Empty;
@@ -124,7 +173,7 @@ internal static class PostgresChecks
                     || !await userManager.CheckPasswordAsync(persisted, "securepass1"))
                     throw new Exception("FAIL PostgreSQL registration and email confirmation workflow");
             }
-            Console.WriteLine("PASS PostgreSQL registration requires and persists email confirmation");
+            Console.WriteLine("PASS PostgreSQL optional email confirmation persists when completed later");
 
             connection.Database = legacyDatabaseName;
             await CreateLegacyUserAsync(connection.ConnectionString, cancellationToken: default);
@@ -186,5 +235,24 @@ internal static class PostgresChecks
             """;
         await using var command = new NpgsqlCommand(sql, connection);
         await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+}
+
+internal sealed class PostgresRegistrationFactory(string connectionString) : AuthApplicationFactory
+{
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        base.ConfigureWebHost(builder);
+        builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(
+            new Dictionary<string, string?>
+            {
+                ["Features:PublicRegistration"] = "true",
+                ["Features:LegacyIdentityImportCompleted"] = "false"
+            }));
+        builder.ConfigureTestServices(services =>
+        {
+            services.RemoveAll<DbContextOptions<AuthDbContext>>();
+            services.AddDbContext<AuthDbContext>(options => options.UseNpgsql(connectionString).UseOpenIddict());
+        });
     }
 }

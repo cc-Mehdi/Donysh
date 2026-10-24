@@ -235,9 +235,9 @@ internal static class PostgresChecks
                 var provisioner = provisioningScope.ServiceProvider.GetRequiredService<FinanceAccountProvisioner>();
                 const string centralSubject = "new-central-user";
                 var firstLink = await provisioner.EnsureAsync(
-                    centralSubject, "new-central-user@example.com", "کاربر مرکزی", CancellationToken.None);
+                    centralSubject, "new-central-user@example.com", false, "کاربر مرکزی", CancellationToken.None);
                 var secondLink = await provisioner.EnsureAsync(
-                    centralSubject, "new-central-user@example.com", "کاربر مرکزی", CancellationToken.None);
+                    centralSubject, "new-central-user@example.com", false, "کاربر مرکزی", CancellationToken.None);
                 var provisioningDb = provisioningScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
                 var personalWorkspace = await provisioningDb.Workspaces
                     .SingleAsync(x => x.OwnerUserId == centralSubject && x.Type == WorkspaceType.Personal);
@@ -260,10 +260,22 @@ internal static class PostgresChecks
                     .CreateAsync(legacyUser);
                 Check(legacyCreated.Succeeded, "legacy Finance user fixture is created");
                 var legacyLink = await provisioner.EnsureAsync(
-                    "different-central-subject", "LEGACY@example.com", "نام مرکزی", CancellationToken.None);
+                    "different-central-subject", "LEGACY@example.com", true, "نام مرکزی", CancellationToken.None);
                 Check(legacyLink.UserId == legacyUser.Id
                       && await provisioningDb.Users.CountAsync(x => x.NormalizedEmail == "LEGACY@EXAMPLE.COM") == 1,
                     "verified central email links an existing Finance account without a redirect loop");
+                var unverifiedRejected = false;
+                try
+                {
+                    await provisioner.EnsureAsync("unverified-central-subject", "LEGACY@example.com", false,
+                        "کاربر تازه", CancellationToken.None);
+                }
+                catch (InvalidOperationException)
+                {
+                    unverifiedRejected = true;
+                }
+                Check(unverifiedRejected && await provisioningDb.Users.CountAsync(x => x.NormalizedEmail == "LEGACY@EXAMPLE.COM") == 1,
+                    "unverified email cannot claim a legacy Finance account");
 
                 var centralPrincipal = new ClaimsPrincipal(new ClaimsIdentity(
                     [new Claim("sub", "different-central-subject")], "oidc"));

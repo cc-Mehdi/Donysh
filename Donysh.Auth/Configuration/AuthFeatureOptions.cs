@@ -8,6 +8,6 @@ public sealed class AuthFeatureOptions
     public bool PasswordRecovery { get; set; }
     public bool LegacyIdentityImportCompleted { get; set; }
 
-    public bool CanRegister => PublicRegistration && LegacyIdentityImportCompleted;
+    public bool CanRegister => PublicRegistration;
     public bool CanRecoverPassword => PasswordRecovery && LegacyIdentityImportCompleted;
 }
