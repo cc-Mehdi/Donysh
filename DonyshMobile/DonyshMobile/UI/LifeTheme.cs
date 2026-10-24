@@ -24,6 +24,9 @@ internal static class LifeTheme
     internal static readonly LifeColor Missed = Pair("#FDEBE8", "#4D2B30");
     internal static readonly LifeColor MissedText = Pair("#9A4136", "#FFB7AB");
     internal static readonly LifeColor WarningText = Pair("#8F4C16", "#FFCA8A");
+    internal static readonly LifeColor Quiet = Pair("#EFF4F3", "#20384A");
+    internal static readonly LifeColor Today = Pair("#AAF0E2", "#69DFCA");
+    internal static readonly LifeColor TodayText = Pair("#075D57", "#092A32");
 
     internal static void Set(BindableObject target, BindableProperty property, LifeColor color) =>
         target.SetAppThemeColor(property, color.Light, color.Dark);

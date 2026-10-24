@@ -260,6 +260,63 @@ internal static class StartupSmokeCheck
             }
             finally { app.UserAppTheme = previous; }
         });
+        var previewDate = DateOnly.FromDateTime(DateTime.UtcNow);
+        var previewDays = Enumerable.Range(-3, 7).Select(offset =>
+        {
+            var date = previewDate.AddDays(offset);
+            var name = date.DayOfWeek switch
+            {
+                DayOfWeek.Saturday => "شنبه", DayOfWeek.Sunday => "یکشنبه",
+                DayOfWeek.Monday => "دوشنبه", DayOfWeek.Tuesday => "سه‌شنبه",
+                DayOfWeek.Wednesday => "چهارشنبه", DayOfWeek.Thursday => "پنجشنبه", _ => "جمعه"
+            };
+            var blocks = offset == 0
+                ? new List<LifeBlock> { new(Guid.NewGuid(), date.ToString("yyyy-MM-dd"), Guid.NewGuid(),
+                    "مطالعه کتاب", "#087E78", 540, 45, false, null) }
+                : new List<LifeBlock>();
+            return new LifeDay(date.ToString("yyyy-MM-dd"), name, $"۱۴۰۵/۰۸/{UiText.Digits(offset + 4)}", blocks);
+        }).ToList();
+        await VisitAsync(shell, new LifePage(new LifeWeek(previewDate.ToString("yyyy-MM-dd"), previewDays,
+            [new LifeActivity(Guid.NewGuid(), "مطالعه کتاب")])), async page =>
+        {
+            Check(page.DashboardNavigation.IsVisible && page.DashboardNavigation.Children.Count == 5
+                && page.DashboardBody.Children[4] is Border,
+                "Life concept C shows the current-task card and functional bottom navigation");
+            var app = MauiApplication.Current!;
+            var previous = app.UserAppTheme;
+            try
+            {
+                foreach (var (theme, canvas, surface, focus) in new[]
+                {
+                    (AppTheme.Light, "#F4F7F6", "#FFFFFF", "#E4FAF2"),
+                    (AppTheme.Dark, "#0B1928", "#17283B", "#173F42")
+                })
+                {
+                    app.UserAppTheme = theme;
+                    await WaitUntilAsync(() => page.BackgroundColor?.ToArgbHex() == canvas,
+                        "Life dashboard did not follow the selected theme.");
+                    Check(page.DashboardNavigation.BackgroundColor?.ToArgbHex() == surface
+                        && ((Border)page.DashboardBody.Children[4]).BackgroundColor?.ToArgbHex() == focus,
+                        $"Life concept C keeps its focus card and navigation readable in {theme}");
+                }
+            }
+            finally { app.UserAppTheme = previous; }
+            var tabs = (Grid)((Border)page.DashboardBody.Children[1]).Content!;
+            ((Button)tabs.Children[1]).SendClicked();
+            Check(page.DashboardBody.Children.OfType<Label>().Any(label => label.Text == "برنامهٔ هفته"),
+                "Life week tab reveals the week's agenda");
+            tabs = (Grid)((Border)page.DashboardBody.Children[1]).Content!;
+            ((Button)tabs.Children[0]).SendClicked();
+            var agendaCard = (Border)page.DashboardBody.Children[7];
+            ((Button)((VerticalStackLayout)agendaCard.Content!).Children[1]).SendClicked();
+            agendaCard = (Border)page.DashboardBody.Children[7];
+            Check(((VerticalStackLayout)agendaCard.Content!).Children.Count == 3,
+                "Life agenda row expands to the three status actions");
+            var progressItem = (VerticalStackLayout)page.DashboardNavigation.Children[1];
+            ((TapGestureRecognizer)progressItem.GestureRecognizers[0]).Command?.Execute(null);
+            Check(page.DashboardBody.Children.OfType<Label>().Any(label => label.Text == "پیشرفت این هفته"),
+                "Life progress navigation opens the real weekly summary");
+        });
         Check(await store.AddSenderAsync("BANK-SECOND") == AddSenderResult.Added,
             "Second monitored sender registered");
         SmsReceivedNotifier.Notify();

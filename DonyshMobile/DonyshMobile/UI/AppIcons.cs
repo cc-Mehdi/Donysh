@@ -16,6 +16,12 @@ public static class AppIcons
     public const string ExpandMore = "\ue5cf";
     public const string Filter = "\ue152";
     public const string History = "\ue889";
+    public const string Home = "\ue88a";
+    public const string Calendar = "\ue935";
+    public const string Chart = "\ue6e1";
+    public const string Book = "\ue865";
+    public const string Run = "\ue566";
+    public const string Work = "\ue8f9";
     public const string Link = "\ue157";
     public const string Message = "\ue0c9";
     public const string More = "\ue5d4";
