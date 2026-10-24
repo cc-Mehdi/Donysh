@@ -73,18 +73,33 @@ internal static class PostgresChecks
 
             var conflictingPattern = CreatePattern(ownerAActivity, "owner-a");
             db.SchedulePatterns.Add(conflictingPattern);
-            var overlapRejected = false;
-            try
+            await db.SaveChangesAsync();
+            var overlappingSlots = await db.ScheduleSlots.AsNoTracking()
+                .CountAsync(slot => slot.UserSubject == "owner-a"
+                    && slot.DayOfWeek == DayOfWeek.Saturday && slot.SlotIndex == 16);
+            if (overlappingSlots != 2)
+                throw new Exception("FAIL PostgreSQL Life schedule slots did not preserve overlapping patterns");
+
+            var overnightPattern = CreatePattern(ownerAActivity, "owner-a");
+            overnightPattern.DayOfWeek = DayOfWeek.Saturday;
+            overnightPattern.StartMinute = 1320;
+            overnightPattern.DurationMinutes = 480;
+            overnightPattern.Slots.Clear();
+            overnightPattern.Slots.Add(new RecurringScheduleSlot
             {
-                await db.SaveChangesAsync();
-            }
-            catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+                PatternId = overnightPattern.Id, UserSubject = "owner-a",
+                DayOfWeek = DayOfWeek.Saturday, SlotIndex = 44
+            });
+            overnightPattern.Slots.Add(new RecurringScheduleSlot
             {
-                overlapRejected = true;
-                db.ChangeTracker.Clear();
-            }
-            if (!overlapRejected)
-                throw new Exception("FAIL PostgreSQL Life schedule slots allowed an overlapping block");
+                PatternId = overnightPattern.Id, UserSubject = "owner-a",
+                DayOfWeek = DayOfWeek.Sunday, SlotIndex = 0
+            });
+            db.SchedulePatterns.Add(overnightPattern);
+            await db.SaveChangesAsync();
+            if (!await db.SchedulePatterns.AsNoTracking().AnyAsync(pattern =>
+                    pattern.Id == overnightPattern.Id && pattern.StartMinute == 1320 && pattern.DurationMinutes == 480))
+                throw new Exception("FAIL PostgreSQL Life rejected an overnight schedule");
 
             var originalDate = DateOnly.FromDateTime(DateTime.UtcNow);
             originalDate = originalDate.AddDays(-(((int)originalDate.DayOfWeek - (int)DayOfWeek.Saturday + 7) % 7));
@@ -171,7 +186,8 @@ internal static class PostgresChecks
             Console.WriteLine("PASS PostgreSQL Life migration creates an isolated schema");
             Console.WriteLine("PASS PostgreSQL Life profile keeps Saturday and Tehran defaults");
             Console.WriteLine("PASS PostgreSQL Life activities and weekly goals preserve per-user ownership");
-            Console.WriteLine("PASS PostgreSQL Life schedule slots reject overlaps and remain isolated per user");
+            Console.WriteLine("PASS PostgreSQL Life schedule slots preserve overlaps and remain isolated per user");
+            Console.WriteLine("PASS PostgreSQL Life permits schedules that continue after midnight");
             Console.WriteLine("PASS PostgreSQL Life occurrence overrides are unique per recurring occurrence");
             Console.WriteLine("PASS PostgreSQL Life stores one actual result per recurring occurrence");
             Console.WriteLine("PASS PostgreSQL Life stores owned manual actual activities");
