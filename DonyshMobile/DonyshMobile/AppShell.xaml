@@ -10,6 +10,7 @@
 
     <ShellContent
         Title="پیامک‌ها"
+        x:Name="RootContent"
         ContentTemplate="{DataTemplate local:MainPage}"
         Route="MainPage" />
 

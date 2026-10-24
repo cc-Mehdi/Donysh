@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Threading.RateLimiting;
 using Donysh.Life.Configuration;
 using Donysh.Life.Data;
 using Donysh.Life.Features.Activities;
@@ -6,6 +7,7 @@ using Donysh.Life.Features.AiPlanning;
 using Donysh.Life.Features.Scheduling;
 using Donysh.Life.Features.Tracking;
 using Donysh.Life.Features.Reporting;
+using Donysh.Life.Features.Mobile;
 using Donysh.Life.Security;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -53,6 +55,11 @@ builder.Services.AddScoped<ReminderScheduleService>();
 builder.Services.AddScoped<OccurrenceTrackingService>();
 builder.Services.AddScoped<ActualActivityService>();
 builder.Services.AddScoped<ProgressReportService>();
+builder.Services.AddRateLimiter(options => options.AddPolicy("life-mobile-pair", context =>
+    RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString() ?? "unknown", _ => new()
+    {
+        PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0
+    })));
 builder.Services.AddResponseCompression(options =>
 {
     options.EnableForHttps = true;
@@ -201,6 +208,7 @@ if (Directory.Exists(sharedWebRoot))
 }
 app.UseStaticFiles(new StaticFileOptions { OnPrepareResponse = SetPublicAssetCache });
 app.UseRouting();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.Use(async (context, next) =>
 {
@@ -214,6 +222,7 @@ app.Use(async (context, next) =>
 });
 app.UseAuthorization();
 app.MapRazorPages();
+app.MapLifeMobileApi();
 app.MapGet("/Account/SessionStatus", SessionStatusEndpoint.Handle)
     .AllowAnonymous();
 app.MapGet("/health/live", () => Results.Ok(new { status = "live", service = "donysh-life" })).AllowAnonymous();

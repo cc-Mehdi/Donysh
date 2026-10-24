@@ -20,6 +20,8 @@ namespace DonyshMobile
             if (Intent?.GetBooleanExtra(Platforms.Android.TitleReminderNotifier.OpenTitlesExtra, false) == true)
                 MainPage.RequestPendingTitles();
             base.OnCreate(savedInstanceState);
+            if (Intent?.GetBooleanExtra("open_life", false) == true)
+                MainThread.BeginInvokeOnMainThread(() => App.OpenService(DonyshService.Life));
             // Native prompts inherit the same Persian font as the MAUI screens.
             Theme?.ApplyStyle(Resource.Style.DonyshFontOverlay, true);
         }
@@ -27,6 +29,11 @@ namespace DonyshMobile
         protected override void OnNewIntent(Intent? intent)
         {
             base.OnNewIntent(intent);
+            if (intent?.GetBooleanExtra("open_life", false) == true)
+            {
+                MainThread.BeginInvokeOnMainThread(() => App.OpenService(DonyshService.Life));
+                return;
+            }
             if (intent?.GetBooleanExtra(Platforms.Android.TitleReminderNotifier.OpenTitlesExtra, false) != true) return;
             MainPage.RequestPendingTitles();
             MainThread.BeginInvokeOnMainThread(async () =>

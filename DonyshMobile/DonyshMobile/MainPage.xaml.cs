@@ -61,6 +61,8 @@ public partial class MainPage : DonyshPage
 #endif
     }
 
+    private void OnSwitchLifeClicked(object? sender, EventArgs e) => App.OpenService(DonyshService.Life);
+
     protected override async void OnAppearing()
     {
         base.OnAppearing();

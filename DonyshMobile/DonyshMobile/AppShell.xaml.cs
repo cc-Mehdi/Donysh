@@ -2,9 +2,15 @@
 {
     public partial class AppShell : Shell
     {
-        public AppShell()
+        public AppShell(Core.DonyshService? service = null)
         {
             InitializeComponent();
+            RootContent.ContentTemplate = new DataTemplate(() => service switch
+            {
+                Core.DonyshService.Finance => new MainPage(),
+                Core.DonyshService.Life => new LifePage(),
+                _ => new ServiceSelectionPage()
+            });
         }
 
         protected override void OnNavigated(ShellNavigatedEventArgs args)

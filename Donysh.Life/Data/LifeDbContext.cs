@@ -13,9 +13,20 @@ public sealed class LifeDbContext(DbContextOptions<LifeDbContext> options) : DbC
     public DbSet<ScheduleOccurrenceOverride> ScheduleOccurrenceOverrides => Set<ScheduleOccurrenceOverride>();
     public DbSet<ScheduleOccurrenceRecord> ScheduleOccurrenceRecords => Set<ScheduleOccurrenceRecord>();
     public DbSet<ActualActivityEntry> ActualActivityEntries => Set<ActualActivityEntry>();
+    public DbSet<LifeMobileDevice> MobileDevices => Set<LifeMobileDevice>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        var mobile = modelBuilder.Entity<LifeMobileDevice>();
+        mobile.ToTable("LifeMobileDevices");
+        mobile.HasKey(item => item.Id);
+        mobile.Property(item => item.UserSubject).HasMaxLength(450).IsRequired();
+        mobile.Property(item => item.Name).HasMaxLength(80).IsRequired();
+        mobile.Property(item => item.PairCodeHash).HasMaxLength(64);
+        mobile.Property(item => item.TokenHash).HasMaxLength(64);
+        mobile.HasIndex(item => item.PairCodeHash).IsUnique();
+        mobile.HasIndex(item => item.TokenHash).IsUnique();
+        mobile.HasIndex(item => new { item.UserSubject, item.CreatedAtUtc });
         var profile = modelBuilder.Entity<LifeProfile>();
         profile.ToTable("LifeProfiles");
         profile.HasKey(item => item.Id);

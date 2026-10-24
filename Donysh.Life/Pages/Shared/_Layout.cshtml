@@ -55,6 +55,7 @@
                 <a class="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Week" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Week" ? "page" : null)" aria-label="برنامهٔ هفته" title="برنامهٔ هفته" asp-page="/Week"><span class="nav-icon" aria-hidden="true"><svg><use href="/icons/activities.svg#calendar-days"></use></svg></span><span class="nav-label">برنامهٔ هفته</span></a>
                 <a class="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Ai" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Ai" ? "page" : null)" aria-label="دستیار هوشمند" title="دستیار هوشمند" asp-page="/Ai"><span class="nav-icon" aria-hidden="true"><svg><use href="/icons/activities.svg#sparkles"></use></svg></span><span class="nav-label">دستیار هوشمند</span></a>
                 <a class="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Progress" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Progress" ? "page" : null)" aria-label="پیشرفت" title="پیشرفت" asp-page="/Progress"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 3v18h18M7 17l4-5 3 2 5-7m-4 0h4v4"/></svg></span><span class="nav-label">پیشرفت</span></a>
+                <a class="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Mobile/Index" ? "active" : "")" asp-page="/Mobile/Index"><span class="nav-icon" aria-hidden="true">◈</span><span class="nav-label">همراه دُنیش</span></a>
             </nav>
             <div class="sidebar-footer">
                 <section class="account-card" aria-label="حساب واردشده">
@@ -102,6 +103,7 @@
                 @RenderBody()
             </main>
             <nav class="mobile-nav" aria-label="ناوبری موبایل">
+                <a class="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Mobile/Index" ? "active" : "")" asp-page="/Mobile/Index"><span aria-hidden="true">◈</span><small>همراه</small></a>
                 <a class="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Index" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Index" ? "page" : null)" asp-page="/Index"><span aria-hidden="true"><svg><use href="/icons/activities.svg#house"></use></svg></span><small>امروز</small></a>
                 <a class="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Activities" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Activities" ? "page" : null)" asp-page="/Activities"><span aria-hidden="true"><svg><use href="/icons/activities.svg#circle"></use></svg></span><small>فعالیت‌ها</small></a>
                 <a class="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Week" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["page"]?.ToString() == "/Week" ? "page" : null)" asp-page="/Week"><span aria-hidden="true"><svg><use href="/icons/activities.svg#calendar-days"></use></svg></span><small>هفته</small></a>

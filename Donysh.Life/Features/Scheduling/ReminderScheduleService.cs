@@ -4,7 +4,7 @@ public sealed record ScheduleReminder(string Id, string Title, string StartLabel
 
 public sealed class ReminderScheduleService(WeeklyScheduleService schedules)
 {
-    public async Task<IReadOnlyList<ScheduleReminder>> UpcomingAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<ScheduleReminder>> UpcomingAsync(CancellationToken cancellationToken = default, int horizonHours = 24)
     {
         var now = DateTimeOffset.UtcNow;
         var saturday = WeekCalendar.CurrentSaturday();
@@ -14,7 +14,7 @@ public sealed class ReminderScheduleService(WeeklyScheduleService schedules)
         if (earliestDueDate < saturday)
             weeks.Add(await schedules.GetWeekAsync(DayOfWeek.Saturday, saturday.AddDays(-7), cancellationToken));
         var latestPossibleStart = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(now.AddHours(26), zone).DateTime);
-        if (latestPossibleStart >= saturday.AddDays(7))
+        if (latestPossibleStart >= saturday.AddDays(7) || horizonHours > 24)
             weeks.Add(await schedules.GetWeekAsync(DayOfWeek.Saturday, saturday.AddDays(7), cancellationToken));
         return weeks.SelectMany(week => week.Days).SelectMany(day => day.Blocks)
             .Where(block => !block.IsContinuation && block.IsActive && block.OutcomeStatus is null && block.ReminderMinutesBefore.HasValue)
@@ -28,7 +28,7 @@ public sealed class ReminderScheduleService(WeeklyScheduleService schedules)
                     block.ActivityTitle, block.StartLabel, block.ScheduledDate.ToString("yyyy-MM-dd"),
                     new DateTimeOffset(utc, TimeSpan.Zero));
             })
-            .Where(item => item.RemindAtUtc >= now.AddMinutes(-5) && item.RemindAtUtc <= now.AddHours(24))
+            .Where(item => item.RemindAtUtc >= now.AddMinutes(-5) && item.RemindAtUtc <= now.AddHours(Math.Clamp(horizonHours, 1, 168)))
             .OrderBy(item => item.RemindAtUtc)
             .ToList();
     }

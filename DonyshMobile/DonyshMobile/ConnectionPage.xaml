@@ -11,6 +11,16 @@
                 <Label x:Name="PageHeadingLabel" Text="همه‌چیز تحت کنترل شما" Style="{StaticResource PageTitle}" />
                 <Label x:Name="PageDescriptionLabel" Text="مقصد ارسال، عنوان پیام‌ها و ظاهر برنامه را تنظیم کنید." Style="{StaticResource MutedText}" />
             </VerticalStackLayout>
+            <Border x:Name="ServiceSettingsCard" Style="{StaticResource Card}" Padding="18">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="ورود پیش‌فرض به اپ" Style="{StaticResource SectionTitle}" />
+                    <Label Text="اگر انتخاب نکنید، هنگام هر بار باز کردن برنامه صفحهٔ انتخاب سرویس نمایش داده می‌شود." Style="{StaticResource MutedText}" />
+                    <Picker x:Name="DefaultServicePicker" Title="سرویس پیش‌فرض" SelectedIndexChanged="OnDefaultServiceChanged">
+                        <Picker.Items><x:String>هر بار بپرس</x:String><x:String>دُنیش مالی</x:String><x:String>دُنیش زندگی</x:String></Picker.Items>
+                    </Picker>
+                    <Button Text="رفتن به دُنیش زندگی" Clicked="OnSwitchLifeClicked" Style="{StaticResource SecondaryAction}" />
+                </VerticalStackLayout>
+            </Border>
             <Border x:Name="ConnectionStatusCard" Style="{StaticResource InfoCard}" Padding="18">
                 <VerticalStackLayout Spacing="10">
                     <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">

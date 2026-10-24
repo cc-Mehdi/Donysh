@@ -1,4 +1,5 @@
 using System.Net;
+using System.Security.Cryptography;
 using System.Security.Claims;
 using System.Text.Json;
 using System.Text.Encodings.Web;
@@ -120,6 +121,10 @@ using (var response = await client.GetAsync("/"))
         response.StatusCode == HttpStatusCode.Redirect
         && response.Headers.Location?.OriginalString.StartsWith("https://auth.test/connect/authorize", StringComparison.Ordinal) == true);
 }
+
+using (var response = await client.GetAsync("/api/life-mobile/week"))
+    Check("Life mobile agenda requires its own bearer connection",
+        response.StatusCode == HttpStatusCode.Unauthorized);
 
 using (var response = await client.GetAsync("/health/live"))
 {
@@ -266,6 +271,39 @@ using (var authenticatedClient = authenticatedFactory.CreateClient(new WebApplic
         && html.Contains("id=\"today-agenda-title\"", StringComparison.Ordinal)
         && html.Contains("id=\"life-sidebar\"", StringComparison.Ordinal)
         && html.Contains("aria-current=\"page\"", StringComparison.Ordinal));
+    using (var mobilePage = await authenticatedClient.GetAsync("/Mobile/Index"))
+    {
+        var mobileHtml = await mobilePage.Content.ReadAsStringAsync();
+        Check("Life mobile management offers pairing and device access",
+            mobilePage.StatusCode == HttpStatusCode.OK
+            && mobileHtml.Contains("ساخت کد اتصال", StringComparison.Ordinal)
+            && mobileHtml.Contains("گوشی‌های متصل", StringComparison.Ordinal)
+            && html.Contains("همراه دُنیش", StringComparison.Ordinal));
+    }
+    using (var responseWithWebSessionOnly = await authenticatedClient.GetAsync("/api/life-mobile/week"))
+        Check("Life website session cannot replace a mobile bearer token",
+            responseWithWebSessionOnly.StatusCode == HttpStatusCode.Unauthorized);
+    var mobileToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+    await using (var mobileScope = authenticatedFactory.Services.CreateAsyncScope())
+    {
+        var mobileDb = mobileScope.ServiceProvider.GetRequiredService<LifeDbContext>();
+        mobileDb.MobileDevices.Add(new Donysh.Life.Domain.LifeMobileDevice
+        {
+            UserSubject = "life-test-user", Name = "test phone",
+            TokenHash = Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(mobileToken)))
+        });
+        await mobileDb.SaveChangesAsync();
+    }
+    using (var mobileRequest = new HttpRequestMessage(HttpMethod.Get, "/api/life-mobile/week"))
+    {
+        mobileRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", mobileToken);
+        using var mobileResponse = await authenticatedClient.SendAsync(mobileRequest);
+        using var agenda = JsonDocument.Parse(await mobileResponse.Content.ReadAsStringAsync());
+        Check("Life bearer token reads its own mobile agenda",
+            mobileResponse.StatusCode == HttpStatusCode.OK
+            && mobileResponse.Headers.CacheControl?.NoStore == true
+            && agenda.RootElement.GetProperty("days").GetArrayLength() == 7);
+    }
     foreach (var path in new[] { "/Activities", "/Week", "/Ai", "/Progress", "/Setup" })
     {
         using var pageResponse = await authenticatedClient.GetAsync(path);

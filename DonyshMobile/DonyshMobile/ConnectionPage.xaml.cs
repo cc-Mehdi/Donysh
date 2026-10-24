@@ -45,6 +45,11 @@ public partial class ConnectionPage : DonyshPage
         _confirmAsync = confirmAsync ?? DisplayAlert;
         _setupMode = setupMode;
         InitializeComponent();
+        DefaultServicePicker.SelectedIndex = ServicePreference.Default switch
+        {
+            DonyshService.Finance => 1, DonyshService.Life => 2, _ => 0
+        };
+        ServiceSettingsCard.IsVisible = !_setupMode;
         ServerEntry.Text = MobileConnectionStore.Server;
         ServerPanel.IsVisible = ServerEntry.Text != "https://donysh.ir";
         RequireTitleSwitch.IsToggled = SmsSyncSettings.RequireTitle;
@@ -69,6 +74,16 @@ public partial class ConnectionPage : DonyshPage
         _settingsLoaded = true;
         UpdateActions();
     }
+
+    private void OnDefaultServiceChanged(object? sender, EventArgs e)
+    {
+        ServicePreference.Default = DefaultServicePicker.SelectedIndex switch
+        {
+            1 => DonyshService.Finance, 2 => DonyshService.Life, _ => null
+        };
+    }
+
+    private void OnSwitchLifeClicked(object? sender, EventArgs e) => App.OpenService(DonyshService.Life);
 
     protected override async void OnAppearing()
     {
