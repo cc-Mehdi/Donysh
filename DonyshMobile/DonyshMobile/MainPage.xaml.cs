@@ -29,6 +29,7 @@ public partial class MainPage : DonyshPage
     private MobileConnection? _activeConnection;
 
     public ObservableCollection<SenderItem> Senders { get; } = [];
+    public ObservableCollection<SenderItem> HomeSenders { get; } = [];
     public string PermissionStatusText { get; private set; } = "در حال بررسی…";
     public string PermissionButtonText { get; private set; } = "فعال‌سازی";
     public string SenderCount => UiText.Digits(_allSenders.Count);
@@ -47,10 +48,7 @@ public partial class MainPage : DonyshPage
     public bool HasNextStep => _nextStep >= 0;
     public bool NeedsPermissionAttention => DeviceInfo.Platform == DevicePlatform.Android && !_hasPermission;
     public bool ShowSenderSearch => _allSenders.Count >= 5;
-    public bool HasFeaturedSender { get; private set; }
-    public bool HasNoSenders => !HasFeaturedSender;
-    public string FeaturedSenderAddress { get; private set; } = string.Empty;
-    public string FeaturedSenderDetails { get; private set; } = string.Empty;
+    public bool HasNoSenders => HomeSenders.Count == 0;
 
     public MainPage()
     {
@@ -447,10 +445,8 @@ public partial class MainPage : DonyshPage
             _allSenders.AddRange(summaries.Select(x => new SenderItem(x.Id, x.Address,
                 x.MessageCount == 0 ? "منتظر اولین پیامک" : $"{UiText.Digits(x.MessageCount)} پیام · {UiText.Date(x.LastMessageAtUtc!.Value)}")));
             FilterSenders();
-            var featuredSender = _allSenders.FirstOrDefault();
-            HasFeaturedSender = featuredSender is not null;
-            FeaturedSenderAddress = featuredSender?.Address ?? string.Empty;
-            FeaturedSenderDetails = featuredSender?.Details ?? string.Empty;
+            HomeSenders.Clear();
+            foreach (var sender in _allSenders) HomeSenders.Add(sender);
             PendingCount = UiText.Digits(sync.Pending);
             SentCount = UiText.Digits(sync.Sent);
             HasUntitled = SmsSyncSettings.RequireTitle && untitled.Count > 0;

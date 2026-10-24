@@ -75,7 +75,7 @@ public static class SmsInboxRecovery
         IReadOnlySet<string>? selectedSenders,
         CancellationToken cancellationToken)
     {
-        string[] columns = ["address", "body", "date"];
+        string[] columns = ["address", "body", "date", "date_sent"];
         var selection = "date >= ? AND date <= ?";
         var arguments = new[]
         {
@@ -89,6 +89,7 @@ public static class SmsInboxRecovery
         var addressIndex = cursor.GetColumnIndex("address");
         var bodyIndex = cursor.GetColumnIndex("body");
         var dateIndex = cursor.GetColumnIndex("date");
+        var sentIndex = cursor.GetColumnIndex("date_sent");
         if (addressIndex < 0 || bodyIndex < 0 || dateIndex < 0) return [];
 
         var result = new List<SmsCaptureCandidate>();
@@ -98,13 +99,14 @@ public static class SmsInboxRecovery
             var address = cursor.GetString(addressIndex)?.Trim();
             var body = cursor.GetString(bodyIndex)?.Trim();
             var receivedAt = cursor.GetLong(dateIndex);
+            var sentAt = sentIndex >= 0 && !cursor.IsNull(sentIndex) ? cursor.GetLong(sentIndex) : 0;
             if (string.IsNullOrWhiteSpace(address) || string.IsNullOrWhiteSpace(body) || receivedAt <= 0
                 || address.Length > MaxAddressLength || body.Length > MaxBodyLength || address.Any(char.IsControl)) continue;
             if (selectedSenders is not null && !selectedSenders.Contains(SenderAddress.Normalize(address))) continue;
             try
             {
                 result.Add(new SmsCaptureCandidate(address, body,
-                    DateTimeOffset.FromUnixTimeMilliseconds(receivedAt), RecoveredFromInbox: true));
+                    SmsTimestampPolicy.InboxTimestamp(receivedAt, sentAt), RecoveredFromInbox: true));
             }
             catch (ArgumentOutOfRangeException)
             {

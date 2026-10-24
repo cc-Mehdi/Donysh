@@ -116,16 +116,22 @@
                             <Label Text="فرستنده‌های زیر نظر" Style="{StaticResource SectionTitle}" VerticalOptions="Center" />
                             <Button Grid.Column="1" Text="افزودن +" Clicked="OnAddSenderMenuClicked" Style="{StaticResource QuietAction}" FontSize="12" />
                         </Grid>
-                        <Border IsVisible="{Binding HasFeaturedSender}" Style="{StaticResource Card}" Padding="14">
-                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
-                                <Label Text="{x:Static ui:AppIcons.Sms}" Style="{StaticResource SectionIcon}" VerticalOptions="Center" />
-                                <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
-                                    <Label Text="{Binding FeaturedSenderAddress}" FontFamily="YekanBakhBold" LineBreakMode="TailTruncation" />
-                                    <Label Text="{Binding FeaturedSenderDetails}" Style="{StaticResource Caption}" />
-                                </VerticalStackLayout>
-                                <Button Grid.Column="2" Text="دیدن" Clicked="OnSendersTabClicked" Style="{StaticResource QuietAction}" />
-                            </Grid>
-                        </Border>
+                        <VerticalStackLayout x:Name="HomeSenderList" Spacing="8" BindableLayout.ItemsSource="{Binding HomeSenders}">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="local:SenderItem">
+                                    <Border Style="{StaticResource Card}" Padding="14">
+                                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                                            <Label Text="{x:Static ui:AppIcons.Sms}" Style="{StaticResource SectionIcon}" VerticalOptions="Center" />
+                                            <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                                                <Label Text="{Binding Address}" FontFamily="YekanBakhBold" LineBreakMode="TailTruncation" />
+                                                <Label Text="{Binding Details}" Style="{StaticResource Caption}" />
+                                            </VerticalStackLayout>
+                                            <Button Grid.Column="2" Text="دیدن" Clicked="OnSendersTabClicked" Style="{StaticResource QuietAction}" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </VerticalStackLayout>
                         <Label IsVisible="{Binding HasNoSenders}" Text="هنوز فرستنده‌ای ثبت نشده است. از «افزودن» شروع کنید."
                                Style="{StaticResource MutedText}" />
                     </VerticalStackLayout>

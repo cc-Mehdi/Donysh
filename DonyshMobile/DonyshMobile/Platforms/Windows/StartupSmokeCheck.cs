@@ -201,6 +201,19 @@ internal static class StartupSmokeCheck
         });
 
         await ExerciseConnectionButtonsAsync(shell, home, store, address, preset.SampleMessage);
+        Check(await store.AddSenderAsync("BANK-SECOND") == AddSenderResult.Added,
+            "Second monitored sender registered");
+        SmsReceivedNotifier.Notify();
+        await WaitUntilAsync(() => home.HomeSenders.Count == 2
+            && home.FindByName<VerticalStackLayout>("HomeSenderList").Children.Count == 2,
+            "Home did not render every monitored sender.");
+        Check(home.HomeSenders.Select(item => item.Address).ToHashSet().SetEquals(new[] { address, "BANK-SECOND" }),
+            "Home lists both monitored senders");
+        var extraSender = (await store.GetSenderSummariesAsync()).Single(item => item.Address == "BANK-SECOND");
+        Check(await store.RemoveSenderAsync(extraSender.Id), "Second test sender removed after home check");
+        SmsReceivedNotifier.Notify();
+        await WaitUntilAsync(() => home.HomeSenders.Count == 1,
+            "Home did not refresh after removing the second sender.");
         await ExerciseFailureBoundariesAsync(shell, store, address, preset.SampleMessage);
         await ExerciseSetupWizardAsync(shell);
         foreach (var check in await Diagnostics.TemplateFlowSmokeCheck.RunAsync(shell.Navigation)) Check(true, check);

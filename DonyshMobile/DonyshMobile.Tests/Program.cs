@@ -46,6 +46,70 @@ try
     Assert(await store.CaptureAsync("+989121234567", "پیام آزمایشی", receivedAt), "Capture matching SMS");
     Assert(!await store.CaptureAsync("+989121234567", "پیام آزمایشی", receivedAt), "Deduplicate SMS");
 
+    var arrival = DateTimeOffset.FromUnixTimeMilliseconds(
+        DateTimeOffset.UtcNow.AddMinutes(-4).ToUnixTimeMilliseconds());
+    var serviceCentre = arrival.AddMinutes(-30);
+    Assert(SmsTimestampPolicy.InboxTimestamp(arrival.ToUnixTimeMilliseconds(), serviceCentre.ToUnixTimeMilliseconds()) == serviceCentre,
+        "Inbox recovery uses the SMS service-centre timestamp, matching live capture");
+    Assert(SmsTimestampPolicy.InboxTimestamp(arrival.ToUnixTimeMilliseconds(), 0) == arrival
+        && SmsTimestampPolicy.InboxTimestamp(arrival.ToUnixTimeMilliseconds(), arrival.AddDays(-2).ToUnixTimeMilliseconds()) == arrival,
+        "Inbox recovery falls back to arrival time for missing or implausible sent dates");
+    var bankBody = $"بلو\nبرداشت پول\nمبلغ ۵,۳۲۵,۳۲۰ ریال\n{serviceCentre.ToLocalTime():HH:mm}";
+    var delayedDirectory = Path.Combine(testDirectory, "delayed-provider-time");
+    var delayedStore = CreateStore(delayedDirectory);
+    Assert(await delayedStore.AddSenderAsync("+9899999987641") == AddSenderResult.Added,
+        "Delayed provider test sender registered");
+    Assert(await delayedStore.CaptureAsync("+9899999987641", bankBody, serviceCentre),
+        "Live SMS keeps the service-centre time");
+    Assert(await delayedStore.CaptureBatchAsync([
+        new SmsCaptureCandidate("+9899999987641", bankBody, arrival, RecoveredFromInbox: true)
+    ]) == 0, "Thirty-minute inbox arrival skew cannot create a second SMS");
+    var delayedSender = (await delayedStore.GetSenderSummariesAsync()).Single();
+    Assert((await delayedStore.GetMessagesAsync(delayedSender.Id)).Count == 1,
+        "Delayed inbox scan leaves exactly one pending message");
+    Assert((await delayedStore.FindUnstoredCandidatesAsync([
+        new SmsCaptureCandidate("+9899999987641", bankBody, arrival, RecoveredFromInbox: true)
+    ])).Count == 0, "Missed-message review also hides the skewed duplicate");
+    var recoveredFirstDirectory = Path.Combine(testDirectory, "recovered-before-live");
+    var recoveredFirstStore = CreateStore(recoveredFirstDirectory);
+    Assert(await recoveredFirstStore.AddSenderAsync("+9899999987641") == AddSenderResult.Added,
+        "Recovered-first test sender registered");
+    Assert(await recoveredFirstStore.CaptureBatchAsync([
+        new SmsCaptureCandidate("+9899999987641", bankBody, arrival, RecoveredFromInbox: true)
+    ]) == 1, "Inbox scan initially records the delayed arrival");
+    Assert(!await recoveredFirstStore.CaptureAsync("+9899999987641", bankBody, serviceCentre),
+        "Later live capture corrects the timestamp instead of creating a duplicate");
+    var recoveredFirstSender = (await recoveredFirstStore.GetSenderSummariesAsync()).Single();
+    var recoveredFirstMessages = await recoveredFirstStore.GetMessagesAsync(recoveredFirstSender.Id);
+    Assert(recoveredFirstMessages.Count == 1 && recoveredFirstMessages[0].ReceivedAtUtc == serviceCentre,
+        "Recovered-first message displays the actual SMS time");
+
+    var oldSkewDirectory = Path.Combine(testDirectory, "old-skew-pair");
+    Directory.CreateDirectory(oldSkewDirectory);
+    var oldSkewSender = new MonitoredSender { Address = "Bank-Skew", NormalizedAddress = "BANKSKEW" };
+    var oldSkewState = new SmsMonitorState
+    {
+        Senders = [oldSkewSender],
+        Messages =
+        [
+            new CapturedSms { SenderId = oldSkewSender.Id, SenderAddress = oldSkewSender.Address,
+                Body = bankBody, ReceivedAtUtc = serviceCentre },
+            new CapturedSms { SenderId = oldSkewSender.Id, SenderAddress = oldSkewSender.Address,
+                Body = bankBody, ReceivedAtUtc = arrival, RecoveredFromInbox = true,
+                Title = "خرید", DeliveryStatus = SmsDeliveryStatus.Sent }
+        ]
+    };
+    await File.WriteAllTextAsync(Path.Combine(oldSkewDirectory, "sms-monitor-state.json"),
+        JsonSerializer.Serialize(oldSkewState, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+    var repairedSkew = await CreateStore(oldSkewDirectory).GetMessagesAsync(oldSkewSender.Id);
+    Assert(repairedSkew.Count == 1 && repairedSkew[0].ReceivedAtUtc == serviceCentre
+        && repairedSkew[0].Title == "خرید" && repairedSkew[0].DeliveryStatus == SmsDeliveryStatus.Sent,
+        "Existing live/inbox duplicates merge while retaining delivery and the correct time");
+    var firstRepeated = await delayedStore.CaptureAsync("+9899999987641", "برداشت ۱۰۰ ریال", serviceCentre);
+    var secondRepeated = await delayedStore.CaptureAsync("+9899999987641", "برداشت ۱۰۰ ریال", arrival);
+    Assert(firstRepeated && secondRepeated,
+        "Distinct repeated messages without an embedded time remain separate");
+
     var duplicateDirectory = Path.Combine(testDirectory, "legacy-duplicates");
     Directory.CreateDirectory(duplicateDirectory);
     var duplicateSender = new MonitoredSender { Address = "Bank-Duplicate", NormalizedAddress = "BANKDUPLICATE" };

@@ -18,6 +18,7 @@ public sealed class SmsMonitorStore
     private static readonly TimeSpan Retention = TimeSpan.FromDays(7);
     private static readonly TimeSpan DeliveryHistoryRetention = TimeSpan.FromDays(35);
     private static readonly TimeSpan RecoveryDeduplicationWindow = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan LegacyInboxTimestampGap = TimeSpan.FromHours(2);
     private static readonly Regex DeduplicationWhitespace = new(@"\s+", RegexOptions.Compiled, TimeSpan.FromMilliseconds(100));
     private static readonly SemaphoreSlim Gate = new(1, 1);
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
@@ -631,9 +632,19 @@ public sealed class SmsMonitorStore
 
                 var receivedAtUtc = capture.ReceivedAtUtc.ToUniversalTime();
                 var key = CreateKey(address, body, receivedAtUtc);
-                var isDuplicate = state.Messages.Any(message => message.DeduplicationKey == key
+                var duplicate = state.Messages.FirstOrDefault(message => message.DeduplicationKey == key
                     || IsSameMessage(message.SenderId, message.Body, message.ReceivedAtUtc,
-                        sender.Id, body, receivedAtUtc));
+                        message.RecoveredFromInbox, sender.Id, body, receivedAtUtc, capture.RecoveredFromInbox));
+                var isDuplicate = duplicate is not null || state.DeliveryHistory.Any(message =>
+                    message.SenderId == sender.Id && message.BodyHash == CreateBodyHash(body)
+                    && IsSameDeliveredTime(message.ReceivedAtUtc, receivedAtUtc, body, capture.RecoveredFromInbox));
+                if (duplicate is not null && duplicate.RecoveredFromInbox && !capture.RecoveredFromInbox
+                    && (duplicate.ReceivedAtUtc - receivedAtUtc).Duration() > RecoveryDeduplicationWindow)
+                {
+                    duplicate.ReceivedAtUtc = receivedAtUtc;
+                    duplicate.DeduplicationKey = CreateKey(duplicate.SenderAddress, duplicate.Body, receivedAtUtc);
+                    stateChanged = true;
+                }
                 if (isDuplicate) continue;
 
                 if (state.Messages.Count >= MaxMessages)
@@ -708,11 +719,11 @@ public sealed class SmsMonitorStore
                 var key = CreateKey(address, body, receivedAtUtc);
                 var alreadyStored = state.Messages.Any(message => message.DeduplicationKey == key
                     || IsSameMessage(message.SenderId, message.Body, message.ReceivedAtUtc,
-                        sender.Id, body, receivedAtUtc));
+                        message.RecoveredFromInbox, sender.Id, body, receivedAtUtc, capture.RecoveredFromInbox));
                 var bodyHash = CreateBodyHash(body);
                 var alreadyDelivered = state.DeliveryHistory.Any(message => message.SenderId == sender.Id
                     && string.Equals(message.BodyHash, bodyHash, StringComparison.Ordinal)
-                    && (message.ReceivedAtUtc - receivedAtUtc).Duration() <= RecoveryDeduplicationWindow);
+                    && IsSameDeliveredTime(message.ReceivedAtUtc, receivedAtUtc, body, capture.RecoveredFromInbox));
                 var alreadyListed = result.Any(message =>
                     SenderAddress.Normalize(message.SenderAddress) == normalized
                     && string.Equals(CreateBodyHash(message.Body), bodyHash, StringComparison.Ordinal)
@@ -909,7 +920,9 @@ public sealed class SmsMonitorStore
             foreach (var message in group.OrderBy(x => x.ReceivedAtUtc))
             {
                 if (survivor is null
-                    || (message.ReceivedAtUtc - survivor.ReceivedAtUtc).Duration() > RecoveryDeduplicationWindow)
+                    || !IsSameMessage(survivor.SenderId, survivor.Body, survivor.ReceivedAtUtc,
+                        survivor.RecoveredFromInbox, message.SenderId, message.Body,
+                        message.ReceivedAtUtc, message.RecoveredFromInbox))
                 {
                     survivor = message;
                     continue;
@@ -943,6 +956,12 @@ public sealed class SmsMonitorStore
 
     private static void MergeDuplicateMetadata(CapturedSms survivor, CapturedSms duplicate)
     {
+        if (survivor.RecoveredFromInbox && !duplicate.RecoveredFromInbox
+            && (survivor.ReceivedAtUtc - duplicate.ReceivedAtUtc).Duration() > RecoveryDeduplicationWindow)
+        {
+            survivor.ReceivedAtUtc = duplicate.ReceivedAtUtc;
+            survivor.DeduplicationKey = CreateKey(survivor.SenderAddress, survivor.Body, survivor.ReceivedAtUtc);
+        }
         if (string.IsNullOrWhiteSpace(survivor.Title) && !string.IsNullOrWhiteSpace(duplicate.Title))
             survivor.Title = duplicate.Title;
         survivor.RecoveredFromInbox |= duplicate.RecoveredFromInbox;
@@ -970,12 +989,25 @@ public sealed class SmsMonitorStore
         Guid existingSenderId,
         string existingBody,
         DateTimeOffset existingReceivedAtUtc,
+        bool existingRecoveredFromInbox,
         Guid candidateSenderId,
         string candidateBody,
-        DateTimeOffset candidateReceivedAtUtc) =>
+        DateTimeOffset candidateReceivedAtUtc,
+        bool candidateRecoveredFromInbox) =>
         existingSenderId == candidateSenderId
         && string.Equals(CreateBodyHash(existingBody), CreateBodyHash(candidateBody), StringComparison.Ordinal)
-        && (existingReceivedAtUtc - candidateReceivedAtUtc).Duration() <= RecoveryDeduplicationWindow;
+        && ((existingReceivedAtUtc - candidateReceivedAtUtc).Duration() <= RecoveryDeduplicationWindow
+            || (existingReceivedAtUtc - candidateReceivedAtUtc).Duration() <= LegacyInboxTimestampGap
+                && existingRecoveredFromInbox != candidateRecoveredFromInbox
+                && SmsTimestampPolicy.BodyConfirmsLocalTime(candidateBody,
+                    existingRecoveredFromInbox ? candidateReceivedAtUtc : existingReceivedAtUtc));
+
+    private static bool IsSameDeliveredTime(DateTimeOffset deliveredTimestamp, DateTimeOffset candidateTimestamp,
+        string body, bool recoveredFromInbox) =>
+        (deliveredTimestamp - candidateTimestamp).Duration() <= RecoveryDeduplicationWindow
+        || recoveredFromInbox && (deliveredTimestamp - candidateTimestamp).Duration() <= LegacyInboxTimestampGap
+            && (SmsTimestampPolicy.BodyConfirmsLocalTime(body, deliveredTimestamp)
+                || SmsTimestampPolicy.BodyConfirmsLocalTime(body, candidateTimestamp));
 
     private static string CreateBodyHash(string body)
     {
