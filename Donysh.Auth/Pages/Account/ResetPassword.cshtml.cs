@@ -20,13 +20,14 @@ public sealed class ResetPasswordModel(UserManager<AuthUser> users, IOptions<Aut
 
     public sealed class InputModel
     {
-        [Required] public string Email { get; set; } = string.Empty;
-        [Required] public string Code { get; set; } = string.Empty;
+        [Required(ErrorMessage = "نشانی ایمیل در پیوند بازیابی یافت نشد.")] public string Email { get; set; } = string.Empty;
+        [Required(ErrorMessage = "کد بازیابی در پیوند یافت نشد.")] public string Code { get; set; } = string.Empty;
         [Required(ErrorMessage = "رمز عبور را وارد کنید.")]
         [StringLength(256, MinimumLength = 8, ErrorMessage = "رمز عبور باید حداقل ۸ نویسه باشد.")]
         [DataType(DataType.Password)]
         [Display(Name = "رمز عبور جدید")]
         public string Password { get; set; } = string.Empty;
+        [Required(ErrorMessage = "تکرار رمز عبور را وارد کنید.")]
         [DataType(DataType.Password)]
         [Compare(nameof(Password), ErrorMessage = "تکرار رمز عبور یکسان نیست.")]
         [Display(Name = "تکرار رمز عبور")]

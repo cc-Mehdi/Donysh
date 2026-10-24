@@ -8,8 +8,8 @@
     var configuredAuthUrl = Configuration["CentralAuth:Authority"];
     var accountManageUrl = Uri.TryCreate(configuredAuthUrl, UriKind.Absolute, out var parsedAuthUrl)
         && parsedAuthUrl.Scheme == Uri.UriSchemeHttps
-            ? new Uri(parsedAuthUrl, "/Account/Manage").AbsoluteUri
-            : "https://auth.donysh.ir/Account/Manage";
+            ? new Uri(parsedAuthUrl, "/account/manage").AbsoluteUri
+            : "https://auth.donysh.ir/account/manage";
     var accountName = User.FindFirst("name")?.Value
         ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value
         ?? User.Identity?.Name

@@ -19,7 +19,7 @@
                 <div class="registration-name-grid"><div class="field"><label asp-for="Input.FirstName"></label><input asp-for="Input.FirstName" autocomplete="given-name" required /><span asp-validation-for="Input.FirstName"></span></div><div class="field"><label asp-for="Input.LastName"></label><input asp-for="Input.LastName" autocomplete="family-name" required /><span asp-validation-for="Input.LastName"></span></div></div>
                 <div class="registration-name-grid"><div class="field"><label asp-for="Input.PhoneNumber"></label><input asp-for="Input.PhoneNumber" autocomplete="tel" inputmode="tel" dir="ltr" required /><span asp-validation-for="Input.PhoneNumber"></span></div><div class="field"><label asp-for="Input.UserName"></label><input asp-for="Input.UserName" autocomplete="username" dir="ltr" required /><span asp-validation-for="Input.UserName"></span></div></div>
                 <div class="account-email-row"><span>ایمیل</span><strong dir="ltr">@Model.Email</strong><a asp-page="/Account/ChangeEmail">تغییر ایمیل</a></div>
-                <label class="account-switch"><input asp-for="Input.NotificationsEnabled" /><span><strong>اعلان‌های حساب</strong><small>ترجیح دریافت اعلان‌های اختیاری حساب ذخیره می‌شود؛ پیام‌های امنیتی ضروری همچنان ارسال می‌شوند.</small></span></label>
+                <label class="account-switch"><input asp-for="Input.NotificationsEnabled" /><span><strong>اعلان‌های اختیاری را می‌خواهم</strong><small>فعلاً انتخاب شما ذخیره می‌شود. پیام‌های امنیتی همیشه ارسال می‌شوند.</small></span></label>
                 <button class="primary-button account-save" type="submit">ذخیرهٔ تغییرات</button>
             </form>
         </section>

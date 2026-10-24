@@ -12,7 +12,7 @@
     </header>
     @if (!Model.Available)
     {
-        <div class="phase-notice" role="status"><span>◉</span><p>ثبت‌نام موقتاً در دسترس نیست. اگر از قبل حساب دارید، وارد شوید.</p></div>
+        <div class="phase-notice" role="status"><span>◉</span><p>@Model.UnavailableReason</p></div>
         <a asp-page="/Account/Login" asp-route-returnUrl="@Model.ReturnUrl" class="secondary-button">بازگشت به ورود</a>
     }
     else
@@ -30,7 +30,7 @@
             <div class="field">
                 <label asp-for="Input.Password"></label>
                 <div class="password-field" dir="ltr">
-                    <input asp-for="Input.Password" class="password-input" autocomplete="new-password" dir="ltr" required />
+                    <input asp-for="Input.Password" class="password-input" autocomplete="new-password" dir="ltr" data-new-password required />
                     <button type="button" class="password-toggle" data-password-toggle aria-controls="Input_Password" aria-label="نمایش رمز عبور" aria-pressed="false">
                         <svg data-eye-open aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.75"/></svg>
                         <svg data-eye-closed aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" hidden><path d="m3 3 18 18M10.6 6.1A9.9 9.9 0 0 1 12 6c6 0 9.5 6 9.5 6a15.7 15.7 0 0 1-2.2 2.8M6.2 6.2C3.8 7.8 2.5 12 2.5 12s3.5 6 9.5 6a9.8 9.8 0 0 0 3.1-.5M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>
@@ -49,10 +49,10 @@
                 </div>
                 <span asp-validation-for="Input.ConfirmPassword"></span>
             </div>
-            <ul class="password-rules" aria-label="شرایط رمز عبور">
-                <li><span aria-hidden="true">✓</span> دست‌کم ۸ نویسه</li>
-                <li><span aria-hidden="true">✓</span> شامل حرف لاتین کوچک</li>
-                <li><span aria-hidden="true">✓</span> شامل عدد</li>
+            <ul class="password-rules" data-password-rules aria-label="شرایط رمز عبور">
+                <li data-password-rule="length"><span aria-hidden="true">✓</span> دست‌کم ۸ نویسه</li>
+                <li data-password-rule="letter"><span aria-hidden="true">✓</span> دست‌کم یک حرف لاتین کوچک</li>
+                <li data-password-rule="digit"><span aria-hidden="true">✓</span> دست‌کم یک عدد</li>
             </ul>
             <button class="primary-button" type="submit"><span>ساخت حساب</span><span aria-hidden="true">←</span></button>
             <p class="consent-note">با ساخت حساب، مسئولیت نگهداری امن رمز عبور و صحت ایمیل را می‌پذیرید.</p>

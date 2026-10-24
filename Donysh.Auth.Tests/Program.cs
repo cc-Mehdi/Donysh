@@ -178,6 +178,9 @@ using (var response = await client.GetAsync("/Account/Login"))
         html.Contains("data-password-toggle", StringComparison.Ordinal)
         && html.Contains("aria-label=\"نمایش رمز عبور\"", StringComparison.Ordinal)
         && html.Contains("/js/password-toggle.js", StringComparison.Ordinal));
+    Check("Login keeps the registration link visible while setup is pending",
+        html.Contains("ساخت حساب", StringComparison.Ordinal)
+        && html.Contains("/Account/Register", StringComparison.Ordinal));
     Check("Login page explains its secure product handoff",
         html.Contains("ورود امن به حساب مرکزی", StringComparison.Ordinal)
         && html.Contains("دُنیش مالی", StringComparison.Ordinal)
@@ -223,8 +226,8 @@ using (var response = await client.GetAsync(
 using (var response = await client.GetAsync("/Account/Register"))
 {
     var html = await response.Content.ReadAsStringAsync();
-    Check("Public registration remains disabled", response.StatusCode == HttpStatusCode.OK
-        && html.Contains("ثبت‌نام موقتاً در دسترس نیست", StringComparison.Ordinal));
+    Check("Registration explains the account migration gate", response.StatusCode == HttpStatusCode.OK
+        && System.Net.WebUtility.HtmlDecode(html).Contains("ساخت حساب پس از تکمیل انتقال حساب‌های فعلی فعال می‌شود", StringComparison.Ordinal));
 }
 
 await using (var unavailableRecoveryFactory = new RecoveryUnavailableAuthApplicationFactory())
@@ -261,6 +264,10 @@ using (var registrationClient = registrationFactory.CreateClient(new WebApplicat
             && html.Contains("name=\"Input.UserName\"", StringComparison.Ordinal)
             && html.Contains("name=\"Input.Email\"", StringComparison.Ordinal)
             && html.Contains("name=\"Input.ConfirmPassword\"", StringComparison.Ordinal)
+            && html.Contains("data-new-password", StringComparison.Ordinal)
+            && html.Contains("data-password-rule=\"length\"", StringComparison.Ordinal)
+            && html.Contains("data-password-rule=\"letter\"", StringComparison.Ordinal)
+            && html.Contains("data-password-rule=\"digit\"", StringComparison.Ordinal)
             && html.Contains("name=\"ReturnUrl\"", StringComparison.Ordinal)
             && html.Contains("/connect/authorize?client_id=finance-web", StringComparison.Ordinal)
             && html.Contains("شرایط رمز عبور", StringComparison.Ordinal));
@@ -269,9 +276,9 @@ using (var registrationClient = registrationFactory.CreateClient(new WebApplicat
     using (var response = await registrationClient.GetAsync("/Account/Login?ReturnUrl=%2Fcontinue"))
     {
         var html = await response.Content.ReadAsStringAsync();
-        Check("Login offers registration only when email delivery is ready",
+        Check("Login links to the registration page",
             response.StatusCode == HttpStatusCode.OK
-            && html.Contains("ساخت حساب مرکزی", StringComparison.Ordinal)
+            && html.Contains("ساخت حساب", StringComparison.Ordinal)
             && html.Contains("returnUrl=%2Fcontinue", StringComparison.OrdinalIgnoreCase));
     }
 

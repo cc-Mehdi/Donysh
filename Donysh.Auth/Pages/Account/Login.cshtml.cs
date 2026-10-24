@@ -23,7 +23,6 @@ public sealed class LoginModel(
     [BindProperty] public InputModel Input { get; set; } = new();
     [BindProperty(SupportsGet = true)] public string? ReturnUrl { get; set; }
 
-    public bool RegistrationAvailable => features.Value.CanRegister && emailSender.IsConfigured;
     public bool PasswordRecoveryAvailable => features.Value.CanRecoverPassword && emailSender.IsConfigured;
     public bool MigrationCompleted => features.Value.LegacyIdentityImportCompleted;
 

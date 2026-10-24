@@ -25,6 +25,11 @@ public sealed class RegisterModel(
     [BindProperty] public InputModel Input { get; set; } = new();
     [BindProperty(SupportsGet = true)] public string? ReturnUrl { get; set; }
     public bool Available => features.Value.CanRegister && emailSender.IsConfigured;
+    public string UnavailableReason => !features.Value.LegacyIdentityImportCompleted
+        ? "ساخت حساب پس از تکمیل انتقال حساب‌های فعلی فعال می‌شود."
+        : !features.Value.PublicRegistration
+            ? "ساخت حساب تازه فعلاً بسته است."
+            : "ساخت حساب پس از راه‌اندازی ارسال ایمیل تأیید فعال می‌شود.";
 
     public sealed class InputModel
     {
@@ -45,7 +50,7 @@ public sealed class RegisterModel(
 
         [Required(ErrorMessage = "ایمیل را وارد کنید.")]
         [EmailAddress(ErrorMessage = "ایمیل معتبر نیست.")]
-        [StringLength(254)]
+        [StringLength(254, ErrorMessage = "ایمیل بیش از حد طولانی است.")]
         [Display(Name = "ایمیل")]
         public string Email { get; set; } = string.Empty;
 
@@ -55,7 +60,7 @@ public sealed class RegisterModel(
         public string UserName { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "رمز عبور را وارد کنید.")]
-        [StringLength(256, MinimumLength = 8, ErrorMessage = "رمز عبور باید حداقل ۸ نویسه باشد.")]
+        [StringLength(256, MinimumLength = 8, ErrorMessage = "رمز عبور باید بین ۸ تا ۲۵۶ نویسه باشد.")]
         [DataType(DataType.Password)]
         [Display(Name = "رمز عبور")]
         public string Password { get; set; } = string.Empty;

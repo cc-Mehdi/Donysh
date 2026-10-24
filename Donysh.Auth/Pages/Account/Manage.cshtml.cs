@@ -20,12 +20,12 @@ public sealed class ManageModel(UserManager<AuthUser> users, SignInManager<AuthU
     public sealed class ProfileInput
     {
         [Required(ErrorMessage = "نام را وارد کنید.")]
-        [StringLength(100, MinimumLength = 2)]
+        [StringLength(100, MinimumLength = 2, ErrorMessage = "نام باید بین ۲ تا ۱۰۰ نویسه باشد.")]
         [Display(Name = "نام")]
         public string FirstName { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "نام خانوادگی را وارد کنید.")]
-        [StringLength(100, MinimumLength = 2)]
+        [StringLength(100, MinimumLength = 2, ErrorMessage = "نام خانوادگی باید بین ۲ تا ۱۰۰ نویسه باشد.")]
         [Display(Name = "نام خانوادگی")]
         public string LastName { get; set; } = string.Empty;
 

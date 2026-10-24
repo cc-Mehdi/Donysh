@@ -16,7 +16,7 @@ namespace Donysh.Auth.Pages.Account;
 public sealed class ChangeEmailModel(UserManager<AuthUser> users, SignInManager<AuthUser> signInManager,
     IAuthEmailSender emailSender, ILogger<ChangeEmailModel> logger) : PageModel
 {
-    [BindProperty, Required(ErrorMessage = "ایمیل تازه را وارد کنید."), EmailAddress(ErrorMessage = "ایمیل معتبر نیست."), StringLength(254)]
+    [BindProperty, Required(ErrorMessage = "ایمیل تازه را وارد کنید."), EmailAddress(ErrorMessage = "ایمیل معتبر نیست."), StringLength(254, ErrorMessage = "ایمیل بیش از حد طولانی است.")]
     [Display(Name = "ایمیل تازه")]
     public string NewEmail { get; set; } = string.Empty;
     public string CurrentEmail { get; private set; } = string.Empty;

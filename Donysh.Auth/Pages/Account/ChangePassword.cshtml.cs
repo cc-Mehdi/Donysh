@@ -20,11 +20,11 @@ public sealed class ChangePasswordModel(UserManager<AuthUser> users, SignInManag
         [Display(Name = "رمز فعلی")]
         public string CurrentPassword { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "رمز تازه را وارد کنید."), StringLength(256, MinimumLength = 8), DataType(DataType.Password)]
+        [Required(ErrorMessage = "رمز تازه را وارد کنید."), StringLength(256, MinimumLength = 8, ErrorMessage = "رمز تازه باید بین ۸ تا ۲۵۶ نویسه باشد."), DataType(DataType.Password)]
         [Display(Name = "رمز تازه")]
         public string NewPassword { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "تکرار رمز را وارد کنید."), Compare(nameof(NewPassword), ErrorMessage = "تکرار رمز یکسان نیست."), DataType(DataType.Password)]
+        [Required(ErrorMessage = "تکرار رمز تازه را وارد کنید."), Compare(nameof(NewPassword), ErrorMessage = "تکرار رمز تازه با رمز انتخابی یکسان نیست."), DataType(DataType.Password)]
         [Display(Name = "تکرار رمز تازه")]
         public string ConfirmPassword { get; set; } = string.Empty;
     }

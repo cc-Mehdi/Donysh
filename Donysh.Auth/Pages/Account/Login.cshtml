@@ -77,16 +77,7 @@
                 <button class="primary-button" type="submit"><span>ورود به حساب دُنیش</span><span aria-hidden="true">←</span></button>
             </form>
             <p class="login-security"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 3 5 6v5c0 4.6 2.9 8.1 7 10 4.1-1.9 7-5.4 7-10V6l-7-3Z"/><path d="m9.5 12 1.6 1.6 3.7-4"/></svg> ورود امن به حساب مرکزی دُنیش</p>
-            @if (Model.RegistrationAvailable)
-            {
-                <p class="panel-foot">حساب ندارید؟ <a asp-page="/Account/Register" asp-route-returnUrl="@Model.ReturnUrl">ساخت حساب مرکزی</a></p>
-            }
-            else
-            {
-                <p class="panel-foot muted">@(Model.MigrationCompleted
-                    ? "ساخت حساب جدید در حال حاضر غیرفعال است."
-                    : "ساخت حساب جدید پس از آماده‌شدن انتقال کاربران فعال می‌شود.")</p>
-            }
+            <p class="panel-foot">حساب ندارید؟ <a asp-page="/Account/Register" asp-route-returnUrl="@Model.ReturnUrl">ساخت حساب</a></p>
         </div>
         <footer class="login-footer"><span>© @DateTime.UtcNow.Year دُنیش</span><a href="https://donysh.ir/">بازگشت به وب‌سایت اصلی ←</a></footer>
     </section>
