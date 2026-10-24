@@ -10,6 +10,12 @@ public sealed class RecurringSchedulePattern
     public int DurationMinutes { get; set; }
     public string? Note { get; set; }
     public int? ReminderMinutesBefore { get; set; }
+    public DateOnly? StartsOn { get; set; }
+    public string RepeatFrequency { get; set; } = "weekly";
+    public int RepeatInterval { get; set; } = 1;
+    public int RepeatDaysMask { get; set; }
+    public DateOnly? RepeatUntil { get; set; }
+    public int? RepeatCount { get; set; }
     public bool IsActive { get; set; } = true;
     public DateTimeOffset CreatedAtUtc { get; set; }
     public DateTimeOffset UpdatedAtUtc { get; set; }

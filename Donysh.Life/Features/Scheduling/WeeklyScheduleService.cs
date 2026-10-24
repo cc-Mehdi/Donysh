@@ -28,7 +28,7 @@ public sealed class WeeklyScheduleService(LifeDbContext db, IHttpContextAccessor
         var blocks = new List<ScheduleBlockItem>();
 
         foreach (var date in Enumerable.Range(0, 8).Select(offset => firstRelevantDate.AddDays(offset)))
-        foreach (var pattern in patterns.Where(item => item.DayOfWeek == date.DayOfWeek))
+        foreach (var pattern in patterns.Where(item => ScheduleRecurrence.OccursOn(item, date)))
         {
             var originalDate = date;
             if (overrideMap.TryGetValue((pattern.Id, originalDate), out var changed))
@@ -41,7 +41,8 @@ public sealed class WeeklyScheduleService(LifeDbContext db, IHttpContextAccessor
         foreach (var changed in overrides.Where(x => !x.IsCancelled && (x.OriginalDate < firstRelevantDate || x.OriginalDate > weekEnd)))
         {
             var pattern = patterns.SingleOrDefault(x => x.Id == changed.PatternId);
-            if (pattern is not null && changed.ScheduledDate >= firstRelevantDate && changed.ScheduledDate <= weekEnd)
+            if (pattern is not null && ScheduleRecurrence.OccursOn(pattern, changed.OriginalDate)
+                && changed.ScheduledDate >= firstRelevantDate && changed.ScheduledDate <= weekEnd)
                 blocks.Add(ToBlock(pattern, changed.OriginalDate, changed.ScheduledDate, changed.StartMinute, changed.DurationMinutes, true));
         }
         var records = await db.ScheduleOccurrenceRecords.AsNoTracking().Where(x => x.UserSubject == subject
@@ -95,6 +96,14 @@ public sealed class WeeklyScheduleService(LifeDbContext db, IHttpContextAccessor
         pattern.DurationMinutes = input.DurationMinutes;
         pattern.Note = string.IsNullOrWhiteSpace(input.Note) ? null : input.Note.Trim();
         pattern.ReminderMinutesBefore = input.ReminderMinutesBefore;
+        pattern.StartsOn = input.StartsOn;
+        pattern.RepeatFrequency = input.RepeatFrequency;
+        pattern.RepeatInterval = input.RepeatInterval;
+        pattern.RepeatDaysMask = input.RepeatFrequency == "weekly"
+            ? (input.RepeatDays.Count == 0 ? ScheduleRecurrence.DayMask(input.DayOfWeek)
+                : input.RepeatDays.Aggregate(0, (mask, day) => mask | ScheduleRecurrence.DayMask(day))) : 0;
+        pattern.RepeatUntil = input.RepeatEnds == "date" ? input.RepeatUntil : null;
+        pattern.RepeatCount = input.RepeatEnds == "count" ? input.RepeatCount : null;
         pattern.UpdatedAtUtc = DateTimeOffset.UtcNow;
         SyncSlots(pattern, []);
         try
@@ -114,12 +123,23 @@ public sealed class WeeklyScheduleService(LifeDbContext db, IHttpContextAccessor
             return ActivityCommandResult.Failure("زمان انتخاب‌شده معتبر نیست.");
         var pattern = await db.SchedulePatterns.Include(x => x.Slots).SingleOrDefaultAsync(x => x.Id == input.PatternId && x.UserSubject == subject, cancellationToken);
         if (pattern is null) return ActivityCommandResult.Failure("برنامهٔ انتخاب‌شده پیدا نشد.");
+        if (!ScheduleRecurrence.OccursOn(pattern, input.OriginalDate)) return ActivityCommandResult.Failure("تاریخ رخداد با الگوی برنامه هماهنگ نیست.");
         if (input.Scope == "series")
+        {
+            var dateShift = input.TargetDate.DayNumber - input.OriginalDate.DayNumber;
+            var mask = ScheduleRecurrence.ShiftDays(pattern.RepeatDaysMask == 0
+                ? ScheduleRecurrence.DayMask(pattern.DayOfWeek) : pattern.RepeatDaysMask,
+                input.OriginalDate.DayOfWeek, input.TargetDate.DayOfWeek);
             return await SaveAsync(pattern.Id, new SchedulePatternForm { ActivityId = pattern.ActivityId, DayOfWeek = input.TargetDate.DayOfWeek,
                 StartTime = FormatMinute(input.StartMinute), DurationMinutes = input.DurationMinutes, Note = pattern.Note,
-                ReminderMinutesBefore = pattern.ReminderMinutesBefore }, cancellationToken);
+                ReminderMinutesBefore = pattern.ReminderMinutesBefore,
+                StartsOn = pattern.StartsOn?.AddDays(dateShift),
+                RepeatFrequency = pattern.RepeatFrequency, RepeatInterval = pattern.RepeatInterval,
+                RepeatDays = WeekCalendar.Days.Where(day => (mask & ScheduleRecurrence.DayMask(day)) != 0).ToList(),
+                RepeatEnds = pattern.RepeatUntil.HasValue ? "date" : pattern.RepeatCount.HasValue ? "count" : "never",
+                RepeatUntil = pattern.RepeatUntil?.AddDays(dateShift), RepeatCount = pattern.RepeatCount }, cancellationToken);
+        }
         if (input.Scope != "occurrence") return ActivityCommandResult.Failure("دامنهٔ تغییر معتبر نیست.");
-        if (input.OriginalDate.DayOfWeek != pattern.DayOfWeek) return ActivityCommandResult.Failure("تاریخ رخداد با الگوی برنامه هماهنگ نیست.");
         if (await db.ScheduleOccurrenceRecords.AnyAsync(x => x.PatternId == pattern.Id && x.UserSubject == subject
                 && x.OriginalDate == input.OriginalDate, cancellationToken))
             return ActivityCommandResult.Failure("برای این رخداد عملکرد ثبت شده است؛ ابتدا وضعیت عملکرد را پاک کنید.");
@@ -155,7 +175,7 @@ public sealed class WeeklyScheduleService(LifeDbContext db, IHttpContextAccessor
     {
         var subject = GetSubject();
         var pattern = await db.SchedulePatterns.SingleOrDefaultAsync(x => x.Id == patternId && x.UserSubject == subject, cancellationToken);
-        if (pattern is null || originalDate.DayOfWeek != pattern.DayOfWeek) return ActivityCommandResult.Failure("رخداد انتخاب‌شده پیدا نشد.");
+        if (pattern is null || !ScheduleRecurrence.OccursOn(pattern, originalDate)) return ActivityCommandResult.Failure("رخداد انتخاب‌شده پیدا نشد.");
         if (await db.ScheduleOccurrenceRecords.AnyAsync(x => x.PatternId == patternId && x.UserSubject == subject
                 && x.OriginalDate == originalDate, cancellationToken))
             return ActivityCommandResult.Failure("برای این رخداد عملکرد ثبت شده است؛ ابتدا وضعیت عملکرد را پاک کنید.");
@@ -215,7 +235,9 @@ public sealed class WeeklyScheduleService(LifeDbContext db, IHttpContextAccessor
 
     private static ScheduleBlockItem ToBlock(RecurringSchedulePattern p, DateOnly original, DateOnly scheduled, int start, int duration, bool changed) =>
         new(p.Id, p.ActivityId, p.Activity.Title, p.Activity.ColorHex, p.Activity.IconKey, scheduled.DayOfWeek, start, duration,
-            p.Note, p.ReminderMinutesBefore, p.IsActive, original, scheduled, changed, null, null, null, null);
+            p.Note, p.ReminderMinutesBefore, p.IsActive, original, scheduled, changed, null, null, null, null)
+        { StartsOn = p.StartsOn, RepeatFrequency = p.RepeatFrequency, RepeatInterval = p.RepeatInterval,
+            RepeatDaysMask = p.RepeatDaysMask, RepeatUntil = p.RepeatUntil, RepeatCount = p.RepeatCount };
 
     private static bool TryParse(SchedulePatternForm input, out int startMinute, out string error)
     {
@@ -234,6 +256,20 @@ public sealed class WeeklyScheduleService(LifeDbContext db, IHttpContextAccessor
         if (input.DurationMinutes is < 30 or > 1440 || input.DurationMinutes % 30 != 0) { error = "مدت فعالیت باید مضربی از ۳۰ دقیقه باشد."; return false; }
         if (input.Note?.Trim().Length > 160) { error = "یادداشت بیش از حد طولانی است."; return false; }
         if (input.ReminderMinutesBefore is < 0 or > 120) { error = "زمان یادآور معتبر نیست."; return false; }
+        if (input.RepeatFrequency is not ("none" or "daily" or "weekly" or "monthly" or "yearly")
+            || input.RepeatInterval is < 1 or > 52
+            || input.RepeatEnds is not ("never" or "date" or "count"))
+        { error = "تنظیم تکرار معتبر نیست."; return false; }
+        if (input.StartsOn is null && (input.RepeatFrequency != "weekly" || input.RepeatInterval != 1 || input.RepeatEnds != "never"))
+        { error = "تاریخ شروع تکرار را وارد کنید."; return false; }
+        if (input.RepeatDays.Any(day => !WeekCalendar.Days.Contains(day)))
+        { error = "روزهای تکرار معتبر نیستند."; return false; }
+        if (input.RepeatFrequency == "weekly" && input.StartsOn.HasValue && input.RepeatDays.Count == 0)
+        { error = "برای تکرار هفتگی دست‌کم یک روز را انتخاب کنید."; return false; }
+        if (input.RepeatEnds == "date" && (input.RepeatUntil is null || input.StartsOn is null || input.RepeatUntil < input.StartsOn))
+        { error = "تاریخ پایان تکرار باید پس از شروع باشد."; return false; }
+        if (input.RepeatEnds == "count" && input.RepeatCount is not >= 1 and <= 730)
+        { error = "تعداد تکرار باید بین ۱ تا ۷۳۰ باشد."; return false; }
         return true;
     }
 

@@ -71,10 +71,17 @@ public sealed class LifeDbContext(DbContextOptions<LifeDbContext> options) : DbC
             table.HasCheckConstraint("CK_LifeSchedulePatterns_StartMinute", "\"StartMinute\" BETWEEN 0 AND 1410 AND \"StartMinute\" % 30 = 0");
             table.HasCheckConstraint("CK_LifeSchedulePatterns_Duration", "\"DurationMinutes\" BETWEEN 30 AND 1440 AND \"DurationMinutes\" % 30 = 0");
             table.HasCheckConstraint("CK_LifeSchedulePatterns_Reminder", "\"ReminderMinutesBefore\" IS NULL OR \"ReminderMinutesBefore\" BETWEEN 0 AND 120");
+            table.HasCheckConstraint("CK_LifeSchedulePatterns_RepeatFrequency", "\"RepeatFrequency\" IN ('none', 'daily', 'weekly', 'monthly', 'yearly')");
+            table.HasCheckConstraint("CK_LifeSchedulePatterns_RepeatInterval", "\"RepeatInterval\" BETWEEN 1 AND 52");
+            table.HasCheckConstraint("CK_LifeSchedulePatterns_RepeatDaysMask", "\"RepeatDaysMask\" BETWEEN 0 AND 127");
+            table.HasCheckConstraint("CK_LifeSchedulePatterns_RepeatCount", "\"RepeatCount\" IS NULL OR \"RepeatCount\" BETWEEN 1 AND 730");
+            table.HasCheckConstraint("CK_LifeSchedulePatterns_RepeatDates", "\"RepeatUntil\" IS NULL OR (\"StartsOn\" IS NOT NULL AND \"RepeatUntil\" >= \"StartsOn\")");
         });
         schedulePattern.HasKey(item => item.Id);
         schedulePattern.Property(item => item.UserSubject).HasMaxLength(450).IsRequired();
         schedulePattern.Property(item => item.Note).HasMaxLength(160);
+        schedulePattern.Property(item => item.RepeatFrequency).HasMaxLength(12).HasDefaultValue("weekly").IsRequired();
+        schedulePattern.Property(item => item.RepeatInterval).HasDefaultValue(1);
         schedulePattern.HasIndex(item => new { item.UserSubject, item.DayOfWeek, item.StartMinute });
         schedulePattern.HasAlternateKey(item => new { item.Id, item.UserSubject });
         schedulePattern.HasOne(item => item.Activity)

@@ -238,8 +238,32 @@ namespace Donysh.Life.Data.Migrations
                     b.Property<int?>("ReminderMinutesBefore")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("RepeatCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("RepeatDaysMask")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("RepeatFrequency")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(12)
+                        .HasColumnType("character varying(12)")
+                        .HasDefaultValue("weekly");
+
+                    b.Property<int>("RepeatInterval")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
+
+                    b.Property<DateOnly?>("RepeatUntil")
+                        .HasColumnType("date");
+
                     b.Property<int>("StartMinute")
                         .HasColumnType("integer");
+
+                    b.Property<DateOnly?>("StartsOn")
+                        .HasColumnType("date");
 
                     b.Property<DateTimeOffset>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone");
@@ -262,6 +286,16 @@ namespace Donysh.Life.Data.Migrations
                             t.HasCheckConstraint("CK_LifeSchedulePatterns_Duration", "\"DurationMinutes\" BETWEEN 30 AND 1440 AND \"DurationMinutes\" % 30 = 0");
 
                             t.HasCheckConstraint("CK_LifeSchedulePatterns_Reminder", "\"ReminderMinutesBefore\" IS NULL OR \"ReminderMinutesBefore\" BETWEEN 0 AND 120");
+
+                            t.HasCheckConstraint("CK_LifeSchedulePatterns_RepeatCount", "\"RepeatCount\" IS NULL OR \"RepeatCount\" BETWEEN 1 AND 730");
+
+                            t.HasCheckConstraint("CK_LifeSchedulePatterns_RepeatDates", "\"RepeatUntil\" IS NULL OR (\"StartsOn\" IS NOT NULL AND \"RepeatUntil\" >= \"StartsOn\")");
+
+                            t.HasCheckConstraint("CK_LifeSchedulePatterns_RepeatDaysMask", "\"RepeatDaysMask\" BETWEEN 0 AND 127");
+
+                            t.HasCheckConstraint("CK_LifeSchedulePatterns_RepeatFrequency", "\"RepeatFrequency\" IN ('none', 'daily', 'weekly', 'monthly', 'yearly')");
+
+                            t.HasCheckConstraint("CK_LifeSchedulePatterns_RepeatInterval", "\"RepeatInterval\" BETWEEN 1 AND 52");
 
                             t.HasCheckConstraint("CK_LifeSchedulePatterns_StartMinute", "\"StartMinute\" BETWEEN 0 AND 1410 AND \"StartMinute\" % 30 = 0");
                         });

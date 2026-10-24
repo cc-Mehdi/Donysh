@@ -26,6 +26,15 @@ public sealed class SchedulePatternForm
 
     [Range(0, 120, ErrorMessage = "یادآور باید حداکثر دو ساعت پیش از شروع باشد.")]
     public int? ReminderMinutesBefore { get; set; }
+    public DateOnly? StartsOn { get; set; }
+    public string RepeatFrequency { get; set; } = "weekly";
+    [Range(1, 52, ErrorMessage = "فاصلهٔ تکرار باید بین ۱ تا ۵۲ باشد.")]
+    public int RepeatInterval { get; set; } = 1;
+    public List<DayOfWeek> RepeatDays { get; set; } = [];
+    public string RepeatEnds { get; set; } = "never";
+    public DateOnly? RepeatUntil { get; set; }
+    [Range(1, 730, ErrorMessage = "تعداد تکرار باید بین ۱ تا ۷۳۰ باشد.")]
+    public int? RepeatCount { get; set; }
 }
 
 public sealed record ScheduleActivityOption(Guid Id, string Title, string ColorHex, string IconKey)
@@ -57,6 +66,12 @@ public sealed record ScheduleBlockItem(
     public int DisplayStartMinute { get; init; } = -1;
     public int DisplayDurationMinutes { get; init; } = -1;
     public bool IsContinuation { get; init; }
+    public DateOnly? StartsOn { get; init; }
+    public string RepeatFrequency { get; init; } = "weekly";
+    public int RepeatInterval { get; init; } = 1;
+    public int RepeatDaysMask { get; init; }
+    public DateOnly? RepeatUntil { get; init; }
+    public int? RepeatCount { get; init; }
     public int VisibleStartMinute => DisplayStartMinute < 0 ? StartMinute : DisplayStartMinute;
     public int VisibleDurationMinutes => DisplayDurationMinutes < 0 ? DurationMinutes : DisplayDurationMinutes;
     public string VisibleStartLabel => FormatMinute(VisibleStartMinute);
@@ -128,6 +143,10 @@ public sealed record ScheduleBlockCardModel(
     IReadOnlyList<ScheduleActivityOption> Activities,
     DateOnly WeekStart,
     string DisplayMode);
+
+public sealed record ScheduleRepeatFieldsModel(
+    DateOnly? StartsOn, string Frequency, int Interval, int DaysMask,
+    string Ends, DateOnly? Until, int? Count, DayOfWeek DefaultDay);
 
 public sealed record WeekScheduleView(
     DateOnly WeekStart,

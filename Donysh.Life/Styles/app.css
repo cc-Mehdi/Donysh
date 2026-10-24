@@ -347,6 +347,22 @@ main[aria-busy="true"] { opacity:.78; transition:opacity .16s ease; }
 .schedule-prerequisite p { color:#6b7976; }
 .form-hint { margin:.65rem 0 0; color:#71807c; font-size:.78rem; }
 .schedule-form { display:grid; gap:.85rem; margin-top:1rem; }
+.schedule-repeat { display:grid; gap:.8rem; min-width:0; margin:0; padding:1rem; border:1px solid var(--line); border-radius:1rem; background:#f3f9f7; }
+.schedule-repeat legend { padding:0 .4rem; font-weight:800; font-size:.9rem; }
+.schedule-repeat-details { display:grid; gap:.8rem; }
+.schedule-repeat-interval { max-width:100%; }
+.schedule-repeat-days > span { display:block; margin-bottom:.5rem; font-size:.78rem; font-weight:700; }
+.schedule-repeat-day-grid { display:flex; flex-wrap:wrap; gap:.4rem; }
+.schedule-repeat-day-grid label { cursor:pointer; }
+.schedule-repeat-day-grid input { position:absolute; opacity:0; width:1px; height:1px; }
+.schedule-repeat-day-grid span { display:grid; min-height:2.5rem; place-items:center; padding:.35rem .65rem; border:1px solid var(--line); border-radius:.7rem; background:#fff; font-size:.75rem; font-weight:700; }
+.schedule-repeat-day-grid input:checked + span { border-color:#0da69a; background:#d9f7f0; color:#086e68; }
+.schedule-repeat-day-grid input:focus-visible + span { outline:3px solid #55c5bc; outline-offset:2px; }
+.schedule-repeat-help { margin:0; color:#5c7575; font-size:.75rem; line-height:1.6; }
+.schedule-repeat [hidden] { display:none!important; }
+html[data-life-theme="dark"] .schedule-repeat { background:#1b3040; }
+html[data-life-theme="dark"] .schedule-repeat-day-grid span { background:#142437; color:#dbe8ed; }
+html[data-life-theme="dark"] .schedule-repeat-day-grid input:checked + span { background:#10554f; color:#efffff; border-color:#33c3b5; }
 .calendar-day-tabs { display:none; grid-template-columns:repeat(7,minmax(4.3rem,1fr)); gap:.35rem; margin-bottom:.55rem; overflow-x:auto; }
 .calendar-day-tabs a { display:grid; gap:.15rem; border:1px solid var(--line); border-radius:.75rem; background:#fff; padding:.45rem; color:#6d7a77; text-align:center; }
 .calendar-day-tabs a.active:not(.today) { border-color:#b8c7e5; color:#345487; background:#f0f4fb; }

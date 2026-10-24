@@ -79,6 +79,43 @@
         update();
     });
 
+    document.querySelectorAll("[data-repeat-fields]").forEach(group => {
+        const form = group.closest("form");
+        const startDate = group.querySelector("[data-repeat-start]");
+        const frequency = group.querySelector("[data-repeat-frequency]");
+        const details = group.querySelector("[data-repeat-details]");
+        const days = group.querySelector("[data-repeat-days]");
+        const ends = group.querySelector("[data-repeat-ends]");
+        const until = group.querySelector("[data-repeat-until]");
+        const count = group.querySelector("[data-repeat-count]");
+        const update = () => {
+            const repeating = frequency.value !== "none";
+            details.hidden = !repeating;
+            days.hidden = frequency.value !== "weekly";
+            until.hidden = !repeating || ends.value !== "date";
+            count.hidden = !repeating || ends.value !== "count";
+            group.querySelector('[name="Input.RepeatInterval"]').disabled = !repeating;
+            days.querySelectorAll("input").forEach(input => { input.disabled = frequency.value !== "weekly"; });
+            ends.disabled = !repeating;
+            until.querySelector("input").disabled = until.hidden;
+            count.querySelector("input").disabled = count.hidden;
+        };
+        frequency.addEventListener("change", () => {
+            if (!startDate.value) startDate.value = form.querySelector('[name="WeekStart"]')?.value || new Date().toISOString().slice(0, 10);
+            update();
+        });
+        ends.addEventListener("change", update);
+        if (form === createForm) {
+            form.querySelector('[name="Input.DayOfWeek"]').addEventListener("change", event => {
+                const daysInWeek = [...document.querySelectorAll(".calendar-day-column")];
+                const selected = daysInWeek.find(day => dayForDate(day.dataset.date) === event.target.value);
+                if (selected) startDate.value = selected.dataset.date;
+                days.querySelectorAll("input").forEach(input => { input.checked = input.value === event.target.value; });
+            });
+        }
+        update();
+    });
+
     const openCreate = () => {
         if (!createDialog.open) createDialog.showModal();
     };
@@ -184,6 +221,10 @@
         });
         slot.querySelector(":scope > .time-slot")?.addEventListener("click", () => {
             createForm.querySelector('[name="Input.DayOfWeek"]').value = dayForDate(dayColumn.dataset.date);
+            createForm.querySelector('[name="Input.StartsOn"]').value = dayColumn.dataset.date;
+            createForm.querySelectorAll('[name="Input.RepeatDays"]').forEach(input => {
+                input.checked = input.value === dayForDate(dayColumn.dataset.date);
+            });
             const minute = Number(slot.dataset.minute);
             createForm.querySelector('[name="Input.StartTime"]').value = `${String(Math.floor(minute / 60)).padStart(2, "0")}:${minute % 60 ? "30" : "00"}`;
             createForm.querySelector('[name="Input.EndTime"]').value = formatMinute(minute + 60);

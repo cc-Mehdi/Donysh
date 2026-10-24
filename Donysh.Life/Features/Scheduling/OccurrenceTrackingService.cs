@@ -17,7 +17,7 @@ public sealed class OccurrenceTrackingService(
         if (!Enum.IsDefined(input.Status)) return ActivityCommandResult.Failure("وضعیت انتخاب‌شده معتبر نیست.");
         var pattern = await db.SchedulePatterns.AsNoTracking().SingleOrDefaultAsync(
             item => item.Id == input.PatternId && item.UserSubject == subject, cancellationToken);
-        if (pattern is null || input.OriginalDate.DayOfWeek != pattern.DayOfWeek)
+        if (pattern is null || !ScheduleRecurrence.OccursOn(pattern, input.OriginalDate))
             return ActivityCommandResult.Failure("رخداد انتخاب‌شده در حساب شما پیدا نشد.");
 
         var occurrenceOverride = await db.ScheduleOccurrenceOverrides.SingleOrDefaultAsync(item =>

@@ -1,0 +1,31 @@
+@model Donysh.Life.Features.Scheduling.ScheduleRepeatFieldsModel
+@using Donysh.Life.Features.Scheduling
+<fieldset class="schedule-repeat" data-repeat-fields>
+    <legend>تکرار برنامه</legend>
+    <div class="field-grid">
+        <label class="field"><span>از تاریخ</span><input name="Input.StartsOn" type="date" value="@Model.StartsOn?.ToString("yyyy-MM-dd")" data-repeat-start /></label>
+        <label class="field"><span>تکرار</span><select name="Input.RepeatFrequency" data-repeat-frequency>
+            <option value="none" selected="@(Model.Frequency == "none")">فقط همین یک‌بار</option>
+            <option value="daily" selected="@(Model.Frequency == "daily")">روزانه</option>
+            <option value="weekly" selected="@(Model.Frequency == "weekly")">هفتگی</option>
+            <option value="monthly" selected="@(Model.Frequency == "monthly")">ماهانه</option>
+            <option value="yearly" selected="@(Model.Frequency == "yearly")">سالانه</option>
+        </select></label>
+    </div>
+    <div class="schedule-repeat-details" data-repeat-details>
+        <label class="field schedule-repeat-interval"><span>هر چند روز / هفته / ماه / سال؟</span><input name="Input.RepeatInterval" type="number" min="1" max="52" value="@Model.Interval" inputmode="numeric" /></label>
+        <div class="schedule-repeat-days" data-repeat-days><span>روزهای هفته</span><div class="schedule-repeat-day-grid">
+            @foreach (var day in WeekCalendar.Days)
+            {
+                var mask = Model.DaysMask == 0 ? ScheduleRecurrence.DayMask(Model.DefaultDay) : Model.DaysMask;
+                <label><input type="checkbox" name="Input.RepeatDays" value="@day" checked="@((mask & ScheduleRecurrence.DayMask(day)) != 0)" /><span>@WeekCalendar.DayName(day)</span></label>
+            }
+        </div></div>
+        <div class="field-grid">
+            <label class="field"><span>پایان تکرار</span><select name="Input.RepeatEnds" data-repeat-ends><option value="never" selected="@(Model.Ends == "never")">بدون تاریخ پایان</option><option value="date" selected="@(Model.Ends == "date")">تا تاریخ مشخص</option><option value="count" selected="@(Model.Ends == "count")">بعد از چند بار</option></select></label>
+            <label class="field" data-repeat-until><span>تاریخ پایان</span><input name="Input.RepeatUntil" type="date" value="@Model.Until?.ToString("yyyy-MM-dd")" /></label>
+            <label class="field" data-repeat-count><span>تعداد رخداد</span><input name="Input.RepeatCount" type="number" min="1" max="730" value="@(Model.Count ?? 10)" inputmode="numeric" /></label>
+        </div>
+    </div>
+    <p class="schedule-repeat-help">برای تغییر یا حذف یک نوبت، از خود برنامه در تقویم استفاده کن.</p>
+</fieldset>

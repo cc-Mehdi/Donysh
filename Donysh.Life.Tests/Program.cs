@@ -532,6 +532,11 @@ using (var authenticatedClient = authenticatedFactory.CreateClient(new WebApplic
             && calendarWeekHtml.Contains("calendar-event activity-teal", StringComparison.Ordinal)
             && calendarWeekHtml.Contains("calendar-event activity-blue", StringComparison.Ordinal)
             && !calendarWeekHtml.Contains("style=", StringComparison.OrdinalIgnoreCase));
+        Check("Life weekly schedule offers repeat controls in create and edit dialogs",
+            calendarWeekHtml.Contains("name=\"Input.RepeatFrequency\"", StringComparison.Ordinal)
+            && calendarWeekHtml.Contains("name=\"Input.RepeatDays\"", StringComparison.Ordinal)
+            && calendarWeekHtml.Contains("name=\"Input.RepeatEnds\"", StringComparison.Ordinal)
+            && Regex.Matches(calendarWeekHtml, "data-repeat-fields", RegexOptions.CultureInvariant).Count >= 2);
     }
 
     using (var currentWeekResponse = await authenticatedClient.GetAsync("/Week?view=week"))
@@ -984,6 +989,55 @@ using (var federatedClient = federatedFactory.CreateClient(new WebApplicationFac
             "https://auth.test/Account/Logout?handler=Finalize&token=", StringComparison.Ordinal) == true);
 }
 
+var recurrence = new Donysh.Life.Domain.RecurringSchedulePattern
+{
+    DayOfWeek = DayOfWeek.Saturday, StartsOn = new DateOnly(2026, 10, 24),
+    RepeatFrequency = "weekly", RepeatInterval = 2,
+    RepeatDaysMask = ScheduleRecurrence.DayMask(DayOfWeek.Saturday) | ScheduleRecurrence.DayMask(DayOfWeek.Monday),
+    RepeatCount = 3
+};
+Check("Life custom weekly repeat honors selected days, interval and occurrence count",
+    ScheduleRecurrence.OccursOn(recurrence, new DateOnly(2026, 10, 24))
+    && ScheduleRecurrence.OccursOn(recurrence, new DateOnly(2026, 10, 26))
+    && !ScheduleRecurrence.OccursOn(recurrence, new DateOnly(2026, 10, 31))
+    && ScheduleRecurrence.OccursOn(recurrence, new DateOnly(2026, 11, 7))
+    && !ScheduleRecurrence.OccursOn(recurrence, new DateOnly(2026, 11, 9)));
+recurrence.RepeatFrequency = "monthly";
+recurrence.StartsOn = new DateOnly(2026, 1, 31);
+recurrence.RepeatInterval = 1;
+recurrence.RepeatCount = null;
+Check("Life monthly repeat skips months without the selected day",
+    ScheduleRecurrence.OccursOn(recurrence, new DateOnly(2026, 1, 31))
+    && !ScheduleRecurrence.OccursOn(recurrence, new DateOnly(2026, 2, 28))
+    && ScheduleRecurrence.OccursOn(recurrence, new DateOnly(2026, 3, 31)));
+recurrence.RepeatFrequency = "yearly";
+recurrence.StartsOn = new DateOnly(2024, 2, 29);
+recurrence.RepeatCount = 2;
+Check("Life yearly repeat handles leap day and occurrence limit",
+    ScheduleRecurrence.OccursOn(recurrence, new DateOnly(2024, 2, 29))
+    && !ScheduleRecurrence.OccursOn(recurrence, new DateOnly(2025, 2, 28))
+    && ScheduleRecurrence.OccursOn(recurrence, new DateOnly(2028, 2, 29))
+    && !ScheduleRecurrence.OccursOn(recurrence, new DateOnly(2032, 2, 29)));
+recurrence.StartsOn = null;
+recurrence.RepeatFrequency = "weekly";
+recurrence.RepeatDaysMask = 0;
+Check("Life existing weekly schedules remain recurring without a start date",
+    ScheduleRecurrence.OccursOn(recurrence, new DateOnly(2026, 10, 24))
+    && !ScheduleRecurrence.OccursOn(recurrence, new DateOnly(2026, 10, 25)));
+recurrence.StartsOn = new DateOnly(2026, 10, 24);
+recurrence.RepeatFrequency = "daily";
+recurrence.RepeatInterval = 3;
+recurrence.RepeatUntil = new DateOnly(2026, 10, 30);
+Check("Life daily repeat respects its interval and end date",
+    ScheduleRecurrence.OccursOn(recurrence, new DateOnly(2026, 10, 27))
+    && !ScheduleRecurrence.OccursOn(recurrence, new DateOnly(2026, 10, 28))
+    && !ScheduleRecurrence.OccursOn(recurrence, new DateOnly(2026, 11, 2)));
+recurrence.RepeatFrequency = "none";
+recurrence.RepeatUntil = null;
+Check("Life one-time schedule appears only on its start date",
+    ScheduleRecurrence.OccursOn(recurrence, new DateOnly(2026, 10, 24))
+    && !ScheduleRecurrence.OccursOn(recurrence, new DateOnly(2026, 10, 25)));
+
 var activityDatabase = "life-activity-tests-" + Guid.NewGuid().ToString("N");
 var activityOptions = new DbContextOptionsBuilder<LifeDbContext>()
     .UseInMemoryDatabase(activityDatabase)
@@ -1045,6 +1099,32 @@ await using (var activityDb = new LifeDbContext(activityOptions))
     var overlappingPatternId = ownerWeek.Days.Single(day => day.DayOfWeek == DayOfWeek.Saturday).Blocks.Single(block => block.StartMinute == 510).Id;
     await scheduler.DeleteAsync(overlappingPatternId);
     ownerWeek = await scheduler.GetWeekAsync(DayOfWeek.Saturday);
+
+    var recurringStart = ownerWeek.WeekStart.AddDays(1);
+    var customRepeat = await scheduler.SaveAsync(null, new SchedulePatternForm
+    {
+        ActivityId = ownerItems[0].Id, DayOfWeek = DayOfWeek.Sunday,
+        StartTime = "13:00", DurationMinutes = 60, StartsOn = recurringStart,
+        RepeatFrequency = "weekly", RepeatInterval = 2,
+        RepeatDays = [DayOfWeek.Sunday, DayOfWeek.Tuesday], RepeatEnds = "count", RepeatCount = 3
+    });
+    var missingRepeatDays = await scheduler.SaveAsync(null, new SchedulePatternForm
+    {
+        ActivityId = ownerItems[0].Id, DayOfWeek = DayOfWeek.Sunday,
+        StartTime = "14:00", DurationMinutes = 60, StartsOn = recurringStart,
+        RepeatFrequency = "weekly", RepeatDays = []
+    });
+    var customWeek = await scheduler.GetWeekAsync(DayOfWeek.Sunday, ownerWeek.WeekStart);
+    var skippedWeek = await scheduler.GetWeekAsync(DayOfWeek.Sunday, ownerWeek.WeekStart.AddDays(7));
+    var lastRepeatWeek = await scheduler.GetWeekAsync(DayOfWeek.Sunday, ownerWeek.WeekStart.AddDays(14));
+    Check("Life saved repeat shows selected days and stops after the requested number",
+        customRepeat.Succeeded
+        && !missingRepeatDays.Succeeded
+        && customWeek.Days.Count(day => day.Blocks.Any(block => block.StartMinute == 780)) == 2
+        && skippedWeek.Days.All(day => day.Blocks.All(block => block.StartMinute != 780))
+        && lastRepeatWeek.Days.Count(day => day.Blocks.Any(block => block.StartMinute == 780)) == 1);
+    var recurringPattern = customWeek.Days.SelectMany(day => day.Blocks).First(block => block.StartMinute == 780);
+    await scheduler.DeleteAsync(recurringPattern.Id);
 
     var overnight = await scheduler.SaveAsync(null, new SchedulePatternForm
     {

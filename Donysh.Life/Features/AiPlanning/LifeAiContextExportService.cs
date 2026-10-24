@@ -56,7 +56,18 @@ public sealed class LifeAiContextExportService(
                         day = pattern.DayOfWeek.ToString(),
                         start = FormatMinute(pattern.StartMinute),
                         durationMinutes = pattern.DurationMinutes,
-                        reminderMinutesBefore = pattern.ReminderMinutesBefore
+                        reminderMinutesBefore = pattern.ReminderMinutesBefore,
+                        repeat = new
+                        {
+                            startsOn = pattern.StartsOn,
+                            frequency = pattern.RepeatFrequency,
+                            interval = pattern.RepeatInterval,
+                            days = WeekCalendar.Days.Where(day => (pattern.RepeatDaysMask == 0
+                                ? day == pattern.DayOfWeek
+                                : (pattern.RepeatDaysMask & ScheduleRecurrence.DayMask(day)) != 0)).Select(day => day.ToString()),
+                            until = pattern.RepeatUntil,
+                            count = pattern.RepeatCount
+                        }
                     })
             }),
             currentWeek = week.Days.Select(day => new

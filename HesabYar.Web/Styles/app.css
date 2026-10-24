@@ -737,6 +737,8 @@ html[data-finance-theme="dark"] .finance-sidebar .text-indigo-700 { color: #beb7
 .dashboard-search input::placeholder { color: #8190b0; }
 .dashboard-icon-button { width: 35px; height: 35px; display: grid; place-items: center; flex: none; border: 1px solid #ffffffb8; border-radius: 50%; color: #27386f; background: #ffffffb8; box-shadow: 0 2px 8px #243c721e; }
 .dashboard-icon-button:hover { background: #fff; }
+.dashboard-account-link { align-items:center; justify-items:center; padding:0; line-height:0; }
+.dashboard-account-link .lucide-icon { display:block; width:20px; height:20px; }
 .dashboard-menu-button { display: none; }
 .dashboard-greeting { width: fit-content; max-width: min(100%, 390px); padding: 10px 15px 12px; border: 1px solid #ffffffcc; border-radius: 14px; background: #f7f9f4e8; box-shadow: 0 4px 18px #2336551f; backdrop-filter: blur(8px); }
 .dashboard-greeting h1 { color: #172349; font-size: clamp(23px,2vw,30px); line-height: 1.25; font-weight: 950; }
