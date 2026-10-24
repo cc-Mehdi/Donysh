@@ -5,6 +5,7 @@ COPY HesabYar.Web/HesabYar.Web.csproj HesabYar.Web/
 RUN --mount=type=cache,id=donysh-nuget,target=/root/.nuget/packages \
     dotnet restore Donysh.Auth/Donysh.Auth.csproj
 COPY Donysh.Auth/ Donysh.Auth/
+COPY Shared/MobileSignInTicket.cs Shared/
 COPY HesabYar.Web/wwwroot/fonts/YekanBakh-Regular.woff2 HesabYar.Web/wwwroot/fonts/YekanBakh-Regular.woff2
 COPY HesabYar.Web/wwwroot/fonts/YekanBakh-Bold.woff2 HesabYar.Web/wwwroot/fonts/YekanBakh-Bold.woff2
 RUN --mount=type=cache,id=donysh-nuget,target=/root/.nuget/packages \

@@ -4,6 +4,7 @@ COPY HesabYar.Web/HesabYar.Web.csproj HesabYar.Web/
 RUN --mount=type=cache,id=donysh-nuget,target=/root/.nuget/packages \
     dotnet restore HesabYar.Web/HesabYar.Web.csproj
 COPY HesabYar.Web/ HesabYar.Web/
+COPY Shared/MobileSignInTicket.cs Shared/
 RUN --mount=type=cache,id=donysh-nuget,target=/root/.nuget/packages \
     dotnet publish HesabYar.Web/HesabYar.Web.csproj -c Release -o /app/publish --no-restore /p:UseAppHost=false
 

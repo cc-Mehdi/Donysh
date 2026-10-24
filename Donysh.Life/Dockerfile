@@ -4,6 +4,7 @@ COPY Donysh.Life/Donysh.Life.csproj Donysh.Life/
 RUN --mount=type=cache,id=donysh-nuget,target=/root/.nuget/packages \
     dotnet restore Donysh.Life/Donysh.Life.csproj
 COPY Donysh.Life/ Donysh.Life/
+COPY Shared/MobileSignInTicket.cs Shared/
 COPY HesabYar.Web/wwwroot/images/donysh-mark.png HesabYar.Web/wwwroot/images/donysh-mark.png
 COPY HesabYar.Web/wwwroot/images/donysh-life-logo.png HesabYar.Web/wwwroot/images/donysh-life-logo.png
 COPY HesabYar.Web/wwwroot/fonts/YekanBakh-Regular.woff2 HesabYar.Web/wwwroot/fonts/YekanBakh-Regular.woff2
