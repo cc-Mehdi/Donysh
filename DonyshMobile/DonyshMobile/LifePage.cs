@@ -5,9 +5,6 @@ namespace DonyshMobile;
 
 public sealed class LifePage : ContentPage
 {
-    private static readonly Color Ink = Color.FromArgb("#102A3A");
-    private static readonly Color Teal = Color.FromArgb("#087E78");
-    private static readonly Color Muted = Color.FromArgb("#527478");
     private readonly LifeMobileClient _api = new();
     private readonly VerticalStackLayout _body = new() { Spacing = 14, Padding = new Thickness(18, 4, 18, 26) };
     private LifeConnection? _connection;
@@ -21,7 +18,7 @@ public sealed class LifePage : ContentPage
         Title = "دُنیش زندگی";
         FlowDirection = FlowDirection.RightToLeft;
         Shell.SetNavBarIsVisible(this, false);
-        BackgroundColor = Color.FromArgb("#F4F8F7");
+        LifeTheme.Set(this, BackgroundColorProperty, LifeTheme.Canvas);
         var scroll = new ScrollView { Content = _body };
         Content = new Grid { Children = { scroll } };
         RenderLoading();
@@ -37,7 +34,7 @@ public sealed class LifePage : ContentPage
     {
         _body.Children.Clear();
         _body.Children.Add(Header());
-        _body.Children.Add(Text("در حال دریافت برنامه…", 15, Muted));
+        _body.Children.Add(Text("در حال دریافت برنامه…", 15, LifeTheme.Muted));
     }
 
     private async Task RefreshAsync()
@@ -72,8 +69,8 @@ public sealed class LifePage : ContentPage
         {
             _body.Children.Clear();
             _body.Children.Add(Header());
-            _body.Children.Add(Text("برنامه دریافت نشد. اتصال اینترنت را بررسی کنید.", 15, Muted));
-            _body.Children.Add(Button("تلاش دوباره", async () => await RefreshAsync(), Teal));
+            _body.Children.Add(Text("برنامه دریافت نشد. اتصال اینترنت را بررسی کنید.", 15, LifeTheme.Muted));
+            _body.Children.Add(Button("تلاش دوباره", async () => await RefreshAsync(), LifeTheme.Primary));
         }
         finally { _busy = false; }
     }
@@ -85,13 +82,13 @@ public sealed class LifePage : ContentPage
             new(GridLength.Star), new(GridLength.Auto), new(GridLength.Auto)
         }, ColumnSpacing = 8, Padding = new Thickness(0, 14, 0, 6) };
         var label = new VerticalStackLayout { Spacing = 0 };
-        label.Children.Add(Text("دُنیش زندگی", 24, Ink, true));
+        label.Children.Add(Text("دُنیش زندگی", 24, LifeTheme.Ink, true));
         label.Children.Add(Text(_connection?.AccountLabel is { Length: > 0 } account
-            ? $"حساب: {account}" : "زندگی، در لحظهٔ اکنون", 12, Muted));
+            ? $"حساب: {account}" : "زندگی، در لحظهٔ اکنون", 12, LifeTheme.Muted));
         row.Children.Add(label);
-        var finance = Button("مالی", () => App.OpenService(DonyshService.Finance), Color.FromArgb("#E9E7F9"), Color.FromArgb("#473592"));
+        var finance = Button("مالی", () => App.OpenService(DonyshService.Finance), LifeTheme.Finance, LifeTheme.FinanceText);
         Grid.SetColumn(finance, 1); row.Children.Add(finance);
-        var settings = Button("تنظیمات", async () => await Navigation.PushAsync(new LifeSettingsPage()), Color.FromArgb("#DFF5ED"), Teal);
+        var settings = Button("تنظیمات", async () => await Navigation.PushAsync(new LifeSettingsPage()), LifeTheme.SoftTeal, LifeTheme.AccentText);
         Grid.SetColumn(settings, 2); row.Children.Add(settings);
         return row;
     }
@@ -101,20 +98,20 @@ public sealed class LifePage : ContentPage
         _body.Children.Clear();
         _body.Children.Add(Header());
         var card = new VerticalStackLayout { Spacing = 14, Padding = 20 };
-        card.Children.Add(Text("برنامه‌ات را به گوشی بیاور", 22, Ink, true));
+        card.Children.Add(Text("برنامه‌ات را به گوشی بیاور", 22, LifeTheme.Ink, true));
         if (accountStatus is { LifeAvailable: false, FinanceAvailable: true })
-            card.Children.Add(Text($"حساب «{accountStatus.Label}» فقط دُنیش مالی دارد. اگر دُنیش زندگی شما روی حساب دیگری است، با آن حساب وارد شوید.", 14, Color.FromArgb("#8F4C16")));
+            card.Children.Add(Text($"حساب «{accountStatus.Label}» فقط دُنیش مالی دارد. اگر دُنیش زندگی شما روی حساب دیگری است، با آن حساب وارد شوید.", 14, LifeTheme.WarningText));
         else
-            card.Children.Add(Text("با ایمیل یا نام کاربری و گذرواژهٔ حساب دُنیش وارد شوید. دسترسی مالی و زندگی جداگانه بررسی می‌شود.", 14, Muted));
-        card.Children.Add(Text("ایمیل یا نام کاربری", 14, Ink, true));
+            card.Children.Add(Text("با ایمیل یا نام کاربری و گذرواژهٔ حساب دُنیش وارد شوید. دسترسی مالی و زندگی جداگانه بررسی می‌شود.", 14, LifeTheme.Muted));
+        card.Children.Add(Text("ایمیل یا نام کاربری", 14, LifeTheme.Ink, true));
         var identifier = new Entry { Placeholder = "ایمیل یا نام کاربری", MaxLength = 254,
-            FlowDirection = FlowDirection.LeftToRight, TextColor = Ink, PlaceholderColor = Muted,
-            BackgroundColor = Colors.White };
+            FlowDirection = FlowDirection.LeftToRight };
+        ApplyField(identifier);
         card.Children.Add(identifier);
-        card.Children.Add(Text("گذرواژه", 14, Ink, true));
+        card.Children.Add(Text("گذرواژه", 14, LifeTheme.Ink, true));
         var password = new Entry { Placeholder = "گذرواژهٔ حساب دُنیش", MaxLength = 256, IsPassword = true,
-            FlowDirection = FlowDirection.LeftToRight, TextColor = Ink, PlaceholderColor = Muted,
-            BackgroundColor = Colors.White };
+            FlowDirection = FlowDirection.LeftToRight };
+        ApplyField(password);
         var passwordRow = new Grid { ColumnDefinitions = new ColumnDefinitionCollection
         {
             new(GridLength.Star), new(GridLength.Auto)
@@ -126,7 +123,7 @@ public sealed class LifePage : ContentPage
             password.IsPassword = !password.IsPassword;
             eye.Text = password.IsPassword ? AppIcons.Visibility : AppIcons.VisibilityOff;
             SemanticProperties.SetDescription(eye, password.IsPassword ? "نمایش گذرواژه" : "پنهان‌کردن گذرواژه");
-        }, Color.FromArgb("#E4F4F0"), Teal);
+        }, LifeTheme.SoftTeal, LifeTheme.AccentText);
         eye.FontFamily = "MaterialIconsRound";
         eye.MinimumWidthRequest = 48;
         SemanticProperties.SetDescription(eye, "نمایش گذرواژه");
@@ -212,7 +209,7 @@ public sealed class LifePage : ContentPage
             catch (ArgumentException ex) { await DisplayAlert("اطلاعات معتبر نیست", ex.Message, "باشه"); }
             catch (Exception) { await DisplayAlert("ورود برقرار نشد", "اتصال اینترنت و اطلاعات ورود را بررسی کنید.", "باشه"); }
             finally { _signingIn = false; password.Text = string.Empty; await RefreshAsync(); }
-        }, Teal));
+        }, LifeTheme.Primary));
         _body.Children.Add(Card(card));
     }
 
@@ -227,46 +224,46 @@ public sealed class LifePage : ContentPage
         var current = today?.Blocks.FirstOrDefault(block => block.StartMinute <= minute
             && block.StartMinute + block.DurationMinutes > minute && block.Status is null);
         var focus = new VerticalStackLayout { Spacing = 7, Padding = 20 };
-        focus.Children.Add(Text("اکنون · " + now.ToString("HH:mm"), 13, Teal, true));
-        focus.Children.Add(Text(current?.Title ?? "فعلاً فعالیت برنامه‌ریزی‌شده‌ای نداری", 21, Ink, true));
+        focus.Children.Add(Text("اکنون · " + now.ToString("HH:mm"), 13, LifeTheme.AccentText, true));
+        focus.Children.Add(Text(current?.Title ?? "فعلاً فعالیت برنامه‌ریزی‌شده‌ای نداری", 21, LifeTheme.Ink, true));
         focus.Children.Add(Text(current is null ? "برای برنامهٔ بعدی، فهرست امروز را ببین." :
-            $"از {Clock(current.StartMinute)} تا {Clock(current.StartMinute + current.DurationMinutes)}", 13, Muted));
-        _body.Children.Add(Card(focus, Color.FromArgb("#E4FAF2")));
+            $"از {Clock(current.StartMinute)} تا {Clock(current.StartMinute + current.DurationMinutes)}", 13, LifeTheme.Muted));
+        _body.Children.Add(Card(focus, LifeTheme.Focus));
         var actions = new Grid { ColumnDefinitions = new ColumnDefinitionCollection
         {
             new(GridLength.Star), new(GridLength.Star)
         }, ColumnSpacing = 8 };
-        actions.Children.Add(Button(_showWeek ? "امروز" : "امروز ✓", () => { _showWeek = false; RenderDashboard(); }, _showWeek ? Colors.White : Teal, _showWeek ? Teal : Colors.White));
-        var weekButton = Button(_showWeek ? "هفته ✓" : "هفته", () => { _showWeek = true; RenderDashboard(); }, _showWeek ? Teal : Colors.White, _showWeek ? Colors.White : Teal);
+        actions.Children.Add(Button(_showWeek ? "امروز" : "امروز ✓", () => { _showWeek = false; RenderDashboard(); }, _showWeek ? LifeTheme.Surface : LifeTheme.Primary, _showWeek ? LifeTheme.AccentText : LifeTheme.OnPrimary));
+        var weekButton = Button(_showWeek ? "هفته ✓" : "هفته", () => { _showWeek = true; RenderDashboard(); }, _showWeek ? LifeTheme.Primary : LifeTheme.Surface, _showWeek ? LifeTheme.OnPrimary : LifeTheme.AccentText);
         Grid.SetColumn(weekButton, 1); actions.Children.Add(weekButton);
         _body.Children.Add(actions);
         var days = _showWeek ? _week.Days : today is null ? [] : new List<LifeDay> { today };
         foreach (var day in days)
         {
-            _body.Children.Add(Text($"{day.Name} · {day.PersianDate}", 17, Ink, true));
-            if (day.Blocks.Count == 0) _body.Children.Add(Text("برنامه‌ای برای این روز ثبت نشده است.", 13, Muted));
+            _body.Children.Add(Text($"{day.Name} · {day.PersianDate}", 17, LifeTheme.Ink, true));
+            if (day.Blocks.Count == 0) _body.Children.Add(Text("برنامه‌ای برای این روز ثبت نشده است.", 13, LifeTheme.Muted));
             foreach (var block in day.Blocks) _body.Children.Add(BlockCard(block));
         }
         _body.Children.Add(Button("+ ثبت فعالیت انجام‌شده", async () => await Navigation.PushAsync(new LifeActualPage(_week.Activities,
-            async () => await RefreshAsync())), Teal));
+            async () => await RefreshAsync())), LifeTheme.Primary));
     }
 
     private View BlockCard(LifeBlock block)
     {
         var stack = new VerticalStackLayout { Spacing = 6, Padding = 14 };
-        stack.Children.Add(Text($"{Clock(block.StartMinute)}  ·  {block.DurationMinutes} دقیقه", 12, Teal, true));
-        stack.Children.Add(Text(block.Title, 17, Ink, true));
-        if (block.Status is not null) stack.Children.Add(Text(StatusLabel(block.Status), 12, Muted));
+        stack.Children.Add(Text($"{Clock(block.StartMinute)}  ·  {block.DurationMinutes} دقیقه", 12, LifeTheme.AccentText, true));
+        stack.Children.Add(Text(block.Title, 17, LifeTheme.Ink, true));
+        if (block.Status is not null) stack.Children.Add(Text(StatusLabel(block.Status), 12, LifeTheme.Muted));
         if (!block.IsContinuation)
         {
             var buttons = new Grid { ColumnDefinitions = new ColumnDefinitionCollection
             {
                 new(GridLength.Star), new(GridLength.Star), new(GridLength.Star)
             }, ColumnSpacing = 5 };
-            buttons.Children.Add(Button("✓ انجام شد", async () => await RecordAsync(block, "completed"), Color.FromArgb("#DDF8EA"), Color.FromArgb("#116C4E")));
-            var partial = Button("نیمه‌تمام", async () => await RecordAsync(block, "partial"), Color.FromArgb("#FFF1D9"), Color.FromArgb("#8F6108"));
+            buttons.Children.Add(Button("✓ انجام شد", async () => await RecordAsync(block, "completed"), LifeTheme.Complete, LifeTheme.CompleteText));
+            var partial = Button("نیمه‌تمام", async () => await RecordAsync(block, "partial"), LifeTheme.Partial, LifeTheme.PartialText);
             Grid.SetColumn(partial, 1); buttons.Children.Add(partial);
-            var missed = Button("انجام نشد", async () => await RecordAsync(block, "missed"), Color.FromArgb("#FDEBE8"), Color.FromArgb("#9A4136"));
+            var missed = Button("انجام نشد", async () => await RecordAsync(block, "missed"), LifeTheme.Missed, LifeTheme.MissedText);
             Grid.SetColumn(missed, 2); buttons.Children.Add(missed);
             stack.Children.Add(buttons);
         }
@@ -294,19 +291,34 @@ public sealed class LifePage : ContentPage
         try { return TimeZoneInfo.FindSystemTimeZoneById("Asia/Tehran"); }
         catch { return TimeZoneInfo.CreateCustomTimeZone("Asia/Tehran", TimeSpan.FromHours(3.5), "Tehran", "Tehran"); }
     }
-    internal static Label Text(string value, double size, Color color, bool bold = false) =>
-        new() { Text = value, FontSize = size, TextColor = color, FontFamily = bold ? "YekanBakhBold" : "YekanBakh", LineBreakMode = LineBreakMode.WordWrap };
-    internal static Border Card(View content, Color? background = null) => new()
+    internal static Label Text(string value, double size, LifeColor color, bool bold = false)
     {
-        Content = content, BackgroundColor = background ?? Colors.White,
-        Stroke = Color.FromArgb("#D8E9E5"), StrokeThickness = 1,
-        StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = new CornerRadius(18) }
-    };
-    internal static Button Button(string title, Action action, Color background, Color? foreground = null)
+        var label = new Label { Text = value, FontSize = size,
+            FontFamily = bold ? "YekanBakhBold" : "YekanBakh", LineBreakMode = LineBreakMode.WordWrap };
+        LifeTheme.Set(label, Label.TextColorProperty, color);
+        return label;
+    }
+    internal static Border Card(View content, LifeColor? background = null)
     {
-        var button = new Button { Text = title, BackgroundColor = background, TextColor = foreground ?? Colors.White,
+        var card = new Border { Content = content, StrokeThickness = 1,
+            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = new CornerRadius(18) } };
+        LifeTheme.Set(card, BackgroundColorProperty, background ?? LifeTheme.Surface);
+        LifeTheme.Set(card, Border.StrokeProperty, LifeTheme.SurfaceBorder);
+        return card;
+    }
+    internal static Button Button(string title, Action action, LifeColor background, LifeColor? foreground = null)
+    {
+        var button = new Button { Text = title,
             FontFamily = "YekanBakhBold", FontSize = 13, CornerRadius = 12, MinimumHeightRequest = 44 };
+        LifeTheme.Set(button, Microsoft.Maui.Controls.Button.BackgroundColorProperty, background);
+        LifeTheme.Set(button, Microsoft.Maui.Controls.Button.TextColorProperty, foreground ?? LifeTheme.OnPrimary);
         button.Clicked += (_, _) => action();
         return button;
+    }
+    internal static void ApplyField(InputView field)
+    {
+        LifeTheme.Set(field, InputView.TextColorProperty, LifeTheme.Ink);
+        LifeTheme.Set(field, InputView.PlaceholderColorProperty, LifeTheme.Muted);
+        LifeTheme.Set(field, VisualElement.BackgroundColorProperty, LifeTheme.Field);
     }
 }

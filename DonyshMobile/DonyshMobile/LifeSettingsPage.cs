@@ -1,4 +1,5 @@
 using DonyshMobile.Core;
+using DonyshMobile.UI;
 
 namespace DonyshMobile;
 
@@ -10,17 +11,19 @@ public sealed class LifeSettingsPage : ContentPage
     {
         Title = "تنظیمات زندگی";
         FlowDirection = FlowDirection.RightToLeft;
-        BackgroundColor = Color.FromArgb("#F4F8F7");
+        LifeTheme.Set(this, BackgroundColorProperty, LifeTheme.Canvas);
         var stack = new VerticalStackLayout { Padding = 20, Spacing = 16 };
-        stack.Children.Add(LifePage.Text("تنظیمات دُنیش زندگی", 23, Color.FromArgb("#102A3A"), true));
-        stack.Children.Add(LifePage.Text("ورود پیش‌فرض به اپ", 17, Color.FromArgb("#102A3A"), true));
-        stack.Children.Add(LifePage.Text("اگر انتخاب نکنید، صفحهٔ انتخاب سرویس هر بار نمایش داده می‌شود.", 13, Color.FromArgb("#527478")));
+        stack.Children.Add(LifePage.Text("تنظیمات دُنیش زندگی", 23, LifeTheme.Ink, true));
+        stack.Children.Add(LifePage.Text("ورود پیش‌فرض به اپ", 17, LifeTheme.Ink, true));
+        stack.Children.Add(LifePage.Text("اگر انتخاب نکنید، صفحهٔ انتخاب سرویس هر بار نمایش داده می‌شود.", 13, LifeTheme.Muted));
         var picker = new Picker
         {
-            Title = "سرویس پیش‌فرض", TitleColor = Color.FromArgb("#527478"),
-            TextColor = Color.FromArgb("#102A3A"), BackgroundColor = Colors.White,
+            Title = "سرویس پیش‌فرض",
             Items = { "هر بار بپرس", "دُنیش مالی", "دُنیش زندگی" }
         };
+        LifeTheme.Set(picker, Picker.TextColorProperty, LifeTheme.Ink);
+        LifeTheme.Set(picker, Picker.TitleColorProperty, LifeTheme.Muted);
+        LifeTheme.Set(picker, BackgroundColorProperty, LifeTheme.Field);
         ServicePicker = picker;
         picker.SelectedIndex = ServicePreference.Default switch
         {
@@ -31,8 +34,8 @@ public sealed class LifeSettingsPage : ContentPage
             1 => DonyshService.Finance, 2 => DonyshService.Life, _ => null
         };
         stack.Children.Add(LifePage.Card(new VerticalStackLayout { Padding = 14, Children = { picker } }));
-        stack.Children.Add(LifePage.Button("رفتن به دُنیش مالی", () => App.OpenService(DonyshService.Finance), Color.FromArgb("#473592")));
-        stack.Children.Add(LifePage.Button("انتخاب سرویس", () => App.OpenService(null), Color.FromArgb("#E4F4F0"), Color.FromArgb("#087E78")));
+        stack.Children.Add(LifePage.Button("رفتن به دُنیش مالی", () => App.OpenService(DonyshService.Finance), LifeTheme.Finance, LifeTheme.FinanceText));
+        stack.Children.Add(LifePage.Button("انتخاب سرویس", () => App.OpenService(null), LifeTheme.SoftTeal, LifeTheme.AccentText));
         stack.Children.Add(LifePage.Button("قطع اتصال این گوشی از زندگی", async () =>
         {
             if (!await DisplayAlert("قطع اتصال", "اتصال لایف از این گوشی پاک شود؟", "قطع اتصال", "انصراف")) return;
@@ -47,7 +50,7 @@ public sealed class LifeSettingsPage : ContentPage
             Platforms.Android.LifeReminderScheduler.Clear();
 #endif
             App.OpenService(DonyshService.Life);
-        }, Color.FromArgb("#FDEBE8"), Color.FromArgb("#9A4136")));
+        }, LifeTheme.Missed, LifeTheme.MissedText));
         Content = new ScrollView { Content = stack };
     }
 }
